@@ -86,6 +86,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('cards/{card}/labels',                      [CardController::class, 'addLabel']);
     Route::delete('cards/{card}/labels/{label}',            [CardController::class, 'removeLabel']);
 
+    // Card - Brand
+Route::post('cards/{card}/brand',              [CardController::class, 'setBrand']);
+Route::delete('cards/{card}/brand',            [CardController::class, 'removeBrand']);
+
     // Card - Attachments
     Route::get('cards/{card}/attachments',                  [CardController::class, 'attachments']);
     Route::post('cards/{card}/attachments',                 [CardController::class, 'addAttachment']);

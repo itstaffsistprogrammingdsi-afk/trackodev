@@ -17,13 +17,22 @@ interface ReturnType {
 export default function useCardDescription(
   detail: Card | null,
 ): ReturnType {
-  const [description, setDescription] = useState("");
+  // =========================================
+  // STATE
+  // =========================================
+  const [description, setDescription] =
+    useState("");
 
   const [dueDate, setDueDate] = useState("");
 
   const [saving, setSaving] = useState(false);
 
-  const firstLoad = useRef(true);
+  // =========================================
+  // FIRST LOAD GUARD
+  // =========================================
+  const descriptionFirstLoad = useRef(true);
+
+  const dueDateFirstLoad = useRef(true);
 
   // =========================================
   // SET INITIAL VALUE
@@ -31,15 +40,21 @@ export default function useCardDescription(
   useEffect(() => {
     if (!detail) return;
 
+    // DESCRIPTION
     setDescription(detail.description || "");
 
+    // DUE DATE
     setDueDate(
       detail.due_date
-        ? new Date(detail.due_date).toISOString().slice(0, 16)
+        ? new Date(detail.due_date)
+            .toISOString()
+            .slice(0, 16)
         : "",
     );
 
-    firstLoad.current = true;
+    // RESET FIRST LOAD
+    descriptionFirstLoad.current = true;
+    dueDateFirstLoad.current = true;
   }, [detail]);
 
   // =========================================
@@ -48,8 +63,9 @@ export default function useCardDescription(
   useEffect(() => {
     if (!detail) return;
 
-    if (firstLoad.current) {
-      firstLoad.current = false;
+    // SKIP INITIAL RENDER
+    if (descriptionFirstLoad.current) {
+      descriptionFirstLoad.current = false;
       return;
     }
 
@@ -61,7 +77,10 @@ export default function useCardDescription(
           description,
         });
       } catch (err) {
-        console.error("FAILED SAVE DESCRIPTION", err);
+        console.error(
+          "FAILED SAVE DESCRIPTION",
+          err,
+        );
       } finally {
         setSaving(false);
       }
@@ -76,7 +95,11 @@ export default function useCardDescription(
   useEffect(() => {
     if (!detail) return;
 
-    if (firstLoad.current) return;
+    // SKIP INITIAL RENDER
+    if (dueDateFirstLoad.current) {
+      dueDateFirstLoad.current = false;
+      return;
+    }
 
     const timeout = setTimeout(async () => {
       try {
@@ -86,15 +109,21 @@ export default function useCardDescription(
           due_date: dueDate,
         });
       } catch (err) {
-        console.error("FAILED SAVE DUE DATE", err);
+        console.error(
+          "FAILED SAVE DUE DATE",
+          err,
+        );
       } finally {
         setSaving(false);
       }
-    }, 500);
+    }, 700);
 
     return () => clearTimeout(timeout);
   }, [dueDate, detail]);
 
+  // =========================================
+  // RETURN
+  // =========================================
   return {
     description,
     setDescription,

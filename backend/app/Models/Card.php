@@ -56,4 +56,9 @@ class Card extends Model
     {
         return $this->belongsToMany(Label::class, 'card_label');
     }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
 }

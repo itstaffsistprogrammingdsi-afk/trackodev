@@ -45,6 +45,24 @@ export interface Label {
   color: string;
 }
 
+export interface Brand {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+export interface Campaign {
+  id: string;
+  name: string;
+}
+
+export type Attachment = {
+  id: string;
+  file_name?: string;
+  link_url?: string;
+  type?: "file" | "link";
+};
+
 export type Card = {
   id: string;
 
@@ -69,11 +87,20 @@ export type Card = {
   tasks?: CardTask[];
 
   labels?: Label[];
-};
 
-export type Attachment = {
-  id: string;
-  file_name?: string;
-  link_url?: string;
-  type?: "file" | "link";
+  /*
+  |--------------------------------------------------------------------------
+  | BRAND
+  |--------------------------------------------------------------------------
+  */
+
+  brand?: Brand | null;
+
+  /*
+  |--------------------------------------------------------------------------
+  | CAMPAIGN
+  |--------------------------------------------------------------------------
+  */
+
+  campaign?: Campaign | null;
 };

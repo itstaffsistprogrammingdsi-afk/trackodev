@@ -156,3 +156,59 @@ export const detachLabel = async (
 
   return res.data;
 };
+
+// =========================================
+// BRAND
+// =========================================
+
+export const setBrand = async (
+  cardId: string,
+  brandId: string,
+) => {
+  const res = await api.post(
+    `/cards/${cardId}/brand`,
+    {
+      brand_id: brandId,
+    },
+  );
+
+  return res.data;
+};
+
+export const removeBrand = async (
+  cardId: string,
+) => {
+  const res = await api.delete(
+    `/cards/${cardId}/brand`,
+  );
+
+  return res.data;
+};
+
+// =========================================
+// CAMPAIGN
+// =========================================
+
+export const setCampaign = async (
+  cardId: string,
+  campaignId: string,
+) => {
+  const res = await api.post(
+    `/cards/${cardId}/campaign`,
+    {
+      campaign_id: campaignId,
+    },
+  );
+
+  return res.data;
+};
+
+export const removeCampaign = async (
+  cardId: string,
+) => {
+  const res = await api.delete(
+    `/cards/${cardId}/campaign`,
+  );
+
+  return res.data;
+};
