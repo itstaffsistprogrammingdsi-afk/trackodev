@@ -11,19 +11,19 @@ return new class extends Migration
         Schema::create('brands', function (Blueprint $table) {
             $table->uuid('id')->primary();
 
+            // IMPORTANT: pastikan konsisten dengan campaigns.id (UUID)
             $table->uuid('campaign_id');
 
             $table->string('name');
-
-            $table->string('color')
-                ->default('#3B82F6');
+            $table->string('color')->nullable();
 
             $table->timestamps();
 
+            // 🔥 RELATION SAFETY (WAJIB)
             $table->foreign('campaign_id')
                 ->references('id')
                 ->on('campaigns')
-                ->cascadeOnDelete();
+                ->onDelete('cascade');
         });
     }
 

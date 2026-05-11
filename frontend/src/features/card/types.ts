@@ -41,15 +41,19 @@ export interface User {
 
 export interface Label {
   id: string;
+
   name: string;
-  color: string;
+
+  color?: string | null;
+
+  slug: string;
 }
 
-export interface Brand {
-  id: string;
-  name: string;
-  color?: string;
-}
+// export interface Brand {
+//   id: string;
+//   name: string;
+//   color?: string;
+// }
 
 export interface Campaign {
   id: string;
@@ -71,6 +75,9 @@ export type Card = {
   description?: string;
 
   campaign_id?: string;
+  
+  board_id: string;
+
 
   priority?:
     | "low"
@@ -94,7 +101,7 @@ export type Card = {
   |--------------------------------------------------------------------------
   */
 
-  brand?: Brand | null;
+ brands?: Brand[];
 
   /*
   |--------------------------------------------------------------------------
@@ -103,4 +110,22 @@ export type Card = {
   */
 
   campaign?: Campaign | null;
+  board?: Board;
 };
+
+export type Brand = {
+  id: string;
+  name: string;
+  color: string;
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| BOARD
+|--------------------------------------------------------------------------
+*/
+export interface Board {
+  id: string;
+  campaign_id: string;
+}

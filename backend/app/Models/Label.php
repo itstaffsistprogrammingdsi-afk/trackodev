@@ -12,30 +12,23 @@ class Label extends Model
     use HasUuids;
 
     protected $fillable = [
-        'campaign_id',
-        'name',
-        'color',
+'name', 'color', 'slug',
     ];
 
     /**
      * Campaign owner label
      */
-    public function campaign(): BelongsTo
-    {
-        return $this->belongsTo(Campaign::class);
-    }
+    // public function campaign(): BelongsTo
+    // {
+    //     return $this->belongsTo(Campaign::class);
+    // }
 
     /**
      * Cards relation (many-to-many)
      * pivot table: card_label
      */
-    public function cards(): BelongsToMany
+    public function cards()
     {
-        return $this->belongsToMany(
-            Card::class,
-            'card_label',
-            'label_id',
-            'card_id'
-        )->withTimestamps();
+        return $this->belongsToMany(Card::class);
     }
 }

@@ -13,8 +13,13 @@ class Card extends Model
     use HasUuids;
 
     protected $fillable = [
-        'board_id', 'created_by', 'title',
-        'description', 'priority', 'due_date', 'order'
+        'board_id',
+        'created_by',
+        'title',
+        'description',
+        'priority',
+        'due_date',
+        'order'
     ];
 
     protected $casts = ['due_date' => 'date'];
@@ -32,7 +37,7 @@ class Card extends Model
     public function assignees(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'card_user')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     public function tasks(): HasMany
@@ -48,17 +53,22 @@ class Card extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(CardComment::class)
-                    ->whereNull('parent_id')
-                    ->orderBy('created_at');
+            ->whereNull('parent_id')
+            ->orderBy('created_at');
     }
 
     public function labels(): BelongsToMany
     {
-        return $this->belongsToMany(Label::class, 'card_label');
+        return $this->belongsToMany(Label::class)->withTimestamps();;
     }
 
-    public function brand(): BelongsTo
-    {
-        return $this->belongsTo(Brand::class);
-    }
+public function brands()
+{
+    return $this->belongsToMany(
+        Brand::class,
+        'brand_card',
+        'card_id',
+        'brand_id'
+    );
+}
 }

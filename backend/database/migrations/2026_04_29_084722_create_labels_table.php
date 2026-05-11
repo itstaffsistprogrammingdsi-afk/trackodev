@@ -9,16 +9,21 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-public function up(): void
-{
-    Schema::create('labels', function (Blueprint $table) {
-        $table->uuid('id')->primary();
-        $table->foreignUuid('campaign_id')->constrained('campaigns')->cascadeOnDelete();
-        $table->string('name');
-        $table->string('color')->default('#6366f1');
-        $table->timestamps();
-    });
-}
+    public function up(): void
+    {
+        Schema::create('labels', function (Blueprint $table) {
+
+            $table->uuid('id')->primary();
+
+            $table->string('name', 100);
+
+            $table->string('color', 20)->nullable();
+
+            $table->string('slug')->unique();
+
+            $table->timestamps();
+        });
+    }
 
     /**
      * Reverse the migrations.

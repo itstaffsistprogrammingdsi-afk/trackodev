@@ -10,6 +10,10 @@ use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\CampaignController;
+use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\CardBrandController;
+use App\Http\Controllers\Api\LabelController;
+use App\Http\Controllers\Api\CardLabelController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -83,12 +87,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('cards/{card}/assign/{user}',             [CardController::class, 'unassign']);
 
     // Card - Labels
-    Route::post('cards/{card}/labels',                      [CardController::class, 'addLabel']);
-    Route::delete('cards/{card}/labels/{label}',            [CardController::class, 'removeLabel']);
+    // Labels CRUD
+    Route::apiResource(
+        'labels',
+        LabelController::class
+    );
+    Route::post('cards/{card}/labels',                      [CardLabelController::class, 'attach']);
+    Route::delete('cards/{card}/labels/{label}',            [CardLabelController::class, 'detach']);
+    Route::patch('cards/{card}/labels',                     [CardLabelController::class, 'toggle']);
 
-    // Card - Brand
-Route::post('cards/{card}/brand',              [CardController::class, 'setBrand']);
-Route::delete('cards/{card}/brand',            [CardController::class, 'removeBrand']);
+    // Card - Brands
+    Route::apiResource('brands', BrandController::class);
+    Route::post('cards/{card}/brands/{brand}/attach', [CardBrandController::class, 'attach']);
+    Route::delete('cards/{card}/brands/{brand}/detach', [CardBrandController::class, 'detach']);
 
     // Card - Attachments
     Route::get('cards/{card}/attachments',                  [CardController::class, 'attachments']);

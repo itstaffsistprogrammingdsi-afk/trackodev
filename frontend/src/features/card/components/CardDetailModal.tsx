@@ -16,16 +16,13 @@ import useCardSidebar from "../hooks/useCardSidebar";
 
 import TaskSection from "./sections/TaskSection";
 import CommentSection from "./sections/CommentSection";
-// import MemberSection from "./sections/MemberSection";
 import AttachmentSection from "./sections/AttachmentSection";
 
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
 
-import {
-  AlignLeft,
-  Clock3,
-} from "lucide-react";
+import { AlignLeft, Clock3 } from "lucide-react";
+import { useState } from "react";
 
 interface Props {
   card: Card | null;
@@ -33,11 +30,18 @@ interface Props {
   onClose: () => void;
 }
 
+
 export default function CardDetailModal({ card, isOpen, onClose }: Props) {
   // =========================================
   // DETAIL
   // =========================================
-  const { detail, users, loading, fetchDetail } = useCardDetail(card, isOpen);
+  const { detail, users, loading, fetchDetail, setDetail } = useCardDetail(
+    card,
+    isOpen,
+  );
+
+  const [showLabels, setShowLabels] = useState(false);
+
 
   // =========================================
   // DESCRIPTION
@@ -86,6 +90,9 @@ export default function CardDetailModal({ card, isOpen, onClose }: Props) {
 
     showAttachment,
     setShowAttachment,
+
+    showBrands,
+    setShowBrands,
 
     memberSearch,
     setMemberSearch,
@@ -137,6 +144,8 @@ export default function CardDetailModal({ card, isOpen, onClose }: Props) {
           <CardDetailHeader
             title={detail?.title || card.title}
             assignees={detail?.assignees}
+            brands={(detail?.brands ?? card?.brands) || []}
+            labels={(detail?.labels ?? card?.labels) || []}
             dueDate={
               dueDate
                 ? new Date(dueDate).toLocaleString("id-ID", {
@@ -233,9 +242,10 @@ export default function CardDetailModal({ card, isOpen, onClose }: Props) {
         </div>
 
         <CardDetailSidebar
-          card={card}
+          card={detail || card}
           users={users}
           assignees={detail?.assignees}
+          brands={detail?.brands ?? []}
           dueDate={dueDate}
           setDueDate={setDueDate}
           showMembers={showMembers}
@@ -249,28 +259,13 @@ export default function CardDetailModal({ card, isOpen, onClose }: Props) {
           handleAssign={handleAssign}
           handleUnassign={handleUnassign}
           handleDelete={handleDelete}
+          setDetail={setDetail}
+          showBrands={showBrands}
+          setShowBrands={setShowBrands}
+          showLabels={showLabels}
+          setShowLabels={setShowLabels}
         />
       </div>
     </div>
   );
 }
-
-// function SidebarButton({
-//   icon,
-//   label,
-//   onClick,
-// }: {
-//   icon: React.ReactNode;
-//   label: string;
-//   onClick?: () => void;
-// }) {
-//   return (
-//     <button
-//       onClick={onClick}
-//       className="w-full h-11 rounded-xl bg-gray-100 hover:bg-gray-200 transition flex items-center gap-3 px-4 text-sm font-medium text-gray-700"
-//     >
-//       {icon}
-//       {label}
-//     </button>
-//   );
-// }

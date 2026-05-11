@@ -3,39 +3,42 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Brand extends Model
 {
-    use HasUuids;
-
     protected $fillable = [
-        'campaign_id',
         'name',
         'color',
+        'campaign_id',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | CAMPAIGN
-    |--------------------------------------------------------------------------
-    */
+    public $incrementing = false;
+    protected $keyType = 'string';
 
-    public function campaign(): BelongsTo
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
+            }
+        });
+    }
+
+    // RELATION: Campaign
+    public function campaign()
     {
         return $this->belongsTo(Campaign::class);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | CARDS
-    |--------------------------------------------------------------------------
-    */
-
-    public function cards(): HasMany
+    // RELATION: Cards (pivot)
+    public function cards()
     {
-        return $this->hasMany(Card::class);
+        return $this->belongsToMany(
+            Card::class,
+            'brand_card',
+            'brand_id',
+            'card_id'
+        );
     }
 }

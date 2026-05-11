@@ -5,16 +5,20 @@ import {
   List,
   Paperclip,
   Tag,
+  Layers,
   Trash2,
   Users,
 } from "lucide-react";
 
-import { Card, User } from "../types";
+import { Card, User, Brand } from "../types";
 
 import SidebarButton from "./SidebarButton";
 
 import MemberSection from "./sections/MemberSection";
 import AttachmentSection from "./sections/AttachmentSection";
+import BrandSection from "./sections/BrandSection";
+import LabelSection from "./sections/LabelSection";
+
 // import { S } from "node_modules/@fullcalendar/core/internal-common";
 
 interface Props {
@@ -23,6 +27,9 @@ interface Props {
   users: User[];
 
   assignees?: User[];
+
+  brands: Brand[];
+  // setBrands: (brands: Brand[]) => void;
 
   dueDate: string;
   setDueDate: (value: string) => void;
@@ -44,6 +51,12 @@ interface Props {
   handleUnassign: (userId: string) => void;
 
   handleDelete: () => void;
+
+  showBrands: boolean;
+  setShowBrands: React.Dispatch<React.SetStateAction<boolean>>;
+  setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
+  showLabels: boolean;
+  setShowLabels: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function CardDetailSidebar({
@@ -71,6 +84,11 @@ export default function CardDetailSidebar({
   handleUnassign,
 
   handleDelete,
+  showBrands,
+  setShowBrands,
+  setDetail,
+  showLabels,
+  setShowLabels,
 }: Props) {
   // =========================================
   // TOGGLE
@@ -86,6 +104,14 @@ export default function CardDetailSidebar({
   const toggleAttachment = () => {
     setShowAttachment((prev) => !prev);
   };
+
+  const toggleBrands = () => {
+    setShowBrands((prev) => !prev);
+  };
+
+  const toggleLabels = () => {
+  setShowLabels((prev) => !prev);
+};
 
   return (
     <div className="w-[290px] border-l bg-white p-5 overflow-y-auto">
@@ -118,8 +144,27 @@ export default function CardDetailSidebar({
             )}
 
             {/* LABEL */}
-            <SidebarButton icon={<Tag size={17} />} label="Labels" />
+            <SidebarButton
+              icon={<Tag size={17} />}
+              label="Labels"
+              onClick={toggleLabels}
+            />
+            {showLabels && <LabelSection detail={card} setDetail={setDetail} />}
 
+            {/* BRANDS */}
+            <SidebarButton
+              icon={<Layers size={17} />}
+              label="Brand"
+              onClick={toggleBrands}
+            />
+
+            {showBrands && (
+              <BrandSection
+                card={card}
+                isOpen={showBrands}
+                setDetail={setDetail}
+              />
+            )}
             {/* DUE DATE */}
             <SidebarButton
               icon={<Clock3 size={17} />}

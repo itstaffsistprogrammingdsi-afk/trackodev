@@ -9,6 +9,9 @@ export default function useCardSidebar() {
 
   const [memberSearch, setMemberSearch] = useState("");
 
+  const [showBrands, setShowBrands] = useState(false);
+
+
   return {
     showMembers,
     setShowMembers,
@@ -21,5 +24,8 @@ export default function useCardSidebar() {
 
     memberSearch,
     setMemberSearch,
+
+    showBrands,
+    setShowBrands,  
   };
 }
