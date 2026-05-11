@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Label;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class LabelController extends Controller
 {
@@ -14,7 +15,11 @@ class LabelController extends Controller
      */
     public function index()
     {
-        return Label::orderBy('name')->get();
+        return response()->json(
+            Label::query()
+                ->orderBy('name')
+                ->get()
+        );
     }
 
     /**
@@ -22,18 +27,33 @@ class LabelController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:100',
-            'color' => 'nullable|string|max:20',
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('labels', 'name'),
+            ],
+
+            'color' => [
+                'nullable',
+                'string',
+                'max:20',
+            ],
         ]);
 
-        return Label::create([
-            'name' => $request->name,
-            'color' => $request->color,
+        $label = Label::create([
+            'name' => trim($validated['name']),
+            'color' => $validated['color'] ?? null,
             'slug' => $this->generateUniqueSlug(
-                $request->name
+                $validated['name']
             ),
         ]);
+
+        return response()->json(
+            $label,
+            201
+        );
     }
 
     /**
@@ -43,21 +63,36 @@ class LabelController extends Controller
         Request $request,
         Label $label
     ) {
-        $request->validate([
-            'name' => 'required|string|max:100',
-            'color' => 'nullable|string|max:20',
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+
+                Rule::unique('labels', 'name')
+                    ->ignore($label->id),
+            ],
+
+            'color' => [
+                'nullable',
+                'string',
+                'max:20',
+            ],
         ]);
 
         $label->update([
-            'name' => $request->name,
-            'color' => $request->color,
+            'name' => trim($validated['name']),
+            'color' => $validated['color'] ?? null,
+
             'slug' => $this->generateUniqueSlug(
-                $request->name,
+                $validated['name'],
                 $label->id
             ),
         ]);
 
-        return $label->fresh();
+        return response()->json(
+            $label->fresh()
+        );
     }
 
     /**
@@ -67,7 +102,9 @@ class LabelController extends Controller
     {
         $label->delete();
 
-        return response()->noContent();
+        return response()->json([
+            'message' => 'Label deleted successfully',
+        ]);
     }
 
     /**
@@ -77,17 +114,18 @@ class LabelController extends Controller
         string $name,
         ?string $ignoreId = null
     ): string {
-        $slug = Str::slug($name);
+        $baseSlug = Str::slug($name);
 
-        $baseSlug = $slug;
+        $slug = $baseSlug;
 
         $counter = 1;
 
         while (
-            Label::where('slug', $slug)
+            Label::query()
+                ->where('slug', $slug)
                 ->when(
                     $ignoreId,
-                    fn ($q) => $q->where(
+                    fn ($query) => $query->where(
                         'id',
                         '!=',
                         $ignoreId

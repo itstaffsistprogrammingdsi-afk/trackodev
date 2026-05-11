@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Card;
+use App\Models\Label;
 use Illuminate\Http\Request;
 
 class CardLabelController extends Controller
@@ -15,33 +16,36 @@ class CardLabelController extends Controller
         Request $request,
         Card $card
     ) {
-        $request->validate([
-            'label_id' => 'required|exists:labels,id',
+        $validated = $request->validate([
+            'label_id' => [
+                'required',
+                'exists:labels,id',
+            ],
         ]);
 
         $card->labels()
             ->syncWithoutDetaching([
-                $request->label_id
+                $validated['label_id']
             ]);
 
-        return $card->load('labels');
+        return response()->json(
+            $card->load('labels')
+        );
     }
 
     /**
      * Detach label dari card
      */
     public function detach(
-        Request $request,
-        Card $card
+        Card $card,
+        Label $label
     ) {
-        $request->validate([
-            'label_id' => 'required|exists:labels,id',
-        ]);
-
         $card->labels()
-            ->detach($request->label_id);
+            ->detach($label->id);
 
-        return $card->load('labels');
+        return response()->json(
+            $card->load('labels')
+        );
     }
 
     /**
@@ -51,11 +55,14 @@ class CardLabelController extends Controller
         Request $request,
         Card $card
     ) {
-        $request->validate([
-            'label_id' => 'required|exists:labels,id',
+        $validated = $request->validate([
+            'label_id' => [
+                'required',
+                'exists:labels,id',
+            ],
         ]);
 
-        $labelId = $request->label_id;
+        $labelId = $validated['label_id'];
 
         $exists = $card->labels()
             ->where('labels.id', $labelId)
@@ -67,6 +74,8 @@ class CardLabelController extends Controller
             $card->labels()->attach($labelId);
         }
 
-        return $card->load('labels');
+        return response()->json(
+            $card->load('labels')
+        );
     }
 }
