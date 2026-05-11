@@ -1,11 +1,15 @@
 import { X, CheckSquare, Clock3 } from "lucide-react";
 
-import { User } from "../types";
+import { Brand, User, Label } from "../types";
 
 interface Props {
   title: string;
 
   assignees?: User[];
+
+  brands?: Brand[];
+
+  labels?: Label[];
 
   dueDate: string;
 
@@ -17,6 +21,8 @@ interface Props {
 export default function CardDetailHeader({
   title,
   assignees,
+  brands,
+  labels,
   dueDate,
   onClose,
   onToggleMembers,
@@ -65,6 +71,30 @@ export default function CardDetailHeader({
             </div>
           </div>
 
+          <div className="mt-5">
+            <p className="text-xs font-semibold uppercase text-gray-500 mb-2">
+              Brand
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              {brands?.length ? (
+                brands.map((b: Brand) => (
+                  <span
+                    key={b.id}
+                    className="px-3 py-1 rounded-full text-white text-sm font-medium flex items-center gap-2 shadow-sm"
+                    style={{ backgroundColor: b.color }}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-white/70" />
+                    {b.name}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-gray-400">No brands</span>
+              )}
+            </div>
+          </div>
+
+          {/* LABEL */}
           {/* LABEL */}
           <div className="mt-5">
             <p className="text-xs font-semibold uppercase text-gray-500 mb-2">
@@ -72,13 +102,21 @@ export default function CardDetailHeader({
             </p>
 
             <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 rounded-lg bg-red-500 text-white text-sm font-medium">
-                p1-critical
-              </span>
-
-              <span className="px-3 py-1 rounded-lg bg-cyan-500 text-white text-sm font-medium">
-                email-server
-              </span>
+              {labels?.length ? (
+                labels.map((label) => (
+                  <span
+                    key={label.id}
+                    className="px-3 py-1 rounded-lg text-white text-sm font-medium shadow-sm"
+                    style={{
+                      backgroundColor: label.color || "#3b82f6",
+                    }}
+                  >
+                    {label.name}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-gray-400">No labels</span>
+              )}
             </div>
           </div>
 

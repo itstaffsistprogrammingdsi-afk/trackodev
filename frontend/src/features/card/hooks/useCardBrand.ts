@@ -1,77 +1,129 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import api from "@/lib/axios";
+import { Brand, Card } from "../types";
 
-import { Brand } from "../types";
+interface UseCardBrandReturn {
+  brands: Brand[];
+  loading: boolean;
 
-export default function useBrands() {
-  const [brands, setBrands] = useState<
-    Brand[]
-  >([]);
+  attachBrand: (brandId: string) => Promise<void>;
+  detachBrand: (brandId: string) => Promise<void>;
+  createAndAttach: (name: string, color: string) => Promise<void>;
+}
 
-  const [newBrand, setNewBrand] =
-    useState("");
+export function useCardBrand(
+  card: Card | null,
+  isOpen: boolean,
+  setDetail?: React.Dispatch<React.SetStateAction<Card | null>>
+): UseCardBrandReturn {
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // =========================================
-  // LOAD
+  // FETCH ALL BRANDS
   // =========================================
-  useEffect(() => {
-    loadBrands();
+  const fetchBrands = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/brands");
+      setBrands(res.data?.data ?? res.data ?? []);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const loadBrands = async () => {
-    try {
-      // dummy sementara
-      setBrands([
-        {
-          id: "1",
-          name: "Tokopedia",
-          color: "#22c55e",
-        },
-        {
-          id: "2",
-          name: "Shopee",
-          color: "#f97316",
-        },
-      ]);
-    } catch (err) {
-      console.error(err);
+  // =========================================
+  // CREATE + ATTACH
+  // =========================================
+  const createAndAttach = async (name: string, color: string) => {
+    if (!card) return;
+
+    const campaignId = card?.board?.campaign_id;
+    if (!campaignId) {
+      console.error("campaign_id tidak ditemukan");
+      return;
     }
+
+    const res = await api.post("/brands", {
+      name,
+      color,
+      campaign_id: campaignId,
+    });
+
+    const newBrand: Brand = res.data.data ?? res.data;
+
+    await api.post(`/cards/${card.id}/brands/${newBrand.id}/attach`);
+
+    // 🔥 IMPORTANT: sync ke detail state
+    setDetail?.((prev) => {
+      if (!prev) return prev;
+
+      const exists = prev.brands?.some((b) => b.id === newBrand.id);
+
+      return {
+        ...prev,
+        brands: exists
+          ? prev.brands!
+          : [...(prev.brands || []), newBrand],
+      };
+    });
   };
 
   // =========================================
-  // CREATE
+  // ATTACH EXISTING
   // =========================================
-  const handleCreateBrand = () => {
-    if (!newBrand.trim()) return;
+  const attachBrand = async (brandId: string) => {
+    if (!card) return;
 
-    const item: Brand = {
-      id: Date.now().toString(),
-      name: newBrand,
-      color: "#3b82f6",
-    };
+    await api.post(`/cards/${card.id}/brands/${brandId}/attach`);
 
-    setBrands((prev) => [...prev, item]);
+    const brand = brands.find((b) => b.id === brandId);
+    if (!brand) return;
 
-    setNewBrand("");
+    setDetail?.((prev) => {
+      if (!prev) return prev;
+
+      const exists = prev.brands?.some((b) => b.id === brandId);
+
+      return {
+        ...prev,
+        brands: exists
+          ? prev.brands!
+          : [...(prev.brands || []), brand],
+      };
+    });
   };
 
   // =========================================
-  // DELETE
+  // DETACH
   // =========================================
-  const handleDeleteBrand = (
-    id: string,
-  ) => {
-    setBrands((prev) =>
-      prev.filter((b) => b.id !== id),
-    );
+  const detachBrand = async (brandId: string) => {
+    if (!card) return;
+
+    await api.delete(`/cards/${card.id}/brands/${brandId}/detach`);
+
+    setDetail?.((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        brands: (prev.brands || []).filter((b) => b.id !== brandId),
+      };
+    });
   };
+
+  // =========================================
+  // INIT
+  // =========================================
+  useEffect(() => {
+    if (isOpen) fetchBrands();
+  }, [isOpen, fetchBrands]);
 
   return {
     brands,
-
-    newBrand,
-    setNewBrand,
-
-    handleCreateBrand,
-    handleDeleteBrand,
+    loading,
+    attachBrand,
+    detachBrand,
+    createAndAttach,
   };
 }

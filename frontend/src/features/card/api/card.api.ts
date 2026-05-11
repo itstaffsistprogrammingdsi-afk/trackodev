@@ -3,6 +3,7 @@ import {
   Card,
   CreateCardRequest,
   UpdateCardRequest,
+  Brand,
 } from "../types";
 
 // =====================================================
@@ -134,81 +135,115 @@ export const unassignMember = async (
 // =====================================================
 // LABELS
 // =====================================================
-export const attachLabel = async (
+export async function getLabels() {
+  const res = await api.get("/labels");
+
+  return res.data;
+}
+
+export async function createLabel(data: {
+  name: string;
+  color?: string;
+}) {
+  const res = await api.post(
+    "/labels",
+    data
+  );
+
+  return res.data;
+}
+
+export async function attachLabel(
   cardId: string,
-  payload: { label_id: string },
-) => {
+  labelId: string
+) {
   const res = await api.post(
     `/cards/${cardId}/labels`,
-    payload,
-  );
-
-  return res.data;
-};
-
-export const detachLabel = async (
-  cardId: string,
-  labelId: string,
-) => {
-  const res = await api.delete(
-    `/cards/${cardId}/labels/${labelId}`,
-  );
-
-  return res.data;
-};
-
-// =========================================
-// BRAND
-// =========================================
-
-export const setBrand = async (
-  cardId: string,
-  brandId: string,
-) => {
-  const res = await api.post(
-    `/cards/${cardId}/brand`,
     {
-      brand_id: brandId,
-    },
+      label_id: labelId,
+    }
   );
 
   return res.data;
-};
+}
 
-export const removeBrand = async (
+export async function detachLabel(
   cardId: string,
-) => {
+  labelId: string
+) {
   const res = await api.delete(
-    `/cards/${cardId}/brand`,
+    `/cards/${cardId}/labels/${labelId}`
   );
 
   return res.data;
-};
+}
 
-// =========================================
-// CAMPAIGN
-// =========================================
-
-export const setCampaign = async (
+export async function toggleLabel(
   cardId: string,
+  labelId: string
+) {
+  const res = await api.patch(
+    `/cards/${cardId}/labels`,
+    {
+      label_id: labelId,
+    }
+  );
+
+  return res.data;
+}
+
+// =========================================
+// CREATE BRAND
+// =========================================
+export const createBrand = async (
   campaignId: string,
+  name: string,
+  color: string,
+) => {
+  const res = await api.post("/brands", {
+    campaign_id: campaignId,
+    name,
+    color,
+  });
+
+  return res.data;
+};
+
+// =========================================
+// ATTACH BRAND
+// =========================================
+export const attachBrand = async (
+  cardId: string,
+  brandId: number,
 ) => {
   const res = await api.post(
-    `/cards/${cardId}/campaign`,
-    {
-      campaign_id: campaignId,
-    },
+    `/cards/${cardId}/brands/${brandId}/attach`,
   );
 
   return res.data;
 };
 
-export const removeCampaign = async (
+// =========================================
+// DETACH BRAND
+// =========================================
+export const detachBrand = async (
   cardId: string,
+  brandId: number,
 ) => {
   const res = await api.delete(
-    `/cards/${cardId}/campaign`,
+    `/cards/${cardId}/brands/${brandId}/detach`,
   );
 
   return res.data;
+};
+
+// =========================================
+// GET BRANDS
+// =========================================
+export const getBrands = async () => {
+  const res = await api.get(
+    "/brands",
+  );
+
+  return res.data as Brand[];
 };

@@ -31,6 +31,7 @@ class CardController extends Controller
                 'assignees',
                 'tasks.subtasks',
                 'labels',
+                'board',
             ])
             ->orderBy('order')
             ->get();
@@ -82,9 +83,11 @@ class CardController extends Controller
             'assignees',
             'tasks.subtasks',
             'labels',
+            'brands', 
             'attachments',
             'comments.user',
             'comments.replies.user',
+            'board',
         ]);
 
         return response()->json([
