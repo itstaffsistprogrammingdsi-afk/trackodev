@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasUuids, HasApiTokens;
+    use HasFactory, Notifiable, HasUuids, HasApiTokens, HasRoles;
 
     const ROLE_SUPER_ADMIN = 'super_admin';
     const ROLE_ADMIN       = 'admin';
@@ -36,7 +37,7 @@ class User extends Authenticatable
 
 public function isSuperAdmin(): bool
 {
-    return $this->role === 'super_admin';
+    return $this->hasRole('super_admin');
 }
 
     // public function isAdmin(): bool

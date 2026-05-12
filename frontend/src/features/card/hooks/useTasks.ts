@@ -11,7 +11,9 @@ interface ReturnType {
   done: number;
   progress: number;
 
-  handleAddTask: () => Promise<void>;
+handleAddTask: (
+  title: string,
+) => Promise<void>;
   toggleTask: (id: number) => Promise<void>;
   deleteTask: (id: number) => Promise<void>;
 }
@@ -46,23 +48,55 @@ export default function useTasks(
   // =========================================
   // ADD TASK
   // =========================================
-  const handleAddTask = async () => {
-    if (!cardId) return;
+const handleAddTask = async (
+  title: string,
+) => {
+  if (!title.trim()) return;
 
-    const title = prompt("Nama task?");
+  if (!cardId) return;
 
-    if (!title) return;
-
-    try {
-      const res = await api.post(`/cards/${cardId}/tasks`, {
-        title,
-      });
-
-      setTasks((prev) => [...prev, res.data.data]);
-    } catch (err) {
-      console.error("FAILED ADD TASK", err);
-    }
+  const tempTask: CardTask = {
+    id: Date.now(),
+    title,
+    is_completed: false,
   };
+
+  setTasks((prev) => [
+    ...prev,
+    tempTask,
+  ]);
+
+  try {
+    const res = await api.post(
+      `/cards/${cardId}/tasks`,
+      {
+        title,
+      },
+    );
+
+    const createdTask = res.data.data;
+
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === tempTask.id
+          ? createdTask
+          : task,
+      ),
+    );
+  } catch (err) {
+    console.error(
+      "FAILED CREATE TASK",
+      err,
+    );
+
+    setTasks((prev) =>
+      prev.filter(
+        (task) =>
+          task.id !== tempTask.id,
+      ),
+    );
+  }
+};
 
   // =========================================
   // TOGGLE TASK

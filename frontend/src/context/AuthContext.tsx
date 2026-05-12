@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { getMe, User } from "../lib/auth.service";
 
 type AuthContextType = {
@@ -13,9 +19,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
   const loadUser = async () => {
+    const token = localStorage.getItem("token");
+
+    // 🔥 kalau tidak ada token stop
+    if (!token) {
+      setUser(null);
+      return;
+    }
+
     const cached = localStorage.getItem("user");
 
-    if (cached) setUser(JSON.parse(cached));
+    if (cached) {
+      setUser(JSON.parse(cached));
+    }
 
     try {
       const fresh = await getMe();

@@ -65,39 +65,53 @@ export default function useLabels({
     }
   }
 
-  async function attach(
-    labelId: string
-  ) {
-    if (!detail) return;
+async function attach(
+  labelId: string
+) {
+  if (!detail) return;
 
-    try {
-      const updated = await attachLabel(
-        detail.id,
-        labelId
-      );
+  try {
+    const updated = await attachLabel(
+      detail.id,
+      labelId
+    );
 
-      setDetail(updated);
-    } catch (err) {
-      console.error(err);
-    }
+    setDetail((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        labels: updated.labels,
+      };
+    });
+  } catch (err) {
+    console.error(err);
   }
+}
 
-  async function detach(
-    labelId: string
-  ) {
-    if (!detail) return;
+async function detach(
+  labelId: string
+) {
+  if (!detail) return;
 
-    try {
-      const updated = await detachLabel(
-        detail.id,
-        labelId
-      );
+  try {
+    const updated = await detachLabel(
+      detail.id,
+      labelId
+    );
 
-      setDetail(updated);
-    } catch (err) {
-      console.error(err);
-    }
+    setDetail((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        labels: updated.labels,
+      };
+    });
+  } catch (err) {
+    console.error(err);
   }
+}
 
   return {
     labels,

@@ -11,17 +11,16 @@ type UserDropdownProps = {
 
 export default function UserDropdown({ compact = false }: UserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, loadUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const toggleDropdown = () => setIsOpen((prev) => !prev);
   const closeDropdown = () => setIsOpen(false);
 
-  const handleLogout = async () => {
-    await logout();
-    await loadUser();
-    navigate("/signin");
-  };
+const handleLogout = async () => {
+  await logout();
+  navigate("/signin");
+};
 
   return (
     <div className="relative w-full">
@@ -77,7 +76,7 @@ export default function UserDropdown({ compact = false }: UserDropdownProps) {
       <Dropdown
         isOpen={isOpen}
         onClose={closeDropdown}
-        className="absolute right-0 mt-3 w-[260px] rounded-2xl border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 shadow-lg p-3 z-50"
+        className="absolute left-0 mt-3 w-[260px] rounded-2xl border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 shadow-lg p-3 z-50"
       >
         {/* USER HEADER */}
         <div className="px-2 pb-3 border-b border-gray-200 dark:border-gray-800">

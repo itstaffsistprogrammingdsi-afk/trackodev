@@ -106,6 +106,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('cards/{card}/attachments',                 [CardController::class, 'addAttachment']);
     Route::delete('attachments/{attachment}',               [CardController::class, 'removeAttachment']);
 
+    Route::get('/attachments/{attachment}/download',        [CardController::class, 'download']
+);
+
     // Card - Comments
     Route::get('cards/{card}/comments',                     [CardController::class, 'comments']);
     Route::post('cards/{card}/comments',                    [CardController::class, 'addComment']);

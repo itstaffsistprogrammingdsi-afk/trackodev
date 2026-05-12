@@ -83,7 +83,7 @@ class CardController extends Controller
             'assignees',
             'tasks.subtasks',
             'labels',
-            'brands', 
+            'brands',
             'attachments',
             'comments.user',
             'comments.replies.user',
@@ -363,15 +363,40 @@ class CardController extends Controller
         ]);
     }
 
+    public function download(
+        CardAttachment $attachment
+    ) {
+        if (!$attachment->file_path) {
+            return response()->json([
+                'message' => 'File tidak ditemukan.',
+            ], 404);
+        }
+
+        if (
+            !Storage::disk('public')->exists(
+                $attachment->file_path
+            )
+        ) {
+            return response()->json([
+                'message' => 'File tidak tersedia.',
+            ], 404);
+        }
+
+        return response()->download(
+            storage_path(
+                'app/public/' . $attachment->file_path
+            ),
+            $attachment->file_name
+        );
+    }
+
     /*
     |--------------------------------------------------------------------------
     | COMMENT
     |--------------------------------------------------------------------------
     */
-
-    public function comments(
-        Card $card
-    ): JsonResponse {
+    public function comments(Card $card): JsonResponse
+    {
         $comments = $card
             ->comments()
             ->with([

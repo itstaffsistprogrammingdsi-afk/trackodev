@@ -25,8 +25,15 @@ api.interceptors.response.use(
       localStorage.removeItem("token");
 
       // 🔥 paksa reset app
-      window.location.href = "/signin";
-    }
+if (
+  err.response?.status === 401 &&
+  window.location.pathname !== "/signin"
+) {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+
+  window.location.href = "/signin";
+}    }
     return Promise.reject(err);
   }
 );

@@ -14,7 +14,7 @@ export const login = async (
   email: string,
   password: string
 ): Promise<{ user: User; token: string }> => {
-  const res = await api.post("/api/auth/login", {
+  const res = await api.post("/auth/login", {
     email,
     password,
   });
@@ -35,7 +35,7 @@ export const login = async (
 
 // ====== GET USER LOGIN ======
 export const getMe = async (): Promise<User> => {
-  const res = await api.get("/api/auth/me");
+  const res = await api.get("/auth/me");
 
   const user = res.data?.user;
 
@@ -50,7 +50,7 @@ export const getMe = async (): Promise<User> => {
 // ====== LOGOUT ======
 export const logout = async (): Promise<void> => {
   try {
-    await api.post("/api/auth/logout");
+    await api.post("/auth/logout");
   } catch {
     console.warn("Logout API gagal, lanjut hapus token lokal");
   }

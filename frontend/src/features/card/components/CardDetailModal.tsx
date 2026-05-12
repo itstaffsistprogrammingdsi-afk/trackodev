@@ -1,6 +1,4 @@
-// import { useState } from "react";
-
-// import api from "@/lib/axios";
+import { useState } from "react";
 
 import { Activity, Card } from "../types";
 
@@ -13,6 +11,7 @@ import useComments from "../hooks/useComments";
 import useTasks from "../hooks/useTasks";
 import useEscape from "../hooks/useEscape";
 import useCardSidebar from "../hooks/useCardSidebar";
+import useAttachments from "../hooks/useAttachments";
 
 import TaskSection from "./sections/TaskSection";
 import CommentSection from "./sections/CommentSection";
@@ -21,8 +20,12 @@ import AttachmentSection from "./sections/AttachmentSection";
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
 
-import { AlignLeft, Clock3 } from "lucide-react";
-import { useState } from "react";
+import {
+  AlignLeft,
+  Clock3,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 
 interface Props {
   card: Card | null;
@@ -30,18 +33,18 @@ interface Props {
   onClose: () => void;
 }
 
-
-export default function CardDetailModal({ card, isOpen, onClose }: Props) {
+export default function CardDetailModal({
+  card,
+  isOpen,
+  onClose,
+}: Props) {
   // =========================================
   // DETAIL
   // =========================================
-  const { detail, users, loading, fetchDetail, setDetail } = useCardDetail(
-    card,
-    isOpen,
-  );
+  const { detail, users, loading, fetchDetail, setDetail } =
+    useCardDetail(card, isOpen);
 
   const [showLabels, setShowLabels] = useState(false);
-
 
   // =========================================
   // DESCRIPTION
@@ -59,8 +62,13 @@ export default function CardDetailModal({ card, isOpen, onClose }: Props) {
   // =========================================
   // COMMENTS
   // =========================================
-  const { comments, comment, setComment, sending, handleAddComment } =
-    useComments(card?.id, isOpen);
+  const {
+    comments,
+    comment,
+    setComment,
+    sending,
+    handleAddComment,
+  } = useComments(card?.id, isOpen);
 
   // =========================================
   // TASKS
@@ -75,6 +83,16 @@ export default function CardDetailModal({ card, isOpen, onClose }: Props) {
     toggleTask,
     deleteTask,
   } = useTasks(card?.id, isOpen);
+
+  // =========================================
+  // ATTACHMENTS
+  // =========================================
+  const {
+    attachments,
+    setAttachments,
+    loading: attachmentLoading,
+    fetchAttachments,
+  } = useAttachments(card?.id, isOpen);
 
   // =========================================
   // UI STATE
@@ -109,11 +127,11 @@ export default function CardDetailModal({ card, isOpen, onClose }: Props) {
   // =========================================
   // MEMBER
   // =========================================
-
-  const { handleAssign, handleUnassign } = useCardMembers({
-    cardId: card?.id,
-    fetchDetail,
-  });
+  const { handleAssign, handleUnassign } =
+    useCardMembers({
+      cardId: card?.id,
+      fetchDetail,
+    });
 
   // =========================================
   // DELETE
@@ -131,140 +149,384 @@ export default function CardDetailModal({ card, isOpen, onClose }: Props) {
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex justify-center items-start overflow-y-auto p-6"
+      className="
+        fixed inset-0 z-[9999]
+        bg-black/60 backdrop-blur-md
+        overflow-y-auto
+        p-0 md:p-6
+      "
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-7xl min-h-[90vh] bg-[#f4f5f7] rounded-2xl shadow-2xl overflow-hidden flex"
+        className="
+          min-h-screen md:min-h-0
+          w-full max-w-7xl
+          mx-auto
+          bg-[#f8fafc]
+          md:rounded-3xl
+          shadow-[0_20px_80px_rgba(0,0,0,0.25)]
+          overflow-hidden
+          border border-white/20
+        "
       >
         {/* ========================================= */}
-        {/* LEFT CONTENT */}
+        {/* MAIN LAYOUT */}
         {/* ========================================= */}
-        <div className="flex-1 overflow-y-auto">
-          <CardDetailHeader
-            title={detail?.title || card.title}
-            assignees={detail?.assignees}
-            brands={(detail?.brands ?? card?.brands) || []}
-            labels={(detail?.labels ?? card?.labels) || []}
-            dueDate={
-              dueDate
-                ? new Date(dueDate).toLocaleString("id-ID", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })
-                : ""
-            }
-            onClose={onClose}
-            onToggleMembers={() => setShowMembers((prev) => !prev)}
-          />
+        <div className="flex flex-col xl:flex-row">
+          {/* ========================================= */}
+          {/* LEFT CONTENT */}
+          {/* ========================================= */}
+          <div className="flex-1 min-w-0">
+            {/* HEADER */}
+            <div
+              className="
+                sticky top-0 z-20
+                bg-white/80 backdrop-blur-xl
+                border-b border-slate-200
+              "
+            >
+              <CardDetailHeader
+                title={detail?.title || card.title}
+                assignees={detail?.assignees}
+                brands={(detail?.brands ?? card?.brands) || []}
+                labels={(detail?.labels ?? card?.labels) || []}
+                dueDate={
+                  dueDate
+                    ? new Date(dueDate).toLocaleString("id-ID", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })
+                    : ""
+                }
+                onClose={onClose}
+                onToggleMembers={() =>
+                  setShowMembers((prev) => !prev)
+                }
+              />
+            </div>
 
-          {/* CONTENT */}
-          <div className="p-8 space-y-8">
-            {loading ? (
-              <div className="text-center py-10 text-gray-500">
-                Loading card detail...
-              </div>
-            ) : (
-              <>
-                {/* DESCRIPTION */}
-                <section>
-                  <div className="flex items-center gap-3 mb-3">
-                    <AlignLeft size={20} className="text-gray-600" />
+            {/* CONTENT */}
+            <div
+              className="
+                px-4 py-5
+                sm:px-6 sm:py-6
+                lg:px-8 lg:py-8
+                space-y-6 lg:space-y-8
+              "
+            >
+              {loading ? (
+                <div
+                  className="
+                    h-[60vh]
+                    flex flex-col items-center justify-center
+                    text-slate-500
+                  "
+                >
+                  <Loader2 className="w-8 h-8 animate-spin mb-4" />
 
-                    <h2 className="font-semibold text-lg">Description</h2>
-
-                    {saving && (
-                      <span className="text-xs text-gray-400 animate-pulse">
-                        Saving...
-                      </span>
-                    )}
-                  </div>
-
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Tambahkan deskripsi..."
-                    className="w-full min-h-[140px] bg-white border border-gray-200 rounded-2xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </section>
-
-                {/* TASK */}
-                <TaskSection
-                  tasks={tasks}
-                  progress={progress}
-                  total={total}
-                  done={done}
-                  handleAddTask={handleAddTask}
-                  toggleTask={toggleTask}
-                  deleteTask={deleteTask}
-                />
-
-                {/* ATTACHMENT */}
-                <AttachmentSection cardId={card.id} />
-
-                {/* COMMENT */}
-                <CommentSection
-                  comments={comments}
-                  comment={comment}
-                  sending={sending}
-                  setComment={setComment}
-                  handleAddComment={handleAddComment}
-                />
-
-                {/* ACTIVITY */}
-                <section>
-                  <div className="flex items-center gap-3 mb-4">
-                    <Clock3 size={20} className="text-gray-600" />
-
-                    <h2 className="font-semibold text-lg">Activity</h2>
-                  </div>
-
-                  <div className="space-y-3">
-                    {activities.length > 0 ? (
-                      activities.map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="bg-white rounded-2xl border p-4 text-sm text-gray-600"
-                        >
-                          {activity.text}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-gray-400">
-                        No activity yet.
+                  <p className="text-sm font-medium">
+                    Loading card detail...
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* ========================================= */}
+                  {/* DESCRIPTION */}
+                  {/* ========================================= */}
+                  <section
+                    className="
+                      bg-white
+                      border border-slate-200
+                      rounded-3xl
+                      p-5 sm:p-6
+                      shadow-sm
+                    "
+                  >
+                    <div className="flex items-center gap-3 mb-5">
+                      <div
+                        className="
+                          w-10 h-10
+                          rounded-2xl
+                          bg-slate-100
+                          flex items-center justify-center
+                        "
+                      >
+                        <AlignLeft
+                          size={18}
+                          className="text-slate-600"
+                        />
                       </div>
-                    )}
+
+                      <div className="flex-1">
+                        <h2
+                          className="
+                            text-base sm:text-lg
+                            font-semibold
+                            text-slate-800
+                          "
+                        >
+                          Description
+                        </h2>
+
+                        <p className="text-sm text-slate-400">
+                          Describe this task clearly
+                        </p>
+                      </div>
+
+                      {saving && (
+                        <div
+                          className="
+                            flex items-center gap-2
+                            text-xs
+                            text-blue-500
+                            font-medium
+                          "
+                        >
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Saving...
+                        </div>
+                      )}
+                    </div>
+
+                    <textarea
+                      value={description}
+                      onChange={(e) =>
+                        setDescription(e.target.value)
+                      }
+                      placeholder="Tambahkan deskripsi..."
+                      className="
+                        w-full
+                        min-h-[180px]
+                        rounded-2xl
+                        border border-slate-200
+                        bg-slate-50
+                        p-4
+                        text-sm
+                        text-slate-700
+                        resize-none
+                        transition-all
+                        duration-200
+                        focus:outline-none
+                        focus:ring-4
+                        focus:ring-blue-100
+                        focus:border-blue-400
+                      "
+                    />
+                  </section>
+
+                  {/* ========================================= */}
+                  {/* TASK SECTION */}
+                  {/* ========================================= */}
+                  <div
+                    className="
+                      bg-white
+                      border border-slate-200
+                      rounded-3xl
+                      p-5 sm:p-6
+                      shadow-sm
+                    "
+                  >
+                    <TaskSection
+                      tasks={tasks}
+                      progress={progress}
+                      total={total}
+                      done={done}
+                      handleAddTask={handleAddTask}
+                      toggleTask={toggleTask}
+                      deleteTask={deleteTask}
+                    />
                   </div>
-                </section>
-              </>
-            )}
+
+                  {/* ========================================= */}
+                  {/* ATTACHMENTS */}
+                  {/* ========================================= */}
+                  <div
+                    className="
+                      bg-white
+                      border border-slate-200
+                      rounded-3xl
+                      p-5 sm:p-6
+                      shadow-sm
+                    "
+                  >
+                    <AttachmentSection
+                      cardId={card.id}
+                      attachments={attachments}
+                      setAttachments={setAttachments}
+                      loading={attachmentLoading}
+                      fetchAttachments={fetchAttachments}
+                    />
+                  </div>
+
+                  {/* ========================================= */}
+                  {/* COMMENTS */}
+                  {/* ========================================= */}
+                  <div
+                    className="
+                      bg-white
+                      border border-slate-200
+                      rounded-3xl
+                      p-5 sm:p-6
+                      shadow-sm
+                    "
+                  >
+                    <CommentSection
+                      comments={comments}
+                      comment={comment}
+                      sending={sending}
+                      setComment={setComment}
+                      handleAddComment={handleAddComment}
+                    />
+                  </div>
+
+                  {/* ========================================= */}
+                  {/* ACTIVITY */}
+                  {/* ========================================= */}
+                  <section
+                    className="
+                      bg-white
+                      border border-slate-200
+                      rounded-3xl
+                      p-5 sm:p-6
+                      shadow-sm
+                    "
+                  >
+                    <div className="flex items-center gap-3 mb-5">
+                      <div
+                        className="
+                          w-10 h-10
+                          rounded-2xl
+                          bg-slate-100
+                          flex items-center justify-center
+                        "
+                      >
+                        <Clock3
+                          size={18}
+                          className="text-slate-600"
+                        />
+                      </div>
+
+                      <div>
+                        <h2
+                          className="
+                            text-base sm:text-lg
+                            font-semibold
+                            text-slate-800
+                          "
+                        >
+                          Activity
+                        </h2>
+
+                        <p className="text-sm text-slate-400">
+                          Timeline & changes
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {activities.length > 0 ? (
+                        activities.map((activity) => (
+                          <div
+                            key={activity.id}
+                            className="
+                              rounded-2xl
+                              border border-slate-200
+                              bg-slate-50
+                              p-4
+                              text-sm
+                              text-slate-600
+                            "
+                          >
+                            {activity.text}
+                          </div>
+                        ))
+                      ) : (
+                        <div
+                          className="
+                            flex flex-col items-center justify-center
+                            py-12
+                            text-center
+                          "
+                        >
+                          <div
+                            className="
+                              w-14 h-14
+                              rounded-2xl
+                              bg-slate-100
+                              flex items-center justify-center
+                              mb-4
+                            "
+                          >
+                            <Sparkles
+                              size={22}
+                              className="text-slate-400"
+                            />
+                          </div>
+
+                          <h3 className="font-medium text-slate-700">
+                            No activity yet
+                          </h3>
+
+                          <p className="text-sm text-slate-400 mt-1">
+                            Activity history will appear here
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ========================================= */}
+          {/* SIDEBAR */}
+          {/* ========================================= */}
+          <div
+            className="
+              w-full xl:w-[340px]
+              shrink-0
+              border-t xl:border-t-0 xl:border-l
+              border-slate-200
+              bg-white/70
+              backdrop-blur-xl
+              xl:sticky xl:top-0
+              xl:h-screen
+              overflow-y-auto
+            "
+          >
+            <div className="p-4 sm:p-5 lg:p-6">
+              <CardDetailSidebar
+                card={detail || card}
+                users={users}
+                assignees={detail?.assignees}
+                brands={detail?.brands ?? []}
+                dueDate={dueDate}
+                setDueDate={setDueDate}
+                showMembers={showMembers}
+                setShowMembers={setShowMembers}
+                showDueDate={showDueDate}
+                setShowDueDate={setShowDueDate}
+                showAttachment={showAttachment}
+                setShowAttachment={setShowAttachment}
+                memberSearch={memberSearch}
+                setMemberSearch={setMemberSearch}
+                handleAssign={handleAssign}
+                handleUnassign={handleUnassign}
+                handleDelete={handleDelete}
+                setDetail={setDetail}
+                showBrands={showBrands}
+                setShowBrands={setShowBrands}
+                showLabels={showLabels}
+                setShowLabels={setShowLabels}
+                attachments={attachments}
+                setAttachments={setAttachments}
+                attachmentLoading={attachmentLoading}
+                fetchAttachments={fetchAttachments}
+              />
+            </div>
           </div>
         </div>
-
-        <CardDetailSidebar
-          card={detail || card}
-          users={users}
-          assignees={detail?.assignees}
-          brands={detail?.brands ?? []}
-          dueDate={dueDate}
-          setDueDate={setDueDate}
-          showMembers={showMembers}
-          setShowMembers={setShowMembers}
-          showDueDate={showDueDate}
-          setShowDueDate={setShowDueDate}
-          showAttachment={showAttachment}
-          setShowAttachment={setShowAttachment}
-          memberSearch={memberSearch}
-          setMemberSearch={setMemberSearch}
-          handleAssign={handleAssign}
-          handleUnassign={handleUnassign}
-          handleDelete={handleDelete}
-          setDetail={setDetail}
-          showBrands={showBrands}
-          setShowBrands={setShowBrands}
-          showLabels={showLabels}
-          setShowLabels={setShowLabels}
-        />
       </div>
     </div>
   );

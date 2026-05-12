@@ -10,7 +10,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { Card, User, Brand } from "../types";
+import { Card, User, Brand, Attachment } from "../types";
 
 import SidebarButton from "./SidebarButton";
 
@@ -18,8 +18,6 @@ import MemberSection from "./sections/MemberSection";
 import AttachmentSection from "./sections/AttachmentSection";
 import BrandSection from "./sections/BrandSection";
 import LabelSection from "./sections/LabelSection";
-
-// import { S } from "node_modules/@fullcalendar/core/internal-common";
 
 interface Props {
   card: Card;
@@ -29,9 +27,9 @@ interface Props {
   assignees?: User[];
 
   brands: Brand[];
-  // setBrands: (brands: Brand[]) => void;
 
   dueDate: string;
+
   setDueDate: (value: string) => void;
 
   showMembers: boolean;
@@ -54,9 +52,18 @@ interface Props {
 
   showBrands: boolean;
   setShowBrands: React.Dispatch<React.SetStateAction<boolean>>;
-  setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
+
   showLabels: boolean;
   setShowLabels: React.Dispatch<React.SetStateAction<boolean>>;
+
+  setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
+
+  attachments: Attachment[];
+
+  setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
+
+  attachmentLoading: boolean;
+  fetchAttachments: () => Promise<void>;
 }
 
 export default function CardDetailSidebar({
@@ -84,15 +91,20 @@ export default function CardDetailSidebar({
   handleUnassign,
 
   handleDelete,
+
   showBrands,
   setShowBrands,
-  setDetail,
+
   showLabels,
   setShowLabels,
+
+  setDetail,
+
+  attachments,
+  setAttachments,
+  attachmentLoading,
+  fetchAttachments,
 }: Props) {
-  // =========================================
-  // TOGGLE
-  // =========================================
   const toggleMembers = () => {
     setShowMembers((prev) => !prev);
   };
@@ -110,17 +122,33 @@ export default function CardDetailSidebar({
   };
 
   const toggleLabels = () => {
-  setShowLabels((prev) => !prev);
-};
+    setShowLabels((prev) => !prev);
+  };
+
+  const attachmentSummary = {
+    images: attachments.filter(
+      (a) => a.attachment_type === "file" && a.file_type?.startsWith("image/"),
+    ).length,
+
+    documents: attachments.filter(
+      (a) => a.attachment_type === "file" && !a.file_type?.startsWith("image/"),
+    ).length,
+
+    links: attachments.filter((a) => a.attachment_type === "link").length,
+  };
+
+  const attachmentBadge = [
+    `Images ${attachmentSummary.images}`,
+    `Files ${attachmentSummary.documents}`,
+    `Links ${attachmentSummary.links}`,
+  ].join("   •   ");
 
   return (
     <div className="w-[290px] border-l bg-white p-5 overflow-y-auto">
       <div className="space-y-6">
-        {/* ========================================= */}
         {/* NAVIGATION */}
-        {/* ========================================= */}
         <div>
-          <h3 className="text-xs font-bold uppercase text-gray-500 mb-3">
+          <h3 className="mb-3 text-xs font-bold uppercase text-gray-500">
             Add to card
           </h3>
 
@@ -149,9 +177,10 @@ export default function CardDetailSidebar({
               label="Labels"
               onClick={toggleLabels}
             />
+
             {showLabels && <LabelSection detail={card} setDetail={setDetail} />}
 
-            {/* BRANDS */}
+            {/* BRAND */}
             <SidebarButton
               icon={<Layers size={17} />}
               label="Brand"
@@ -165,6 +194,7 @@ export default function CardDetailSidebar({
                 setDetail={setDetail}
               />
             )}
+
             {/* DUE DATE */}
             <SidebarButton
               icon={<Clock3 size={17} />}
@@ -173,12 +203,12 @@ export default function CardDetailSidebar({
             />
 
             {showDueDate && (
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
                 <input
                   type="datetime-local"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             )}
@@ -188,10 +218,18 @@ export default function CardDetailSidebar({
               icon={<Paperclip size={17} />}
               label="Attachment"
               onClick={toggleAttachment}
+              badge={attachmentBadge}
             />
 
             {showAttachment && (
-              <AttachmentSection cardId={card.id} showUploader />
+              <AttachmentSection
+                cardId={card.id}
+                attachments={attachments}
+                setAttachments={setAttachments}
+                loading={attachmentLoading}
+                fetchAttachments={fetchAttachments}
+                showUploader
+              />
             )}
 
             {/* CUSTOM FIELD */}
@@ -199,11 +237,9 @@ export default function CardDetailSidebar({
           </div>
         </div>
 
-        {/* ========================================= */}
-        {/* ACTION */}
-        {/* ========================================= */}
+        {/* ACTIONS */}
         <div>
-          <h3 className="text-xs font-bold uppercase text-gray-500 mb-3">
+          <h3 className="mb-3 text-xs font-bold uppercase text-gray-500">
             Actions
           </h3>
 
@@ -214,10 +250,9 @@ export default function CardDetailSidebar({
 
             <SidebarButton icon={<Archive size={17} />} label="Archive" />
 
-            {/* DELETE */}
             <button
               onClick={handleDelete}
-              className="w-full h-11 rounded-xl bg-red-50 hover:bg-red-100 transition flex items-center gap-3 px-4 text-sm font-medium text-red-600"
+              className="flex h-11 w-full items-center gap-3 rounded-xl bg-red-50 px-4 text-sm font-medium text-red-600 transition hover:bg-red-100"
             >
               <Trash2 size={17} />
               Delete

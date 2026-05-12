@@ -60,12 +60,21 @@ export interface Campaign {
   name: string;
 }
 
-export type Attachment = {
+export interface Attachment {
   id: string;
+
   file_name?: string;
+
+  file_path?: string;
+
+  file_type?: string;
+
+  file_size?: number;
+
   link_url?: string;
-  type?: "file" | "link";
-};
+
+  attachment_type: "file" | "link";
+}
 
 export type Card = {
   id: string;
