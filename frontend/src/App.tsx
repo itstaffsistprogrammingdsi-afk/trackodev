@@ -33,6 +33,13 @@ import WorkspacePage from "@/features/workspace/pages/WorkspacePage";
 import BoardPage from "@/features/board/pages/BoardPage";
 import CampaignListPage from "./features/campaign/pages/CampaignListPage";
 
+import FormPage from "@/features/form/pages/FormPage";
+import CreateFormPage from "@/features/form/pages/CreateFormPage";
+import FormBuilderPage from "@/features/form/pages/FormBuilderPage";
+import FormResponsesPage from "@/features/form/pages/FormResponsesPage";
+import EditFormPage from "@/features/form/pages/EditFormPage";
+import PublicFormPage from "@/features/form/pages/PublicFormPage";
+
 export default function App() {
   return (
     <Router>
@@ -51,16 +58,24 @@ export default function App() {
           <Route path="/" element={<Home />} />
 
           <Route path="/test" element={<TestConnection />} />
-
           <Route path="/divisions" element={<DivisionPage />} />
           <Route path="/divisions/:id" element={<WorkspacePage />} />
-          <Route path="/workspaces/:workspaceId/campaigns" element={<CampaignListPage />} />
+          <Route
+            path="/workspaces/:workspaceId/campaigns"
+            element={<CampaignListPage />}
+          />
           <Route path="/campaigns/:campaignId" element={<BoardPage />} />
           <Route path="/profile" element={<UserProfiles />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/blank" element={<Blank />} />
+          <Route path="/forms" element={<FormPage />} />
 
           <Route path="/form-elements" element={<FormElements />} />
+          <Route path="/forms/create" element={<CreateFormPage />} />
+          <Route path="/forms/:id/builder" element={<FormBuilderPage />} />
+          <Route path="/forms/:id/edit" element={<EditFormPage />} />
+          <Route path="/forms/:id/responses" element={<FormResponsesPage />} />
+          <Route path="/public/forms/:slug" element={<PublicFormPage />} />
           <Route path="/basic-tables" element={<BasicTables />} />
 
           <Route path="/alerts" element={<Alerts />} />
