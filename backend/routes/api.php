@@ -14,6 +14,10 @@ use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CardBrandController;
 use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\CardLabelController;
+use App\Http\Controllers\Api\FormController;
+use App\Http\Controllers\Api\FormFieldController;
+use App\Http\Controllers\Api\FormSubmissionController;
+use App\Http\Controllers\Api\PublicFormController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -106,8 +110,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('cards/{card}/attachments',                 [CardController::class, 'addAttachment']);
     Route::delete('attachments/{attachment}',               [CardController::class, 'removeAttachment']);
 
-    Route::get('/attachments/{attachment}/download',        [CardController::class, 'download']
-);
+    Route::get(
+        '/attachments/{attachment}/download',
+        [CardController::class, 'download']
+    );
 
     // Card - Comments
     Route::get('cards/{card}/comments',                     [CardController::class, 'comments']);
@@ -144,4 +150,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('notifications/{notification}/read',       [NotificationController::class, 'markRead']);
     Route::patch('notifications/read-all',                  [NotificationController::class, 'markAllRead']);
     Route::delete('notifications/{notification}',           [NotificationController::class, 'destroy']);
+
+        // Forms
+    Route::get('forms',                                    [FormController::class, 'index']);
+    Route::post('forms',                                   [FormController::class, 'store']);
+    Route::get('forms/{form}',                             [FormController::class, 'show']);
+    Route::put('forms/{form}',                             [FormController::class, 'update']);
+    Route::delete('forms/{form}',                          [FormController::class, 'destroy']);
+
+    // Form Fields
+    Route::post('forms/{form}/fields',                     [FormFieldController::class, 'store']);
+    Route::put('form-fields/{field}',                      [FormFieldController::class, 'update']);
+    Route::delete('form-fields/{field}',                   [FormFieldController::class, 'destroy']);
+
+    // Form Submissions
+    Route::get('forms/{form}/submissions',                 [FormSubmissionController::class, 'index']);
+    Route::post('forms/{form}/submissions',                [FormSubmissionController::class, 'store']);
+    Route::get('form-submissions/{submission}',            [FormSubmissionController::class, 'show']);
+
+    // Forward to Card
+    Route::patch('form-submissions/{submission}/forward',  [FormSubmissionController::class, 'forwardToCard']);
+
+    Route::get('/public/forms/{slug}', [PublicFormController::class, 'show']);
+    Route::post('/public/forms/{slug}/submit', [PublicFormController::class, 'submit']);
 });

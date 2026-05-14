@@ -14,7 +14,7 @@ class Campaign extends Model
     use HasUuids;
 
     protected $fillable = [
-        'workspace_id', 'created_by', 'name',
+        'division_id', 'workspace_id', 'created_by', 'name',
         'description', 'type', 'due_date'
     ];
 
@@ -54,5 +54,10 @@ class Campaign extends Model
     public function division()
 {
     return $this->belongsTo(Division::class);
+}
+
+public function assignments()
+{
+    return $this->hasMany(Assignment::class, 'submission_id');
 }
 }

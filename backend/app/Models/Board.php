@@ -11,7 +11,7 @@ class Board extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['campaign_id', 'name', 'color', 'order'];
+    protected $fillable = ['campaign_id', 'name','type', 'color', 'order'];
 
     public function campaign(): BelongsTo
     {
@@ -22,4 +22,9 @@ class Board extends Model
     {
         return $this->hasMany(Card::class)->orderBy('order');
     }
+
+    public function assignments()
+{
+    return $this->hasMany(Assignment::class, 'submission_id');
+}
 }

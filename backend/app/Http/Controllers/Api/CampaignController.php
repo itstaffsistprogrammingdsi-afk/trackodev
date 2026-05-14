@@ -64,9 +64,10 @@ class CampaignController extends Controller
 
         // 🔥 DEFAULT BOARD
         collect([
-            ['name' => 'Todo', 'order' => 1],
-            ['name' => 'Progress', 'order' => 2],
-            ['name' => 'Done', 'order' => 3],
+            ['name' => 'By Request', 'order' => 1],
+            ['name' => 'Todo', 'order' => 2],
+            ['name' => 'Progress', 'order' => 3],
+            ['name' => 'Done', 'order' => 4],
         ])->each(function ($b) use ($campaign) {
             Board::create([
                 'campaign_id' => $campaign->id,

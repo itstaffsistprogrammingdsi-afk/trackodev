@@ -14,9 +14,13 @@ class Card extends Model
 
     protected $fillable = [
         'board_id',
+        'campaign_id',
         'created_by',
         'title',
         'description',
+        'source_type',
+        'submission_id',
+        'assignment_id',
         'priority',
         'due_date',
         'order'
@@ -71,4 +75,15 @@ public function brands()
         'brand_id'
     );
 }
+
+public function assignments()
+{
+    return $this->hasMany(Assignment::class, 'submission_id');
+}
+
+public function submission()
+{
+    return $this->belongsTo(FormSubmission::class);
+}
+
 }

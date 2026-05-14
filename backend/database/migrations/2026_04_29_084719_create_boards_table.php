@@ -17,6 +17,7 @@ public function up(): void
         $table->string('name');
         $table->string('color')->default('#6366f1');
         $table->integer('order')->default(0);
+        $table->string('type')->nullable();
         $table->timestamps();
     });
 }
