@@ -11,7 +11,7 @@ class Division extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['name', 'slug', 'description'];
+    protected $fillable = ['name', 'code', 'slug', 'description'];
 
     public function users(): BelongsToMany
     {
@@ -24,4 +24,11 @@ class Division extends Model
     {
         return $this->hasMany(Workspace::class);
     }
+
+    public function assignments()
+{
+    return $this->hasMany(
+        Assignment::class
+    );
+}
 }

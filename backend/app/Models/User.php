@@ -95,4 +95,28 @@ public function isDivisionMember(string $divisionId): bool
         ->where('division_id', $divisionId)
         ->exists();
 }
+
+public function createdAssignments()
+{
+    return $this->hasMany(
+        Assignment::class,
+        'assigned_by'
+    );
+}
+
+public function coordinatedAssignments()
+{
+    return $this->hasMany(
+        Assignment::class,
+        'coordinator_id'
+    );
+}
+
+public function designedAssignments()
+{
+    return $this->hasMany(
+        Assignment::class,
+        'designer_id'
+    );
+}
 }

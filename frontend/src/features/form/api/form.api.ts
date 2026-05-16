@@ -110,3 +110,31 @@ export const forwardSubmission = async (
 
   return res.data;
 };
+
+export type AssignSubmissionPayload = {
+  campaign_id: string
+  division_id: string
+
+  designer_id?: string
+  coordinator_id?: string
+
+  deadline?: string
+  estimated_hours?: number
+
+  priority?: "low" | "medium" | "high" | "urgent"
+
+  notes?: string
+}
+
+export const assignSubmission = async (
+  submissionId: string,
+  payload: AssignSubmissionPayload
+) => {
+
+  const res = await api.post(
+    `/responses/${submissionId}/assign`,
+    payload
+  )
+
+  return res.data.data
+}

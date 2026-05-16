@@ -61,10 +61,16 @@ export interface Form {
   // TIMESTAMP
   created_at: string;
   updated_at: string;
+
+  workspace_id: string;
 }
 
 export interface FormSubmission {
   id: string;
+
+  workspace_id: string;
+
+  form?: Form;
 
   form_id: string;
 
@@ -89,6 +95,28 @@ export interface ForwardSubmissionResponse {
   message: string;
   data: FormSubmission;
 }
+
+export type AssignSubmissionPayload = {
+  campaign_id: string;
+
+  division_id: string;
+
+  designer_id?: string;
+
+  coordinator_id?: string;
+
+  deadline?: string;
+
+  estimated_hours?: number;
+
+  priority?: 
+    | "low"
+    | "medium"
+    | "high"
+    | "urgent";
+
+  notes?: string;
+};
 
 // =========================
 // PUBLIC FORM VALUE
