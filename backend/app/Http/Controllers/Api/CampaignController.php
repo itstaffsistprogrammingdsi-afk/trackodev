@@ -43,61 +43,160 @@ class CampaignController extends Controller
         ]);
     }
 
-    public function store(Request $request, Workspace $workspace): JsonResponse
-    {
+    public function store(
+        Request $request,
+        Workspace $workspace
+    ): JsonResponse {
+
         $request->validate([
-            'name'        => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type'        => 'required|in:personal,group',
-            'due_date'    => 'nullable|date',
-            'member_ids'  => 'nullable|array',
+            'name'         => 'required|string|max:255',
+            'description'  => 'nullable|string',
+            'type'         => 'required|in:personal,group',
+            'due_date'     => 'nullable|date',
+            'member_ids'   => 'nullable|array',
             'member_ids.*' => 'uuid|exists:users,id',
         ]);
 
-        $campaign = $workspace->campaigns()->create([
-            'name'        => $request->name,
-            'description' => $request->description,
-            'type'        => $request->type,
-            'due_date'    => $request->due_date,
-            'created_by'  => $request->user()->id,
-        ]);
+        $campaign = $workspace
+            ->campaigns()
+            ->create([
 
-        // 🔥 DEFAULT BOARD
-        collect([
-            ['name' => 'By Request', 'order' => 1],
-            ['name' => 'Todo', 'order' => 2],
-            ['name' => 'Progress', 'order' => 3],
-            ['name' => 'Done', 'order' => 4],
-        ])->each(function ($b) use ($campaign) {
-            Board::create([
-                'campaign_id' => $campaign->id,
-                'name'        => $b['name'],
-                'order'       => $b['order'],
-                'color'       => '#6366f1',
+                'name' =>
+                $request->name,
+
+                'description' =>
+                $request->description,
+
+                'type' =>
+                $request->type,
+
+                'due_date' =>
+                $request->due_date,
+
+                'created_by' =>
+                $request->user()->id,
             ]);
-        });
 
-        // 🔥 MEMBER (creator wajib masuk)
-        $memberIds = collect($request->member_ids ?? [])
-            ->push($request->user()->id)
+        /*
+    |--------------------------------------------------------------------------
+    | Default Board
+    |--------------------------------------------------------------------------
+    */
+
+        collect([
+
+            [
+                'name' => 'By Request',
+                'type' => 'request',
+                'order' => 1
+            ],
+
+            [
+                'name' => 'Todo',
+                'type' => 'todo',
+                'order' => 2
+            ],
+
+            [
+                'name' => 'Progress',
+                'type' => 'progress',
+                'order' => 3
+            ],
+
+            [
+                'name' => 'Done',
+                'type' => 'done',
+                'order' => 4
+            ],
+
+        ])
+            ->each(function (
+                $board
+            ) use (
+                $campaign
+            ) {
+
+                Board::create([
+
+                    'campaign_id' =>
+                    $campaign->id,
+
+                    'name' =>
+                    $board['name'],
+
+                    'type' =>
+                    $board['type'],
+
+                    'order' =>
+                    $board['order'],
+
+                    'color' =>
+                    '#6366f1',
+
+                ]);
+            });
+
+        /*
+    |--------------------------------------------------------------------------
+    | Member
+    |--------------------------------------------------------------------------
+    */
+
+        $memberIds =
+            collect(
+                $request->member_ids ?? []
+            )
+            ->push(
+                $request->user()->id
+            )
             ->unique();
 
-        $campaign->members()->sync($memberIds->toArray());
+        $campaign
+            ->members()
+            ->sync(
+                $memberIds->toArray()
+            );
 
-        // 🔥 CHAT ROOM
-        $chatRoom = ChatRoom::create([
-            'campaign_id' => $campaign->id,
-            'type'        => 'group',
-            'name'        => $campaign->name,
-        ]);
+        /*
+    |--------------------------------------------------------------------------
+    | Chat Room
+    |--------------------------------------------------------------------------
+    */
 
-        $chatRoom->members()->sync($memberIds->toArray());
+        $chatRoom =
+            ChatRoom::create([
+
+                'campaign_id' =>
+                $campaign->id,
+
+                'type' =>
+                'group',
+
+                'name' =>
+                $campaign->name,
+            ]);
+
+        $chatRoom
+            ->members()
+            ->sync(
+                $memberIds->toArray()
+            );
 
         return response()->json([
-            'message' => 'Campaign berhasil dibuat.',
-            'data'    => new CampaignResource(
-                $campaign->load(['creator', 'members', 'boards'])
-            ),
+
+            'message' =>
+            'Campaign berhasil dibuat.',
+
+            'data' =>
+            new CampaignResource(
+
+                $campaign->load([
+                    'creator',
+                    'members',
+                    'boards'
+                ])
+            )
+
         ], 201);
     }
 

@@ -7,6 +7,8 @@ import ResponseEmptyState from "../components/responses/ResponseEmptyState";
 import ResponseMobileList from "../components/responses/ResponseMobileList";
 import ResponseTable from "../components/responses/ResponseTable";
 
+import AssignmentModal from "../components/modals/AssignmentModal";
+
 export default function FormResponsesPage() {
   const { id } = useParams<{ id: string }>();
 
@@ -18,6 +20,10 @@ export default function FormResponsesPage() {
     summaryFields,
     toggleExpanded,
     exportPDF,
+    onAssign,
+    assignmentOpen,
+    setAssignmentOpen,
+    selectedSubmission,
   } = useFormResponses(id);
 
   if (loading) {
@@ -64,10 +70,21 @@ export default function FormResponsesPage() {
               summaryFields={summaryFields}
               toggleExpanded={toggleExpanded}
               exportPDF={exportPDF}
+              onAssign={onAssign}
             />
           </>
         )}
+
+                {/* MODAL DI SINI */}
+        <AssignmentModal
+          open={assignmentOpen}
+          submission={selectedSubmission}
+          onClose={() =>
+            setAssignmentOpen(false)
+          }
+        />
       </div>
+      
     </div>
   );
 }

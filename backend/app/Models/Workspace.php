@@ -22,4 +22,14 @@ class Workspace extends Model
     {
         return $this->hasMany(Campaign::class);
     }
+
+    public function forms(): HasMany
+{
+    return $this->hasMany(Form::class);
+}
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
 }

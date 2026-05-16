@@ -52,4 +52,10 @@ class FormSubmission extends Model
 {
     return $this->hasMany(Assignment::class, 'submission_id');
 }
+
+public function isAssigned(): bool
+    {
+        return $this->assignments()
+            ->exists();
+    }
 }

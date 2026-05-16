@@ -1,23 +1,24 @@
 <?php
 
+use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoardController;
+use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\CampaignController;
+use App\Http\Controllers\Api\CardBrandController;
 use App\Http\Controllers\Api\CardController;
+use App\Http\Controllers\Api\CardLabelController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\DivisionController;
-use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\Api\TaskController;
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\WorkspaceController;
-use App\Http\Controllers\Api\CampaignController;
-use App\Http\Controllers\Api\BrandController;
-use App\Http\Controllers\Api\CardBrandController;
-use App\Http\Controllers\Api\LabelController;
-use App\Http\Controllers\Api\CardLabelController;
 use App\Http\Controllers\Api\FormController;
 use App\Http\Controllers\Api\FormFieldController;
 use App\Http\Controllers\Api\FormSubmissionController;
+use App\Http\Controllers\Api\LabelController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PublicFormController;
+use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -173,4 +174,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/public/forms/{slug}', [PublicFormController::class, 'show']);
     Route::post('/public/forms/{slug}/submit', [PublicFormController::class, 'submit']);
+
+
+Route::post(
+    '/responses/{submission}/assign',
+    [AssignmentController::class, 'assign']
+);
 });

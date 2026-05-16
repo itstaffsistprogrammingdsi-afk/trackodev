@@ -12,6 +12,7 @@ class FormSubmissionController extends Controller
     public function index($formId)
     {
         $submissions = FormSubmission::with([
+            'form',
             'user',
             'card'
         ])

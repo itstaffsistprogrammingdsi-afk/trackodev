@@ -39,11 +39,11 @@ const navItems: NavItem[] = [
     icon: <BoxCubeIcon />,
     path: "/divisions",
   },
-  // {
-  //   name: "Chats",
-  //   icon: <ListIcon />,
-  //   path: "/chats",
-  // },
+  {
+    name: "Chats",
+    icon: <ListIcon />,
+    path: "/chats",
+  },
   // {
   //   name: "Campaigns",
   //   icon: <PieChartIcon />,

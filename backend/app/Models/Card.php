@@ -86,4 +86,11 @@ public function submission()
     return $this->belongsTo(FormSubmission::class);
 }
 
+public function campaign()
+{
+    return $this->belongsTo(
+        Campaign::class
+    );
+}
+
 }
