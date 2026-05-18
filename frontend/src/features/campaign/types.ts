@@ -15,6 +15,7 @@ export type Campaign = {
   created_by?: User;
   members?: User[];
   created_at?: string;
+  division_id: string;
 };
 
 export type CampaignType = "personal" | "group";
@@ -25,6 +26,7 @@ export type CreateCampaignRequest = {
   type: CampaignType;
   due_date?: string;
   member_ids?: string[];
+  division_id: string;
 };
 
 export type Member = {

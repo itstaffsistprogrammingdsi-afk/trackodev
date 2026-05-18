@@ -12,13 +12,13 @@ class FormSubmissionController extends Controller
     public function index($formId)
     {
         $submissions = FormSubmission::with([
-            'form',
+            'form.workspace',
             'user',
             'card'
         ])
-        ->where('form_id', $formId)
-        ->latest()
-        ->get();
+            ->where('form_id', $formId)
+            ->latest()
+            ->get();
 
         return response()->json($submissions);
     }
@@ -40,7 +40,7 @@ class FormSubmissionController extends Controller
     public function show($id)
     {
         $submission = FormSubmission::with([
-            'form',
+            'form.workspace',
             'user',
             'card'
         ])->findOrFail($id);
