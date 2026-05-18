@@ -36,10 +36,28 @@ public function index(Request $request)
         ->orderBy('name')
         ->get();
 
-    return response()->json([
-        'data' => UserResource::collection($users)
-    ]);
-}
+        // PAGINATION
+    $users = $query
+        ->orderBy('name')
+        ->paginate(10);
+    return response()->json([...$users->toArray(),
+    'stats' => [
+            'total_users' =>
+                User::count(),
+
+            'total_super_admin' =>
+                User::where(
+                    'role',
+                    'super_admin'
+                )->count(),
+
+            'total_admin' =>
+                User::where(
+                    'role',
+                    'admin'
+                )->count(),
+        ]
+    ]);}
 
 public function store(Request $request): JsonResponse
 {
@@ -63,6 +81,8 @@ public function store(Request $request): JsonResponse
         'role'     => $request->role ?? 'user',
     ]);
 
+    $user->assignRole($user->role);
+
     return response()->json([
         'message' => 'User berhasil dibuat.',
         'data'    => new UserResource($user),
@@ -74,28 +94,68 @@ public function store(Request $request): JsonResponse
         return response()->json(['data' => new UserResource($user)]);
     }
 
-public function update(Request $request, User $user): JsonResponse
-{
+public function update(
+    Request $request,
+    User $user
+): JsonResponse {
+
     if (
         !$request->user()->isSuperAdmin() &&
         !$request->user()->isAdmin() &&
         $request->user()->id !== $user->id
     ) {
-        return response()->json(['message' => 'Unauthorized'], 403);
+
+        return response()->json([
+            'message' => 'Unauthorized'
+        ], 403);
     }
 
     $request->validate([
+
         'name'  => 'sometimes|string|max:255',
+
         'email' => 'sometimes|email|unique:users,email,' . $user->id,
+
         'phone' => 'nullable|string',
-        'role'  => 'sometimes|in:admin,user'
+
+        'role'  => 'sometimes|in:super_admin,admin,user'
+
     ]);
 
-    $user->update($request->only(['name', 'email', 'phone', 'role']));
+    // =====================================
+    // UPDATE DATA USER
+    // =====================================
+
+    $user->update([
+
+        'name'  => $request->name ?? $user->name,
+
+        'email' => $request->email ?? $user->email,
+
+        'phone' => $request->phone ?? $user->phone,
+
+        'role'  => $request->role ?? $user->role,
+
+    ]);
+
+    // =====================================
+    // SYNC SPATIE ROLE
+    // =====================================
+
+    if ($request->filled('role')) {
+
+        $user->syncRoles([
+            $request->role
+        ]);
+
+    }
 
     return response()->json([
+
         'message' => 'User berhasil diupdate.',
-        'data'    => new UserResource($user),
+
+        'data' => new UserResource($user),
+
     ]);
 }
 
@@ -105,10 +165,32 @@ public function destroy(Request $request, User $user): JsonResponse
         return response()->json(['message' => 'Unauthorized'], 403);
     }
 
+    $user->syncRoles([]);
+
     $user->delete();
 
     return response()->json([
         'message' => 'User berhasil dihapus.'
+    ]);
+}
+
+public function stats()
+{
+    return response()->json([
+        'total_users' =>
+            User::count(),
+
+        'total_super_admin' =>
+            User::where(
+                'role',
+                'super_admin'
+            )->count(),
+
+        'total_admin' =>
+            User::where(
+                'role',
+                'admin'
+            )->count(),
     ]);
 }
 }
