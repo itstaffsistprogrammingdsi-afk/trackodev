@@ -113,13 +113,12 @@ export const forwardSubmission = async (
 
 export type AssignSubmissionPayload = {
   campaign_id: string
-  division_id: string
 
   designer_id?: string
   coordinator_id?: string
 
   deadline?: string
-  estimated_hours?: number
+  estimated_hours: number
 
   priority?: "low" | "medium" | "high" | "urgent"
 
@@ -132,7 +131,7 @@ export const assignSubmission = async (
 ) => {
 
   const res = await api.post(
-    `/responses/${submissionId}/assign`,
+    `/form-submissions/${submissionId}/assign`,
     payload
   )
 

@@ -35,7 +35,7 @@ class FormSubmission extends Model
 
     public function form()
     {
-        return $this->belongsTo(Form::class, 'form_id');
+        return $this->belongsTo(Form::class);
     }
 
     public function user()
@@ -48,14 +48,24 @@ class FormSubmission extends Model
         return $this->belongsTo(Card::class, 'card_id');
     }
 
-    public function assignments()
-{
-    return $this->hasMany(Assignment::class, 'submission_id');
-}
-
-public function isAssigned(): bool
+    public function assignment()
     {
-        return $this->assignments()
+        return $this->hasOne(
+            Assignment::class,
+            'submission_id'
+        );
+    }
+
+    public function isAssigned(): bool
+    {
+        return $this->assignment()
             ->exists();
+    }
+
+    protected $appends = ['workspace_id'];
+
+    public function getWorkspaceIdAttribute()
+    {
+        return $this->form?->workspace_id;
     }
 }

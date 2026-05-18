@@ -46,6 +46,16 @@ export default function App() {
       <ScrollToTop />
 
       <Routes>
+        {/* ================= PUBLIC FORM ================= */}
+        <Route
+          path="/public/forms/:slug"
+          element={<PublicFormPage />}
+        />
+
+        {/* ================= AUTH ================= */}
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+
         {/* ================= PROTECTED ================= */}
         <Route
           element={
@@ -60,23 +70,51 @@ export default function App() {
           <Route path="/test" element={<TestConnection />} />
           <Route path="/divisions" element={<DivisionPage />} />
           <Route path="/divisions/:id" element={<WorkspacePage />} />
+
           <Route
             path="/workspaces/:workspaceId/campaigns"
             element={<CampaignListPage />}
           />
-          <Route path="/campaigns/:campaignId" element={<BoardPage />} />
+
+          <Route
+            path="/campaigns/:campaignId"
+            element={<BoardPage />}
+          />
+
           <Route path="/profile" element={<UserProfiles />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/blank" element={<Blank />} />
           <Route path="/forms" element={<FormPage />} />
 
-          <Route path="/form-elements" element={<FormElements />} />
-          <Route path="/forms/create" element={<CreateFormPage />} />
-          <Route path="/forms/:id/builder" element={<FormBuilderPage />} />
-          <Route path="/forms/:id/edit" element={<EditFormPage />} />
-          <Route path="/forms/:id/responses" element={<FormResponsesPage />} />
-          <Route path="/public/forms/:slug" element={<PublicFormPage />} />
-          <Route path="/basic-tables" element={<BasicTables />} />
+          <Route
+            path="/form-elements"
+            element={<FormElements />}
+          />
+
+          <Route
+            path="/forms/create"
+            element={<CreateFormPage />}
+          />
+
+          <Route
+            path="/forms/:id/builder"
+            element={<FormBuilderPage />}
+          />
+
+          <Route
+            path="/forms/:id/edit"
+            element={<EditFormPage />}
+          />
+
+          <Route
+            path="/forms/:id/responses"
+            element={<FormResponsesPage />}
+          />
+
+          <Route
+            path="/basic-tables"
+            element={<BasicTables />}
+          />
 
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/avatars" element={<Avatars />} />
@@ -85,13 +123,16 @@ export default function App() {
           <Route path="/images" element={<Images />} />
           <Route path="/videos" element={<Videos />} />
 
-          <Route path="/line-chart" element={<LineChart />} />
-          <Route path="/bar-chart" element={<BarChart />} />
-        </Route>
+          <Route
+            path="/line-chart"
+            element={<LineChart />}
+          />
 
-        {/* ================= PUBLIC ================= */}
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
+          <Route
+            path="/bar-chart"
+            element={<BarChart />}
+          />
+        </Route>
 
         {/* ================= FALLBACK ================= */}
         <Route path="*" element={<NotFound />} />

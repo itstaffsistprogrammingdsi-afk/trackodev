@@ -35,7 +35,11 @@ const navItems: NavItem[] = [
     path: "/",
   },
   {
+<<<<<<< HEAD
     name: "Task Management",
+=======
+    name: "Containers",
+>>>>>>> 4277e65 (pc)
     icon: <BoxCubeIcon />,
     path: "/divisions",
   },

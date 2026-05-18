@@ -172,12 +172,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Forward to Card
     Route::patch('form-submissions/{submission}/forward',  [FormSubmissionController::class, 'forwardToCard']);
 
-    Route::get('/public/forms/{slug}', [PublicFormController::class, 'show']);
-    Route::post('/public/forms/{slug}/submit', [PublicFormController::class, 'submit']);
-
-
-Route::post(
-    '/responses/{submission}/assign',
+    Route::post(
+    'form-submissions/{submission}/assign',
     [AssignmentController::class, 'assign']
 );
 });
+    Route::get('/public/forms/{slug}', [PublicFormController::class, 'show']);
+    Route::post('/public/forms/{slug}/submit', [PublicFormController::class, 'submit']);

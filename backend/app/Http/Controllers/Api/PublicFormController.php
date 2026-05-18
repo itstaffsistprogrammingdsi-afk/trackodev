@@ -6,73 +6,118 @@ use App\Http\Controllers\Controller;
 use App\Models\Form;
 use App\Models\FormSubmission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PublicFormController extends Controller
 {
+    // =========================
+    // SHOW PUBLIC FORM
+    // =========================
     public function show($slug)
     {
-        $form = Form::with('fields')
-            ->where('slug', $slug)
-            ->where('is_active', true)
-            ->firstOrFail();
+        try {
+            $form = Form::with('fields')
+                ->where('slug', $slug)
+                ->where('is_active', true)
+                ->first();
 
-        return response()->json($form);
+            if (!$form) {
+                return response()->json([
+                    'message' => 'Form not found',
+                    'slug' => $slug
+                ], 404);
+            }
+
+            return response()->json($form);
+
+        } catch (\Throwable $e) {
+
+            Log::error('Public form show error', [
+                'slug' => $slug,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Server error'
+            ], 500);
+        }
     }
 
-public function submit(Request $request, $slug)
-{
-    $form = Form::with('fields')
-        ->where('slug', $slug)
-        ->firstOrFail();
+    // =========================
+    // SUBMIT PUBLIC FORM
+    // =========================
+    public function submit(Request $request, $slug)
+    {
+        try {
+            $form = Form::with('fields')
+                ->where('slug', $slug)
+                ->where('is_active', true)
+                ->first();
 
-    $answers = [];
+            if (!$form) {
+                return response()->json([
+                    'message' => 'Form not found'
+                ], 404);
+            }
 
-    foreach ($form->fields as $field) {
+            $answers = [];
 
-        $name = $field->name;
+            foreach ($form->fields as $field) {
 
-        // FILE UPLOAD
-        if ($request->hasFile($name)) {
+                $name = $field->name;
 
-            $file = $request->file($name);
+                // =========================
+                // FILE UPLOAD
+                // =========================
+                if ($request->hasFile($name)) {
 
-            // MULTIPLE FILES
-            if (is_array($file)) {
+                    $file = $request->file($name);
 
-                $paths = [];
+                    // MULTIPLE FILES
+                    if (is_array($file)) {
 
-                foreach ($file as $f) {
-                    $paths[] = $f->store('forms', 'public');
+                        $paths = [];
+
+                        foreach ($file as $f) {
+                            $paths[] = $f->store('forms', 'public');
+                        }
+
+                        $answers[$name] = $paths;
+
+                    } else {
+
+                        // SINGLE FILE
+                        $answers[$name] = $file->store('forms', 'public');
+                    }
+
+                } else {
+
+                    // NORMAL INPUT
+                    $answers[$name] = $request->input($name);
                 }
-
-                $answers[$name] = $paths;
             }
 
-            // SINGLE FILE
-            else {
+            $submission = FormSubmission::create([
+                'form_id' => $form->id,
+                'status' => 'submitted',
+                'data' => $answers,
+            ]);
 
-                $path = $file->store('forms', 'public');
+            return response()->json([
+                'message' => 'Submitted successfully',
+                'submission' => $submission,
+            ]);
 
-                $answers[$name] = $path;
-            }
-        }
+        } catch (\Throwable $e) {
 
-        // NORMAL INPUT
-        else {
+            Log::error('Public form submit error', [
+                'slug' => $slug,
+                'error' => $e->getMessage()
+            ]);
 
-            $answers[$name] = $request->input($name);
+            return response()->json([
+                'message' => 'Server error'
+            ], 500);
         }
     }
-
-    $submission = FormSubmission::create([
-        'form_id' => $form->id,
-        'status' => 'submitted',
-        'data' => $answers,
-    ]);
-
-    return response()->json([
-        'message' => 'Submitted',
-        'submission' => $submission,
-    ]);
-}
 }
