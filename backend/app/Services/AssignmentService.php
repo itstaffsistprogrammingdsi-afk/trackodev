@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Models\Assignment;
-use App\Models\Board;
+// use App\Models\Board;
+use App\Models\Campaign;
 use App\Models\Card;
 use App\Models\Division;
 use App\Models\FormSubmission;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AssignmentService
 {
@@ -23,16 +25,89 @@ class AssignmentService
 
             /*
             |--------------------------------------------------------------------------
-            | Cari board "By Request"
+            | Validasi submission belum di-assign
             |--------------------------------------------------------------------------
             */
 
-            $board = Board::where(
-                'campaign_id',
-                $data['campaign_id']
-            )
+            if ($submission->isAssigned()) {
+
+                throw ValidationException::withMessages([
+                    'submission' =>
+                        'Response sudah ditugaskan'
+                ]);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validasi campaign sesuai division
+            |--------------------------------------------------------------------------
+            */
+
+            $campaign = Campaign::query()
+
+                ->where(
+                    'id',
+                    $data['campaign_id']
+                )
+
+                ->where(
+                    'division_id',
+                    $data['division_id']
+                )
+
+                ->first();
+
+            if (!$campaign) {
+
+                throw ValidationException::withMessages([
+                    'campaign_id' =>
+                        'Campaign tidak valid untuk division ini'
+                ]);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Cari board request
+            |--------------------------------------------------------------------------
+            */
+
+            $board = $campaign
+                ->boards()
                 ->where('type', 'request')
-                ->firstOrFail();
+                ->first();
+
+            if (!$board) {
+
+                throw ValidationException::withMessages([
+                    'board' =>
+                        'Board request belum tersedia'
+                ]);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validasi designer member campaign
+            |--------------------------------------------------------------------------
+            */
+
+            if (!empty($data['designer_id'])) {
+
+                $isMember = $campaign
+                    ->members()
+                    ->where(
+                        'users.id',
+                        $data['designer_id']
+                    )
+                    ->exists();
+
+                if (!$isMember) {
+
+                    throw ValidationException::withMessages([
+                        'designer_id' =>
+                            'Designer bukan member campaign'
+                    ]);
+                }
+            }
 
             /*
             |--------------------------------------------------------------------------
@@ -47,54 +122,141 @@ class AssignmentService
 
             /*
             |--------------------------------------------------------------------------
-            | Buat Card
+            | Generate urutan card
             |--------------------------------------------------------------------------
             */
 
-            $nextOrder = (
-                Card::where(
+            $nextOrder = Card::query()
+
+                ->where(
                     'board_id',
                     $board->id
-                )->max('order')
-            ) ?? 0;
+                )
+
+                ->lockForUpdate()
+
+                ->max('order');
+
+            $nextOrder =
+                ($nextOrder ?? 0) + 1;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Buat assignment
+            |--------------------------------------------------------------------------
+            */
+
+            $assignment = Assignment::create([
+
+                'submission_id' =>
+                    $submission->id,
+
+                'campaign_id' =>
+                    $campaign->id,
+
+                'board_id' =>
+                    $board->id,
+
+                'assignment_number' =>
+                    $assignmentNumber,
+
+                'assigned_by' =>
+                    $data['assigned_by'],
+
+                'coordinator_id' =>
+                    $data['coordinator_id']
+                        ?? null,
+
+                'designer_id' =>
+                    $data['designer_id']
+                        ?? null,
+
+                'division_id' =>
+                    $data['division_id'],
+
+                'assigned_date' =>
+                    now(),
+
+                'deadline' =>
+                    $data['deadline']
+                        ?? null,
+
+                'estimated_hours' =>
+                    $data['estimated_hours']
+                        ?? null,
+
+                'priority' =>
+                    $data['priority']
+                        ?? 'medium',
+
+                'status' =>
+                    'assigned',
+
+                'notes' =>
+                    $data['notes']
+                        ?? null
+
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Buat card
+            |--------------------------------------------------------------------------
+            */
 
             $card = Card::create([
 
-                'board_id' => $board->id,
+                'board_id' =>
+                    $board->id,
 
                 'campaign_id' =>
-                $data['campaign_id'],
+                    $campaign->id,
 
                 'created_by' =>
-                $data['assigned_by'],
+                    $data['assigned_by'],
 
                 'title' =>
-                $assignmentNumber .
+                    $assignmentNumber .
                     ' - ' .
-                    ($data['title']
-                        ?? 'Request'),
+                    (
+                        $data['title']
+                        ?? 'Request'
+                    ),
 
                 'description' =>
-                $data['notes']
-                    ?? 'Generated from form request',
+                    $data['notes']
+                    ?? 'Generated from form submission',
 
                 'source_type' =>
-                'request',
+                    'form',
 
                 'submission_id' =>
-                $submission->id,
+                    $submission->id,
+
+                'assignment_id' =>
+                    $assignment->id,
 
                 'priority' =>
-                $data['priority']
+                    $data['priority']
                     ?? 'medium',
 
                 'due_date' =>
-                $data['deadline']
+                    $data['deadline']
                     ?? null,
 
                 'order' =>
-                $nextOrder + 1
+                    $nextOrder
 
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update assignment dengan card_id
+            |--------------------------------------------------------------------------
+            */
+
+            $assignment->update([
+                'card_id' => $card->id
             ]);
 
             /*
@@ -103,9 +265,7 @@ class AssignmentService
             |--------------------------------------------------------------------------
             */
 
-            if (
-                !empty($data['designer_id'])
-            ) {
+            if (!empty($data['designer_id'])) {
 
                 $card
                     ->assignees()
@@ -116,91 +276,47 @@ class AssignmentService
 
             /*
             |--------------------------------------------------------------------------
-            | Buat Assignment
+            | Update submission status
             |--------------------------------------------------------------------------
             */
 
-            $assignment = Assignment::create([
-
-                'submission_id' =>
-                $submission->id,
-
-                'campaign_id' =>
-                $data['campaign_id'],
-
-                'board_id' =>
-                $board->id,
-
-                'card_id' =>
-                $card->id,
-
-                'assignment_number' =>
-                $assignmentNumber,
-
-                'assigned_by' =>
-                $data['assigned_by'],
-
-                'coordinator_id' =>
-                $data['coordinator_id']
-                    ?? null,
-
-                'designer_id' =>
-                $data['designer_id']
-                    ?? null,
-
-                'division_id' =>
-                $data['division_id']
-                    ?? null,
-
-                'assigned_date' =>
-                $data['assigned_date']
-                    ?? now(),
-
-                'deadline' =>
-                $data['deadline']
-                    ?? null,
-
-                'estimated_hours' =>
-                $data['estimated_hours']
-                    ?? null,
-
-                'priority' =>
-                $data['priority']
-                    ?? 'medium',
+            $submission->update([
 
                 'status' =>
-                'assigned',
+                    'assigned',
 
-                'notes' =>
-                $data['notes']
-                    ?? null
+                'assigned_at' =>
+                    now()
 
             ]);
 
             /*
             |--------------------------------------------------------------------------
-            | Update card
+            | Return result
             |--------------------------------------------------------------------------
             */
 
-            $card->update([
-                'assignment_id' =>
-                $assignment->id
-            ]);
-
             return $assignment->load([
+
                 'campaign',
+
                 'board',
+
                 'designer',
+
                 'coordinator',
+
                 'card',
+
+                'submission'
+
             ]);
         });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Generate nomor task
+    | Generate nomor assignment
     |--------------------------------------------------------------------------
     */
 
@@ -213,16 +329,13 @@ class AssignmentService
         );
 
         /*
-    |--------------------------------------------------------------------------
-    | Division code
-    |--------------------------------------------------------------------------
-    |
-    | pakai code jika ada
-    | kalau kosong generate dari nama
-    |
-    */
+        |--------------------------------------------------------------------------
+        | Generate division code
+        |--------------------------------------------------------------------------
+        */
 
         $divisionCode =
+
             !empty($division->code)
 
             ? strtoupper(
@@ -241,40 +354,46 @@ class AssignmentService
                 )
             );
 
-        $year = now()->format('y');
+        $year =
+            now()->format('y');
 
-        $month = now()->format('m');
+        $month =
+            now()->format('m');
 
         /*
-    |--------------------------------------------------------------------------
-    | Counter bulanan
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Counter dengan lock
+        |--------------------------------------------------------------------------
+        */
 
-        $count =
-            Assignment::whereYear(
+        $count = Assignment::query()
+
+            ->lockForUpdate()
+
+            ->whereYear(
                 'created_at',
                 now()->year
             )
+
             ->whereMonth(
                 'created_at',
                 now()->month
             )
+
             ->count() + 1;
 
-        $sequence =
-            str_pad(
-                $count,
-                3,
-                '0',
-                STR_PAD_LEFT
-            );
+        $sequence = str_pad(
+            $count,
+            3,
+            '0',
+            STR_PAD_LEFT
+        );
 
         /*
-    |--------------------------------------------------------------------------
-    | Result
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Result
+        |--------------------------------------------------------------------------
+        */
 
         return
             "{$divisionCode}/TASK/{$year}/{$month}/{$sequence}";

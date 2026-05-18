@@ -1,11 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  Calendar,
+  Clock3,
+  Flag,
+  FolderKanban,
+  Loader2,
+  Users,
+  X,
+} from "lucide-react";
 
 import useAssignSubmission from "../../hooks/useAssignSubmission";
 
-import type {
-  FormSubmission,
-  AssignSubmissionPayload,
-} from "../../types";
+import type { FormSubmission, AssignSubmissionPayload } from "../../types";
 
 import { useCampaign } from "@/features/campaign/hooks/useCampaign";
 import { useDivisions } from "@/features/division/hooks/useDivisions";
@@ -39,31 +46,23 @@ export default function AssignmentModal({
   onClose,
   onSuccess,
 }: Props) {
-  const assignMutation =
-    useAssignSubmission();
+  const assignMutation = useAssignSubmission();
 
-  const workspaceId =
-    submission?.form?.workspace_id ?? "";
+  const workspaceId = submission?.form?.workspace_id ?? "";
 
-  const {
-    campaigns = [],
-  } = useCampaign(workspaceId);
+  const { campaigns = [] } = useCampaign(workspaceId);
 
-  const {
-    data: divisions = [],
-  } = useDivisions();
+  const { data: divisions = [] } = useDivisions();
 
-  const {
-    data: users = [],
-  } = useUsers();
+  const { data: users = [] } = useUsers();
 
-  const [
-    form,
-    setForm,
-  ] =
-    useState<AssignSubmissionPayload>(
-      initialForm
-    );
+  const [form, setForm] = useState<AssignSubmissionPayload>(initialForm);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Reset form
+  |--------------------------------------------------------------------------
+  */
 
   useEffect(() => {
     if (!open) return;
@@ -71,29 +70,57 @@ export default function AssignmentModal({
     setForm(initialForm);
   }, [open]);
 
-  if (
-    !open ||
-    !submission
-  ) {
+  /*
+  |--------------------------------------------------------------------------
+  | Auto select division dari campaign
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    if (!form.campaign_id) return;
+
+    const selectedCampaign = campaigns.find(
+      (c: Campaign) => c.id === form.campaign_id,
+    );
+
+    if (selectedCampaign?.division_id) {
+      setForm((prev) => ({
+        ...prev,
+        division_id: selectedCampaign.division_id,
+      }));
+    }
+  }, [form.campaign_id, campaigns]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Filter user berdasarkan division
+  |--------------------------------------------------------------------------
+  */
+
+  const filteredUsers = useMemo(() => {
+    return users;
+  }, [users]);
+
+  if (!open || !submission) {
     return null;
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Submit
+  |--------------------------------------------------------------------------
+  */
+
   const submit = () => {
-    if (
-      !form.campaign_id ||
-      !form.division_id
-    ) {
-      alert(
-        "Campaign dan Division wajib dipilih"
-      );
+    if (!form.campaign_id || !form.division_id) {
+      alert("Campaign dan Division wajib dipilih");
 
       return;
     }
 
     assignMutation.mutate(
       {
-        submissionId:
-          submission.id,
+        submissionId: submission.id,
 
         payload: form,
       },
@@ -103,7 +130,7 @@ export default function AssignmentModal({
 
           onClose();
         },
-      }
+      },
     );
   };
 
@@ -117,362 +144,549 @@ export default function AssignmentModal({
       flex
       items-center
       justify-center
-      bg-black/50
+      bg-black/60
       p-4
+      backdrop-blur-sm
     "
     >
       <div
-        onClick={(e) =>
-          e.stopPropagation()
-        }
+        onClick={(e) => e.stopPropagation()}
         className="
+        relative
         w-full
-        max-w-3xl
+        max-w-4xl
+        overflow-hidden
         rounded-3xl
+        border
+        border-zinc-200
         bg-white
-        p-6
+        shadow-2xl
       "
       >
-        <h2
-          className="
-          mb-6
-          text-xl
-          font-bold
-        "
-        >
-          Tugaskan Request
-        </h2>
+        {/* Header */}
 
         <div
           className="
-          grid
-          gap-4
-          md:grid-cols-2
+          flex
+          items-center
+          justify-between
+          border-b
+          border-zinc-200
+          px-6
+          py-5
         "
         >
-          {/* Campaign */}
-
           <div>
-            <label className="mb-2 block text-sm">
-              Campaign
-            </label>
-
-            <select
-              value={
-                form.campaign_id
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  campaign_id:
-                    e.target.value,
-                })
-              }
+            <h2
               className="
-              w-full
-              rounded-xl
-              border
-              p-3
+              text-2xl
+              font-bold
+              text-zinc-900
             "
             >
-              <option value="">
-                Pilih Campaign
-              </option>
+              Tugaskan Request
+            </h2>
 
-              {campaigns.map(
-                (
-                  c: Campaign
-                ) => (
-                  <option
-                    key={c.id}
-                    value={c.id}
-                  >
-                    {c.name}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
-
-          {/* Division */}
-
-          <div>
-            <label className="mb-2 block text-sm">
-              Division
-            </label>
-
-            <select
-              value={
-                form.division_id
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  division_id:
-                    e.target.value,
-                })
-              }
+            <p
               className="
-              w-full
-              rounded-xl
-              border
-              p-3
+              mt-1
+              text-sm
+              text-zinc-500
             "
             >
-              <option value="">
-                Pilih Division
-              </option>
-
-              {divisions.map(
-                (
-                  d: Division
-                ) => (
-                  <option
-                    key={d.id}
-                    value={d.id}
-                  >
-                    {d.name}
-                  </option>
-                )
-              )}
-            </select>
+              Request akan otomatis masuk ke board By Request
+            </p>
           </div>
 
-          {/* Designer */}
-
-          <div>
-            <label className="mb-2 block text-sm">
-              Designer
-            </label>
-
-            <select
-              value={
-                form.designer_id ?? ""
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  designer_id:
-                    e.target.value ||
-                    undefined,
-                })
-              }
-              className="
-              w-full
-              rounded-xl
-              border
-              p-3
-            "
-            >
-              <option value="">
-                Pilih Designer
-              </option>
-
-              {users.map(
-                (
-                  u: User
-                ) => (
-                  <option
-                    key={u.id}
-                    value={u.id}
-                  >
-                    {u.name}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
-
-          {/* Coordinator */}
-
-          <div>
-            <label className="mb-2 block text-sm">
-              Coordinator
-            </label>
-
-            <select
-              value={
-                form.coordinator_id ??
-                ""
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  coordinator_id:
-                    e.target.value ||
-                    undefined,
-                })
-              }
-              className="
-              w-full
-              rounded-xl
-              border
-              p-3
-            "
-            >
-              <option value="">
-                Pilih Coordinator
-              </option>
-
-              {users.map(
-                (
-                  u: User
-                ) => (
-                  <option
-                    key={u.id}
-                    value={u.id}
-                  >
-                    {u.name}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
-
-          {/* Deadline */}
-
-          <div>
-            <label className="mb-2 block text-sm">
-              Deadline
-            </label>
-
-            <input
-              type="date"
-              value={
-                form.deadline ?? ""
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  deadline:
-                    e.target.value ||
-                    undefined,
-                })
-              }
-              className="
-              w-full
-              rounded-xl
-              border
-              p-3
-            "
-            />
-          </div>
-
-          {/* Estimasi */}
-
-          <div>
-            <label className="mb-2 block text-sm">
-              Estimasi Jam
-            </label>
-
-            <input
-              type="number"
-              min={1}
-              value={
-                form.estimated_hours
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  estimated_hours:
-                    Number(
-                      e.target.value
-                    ),
-                })
-              }
-              className="
-              w-full
-              rounded-xl
-              border
-              p-3
-            "
-            />
-          </div>
-
-          {/* Priority */}
-
-          <div>
-            <label className="mb-2 block text-sm">
-              Priority
-            </label>
-
-            <select
-              value={
-                form.priority
-              }
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  priority:
-                    e.target
-                      .value as AssignSubmissionPayload["priority"],
-                })
-              }
-              className="
-              w-full
-              rounded-xl
-              border
-              p-3
-            "
-            >
-              <option value="low">
-                Low
-              </option>
-
-              <option value="medium">
-                Medium
-              </option>
-
-              <option value="high">
-                High
-              </option>
-
-              <option value="urgent">
-                Urgent
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className="mb-2 block text-sm">
-            Catatan
-          </label>
-
-          <textarea
-            value={form.notes}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                notes:
-                  e.target.value,
-              })
-            }
+          <button
+            onClick={onClose}
             className="
-            min-h-24
-            w-full
+            flex
+            h-10
+            w-10
+            items-center
+            justify-center
             rounded-xl
             border
-            p-3
+            border-zinc-200
+            transition
+            hover:bg-zinc-100
           "
-          />
+          >
+            <X size={18} />
+          </button>
         </div>
+
+        {/* Body */}
+
+        <div className="p-6">
+          {/* Submission Preview */}
+
+          <div
+            className="
+            mb-6
+            rounded-2xl
+            border
+            border-indigo-100
+            bg-indigo-50
+            p-5
+          "
+          >
+            <div
+              className="
+              mb-2
+              flex
+              items-center
+              gap-2
+              text-sm
+              font-medium
+              text-indigo-700
+            "
+            >
+              <FolderKanban size={16} />
+              Incoming Request
+            </div>
+
+            <h3
+              className="
+              text-lg
+              font-semibold
+              text-zinc-900
+            "
+            >
+              {submission.form?.name ?? "Untitled Request"}
+            </h3>
+
+            <p
+              className="
+              mt-2
+              line-clamp-3
+              text-sm
+              text-zinc-600
+            "
+            ></p>
+          </div>
+
+          {/* Form Grid */}
+
+          <div
+            className="
+            grid
+            gap-5
+            md:grid-cols-2
+          "
+          >
+            {/* Campaign */}
+
+            <div>
+              <label
+                className="
+                mb-2
+                flex
+                items-center
+                gap-2
+                text-sm
+                font-medium
+                text-zinc-700
+              "
+              >
+                <FolderKanban size={16} />
+                Campaign
+              </label>
+
+              <select
+                value={form.campaign_id}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    campaign_id: e.target.value,
+                  })
+                }
+                className="
+                w-full
+                rounded-2xl
+                border
+                border-zinc-200
+                bg-white
+                px-4
+                py-3
+                outline-none
+                transition
+                focus:border-indigo-500
+                focus:ring-4
+                focus:ring-indigo-100
+              "
+              >
+                <option value="">
+                  {campaigns.length === 0
+                    ? "Tidak ada campaign"
+                    : "Pilih Campaign"}
+                </option>
+
+                {campaigns.map((c: Campaign) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Division */}
+
+            <div>
+              <label
+                className="
+                mb-2
+                flex
+                items-center
+                gap-2
+                text-sm
+                font-medium
+                text-zinc-700
+              "
+              >
+                <Users size={16} />
+                Division
+              </label>
+
+              <select
+                value={form.division_id}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    division_id: e.target.value,
+                  })
+                }
+                className="
+                w-full
+                rounded-2xl
+                border
+                border-zinc-200
+                bg-zinc-50
+                px-4
+                py-3
+                outline-none
+              "
+              >
+                <option value="">Pilih Division</option>
+
+                {divisions.map((d: Division) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Designer */}
+
+            <div>
+              <label
+                className="
+                mb-2
+                block
+                text-sm
+                font-medium
+                text-zinc-700
+              "
+              >
+                Designer
+              </label>
+
+              <select
+                value={form.designer_id ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    designer_id: e.target.value || undefined,
+                  })
+                }
+                className="
+                w-full
+                rounded-2xl
+                border
+                border-zinc-200
+                px-4
+                py-3
+                outline-none
+                transition
+                focus:border-indigo-500
+                focus:ring-4
+                focus:ring-indigo-100
+              "
+              >
+                <option value="">Pilih Designer</option>
+
+                {filteredUsers.map((u: User) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Coordinator */}
+
+            <div>
+              <label
+                className="
+                mb-2
+                block
+                text-sm
+                font-medium
+                text-zinc-700
+              "
+              >
+                Coordinator
+              </label>
+
+              <select
+                value={form.coordinator_id ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    coordinator_id: e.target.value || undefined,
+                  })
+                }
+                className="
+                w-full
+                rounded-2xl
+                border
+                border-zinc-200
+                px-4
+                py-3
+                outline-none
+                transition
+                focus:border-indigo-500
+                focus:ring-4
+                focus:ring-indigo-100
+              "
+              >
+                <option value="">Pilih Coordinator</option>
+
+                {filteredUsers.map((u: User) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Deadline */}
+
+            <div>
+              <label
+                className="
+                mb-2
+                flex
+                items-center
+                gap-2
+                text-sm
+                font-medium
+                text-zinc-700
+              "
+              >
+                <Calendar size={16} />
+                Deadline
+              </label>
+
+              <input
+                type="date"
+                value={form.deadline ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    deadline: e.target.value || undefined,
+                  })
+                }
+                className="
+                w-full
+                rounded-2xl
+                border
+                border-zinc-200
+                px-4
+                py-3
+                outline-none
+                transition
+                focus:border-indigo-500
+                focus:ring-4
+                focus:ring-indigo-100
+              "
+              />
+            </div>
+
+            {/* Estimasi */}
+
+            <div>
+              <label
+                className="
+                mb-2
+                flex
+                items-center
+                gap-2
+                text-sm
+                font-medium
+                text-zinc-700
+              "
+              >
+                <Clock3 size={16} />
+                Estimasi Jam
+              </label>
+
+              <input
+                type="number"
+                min={1}
+                value={form.estimated_hours}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    estimated_hours: Number(e.target.value),
+                  })
+                }
+                className="
+                w-full
+                rounded-2xl
+                border
+                border-zinc-200
+                px-4
+                py-3
+                outline-none
+                transition
+                focus:border-indigo-500
+                focus:ring-4
+                focus:ring-indigo-100
+              "
+              />
+            </div>
+
+            {/* Priority */}
+
+            <div className="md:col-span-2">
+              <label
+                className="
+                mb-2
+                flex
+                items-center
+                gap-2
+                text-sm
+                font-medium
+                text-zinc-700
+              "
+              >
+                <Flag size={16} />
+                Priority
+              </label>
+
+              <div
+                className="
+                grid
+                grid-cols-2
+                gap-3
+                md:grid-cols-4
+              "
+              >
+                {["low", "medium", "high", "urgent"].map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        priority: level as AssignSubmissionPayload["priority"],
+                      })
+                    }
+                    className={`
+                      rounded-2xl
+                      border
+                      px-4
+                      py-3
+                      text-sm
+                      font-medium
+                      capitalize
+                      transition
+                      ${
+                        form.priority === level
+                          ? "border-indigo-600 bg-indigo-600 text-white"
+                          : "border-zinc-200 bg-white hover:bg-zinc-100"
+                      }
+                    `}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+
+          <div className="mt-5">
+            <label
+              className="
+              mb-2
+              block
+              text-sm
+              font-medium
+              text-zinc-700
+            "
+            >
+              Catatan Assignment
+            </label>
+
+            <textarea
+              value={form.notes}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  notes: e.target.value,
+                })
+              }
+              placeholder="
+              Tambahkan brief atau instruksi tambahan...
+            "
+              className="
+              min-h-[120px]
+              w-full
+              rounded-2xl
+              border
+              border-zinc-200
+              px-4
+              py-3
+              outline-none
+              transition
+              focus:border-indigo-500
+              focus:ring-4
+              focus:ring-indigo-100
+            "
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
 
         <div
           className="
-          mt-6
           flex
+          items-center
           justify-end
           gap-3
+          border-t
+          border-zinc-200
+          px-6
+          py-5
         "
         >
           <button
             onClick={onClose}
             className="
-            rounded-xl
+            rounded-2xl
             border
-            px-4
-            py-2
+            border-zinc-200
+            px-5
+            py-3
+            font-medium
+            transition
+            hover:bg-zinc-100
           "
           >
             Cancel
@@ -480,21 +694,28 @@ export default function AssignmentModal({
 
           <button
             onClick={submit}
-            disabled={
-              assignMutation.isPending
-            }
+            disabled={assignMutation.isPending}
             className="
-            rounded-xl
+            flex
+            items-center
+            gap-2
+            rounded-2xl
             bg-indigo-600
-            px-4
-            py-2
+            px-5
+            py-3
+            font-medium
             text-white
+            transition
+            hover:bg-indigo-700
+            disabled:cursor-not-allowed
             disabled:opacity-50
           "
           >
-            {assignMutation.isPending
-              ? "Menyimpan..."
-              : "Tugaskan"}
+            {assignMutation.isPending && (
+              <Loader2 size={18} className="animate-spin" />
+            )}
+
+            {assignMutation.isPending ? "Menyimpan..." : "Tugaskan Request"}
           </button>
         </div>
       </div>

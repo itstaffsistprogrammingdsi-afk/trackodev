@@ -11,7 +11,7 @@ import {
   GridIcon,
   HorizontaLDots,
   ListIcon,
-  PageIcon,
+  // PageIcon,
   PieChartIcon,
   PlugInIcon,
   // TableIcon,
@@ -35,9 +35,14 @@ const navItems: NavItem[] = [
     path: "/",
   },
   {
-    name: "Divisions",
+    name: "Task Management",
     icon: <BoxCubeIcon />,
     path: "/divisions",
+  },
+    {
+    name: "Forms",
+    icon: <ListIcon />,
+    path: "/forms",
   },
   {
     name: "Chats",
@@ -59,24 +64,20 @@ const navItems: NavItem[] = [
     name: "User Management",
     path: "/profile",
   },
-  {
-    name: "Forms",
-    icon: <ListIcon />,
-    path: "/forms",
-  },
+
   // {
   //   name: "Tables",
   //   icon: <TableIcon />,
   //   subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
   // },
-  {
-    name: "Pages",
-    icon: <PageIcon />,
-    subItems: [
-      { name: "Blank Page", path: "/blank", pro: false },
-      { name: "404 Error", path: "/error-404", pro: false },
-    ],
-  },
+  // {
+  //   name: "Pages",
+  //   icon: <PageIcon />,
+  //   subItems: [
+  //     { name: "Blank Page", path: "/blank", pro: false },
+  //     { name: "404 Error", path: "/error-404", pro: false },
+  //   ],
+  // },
 ];
 
 const othersItems: NavItem[] = [

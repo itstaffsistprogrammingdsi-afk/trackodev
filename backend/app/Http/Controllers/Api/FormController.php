@@ -22,6 +22,7 @@ class FormController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            // 'workspace_id' => 'required|exists:workspaces,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'header_image' => 'nullable|image|max:2048',
@@ -63,6 +64,7 @@ class FormController extends Controller
         $form = Form::findOrFail($id);
 
         $data = $request->only([
+            'workspace_id',
             'name',
             'description',
             'show_note',

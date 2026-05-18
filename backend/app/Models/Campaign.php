@@ -58,6 +58,6 @@ class Campaign extends Model
 
 public function assignments()
 {
-    return $this->hasMany(Assignment::class, 'submission_id');
+    return $this->hasMany(Assignment::class, 'campaign_id');
 }
 }
