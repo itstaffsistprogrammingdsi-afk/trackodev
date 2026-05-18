@@ -39,20 +39,54 @@ Route::prefix('auth')->group(function () {
         Route::get('/me',        [AuthController::class, 'me']);
         Route::put('/profile',   [AuthController::class, 'updateProfile']);
         Route::put('/password',  [AuthController::class, 'updatePassword']);
+        
     });
 });
 
 Route::middleware('auth:sanctum')->group(function () {
 
     // Users (Super Admin)
-    Route::apiResource('users', UserController::class);
+    // Route::apiResource('users', UserController::class);
+    // Users
+    Route::middleware(['role:super_admin|admin'])->group(function () {
+
+        Route::apiResource('users', UserController::class);
+    });
 
     // Divisions (Super Admin)
-    Route::apiResource('divisions', DivisionController::class);
-    Route::get('divisions/{division}/members',              [DivisionController::class, 'members']);
-    Route::post('divisions/{division}/members',             [DivisionController::class, 'addMember']);
-    Route::put('divisions/{division}/members/{user}',       [DivisionController::class, 'updateMember']);
-    Route::delete('divisions/{division}/members/{user}',    [DivisionController::class, 'removeMember']);
+    // Route::apiResource('divisions', DivisionController::class);
+    // Route::get('divisions/{division}/members',              [DivisionController::class, 'members']);
+    // Route::post('divisions/{division}/members',             [DivisionController::class, 'addMember']);
+    // Route::put('divisions/{division}/members/{user}',       [DivisionController::class, 'updateMember']);
+    // Route::delete('divisions/{division}/members/{user}',    [DivisionController::class, 'removeMember']);
+
+    Route::middleware(['role:super_admin|admin'])->group(function () {
+
+        Route::apiResource(
+            'divisions',
+            DivisionController::class
+        );
+
+        Route::get(
+            'divisions/{division}/members',
+            [DivisionController::class, 'members']
+        );
+
+        Route::post(
+            'divisions/{division}/members',
+            [DivisionController::class, 'addMember']
+        );
+
+        Route::put(
+            'divisions/{division}/members/{user}',
+            [DivisionController::class, 'updateMember']
+        );
+
+        Route::delete(
+            'divisions/{division}/members/{user}',
+            [DivisionController::class, 'removeMember']
+        );
+    });
 
     // Workspaces
     Route::get('divisions/{division}/workspaces',           [WorkspaceController::class, 'index']);
@@ -152,7 +186,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('notifications/read-all',                  [NotificationController::class, 'markAllRead']);
     Route::delete('notifications/{notification}',           [NotificationController::class, 'destroy']);
 
-        // Forms
+    // Forms
     Route::get('forms',                                    [FormController::class, 'index']);
     Route::post('forms',                                   [FormController::class, 'store']);
     Route::get('forms/{form}',                             [FormController::class, 'show']);
@@ -172,10 +206,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Forward to Card
     Route::patch('form-submissions/{submission}/forward',  [FormSubmissionController::class, 'forwardToCard']);
 
+
+
+
     Route::post(
-    'form-submissions/{submission}/assign',
-    [AssignmentController::class, 'assign']
-);
+        '/responses/{submission}/assign',
+        [AssignmentController::class, 'assign']
+    );
 });
+
     Route::get('/public/forms/{slug}', [PublicFormController::class, 'show']);
     Route::post('/public/forms/{slug}/submit', [PublicFormController::class, 'submit']);
