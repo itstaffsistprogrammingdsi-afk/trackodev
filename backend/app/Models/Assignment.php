@@ -9,76 +9,99 @@ class Assignment extends Model
 {
     use HasUuids;
 
+    protected $table = 'assignments';
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
     protected $fillable = [
+
         'submission_id',
+
+        'workspace_id',
+
         'campaign_id',
-        'board_id',
-        'card_id',
+
+        'assigned_by',
+
+        'coordinator_id',
+
+        'designer_id',
 
         'assignment_number',
 
-        'assigned_by',
-        'coordinator_id',
-        'designer_id',
-        'division_id',
-
         'assigned_date',
+
         'deadline',
+
         'estimated_hours',
 
         'priority',
+
         'status',
+
         'notes',
     ];
 
     protected $casts = [
+
         'assigned_date' => 'date',
+
         'deadline' => 'date',
     ];
 
     /*
-    |--------------------------------------------------------------------------
+    |--------------------------------------------------------------
     | RELATIONS
-    |--------------------------------------------------------------------------
+    |--------------------------------------------------------------
     */
 
     public function submission()
     {
-        return $this->belongsTo(FormSubmission::class, 'submission_id');
+        return $this->belongsTo(
+            FormSubmission::class,
+            'submission_id'
+        );
+    }
+
+    public function workspace()
+    {
+        return $this->belongsTo(
+            Workspace::class,
+            'workspace_id'
+        );
     }
 
     public function campaign()
     {
-        return $this->belongsTo(Campaign::class);
+        return $this->belongsTo(
+            Campaign::class,
+            'campaign_id'
+        );
     }
 
-    public function board()
+    public function assigner()
     {
-        return $this->belongsTo(Board::class);
-    }
-
-    public function card()
-    {
-        return $this->belongsTo(Card::class);
-    }
-
-    public function assignedBy()
-    {
-        return $this->belongsTo(User::class, 'assigned_by');
+        return $this->belongsTo(
+            User::class,
+            'assigned_by'
+        );
     }
 
     public function coordinator()
     {
-        return $this->belongsTo(User::class, 'coordinator_id');
+        return $this->belongsTo(
+            User::class,
+            'coordinator_id'
+        );
     }
 
     public function designer()
     {
-        return $this->belongsTo(User::class, 'designer_id');
-    }
-
-    public function division()
-    {
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(
+            User::class,
+            'designer_id'
+        );
     }
 }

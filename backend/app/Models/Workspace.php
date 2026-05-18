@@ -23,13 +23,21 @@ class Workspace extends Model
         return $this->hasMany(Campaign::class);
     }
 
-    public function forms(): HasMany
+public function forms()
 {
-    return $this->hasMany(Form::class);
+    return $this->hasMany(Form::class, 'workspace_id');
 }
 
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }
+
+    public function assignments()
+{
+    return $this->hasMany(
+        Assignment::class,
+        'workspace_id'
+    );
+}
 }
