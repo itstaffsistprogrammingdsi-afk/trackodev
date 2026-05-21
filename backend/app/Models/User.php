@@ -2,107 +2,219 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
 use Illuminate\Notifications\Notifiable;
+
 use Laravel\Sanctum\HasApiTokens;
+
 use Spatie\Permission\Traits\HasRoles;
+
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasUuids, HasApiTokens, HasRoles;
+    use HasFactory,
+        Notifiable,
+        HasUuids,
+        HasApiTokens,
+        HasRoles;
 
-    const ROLE_SUPER_ADMIN = 'super_admin';
-    const ROLE_ADMIN       = 'admin';
-    const ROLE_USER        = 'user';
+    // ============================================
+    // ROLE CONSTANTS
+    // ============================================
+
+    public const ROLE_SUPER_ADMIN = 'super_admin';
+
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_USER = 'user';
+
+    // ============================================
+    // SPATIE GUARD
+    // ============================================
+
+    protected string $guard_name = 'web';
+
+    // ============================================
+    // FILLABLE
+    // ============================================
+
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role',
         'avatar',
         'phone',
         'hris_id',
     ];
+
+    // ============================================
+    // HIDDEN
+    // ============================================
 
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
+    // ============================================
+    // CASTS
+    // ============================================
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
+            'password' => 'hashed',
         ];
     }
 
+    // ============================================
+    // ROLE HELPERS
+    // ============================================
+
     public function isSuperAdmin(): bool
     {
-        return $this->role === 'super_admin';
+        return $this->hasRole(
+            self::ROLE_SUPER_ADMIN
+        );
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->hasRole(
+            self::ROLE_ADMIN
+        );
     }
 
     public function isUser(): bool
     {
-        return $this->role === 'user';
+        return $this->hasRole(
+            self::ROLE_USER
+        );
     }
+
+    // ============================================
+    // PERMISSION HELPERS
+    // ============================================
+
+    public function canViewUsers(): bool
+    {
+        return $this->can('user.view');
+    }
+
+    public function canCreateUsers(): bool
+    {
+        return $this->can('user.create');
+    }
+
+    public function canUpdateUsers(): bool
+    {
+        return $this->can('user.update');
+    }
+
+    public function canDeleteUsers(): bool
+    {
+        return $this->can('user.delete');
+    }
+
+    // ============================================
+    // DIVISIONS
+    // ============================================
 
     public function divisions(): BelongsToMany
     {
-        return $this->belongsToMany(Division::class, 'division_user')
+        return $this->belongsToMany(
+            Division::class,
+            'division_user'
+        )
             ->withPivot('role')
-            ->wherePivot('role', 'admin')
             ->withTimestamps();
     }
+
+    // ============================================
+    // CAMPAIGNS
+    // ============================================
 
     public function campaigns(): BelongsToMany
     {
-        return $this->belongsToMany(Campaign::class, 'campaign_user')
+        return $this->belongsToMany(
+            Campaign::class,
+            'campaign_user'
+        )
             ->withTimestamps();
     }
 
+    // ============================================
+    // NOTIFICATIONS
+    // ============================================
+
     public function notifications(): HasMany
     {
-        return $this->hasMany(Notification::class);
+        return $this->hasMany(
+            Notification::class
+        );
     }
+
+    // ============================================
+    // CHAT ROOMS
+    // ============================================
 
     public function chatRooms(): BelongsToMany
     {
-        return $this->belongsToMany(ChatRoom::class, 'chat_room_user')
+        return $this->belongsToMany(
+            ChatRoom::class,
+            'chat_room_user'
+        )
             ->withPivot('last_read_at')
             ->withTimestamps();
     }
 
-    public function hris()
+    // ============================================
+    // HRIS RELATION
+    // ============================================
+
+    public function hris(): BelongsTo
     {
-        return $this->belongsTo(HrisUser::class, 'hris_id', 'id', 'hris');
+        return $this->belongsTo(
+            HrisUser::class,
+            'hris_id',
+            'id'
+        );
     }
 
-    public function isDivisionAdmin(string $divisionId): bool
-    {
+    // ============================================
+    // DIVISION HELPERS
+    // ============================================
+
+    public function isDivisionAdmin(
+        string $divisionId
+    ): bool {
         return $this->divisions()
             ->where('division_id', $divisionId)
             ->wherePivot('role', 'admin')
             ->exists();
     }
 
-    public function isDivisionMember(string $divisionId): bool
-    {
+    public function isDivisionMember(
+        string $divisionId
+    ): bool {
         return $this->divisions()
             ->where('division_id', $divisionId)
             ->exists();
     }
 
-    public function createdAssignments()
+    // ============================================
+    // ASSIGNMENTS
+    // ============================================
+
+    public function createdAssignments(): HasMany
     {
         return $this->hasMany(
             Assignment::class,
@@ -110,7 +222,7 @@ class User extends Authenticatable
         );
     }
 
-    public function coordinatedAssignments()
+    public function coordinatedAssignments(): HasMany
     {
         return $this->hasMany(
             Assignment::class,
@@ -118,7 +230,7 @@ class User extends Authenticatable
         );
     }
 
-    public function designedAssignments()
+    public function designedAssignments(): HasMany
     {
         return $this->hasMany(
             Assignment::class,

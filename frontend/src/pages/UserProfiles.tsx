@@ -33,19 +33,30 @@ import api from "../lib/axios";
 // TYPES
 // ============================================
 
+type RoleType =
+  | "super_admin"
+  | "admin"
+  | "user";
+
 type User = {
   id: string;
   name: string;
   email: string;
   phone?: string | null;
-  role: "super_admin" | "admin" | "user";
+
+  role?: RoleType;
+
+  roles?: string[];
 };
 
 type AuthUser = {
   id: string;
   name: string;
   email: string;
-  role: string;
+
+  role?: string;
+
+  roles?: string[];
 };
 
 type PaginationLink = {
@@ -56,16 +67,19 @@ type PaginationLink = {
 
 type PaginatedUsers = {
   data: User[];
+
   current_page: number;
   last_page: number;
   per_page: number;
   total: number;
+
   links: PaginationLink[];
 
-    stats: {
+  stats: {
     total_users: number;
     total_super_admin: number;
     total_admin: number;
+    total_user?: number;
   };
 };
 
@@ -73,13 +87,17 @@ type UserStats = {
   total_users: number;
   total_super_admin: number;
   total_admin: number;
+  total_user?: number;
 };
 
 // ============================================
 // ROLE STYLE
 // ============================================
 
-const roleStyle = {
+const roleStyle: Record<
+  RoleType,
+  string
+> = {
   super_admin:
     "bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20",
 
@@ -88,6 +106,53 @@ const roleStyle = {
 
   user:
     "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-500/10 dark:text-gray-300 dark:border-gray-700",
+};
+
+// ============================================
+// HELPER
+// ============================================
+
+const getUserRole = (
+  user:
+    | User
+    | AuthUser
+    | null
+    | undefined
+): RoleType => {
+  if (!user) return "user";
+
+  // PRIORITY ROLE
+  if (
+    user.role &&
+    [
+      "super_admin",
+      "admin",
+      "user",
+    ].includes(user.role)
+  ) {
+    return user.role as RoleType;
+  }
+
+  // FROM ROLES ARRAY
+  if (
+    user.roles &&
+    Array.isArray(user.roles) &&
+    user.roles.length > 0
+  ) {
+    const firstRole = user.roles[0];
+
+    if (
+      [
+        "super_admin",
+        "admin",
+        "user",
+      ].includes(firstRole)
+    ) {
+      return firstRole as RoleType;
+    }
+  }
+
+  return "user";
 };
 
 // ============================================
@@ -106,7 +171,6 @@ export default function UserProfiles() {
 
   const [users, setUsers] =
     useState<User[]>([]);
-
 
   const [loading, setLoading] =
     useState(false);
@@ -137,11 +201,13 @@ export default function UserProfiles() {
       total_users: 0,
       total_super_admin: 0,
       total_admin: 0,
+      total_user: 0,
     });
 
   // FORM
 
-  const [name, setName] = useState("");
+  const [name, setName] =
+    useState("");
 
   const [email, setEmail] =
     useState("");
@@ -152,9 +218,8 @@ export default function UserProfiles() {
   const [password, setPassword] =
     useState("");
 
-  const [role, setRole] = useState<
-    "super_admin" | "admin" | "user"
-  >("user");
+  const [role, setRole] =
+    useState<RoleType>("user");
 
   // ============================================
   // FETCH LOGIN USER
@@ -168,8 +233,12 @@ export default function UserProfiles() {
         }>("/auth/me");
 
         setAuthUser(res.data.user);
-      } catch {
-        localStorage.removeItem("token");
+      } catch (err) {
+        console.error(err);
+
+        localStorage.removeItem(
+          "token"
+        );
 
         navigate("/login");
       }
@@ -197,10 +266,29 @@ export default function UserProfiles() {
             }
           );
 
-        setUsers(res.data.data || []);
+        const mappedUsers =
+          (
+            res.data.data || []
+          ).map((user) => ({
+            ...user,
+
+            role:
+              user.role ||
+              getUserRole(user),
+          }));
+
+        setUsers(mappedUsers);
 
         setPagination(res.data);
-        setStats(res.data.stats);
+
+        setStats(
+          res.data.stats || {
+            total_users: 0,
+            total_super_admin: 0,
+            total_admin: 0,
+            total_user: 0,
+          }
+        );
       } catch (err) {
         console.error(err);
       } finally {
@@ -218,13 +306,13 @@ export default function UserProfiles() {
     fetchAuthUser();
   }, [fetchAuthUser]);
 
-
   useEffect(() => {
     const delay = setTimeout(() => {
       fetchUsers();
     }, 300);
 
-    return () => clearTimeout(delay);
+    return () =>
+      clearTimeout(delay);
   }, [fetchUsers]);
 
   // ============================================
@@ -273,10 +361,13 @@ export default function UserProfiles() {
 
       resetForm();
 
+      await fetchUsers();
     } catch (err) {
       console.error(err);
 
-      alert("Gagal menyimpan user");
+      alert(
+        "Gagal menyimpan user"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -293,8 +384,12 @@ export default function UserProfiles() {
 
     setName(user.name);
     setEmail(user.email);
+
     setPhone(user.phone || "");
-    setRole(user.role);
+
+    setRole(
+      getUserRole(user)
+    );
 
     setPassword("");
   };
@@ -306,19 +401,25 @@ export default function UserProfiles() {
   const handleDelete = async (
     id: string
   ) => {
-    const confirmed = window.confirm(
-      "Yakin hapus user ini?"
-    );
+    const confirmed =
+      window.confirm(
+        "Yakin hapus user ini?"
+      );
 
     if (!confirmed) return;
 
     try {
-      await api.delete(`/users/${id}`);
+      await api.delete(
+        `/users/${id}`
+      );
 
+      await fetchUsers();
     } catch (err) {
       console.error(err);
 
-      alert("Gagal menghapus user");
+      alert(
+        "Gagal menghapus user"
+      );
     }
   };
 
@@ -328,12 +429,16 @@ export default function UserProfiles() {
 
   const handleLogout = async () => {
     try {
-      await api.post("/auth/logout");
+      await api.post(
+        "/auth/logout"
+      );
     } catch {
       //
     }
 
-    localStorage.removeItem("token");
+    localStorage.removeItem(
+      "token"
+    );
 
     navigate("/login");
   };
@@ -351,55 +456,57 @@ export default function UserProfiles() {
       {/* HEADER */}
       {/* ============================================ */}
 
-{/* ============================================ */}
-{/* HEADER */}
-{/* ============================================ */}
+      <div className="mb-6 flex flex-col gap-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03] md:flex-row md:items-center md:justify-between md:p-6">
+        {/* LEFT */}
+        <div className="flex items-center gap-4">
+          <div>
+            {authUser && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex size-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/10">
+                  <UserIcon className="size-4 text-blue-600 dark:text-blue-400" />
+                </div>
 
-<div className="mb-6 flex flex-col gap-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03] md:flex-row md:items-center md:justify-between md:p-6">
-  
-  {/* LEFT */}
-  <div className="flex items-center gap-4">
-    {/* TITLE */}
-    <div>
+                <span>
+                  Hallo{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {
+                      authUser.name
+                    }
+                  </span>
+                </span>
 
-      {authUser && (
-        <div className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          
-          <div className="flex size-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/10">
-            <UserIcon className="size-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-gray-400">
+                  •
+                </span>
+
+                <span className="capitalize">
+                  {getUserRole(
+                    authUser
+                  ).replace(
+                    "_",
+                    " "
+                  )}
+                </span>
+              </div>
+            )}
           </div>
-
-          <span>
-            Hallo,{" "}
-            <span className="font-semibold text-gray-900 dark:text-white">
-              {authUser.name}
-            </span>
-          </span>
-
-          <span className="text-gray-400">
-            •
-          </span>
-
-          <span className="capitalize">
-            {authUser.role.replace("_", " ")}
-          </span>
         </div>
-      )}
-    </div>
-  </div>
 
-  {/* RIGHT */}
-<div className="flex items-center">
-  <button
-    onClick={handleLogout}
-    className="flex h-11 items-center gap-2 rounded-2xl px-5 text-sm font-medium text-gray transition-all hover:bg-gray-100 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-  >
-    <LogOut className="size-4" />
+        {/* RIGHT */}
 
-    Logout
-  </button>
-</div>
-</div>
+        <div className="flex items-center">
+          <button
+            onClick={
+              handleLogout
+            }
+            className="flex h-11 items-center gap-2 rounded-2xl px-5 text-sm font-medium text-gray transition-all hover:bg-gray-100 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+          >
+            <LogOut className="size-4" />
+
+            Logout
+          </button>
+        </div>
+      </div>
 
       {/* ============================================ */}
       {/* STATS */}
@@ -414,7 +521,9 @@ export default function UserProfiles() {
               </p>
 
               <h3 className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                {stats.total_users}
+                {
+                  stats.total_users
+                }
               </h3>
             </div>
 
@@ -432,7 +541,9 @@ export default function UserProfiles() {
               </p>
 
               <h3 className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                {stats.total_super_admin}
+                {
+                  stats.total_super_admin
+                }
               </h3>
             </div>
 
@@ -450,7 +561,9 @@ export default function UserProfiles() {
               </p>
 
               <h3 className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                {stats.total_admin}
+                {
+                  stats.total_admin
+                }
               </h3>
             </div>
 
@@ -479,7 +592,8 @@ export default function UserProfiles() {
             </h3>
 
             <p className="text-sm text-gray-500">
-              Kelola data user sistem
+              Kelola data user
+              sistem
             </p>
           </div>
         </div>
@@ -494,7 +608,9 @@ export default function UserProfiles() {
               type="text"
               value={name}
               onChange={(e) =>
-                setName(e.target.value)
+                setName(
+                  e.target.value
+                )
               }
               placeholder="Masukkan nama"
               className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
@@ -510,14 +626,16 @@ export default function UserProfiles() {
               type="email"
               value={email}
               onChange={(e) =>
-                setEmail(e.target.value)
+                setEmail(
+                  e.target.value
+                )
               }
               placeholder="Masukkan email"
               className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
             />
           </div>
 
-          <div className="space-y-2 ">
+          <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Password
             </label>
@@ -526,7 +644,9 @@ export default function UserProfiles() {
               type="password"
               value={password}
               onChange={(e) =>
-                setPassword(e.target.value)
+                setPassword(
+                  e.target.value
+                )
               }
               placeholder={
                 editingId
@@ -536,6 +656,7 @@ export default function UserProfiles() {
               className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
             />
           </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Role
@@ -545,10 +666,8 @@ export default function UserProfiles() {
               value={role}
               onChange={(e) =>
                 setRole(
-                  e.target.value as
-                    | "super_admin"
-                    | "admin"
-                    | "user"
+                  e.target
+                    .value as RoleType
                 )
               }
               className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
@@ -566,19 +685,22 @@ export default function UserProfiles() {
               </option>
             </select>
           </div>
-
-
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Button
-            onClick={handleSubmit}
-            disabled={submitting}
+            onClick={
+              handleSubmit
+            }
+            disabled={
+              submitting
+            }
             className="h-12 rounded-2xl"
           >
             {submitting ? (
               <Loader2 className="size-4 animate-spin" />
-            ) : (<Plus className="size-4" />
+            ) : (
+              <Plus className="size-4" />
             )}
 
             {editingId
@@ -589,7 +711,9 @@ export default function UserProfiles() {
           {editingId && (
             <Button
               variant="outline"
-              onClick={resetForm}
+              onClick={
+                resetForm
+              }
               className="h-12 rounded-2xl"
             >
               Cancel
@@ -612,8 +736,9 @@ export default function UserProfiles() {
             </h3>
 
             <p className="text-sm text-gray-500">
-              Semua user yang terdaftar
-              dalam sistem
+              Semua user yang
+              terdaftar dalam
+              sistem
             </p>
           </div>
 
@@ -627,7 +752,9 @@ export default function UserProfiles() {
               onChange={(e) => {
                 setPage(1);
 
-                setSearch(e.target.value);
+                setSearch(
+                  e.target.value
+                );
               }}
               className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
             />
@@ -648,10 +775,6 @@ export default function UserProfiles() {
                   Role
                 </th>
 
-                {/* <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Phone
-                </th> */}
-
                 <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Action
                 </th>
@@ -668,77 +791,96 @@ export default function UserProfiles() {
                     <Loader2 className="mx-auto animate-spin text-blue-500" />
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : users.length ===
+                0 ? (
                 <tr>
                   <td
                     colSpan={4}
                     className="px-6 py-14 text-center text-gray-500"
                   >
-                    Tidak ada user
+                    Tidak ada
+                    user
                   </td>
                 </tr>
               ) : (
-                users.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-gray-100 transition-colors hover:bg-gray-50/80 dark:border-gray-800 dark:hover:bg-white/[0.02]"
-                  >
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
-                          <UserIcon className="size-5" />
-                        </div>
+                users.map(
+                  (user) => {
+                    const userRole =
+                      getUserRole(
+                        user
+                      );
 
-                        <div>
-                          <div className="font-semibold text-gray-900 dark:text-white">
-                            {user.name}
-                          </div>
-
-                          <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-                            <Mail className="size-3.5" />
-
-                            {user.email}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-5">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${roleStyle[user.role]}`}
+                    return (
+                      <tr
+                        key={
+                          user.id
+                        }
+                        className="border-b border-gray-100 transition-colors hover:bg-gray-50/80 dark:border-gray-800 dark:hover:bg-white/[0.02]"
                       >
-                        {user.role.replace(
-                          "_",
-                          " "
-                        )}
-                      </span>
-                    </td>
-                    
-                    <td className="px-6 py-5">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() =>
-                            handleEdit(user)
-                          }
-                          className="flex size-10 items-center justify-center rounded-xl border border-gray-200 bg-white transition hover:bg-blue-50 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-blue-500/10"
-                        >
-                          <Pencil className="size-4" />
-                        </button>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
+                              <UserIcon className="size-5" />
+                            </div>
 
-                        <button
-                          onClick={() =>
-                            handleDelete(
-                              user.id
-                            )
-                          }
-                          className="flex size-10 items-center justify-center rounded-xl border border-red-200 bg-white text-red-500 transition hover:bg-red-50 dark:bg-gray-900"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                            <div>
+                              <div className="font-semibold text-gray-900 dark:text-white">
+                                {
+                                  user.name
+                                }
+                              </div>
+
+                              <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                                <Mail className="size-3.5" />
+
+                                {
+                                  user.email
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${roleStyle[userRole]}`}
+                          >
+                            {userRole.replace(
+                              "_",
+                              " "
+                            )}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() =>
+                                handleEdit(
+                                  user
+                                )
+                              }
+                              className="flex size-10 items-center justify-center rounded-xl border border-gray-200 bg-white transition hover:bg-blue-50 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-blue-500/10"
+                            >
+                              <Pencil className="size-4" />
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleDelete(
+                                  user.id
+                                )
+                              }
+                              className="flex size-10 items-center justify-center rounded-xl border border-red-200 bg-white text-red-500 transition hover:bg-red-50 dark:bg-gray-900"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                )
               )}
             </tbody>
           </table>
@@ -751,74 +893,87 @@ export default function UserProfiles() {
             <div className="flex justify-center py-10">
               <Loader2 className="animate-spin text-blue-500" />
             </div>
-          ) : users.length === 0 ? (
+          ) : users.length ===
+            0 ? (
             <div className="py-10 text-center text-gray-500">
               Tidak ada user
             </div>
           ) : (
-            users.map((user) => (
-              <div
-                key={user.id}
-                className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex gap-4">
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                      <UserIcon className="size-5" />
-                    </div>
+            users.map((user) => {
+              const userRole =
+                getUserRole(user);
 
-                    <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
-                        {user.name}
-                      </h4>
+              return (
+                <div
+                  key={user.id}
+                  className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex gap-4">
+                      <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                        <UserIcon className="size-5" />
+                      </div>
 
-                      <p className="mt-1 text-sm text-gray-500">
-                        {user.email}
-                      </p>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 dark:text-white">
+                          {
+                            user.name
+                          }
+                        </h4>
 
-                      <div className="mt-3">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${roleStyle[user.role]}`}
-                        >
-                          {user.role.replace(
-                            "_",
-                            " "
-                          )}
-                        </span>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {
+                            user.email
+                          }
+                        </p>
+
+                        <div className="mt-3">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${roleStyle[userRole]}`}
+                          >
+                            {userRole.replace(
+                              "_",
+                              " "
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          handleEdit(
+                            user
+                          )
+                        }
+                        className="flex size-10 items-center justify-center rounded-xl border border-gray-200 hover:bg-blue-50 dark:border-gray-700"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          handleDelete(
+                            user.id
+                          )
+                        }
+                        className="flex size-10 items-center justify-center rounded-xl border border-red-200 text-red-500 hover:bg-red-50"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() =>
-                        handleEdit(user)
-                      }
-                      className="flex size-10 items-center justify-center rounded-xl border border-gray-200 hover:bg-blue-50 dark:border-gray-700"
-                    >
-                      <Pencil className="size-4" />
-                    </button>
+                  <div className="mt-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <Phone className="size-4" />
 
-                    <button
-                      onClick={() =>
-                        handleDelete(
-                          user.id
-                        )
-                      }
-                      className="flex size-10 items-center justify-center rounded-xl border border-red-200 text-red-500 hover:bg-red-50"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                    {user.phone ||
+                      "-"}
                   </div>
                 </div>
-
-                <div className="mt-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                  <Phone className="size-4" />
-
-                  {user.phone || "-"}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -833,7 +988,9 @@ export default function UserProfiles() {
               </span>{" "}
               dari{" "}
               <span className="font-semibold text-gray-800 dark:text-white">
-                {pagination.total}
+                {
+                  pagination.total
+                }
               </span>{" "}
               user
             </div>
@@ -841,11 +998,13 @@ export default function UserProfiles() {
             <div className="flex items-center justify-center gap-3">
               <button
                 disabled={
-                  pagination.current_page === 1
+                  pagination.current_page ===
+                  1
                 }
                 onClick={() =>
-                  setPage((prev) =>
-                    prev - 1
+                  setPage(
+                    (prev) =>
+                      prev - 1
                   )
                 }
                 className="flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-white transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900"
@@ -855,8 +1014,13 @@ export default function UserProfiles() {
 
               <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium dark:border-gray-700 dark:bg-gray-900">
                 Page{" "}
-                {pagination.current_page} /{" "}
-                {pagination.last_page}
+                {
+                  pagination.current_page
+                }{" "}
+                /{" "}
+                {
+                  pagination.last_page
+                }
               </div>
 
               <button
@@ -865,8 +1029,9 @@ export default function UserProfiles() {
                   pagination.last_page
                 }
                 onClick={() =>
-                  setPage((prev) =>
-                    prev + 1
+                  setPage(
+                    (prev) =>
+                      prev + 1
                   )
                 }
                 className="flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-white transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900"

@@ -2,12 +2,15 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use App\Models\Campaign;
-use App\Policies\CampaignPolicy;
-use Illuminate\Support\Facades\Gate;
 use App\Models\User;
+
 use App\Observers\UserObserver;
+
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\ServiceProvider;
+
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -16,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        User::observe(UserObserver::class);
+        //
     }
 
     /**
@@ -24,6 +27,36 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-            Gate::policy(Campaign::class, CampaignPolicy::class);
+        // ============================================
+        // OBSERVERS
+        // ============================================
+
+        User::observe(
+            UserObserver::class
+        );
+
+        // ============================================
+        // SUPER ADMIN BYPASS
+        // ============================================
+
+        Gate::before(function (
+            User $user,
+            string $ability
+        ) {
+
+            return $user->hasRole(
+                'super_admin'
+            )
+                ? true
+                : null;
+        });
+
+        // ============================================
+        // SPATIE CACHE RESET (OPTIONAL)
+        // ============================================
+
+        app()[
+            \Spatie\Permission\PermissionRegistrar::class
+        ]->forgetCachedPermissions();
     }
 }

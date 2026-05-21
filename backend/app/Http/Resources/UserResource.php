@@ -10,16 +10,25 @@ class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'         => $this->id,
-            'name'       => $this->name,
-            'email'      => $this->email,
-            'role'       => $this->role,
-            'roles' => $this->getRoleNames(),
-            'phone'      => $this->phone,
-            'avatar'     => $this->avatar
-                                ? asset('storage/' . $this->avatar)
-                                : null,
-            'created_at' => $this->created_at->toDateTimeString(),
+
+            'id' => $this->id,
+
+            'name' => $this->name,
+
+            'email' => $this->email,
+
+            'avatar' => $this->avatar,
+
+            // ROLE
+            'roles' => $this
+                ->getRoleNames()
+                ->values(),
+
+            // PERMISSION
+            'permissions' => $this
+                ->getAllPermissions()
+                ->pluck('name')
+                ->values(),
         ];
     }
 }
