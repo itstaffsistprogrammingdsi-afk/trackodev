@@ -94,6 +94,16 @@ Route::middleware([
 ])->group(function () {
 
     // ========================================
+    // SEARCH / MENTION
+    // ========================================
+
+    Route::middleware('auth:sanctum')
+        ->get(
+            '/users/mentionable',
+            [UserController::class, 'mentionable']
+        );
+
+    // ========================================
     // USER MANAGEMENT
     // ========================================
 
@@ -274,9 +284,16 @@ Route::middleware([
     )->middleware('permission:task.view');
 
     Route::post(
-        'boards/{board}/cards',
-        [CardController::class, 'store']
-    )->middleware('permission:task.create');
+    'boards/{board}/cards',
+    function () {
+        dd('ROUTE KENA');
+    }
+);
+
+    // Route::post(
+    //     'boards/{board}/cards',
+    //     [CardController::class, 'store']
+    // )->middleware('permission:task.create');
 
     Route::get(
         'cards/{card}',
@@ -615,5 +632,3 @@ Route::middleware([
         [AssignmentController::class, 'assign']
     )->middleware('permission:task.assign');
 });
-
-

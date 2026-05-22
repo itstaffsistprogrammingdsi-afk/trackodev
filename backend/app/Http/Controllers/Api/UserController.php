@@ -423,5 +423,67 @@ class UserController extends Controller
         ]);
     }
 
+    public function mentionable(Request $request
+): JsonResponse {
 
+    $user = $request->user();
+
+    $query = User::query()
+        ->select([
+            'id',
+            'name',
+            'email',
+            'avatar'
+        ]);
+
+    // ============================================
+    // SEARCH
+    // ============================================
+
+    if ($request->filled('search')) {
+
+        $search = $request->search;
+
+        $query->where(function ($q) use ($search) {
+
+            $q->where(
+                'name',
+                'like',
+                "%{$search}%"
+            )->orWhere(
+                'email',
+                'like',
+                "%{$search}%"
+            );
+        });
+    }
+
+    // ============================================
+    // FILTER BERDASARKAN DIVISION
+    // ============================================
+
+    if (!$user->isSuperAdmin()) {
+
+        $divisionIds = $user
+            ->divisions
+            ->pluck('id');
+
+        $query->whereHas(
+            'divisions',
+            fn ($q) =>
+            $q->whereIn(
+                'divisions.id',
+                $divisionIds
+            )
+        );
+    }
+
+    $users = $query
+        ->limit(10)
+        ->get();
+
+    return response()->json([
+        'data' => UserResource::collection($users)
+    ]);
+}
 }

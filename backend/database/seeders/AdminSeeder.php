@@ -7,19 +7,21 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-class UserSeeder extends Seeder
+class AdminSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        User::create([
-            'name' => 'John Doe',
-            'email' => 'john@example.com',
+        $user = User::create([
+            'name' => 'wafiq',
+            'email' => 'wafiq.lana999@gmail.com',
             'password' => Hash::make('password'),
-            'phone' => '1234567890',
-            'role' => 'user',
+            // 'phone' => '1234567890',
+            // 'role' => 'user',
         ]);
+
+        $user->assignRole('admin');
     }
 }

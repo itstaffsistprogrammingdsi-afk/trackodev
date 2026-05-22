@@ -11,18 +11,15 @@ import {
 } from "lucide-react";
 
 import useAssignSubmission from "../../hooks/useAssignSubmission";
-<<<<<<< HEAD
 
 import type { FormSubmission, AssignSubmissionPayload } from "../../types";
-=======
-import type { FormSubmission } from "../../types";
-import { AssignSubmissionPayload } from "../../api/form.api";
->>>>>>> 4277e65 (pc)
 
 import { useCampaign } from "@/features/campaign/hooks/useCampaign";
+import { useDivisions } from "@/features/division/hooks/useDivisions";
 import { useUsers } from "@/features/user/hooks/useUsers";
 
 import type { Campaign } from "@/features/campaign/types";
+import type { Division } from "@/features/division/types";
 import type { User } from "@/features/user/types";
 
 type Props = {
@@ -34,9 +31,10 @@ type Props = {
 
 const initialForm: AssignSubmissionPayload = {
   campaign_id: "",
-designer_id: undefined,
-coordinator_id: undefined,
-deadline: undefined,
+  division_id: "",
+  designer_id: undefined,
+  coordinator_id: undefined,
+  deadline: undefined,
   estimated_hours: 1,
   priority: "medium",
   notes: "",
@@ -50,7 +48,6 @@ export default function AssignmentModal({
 }: Props) {
   const assignMutation = useAssignSubmission();
 
-<<<<<<< HEAD
   const workspaceId = submission?.form?.workspace_id ?? "";
 
   const { campaigns = [] } = useCampaign(workspaceId);
@@ -66,29 +63,13 @@ export default function AssignmentModal({
   | Reset form
   |--------------------------------------------------------------------------
   */
-=======
-  const workspaceId = submission?.form?.workspace_id ?? null;
 
-  const { campaigns = [] } = useCampaign(workspaceId ?? "");
-  const { data: users = [] } = useUsers();
-
-  const [form, setForm] =
-    useState<AssignSubmissionPayload>(initialForm);
->>>>>>> 4277e65 (pc)
-
-  /**
-   * RESET FORM setiap modal dibuka atau submission berubah
-   */
   useEffect(() => {
     if (!open) return;
 
-    setForm({
-      ...initialForm,
-      campaign_id: "",
-    });
-  }, [open, submission?.id]);
+    setForm(initialForm);
+  }, [open]);
 
-<<<<<<< HEAD
   /*
   |--------------------------------------------------------------------------
   | Auto select division dari campaign
@@ -123,12 +104,6 @@ export default function AssignmentModal({
   if (!open || !submission) {
     return null;
   }
-=======
-  if (!open || !submission) return null;
-
-  const isDisabled =
-    assignMutation.isPending || !workspaceId || !form.campaign_id;
->>>>>>> 4277e65 (pc)
 
   /*
   |--------------------------------------------------------------------------
@@ -137,35 +112,22 @@ export default function AssignmentModal({
   */
 
   const submit = () => {
-<<<<<<< HEAD
     if (!form.campaign_id || !form.division_id) {
       alert("Campaign dan Division wajib dipilih");
 
-=======
-    if (!form.campaign_id) {
-      alert("Campaign wajib dipilih");
->>>>>>> 4277e65 (pc)
       return;
     }
 
     assignMutation.mutate(
       {
         submissionId: submission.id,
-<<<<<<< HEAD
 
         payload: form,
-=======
-        payload: {
-          ...form,
-          designer_id: form.designer_id || undefined,
-          coordinator_id: form.coordinator_id || undefined,
-          deadline: form.deadline || undefined,
-        },
->>>>>>> 4277e65 (pc)
       },
       {
         onSuccess: () => {
           onSuccess?.();
+
           onClose();
         },
       },
@@ -175,7 +137,6 @@ export default function AssignmentModal({
   return (
     <div
       onClick={onClose}
-<<<<<<< HEAD
       className="
       fixed
       inset-0
@@ -728,170 +689,11 @@ export default function AssignmentModal({
             hover:bg-zinc-100
           "
           >
-=======
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-3xl rounded-3xl bg-white p-6"
-      >
-        <h2 className="mb-6 text-xl font-bold">
-          Tugaskan Request
-        </h2>
-
-        {!workspaceId && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-            Workspace tidak ditemukan dari form submission.
-          </div>
-        )}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Campaign */}
-          <div>
-            <label className="mb-2 block text-sm">Campaign</label>
-            <select
-              value={form.campaign_id}
-              onChange={(e) =>
-                setForm({ ...form, campaign_id: e.target.value })
-              }
-              disabled={!workspaceId}
-              className="w-full rounded-xl border p-3 disabled:bg-gray-100"
-            >
-              <option value="">Pilih Campaign</option>
-
-              {campaigns.length === 0 ? (
-                <option disabled>Tidak ada campaign</option>
-              ) : (
-                campaigns.map((c: Campaign) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-
-          {/* Designer */}
-          <div>
-            <label className="mb-2 block text-sm">Designer</label>
-            <select
-              value={form.designer_id ?? ""}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  designer_id: e.target.value || undefined,
-                })
-              }
-              className="w-full rounded-xl border p-3"
-            >
-              <option value="">Pilih Designer</option>
-              {users.map((u: User) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Coordinator */}
-          <div>
-            <label className="mb-2 block text-sm">Coordinator</label>
-            <select
-              value={form.coordinator_id ?? ""}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  coordinator_id: e.target.value || undefined,
-                })
-              }
-              className="w-full rounded-xl border p-3"
-            >
-              <option value="">Pilih Coordinator</option>
-              {users.map((u: User) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Deadline */}
-          <div>
-            <label className="mb-2 block text-sm">Deadline</label>
-            <input
-              type="date"
-              value={form.deadline ?? ""}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  deadline: e.target.value || undefined,
-                })
-              }
-              className="w-full rounded-xl border p-3"
-            />
-          </div>
-
-          {/* Estimasi */}
-          <div>
-            <label className="mb-2 block text-sm">Estimasi Jam</label>
-            <input
-              type="number"
-              min={1}
-              value={form.estimated_hours}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  estimated_hours: Number(e.target.value),
-                })
-              }
-              className="w-full rounded-xl border p-3"
-            />
-          </div>
-
-          {/* Priority */}
-          <div>
-            <label className="mb-2 block text-sm">Priority</label>
-            <select
-              value={form.priority}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  priority:
-                    e.target.value as AssignSubmissionPayload["priority"],
-                })
-              }
-              className="w-full rounded-xl border p-3"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div className="mt-4">
-          <label className="mb-2 block text-sm">Catatan</label>
-          <textarea
-            value={form.notes}
-            onChange={(e) =>
-              setForm({ ...form, notes: e.target.value })
-            }
-            className="min-h-24 w-full rounded-xl border p-3"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-xl border px-4 py-2">
->>>>>>> 4277e65 (pc)
             Cancel
           </button>
 
           <button
             onClick={submit}
-<<<<<<< HEAD
             disabled={assignMutation.isPending}
             className="
             flex
@@ -914,12 +716,6 @@ export default function AssignmentModal({
             )}
 
             {assignMutation.isPending ? "Menyimpan..." : "Tugaskan Request"}
-=======
-            disabled={isDisabled}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-white disabled:opacity-50"
-          >
-            {assignMutation.isPending ? "Menyimpan..." : "Tugaskan"}
->>>>>>> 4277e65 (pc)
           </button>
         </div>
       </div>

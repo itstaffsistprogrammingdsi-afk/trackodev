@@ -57,6 +57,8 @@ export const getUsers = async () => {
 }
 
 export const searchUsers = async (query: string) => {
-  const res = await api.get(`/users?search=${query}`)
+
+  const res = await api.get(`/users/mentionable?search=${query}`)
+
   return res.data.data
 }
