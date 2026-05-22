@@ -96,27 +96,25 @@ export interface ForwardSubmissionResponse {
   data: FormSubmission;
 }
 
-export type AssignSubmissionPayload = {
-  campaign_id: string;
+// export type AssignSubmissionPayload = {
+//   campaign_id: string;
 
-  division_id: string;
+//   designer_id?: string;
+//   coordinator_id?: string;
 
-  designer_id?: string;
+//   deadline?: string;
 
-  coordinator_id?: string;
+//   estimated_hours: number;
 
-  deadline?: string;
+//   priority:
+//     | "low"
+//     | "medium"
+//     | "high"
+//     | "urgent";
 
-  estimated_hours?: number;
+//   notes?: string;
+// };
 
-  priority?: 
-    | "low"
-    | "medium"
-    | "high"
-    | "urgent";
-
-  notes?: string;
-};
 
 // =========================
 // PUBLIC FORM VALUE

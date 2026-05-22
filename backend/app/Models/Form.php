@@ -9,7 +9,7 @@ class Form extends Model
 {
     use HasUuids;
 
-    protected $with = ['fields', 'workspace'];
+    protected $with = ['fields'];
 
     protected $table = 'forms';
 
@@ -55,8 +55,8 @@ class Form extends Model
         return $this->hasMany(FormSubmission::class, 'form_id');
     }
 
-    public function workspace()
-    {
-        return $this->belongsTo(Workspace::class, 'workspace_id');
-    }
+public function workspace()
+{
+    return $this->belongsTo(Workspace::class, 'workspace_id');
+}
 }

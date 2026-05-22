@@ -11,127 +11,96 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('assignments', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+Schema::create('assignments', function (
+    Blueprint $table
+) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | RELATIONS
-            |--------------------------------------------------------------------------
-            */
+    $table->uuid('id')->primary();
 
-            // response/form submission source
-            $table->uuid('submission_id');
+    $table->uuid('submission_id');
 
-            // campaign/project tujuan
-            $table->uuid('campaign_id');
+    $table->uuid('workspace_id');
 
-            // board tujuan (By Request)
-            $table->uuid('board_id');
+    $table->uuid('campaign_id')
+        ->nullable();
 
-            // card hasil generate
-            $table->uuid('card_id')->nullable();
+    $table->uuid('assigned_by');
 
-            // user yang assign
-            $table->uuid('assigned_by');
+    $table->uuid('coordinator_id')
+        ->nullable();
 
-            // koordinator
-            $table->uuid('coordinator_id')->nullable();
+    $table->uuid('designer_id')
+        ->nullable();
 
-            // PIC utama/designer
-            $table->uuid('designer_id')->nullable();
+    $table->string('assignment_number')
+        ->unique();
 
-            // divisi pengaju
-            $table->uuid('division_id')->nullable();
+    $table->date('assigned_date')
+        ->nullable();
 
-            /*
-            |--------------------------------------------------------------------------
-            | ASSIGNMENT INFO
-            |--------------------------------------------------------------------------
-            */
+    $table->date('deadline')
+        ->nullable();
 
-            // contoh:
-            // DKV/TASK/26/05/001
-            $table->string('assignment_number')->unique();
+    $table->integer('estimated_hours')
+        ->nullable();
 
-            $table->date('assigned_date')->nullable();
+    $table->enum('priority', [
+        'low',
+        'medium',
+        'high',
+        'urgent'
+    ])->default('medium');
 
-            $table->date('deadline')->nullable();
+    $table->enum('status', [
+        'pending',
+        'assigned',
+        'progress',
+        'review',
+        'done',
+        'cancelled'
+    ])->default('pending');
 
-            // estimasi dalam jam
-            $table->integer('estimated_hours')->nullable();
+    $table->text('notes')
+        ->nullable();
 
-            $table->enum('priority', [
-                'low',
-                'medium',
-                'high',
-                'urgent'
-            ])->default('medium');
+    $table->timestamps();
 
-            $table->enum('status', [
-                'pending',
-                'assigned',
-                'progress',
-                'done',
-                'cancelled'
-            ])->default('pending');
+    /*
+    |--------------------------------------------------------------
+    | FOREIGN KEYS
+    |--------------------------------------------------------------
+    */
 
-            /*
-            |--------------------------------------------------------------------------
-            | EXTRA
-            |--------------------------------------------------------------------------
-            */
+    $table->foreign('submission_id')
+        ->references('id')
+        ->on('form_submissions')
+        ->cascadeOnDelete();
 
-            $table->text('notes')->nullable();
+    $table->foreign('workspace_id')
+        ->references('id')
+        ->on('workspaces')
+        ->cascadeOnDelete();
 
-            $table->timestamps();
+    $table->foreign('campaign_id')
+        ->references('id')
+        ->on('campaigns')
+        ->nullOnDelete();
 
-            /*
-            |--------------------------------------------------------------------------
-            | FOREIGN KEYS
-            |--------------------------------------------------------------------------
-            */
+    $table->foreign('assigned_by')
+        ->references('id')
+        ->on('users')
+        ->cascadeOnDelete();
 
-            $table->foreign('submission_id')
-                ->references('id')
-                ->on('form_submissions')
-                ->cascadeOnDelete();
+    $table->foreign('coordinator_id')
+        ->references('id')
+        ->on('users')
+        ->nullOnDelete();
 
-            $table->foreign('campaign_id')
-                ->references('id')
-                ->on('campaigns')
-                ->cascadeOnDelete();
-
-            $table->foreign('board_id')
-                ->references('id')
-                ->on('boards')
-                ->cascadeOnDelete();
-
-            $table->foreign('card_id')
-                ->references('id')
-                ->on('cards')
-                ->nullOnDelete();
-
-            $table->foreign('assigned_by')
-                ->references('id')
-                ->on('users')
-                ->cascadeOnDelete();
-
-            $table->foreign('coordinator_id')
-                ->references('id')
-                ->on('users')
-                ->nullOnDelete();
-
-            $table->foreign('designer_id')
-                ->references('id')
-                ->on('users')
-                ->nullOnDelete();
-
-            $table->foreign('division_id')
-                ->references('id')
-                ->on('divisions')
-                ->nullOnDelete();
-        });
+    $table->foreign('designer_id')
+        ->references('id')
+        ->on('users')
+        ->nullOnDelete();
+});
     }
 
     /**
