@@ -50,11 +50,11 @@ class PermissionSeeder extends Seeder
             'campaign.delete',
 
             // TASK
-'task.view',
-'task.create',
-'task.update',
-'task.delete',
-'task.assign',
+            'task.view',
+            'task.create',
+            'task.update',
+            'task.delete',
+            'task.assign',
         ];
 
         // ============================================
@@ -107,15 +107,20 @@ class PermissionSeeder extends Seeder
             'user.create',
             'user.update',
 
+            //DIVISION
+            'division.view',
+            
             // WORKSPACE
             'workspace.view',
             'workspace.create',
             'workspace.update',
+            'workspace.delete',
 
             // CAMPAIGN
             'campaign.view',
             'campaign.create',
             'campaign.update',
+            'campaign.delete',
 
             // TASK
             'task.view',
@@ -130,12 +135,28 @@ class PermissionSeeder extends Seeder
         // ============================================
 
         $user->syncPermissions([
-
+            
+            //DIVISION
             'division.view',
 
+            // WORKSPACE
             'workspace.view',
+            'workspace.create',
+            'workspace.update',
+            'workspace.delete',
 
+            // CAMPAIGN
             'campaign.view',
+            'campaign.create',
+            'campaign.update',
+            'campaign.delete',
+
+            // TASK
+            'task.view',
+            'task.create',
+            'task.update',
+            'task.delete',
+            'task.assign',
         ]);
 
         // ============================================

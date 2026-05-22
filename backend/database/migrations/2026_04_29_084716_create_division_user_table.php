@@ -14,7 +14,6 @@ public function up(): void
     Schema::create('division_user', function (Blueprint $table) {
         $table->foreignUuid('division_id')->constrained('divisions')->cascadeOnDelete();
         $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
-        $table->enum('role', ['admin', 'member'])->default('member');
         $table->timestamps();
         $table->primary(['division_id', 'user_id']);
     });

@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use App\Models\Campaign;
+use App\Models\Workspace;
 use App\Policies\CampaignPolicy;
+use App\Policies\WorkspacePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -13,6 +15,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Campaign::class => CampaignPolicy::class,
+        Workspace::class => WorkspacePolicy::class,
     ];
 
     /**

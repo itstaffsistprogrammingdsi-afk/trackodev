@@ -6,3 +6,19 @@ export const getUsers = async (): Promise<User[]> => {
 
   return res.data.data;
 };
+
+export const searchUsers = async (
+  query: string
+) => {
+
+  const res = await api.get(
+    "/users",
+    {
+      params: {
+        search: query
+      }
+    }
+  )
+
+  return res.data.data
+}

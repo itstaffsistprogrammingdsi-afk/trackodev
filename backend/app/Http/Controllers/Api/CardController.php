@@ -13,9 +13,10 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class CardController extends Controller
 {
+    use AuthorizesRequests;
     /*
     |--------------------------------------------------------------------------
     | CARD
@@ -24,6 +25,10 @@ class CardController extends Controller
 
     public function index(Board $board): JsonResponse
     {
+            $this->authorize(
+        'view',
+        $board->campaign
+    );
         $cards = $board
             ->cards()
             ->with([
@@ -41,43 +46,50 @@ class CardController extends Controller
         ]);
     }
 
-    public function store(
-        Request $request,
-        Board $board
-    ): JsonResponse {
-        $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'priority'    => 'nullable|in:low,medium,high,urgent',
-            'due_date'    => 'nullable|date',
-        ]);
+public function store(
+    Request $request,
+    Board $board
+): JsonResponse {
 
-        $lastOrder = $board->cards()->max('order');
+    $this->authorize('update', $board->campaign);
 
-        $card = $board->cards()->create([
-            'title'       => $request->input('title'),
-            'description' => $request->input('description'),
-            'priority'    => $request->input('priority', 'medium'),
-            'due_date'    => $request->input('due_date'),
-            'created_by'  => auth()->id(),
-            'order'       => ($lastOrder ?? 0) + 1,
-        ]);
+    $request->validate([
+        'title'       => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'priority'    => 'nullable|in:low,medium,high,urgent',
+        'due_date'    => 'nullable|date',
+    ]);
 
-        $card->load([
-            'creator',
-            'assignees',
-            'tasks.subtasks',
-            'labels',
-        ]);
+    $lastOrder = $board->cards()->max('order');
 
-        return response()->json([
-            'message' => 'Card berhasil dibuat.',
-            'data'    => new CardResource($card),
-        ], 201);
-    }
+    $card = $board->cards()->create([
+        'title'       => $request->input('title'),
+        'description' => $request->input('description'),
+        'priority'    => $request->input('priority', 'medium'),
+        'due_date'    => $request->input('due_date'),
+        'created_by'  => auth()->id(),
+        'order'       => ($lastOrder ?? 0) + 1,
+    ]);
+
+    $card->load([
+        'creator',
+        'assignees',
+        'tasks.subtasks',
+        'labels',
+    ]);
+
+    return response()->json([
+        'message' => 'Card berhasil dibuat.',
+        'data'    => new CardResource($card),
+    ], 201);
+}
 
     public function show(Card $card): JsonResponse
     {
+        $this->authorize(
+    'view',
+    $card->board->campaign
+);
         $card->load([
             'creator',
             'assignees',
@@ -95,90 +107,110 @@ class CardController extends Controller
         ]);
     }
 
-    public function update(
-        Request $request,
-        Card $card
-    ): JsonResponse {
-        $request->validate([
-            'title'       => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'priority'    => 'nullable|in:low,medium,high,urgent',
-            'due_date'    => 'nullable|date',
-        ]);
+public function update(
+    Request $request,
+    Card $card
+): JsonResponse {
 
-        $card->update(
-            $request->only([
-                'title',
-                'description',
-                'priority',
-                'due_date',
-            ])
-        );
+    $this->authorize('update', $card->board->campaign);
 
-        $card->load([
-            'creator',
-            'assignees',
-            'tasks.subtasks',
-            'labels',
-        ]);
+    $request->validate([
+        'title'       => 'sometimes|string|max:255',
+        'description' => 'nullable|string',
+        'priority'    => 'nullable|in:low,medium,high,urgent',
+        'due_date'    => 'nullable|date',
+    ]);
 
-        return response()->json([
-            'message' => 'Card berhasil diupdate.',
-            'data'    => new CardResource($card),
-        ]);
+    $card->update(
+        $request->only([
+            'title',
+            'description',
+            'priority',
+            'due_date',
+        ])
+    );
+
+    $card->load([
+        'creator',
+        'assignees',
+        'tasks.subtasks',
+        'labels',
+    ]);
+
+    return response()->json([
+        'message' => 'Card berhasil diupdate.',
+        'data'    => new CardResource($card),
+    ]);
+}
+
+public function move(
+    Request $request,
+    Card $card
+): JsonResponse {
+
+    $this->authorize('update', $card->board->campaign);
+
+    $request->validate([
+        'board_id' => 'required|uuid|exists:boards,id',
+        'order'    => 'nullable|integer|min:0',
+    ]);
+
+    $board = Board::findOrFail(
+        $request->input('board_id')
+    );
+
+    $lastOrder = $board->cards()->max('order');
+
+    $card->update([
+        'board_id' => $board->id,
+        'order'    => $request->input(
+            'order',
+            ($lastOrder ?? 0) + 1
+        ),
+    ]);
+
+    return response()->json([
+        'message' => 'Card berhasil dipindahkan.',
+    ]);
+}
+
+public function reorder(
+    Request $request
+): JsonResponse {
+
+    $request->validate([
+        'cards'         => 'required|array',
+        'cards.*.id'    => 'required|uuid|exists:cards,id',
+        'cards.*.order' => 'required|integer|min:0',
+    ]);
+
+    $firstCard = Card::findOrFail(
+        $request->cards[0]['id']
+    );
+
+    $this->authorize(
+        'update',
+        $firstCard->board->campaign
+    );
+
+    foreach ($request->cards as $item) {
+        Card::where('id', $item['id'])
+            ->update([
+                'order' => $item['order'],
+            ]);
     }
 
-    public function move(
-        Request $request,
-        Card $card
-    ): JsonResponse {
-        $request->validate([
-            'board_id' => 'required|uuid|exists:boards,id',
-            'order'    => 'nullable|integer|min:0',
-        ]);
-
-        $board = Board::findOrFail(
-            $request->input('board_id')
-        );
-
-        $lastOrder = $board->cards()->max('order');
-
-        $card->update([
-            'board_id' => $board->id,
-            'order'    => $request->input(
-                'order',
-                ($lastOrder ?? 0) + 1
-            ),
-        ]);
-
-        return response()->json([
-            'message' => 'Card berhasil dipindahkan.',
-        ]);
-    }
-
-    public function reorder(
-        Request $request
-    ): JsonResponse {
-        $request->validate([
-            'cards'         => 'required|array',
-            'cards.*.id'    => 'required|uuid|exists:cards,id',
-            'cards.*.order' => 'required|integer|min:0',
-        ]);
-
-        foreach ($request->cards as $item) {
-            Card::where('id', $item['id'])
-                ->update([
-                    'order' => $item['order'],
-                ]);
-        }
-
-        return response()->json([
-            'message' => 'Card berhasil direorder.',
-        ]);
-    }
+    return response()->json([
+        'message' => 'Card berhasil direorder.',
+    ]);
+}
 
     public function destroy(Card $card): JsonResponse
     {
+        $this->authorize(
+    'update',
+    $card->board->campaign
+);
         $card->delete();
 
         return response()->json([
@@ -192,41 +224,47 @@ class CardController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function assign(
-        Request $request,
-        Card $card
-    ): JsonResponse {
-        $validated = $request->validate([
-            'user_id' => 'required|uuid|exists:users,id',
+public function assign(
+    Request $request,
+    Card $card
+): JsonResponse {
+
+    $this->authorize('update', $card->board->campaign);
+
+    $validated = $request->validate([
+        'user_id' => 'required|uuid|exists:users,id',
+    ]);
+
+    $card->assignees()
+        ->syncWithoutDetaching([
+            $validated['user_id'],
         ]);
 
-        $card->assignees()
-            ->syncWithoutDetaching([
-                $validated['user_id'],
-            ]);
+    $card->load('assignees');
 
-        $card->load('assignees');
+    return response()->json([
+        'message' => 'Member berhasil di-assign.',
+        'data'    => $card->assignees,
+    ]);
+}
 
-        return response()->json([
-            'message' => 'Member berhasil di-assign.',
-            'data'    => $card->assignees,
-        ]);
-    }
+public function unassign(
+    Card $card,
+    User $user
+): JsonResponse {
 
-    public function unassign(
-        Card $card,
-        User $user
-    ): JsonResponse {
-        $card->assignees()
-            ->detach($user->id);
+    $this->authorize('update', $card->board->campaign);
 
-        $card->load('assignees');
+    $card->assignees()
+        ->detach($user->id);
 
-        return response()->json([
-            'message' => 'Member berhasil di-unassign.',
-            'data'    => $card->assignees,
-        ]);
-    }
+    $card->load('assignees');
+
+    return response()->json([
+        'message' => 'Member berhasil di-unassign.',
+        'data'    => $card->assignees,
+    ]);
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -238,6 +276,7 @@ class CardController extends Controller
         Request $request,
         Card $card
     ): JsonResponse {
+        $this->authorize('view', $card->board->campaign);
         $validated = $request->validate([
             'label_id' => 'required|uuid|exists:labels,id',
         ]);
@@ -288,6 +327,7 @@ class CardController extends Controller
         Request $request,
         Card $card
     ): JsonResponse {
+        $this->authorize('view', $card->board->campaign);
         $request->validate([
             'type' => 'required|in:file,link',
 
@@ -397,6 +437,7 @@ class CardController extends Controller
     */
     public function comments(Card $card): JsonResponse
     {
+        $this->authorize('view', $card->board->campaign);
         $comments = $card
             ->comments()
             ->with([

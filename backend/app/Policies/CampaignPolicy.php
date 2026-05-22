@@ -4,44 +4,41 @@ namespace App\Policies;
 
 use App\Models\Campaign;
 use App\Models\User;
-// use Illuminate\Auth\Access\Response;
 
 class CampaignPolicy
 {
-public function view(User $user, Campaign $campaign): bool
-{
-    // super admin bebas
-    if ($user->isSuperAdmin()) {
-        return true;
+    public function before(User $user): ?bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return null;
     }
 
-    // owner campaign
-    if ($campaign->created_by === $user->id) {
-        return true;
+    public function view(User $user, Campaign $campaign): bool
+    {
+        return $user->inDivision(
+            $campaign->workspace->division_id
+        );
     }
 
-    // member campaign
-    return $campaign->members()
-        ->where('user_id', $user->id)
-        ->exists();
-}
+    public function create(User $user): bool
+    {
+        return $user->divisions()->exists();
+    }
 
-public function update(User $user, Campaign $campaign): bool
-{
-    if ($user->isSuperAdmin()) return true;
+    public function update(User $user, Campaign $campaign): bool
+    {
+        return $user->inDivision(
+            $campaign->workspace->division_id
+        );
+    }
 
-    // admin division boleh edit campaign division
-    return $campaign->workspace
-        ->division
-        ->users()
-        ->where('users.id', $user->id)
-        ->wherePivot('role', 'admin')
-        ->exists();
-}
-
-public function delete(User $user, Campaign $campaign): bool
-{
-    return $user->isSuperAdmin()
-        || $campaign->created_by === $user->id;
-}
+    public function delete(User $user, Campaign $campaign): bool
+    {
+        return $user->inDivision(
+            $campaign->workspace->division_id
+        );
+    }
 }

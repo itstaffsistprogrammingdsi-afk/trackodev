@@ -1,30 +1,19 @@
 import api from "./axios";
-import { setToken, setUser, clearAuth } from "./authStore";
-// ============================================
-// USER TYPE
-// ============================================
 
+// ====== TYPE USER ======
 export interface User {
   id: number;
-
   name: string;
-
   email: string;
-
   avatar?: string;
-
-  // role?: string;
-
-  roles: string[];
-
-  permissions: string[];
+  role?: string;
 }
 
-// ============================================
-// LOGIN
-// ============================================
-
-export const login = async (email: string, password: string) => {
+// ====== LOGIN ======
+export const login = async (
+  email: string,
+  password: string
+): Promise<{ user: User; token: string }> => {
   const res = await api.post("/auth/login", {
     email,
     password,
@@ -33,38 +22,40 @@ export const login = async (email: string, password: string) => {
   const token = res.data?.token;
   const user = res.data?.user;
 
-  if (!token || !user) {
-    throw new Error("Login gagal: response tidak valid");
+  if (!token) {
+    throw new Error("Token tidak ditemukan dari response");
   }
 
-  setToken(token);
-  setUser(user);
+  // simpan token + user
+  localStorage.setItem("token", token);
+  localStorage.setItem("user", JSON.stringify(user));
 
-  return { token, user };
+  return { user, token };
 };
 
-export const getMe = async () => {
+// ====== GET USER LOGIN ======
+export const getMe = async (): Promise<User> => {
   const res = await api.get("/auth/me");
 
   const user = res.data?.user;
 
-  if (!user) throw new Error("User tidak ditemukan");
-
-  setUser(user);
+  // sync ke localStorage biar dropdown langsung update
+  if (user) {
+    localStorage.setItem("user", JSON.stringify(user));
+  }
 
   return user;
 };
 
-// ============================================
-// LOGOUT
-// ============================================
-
+// ====== LOGOUT ======
 export const logout = async (): Promise<void> => {
   try {
     await api.post("/auth/logout");
   } catch {
-    //
+    console.warn("Logout API gagal, lanjut hapus token lokal");
   }
 
-  clearAuth();
+  // bersihkan semua auth state
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
 };
