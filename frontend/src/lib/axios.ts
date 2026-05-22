@@ -1,15 +1,15 @@
 import axios from "axios";
-import { getToken } from "./authStore";
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: "/api", // 🔥 langsung ke API
   headers: {
     Accept: "application/json",
   },
 });
 
+// 🔥 otomatis kirim token
 api.interceptors.request.use((config) => {
-  const token = getToken();
+  const token = localStorage.getItem("token");
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -22,10 +22,11 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.clear();
+      localStorage.removeItem("token");
+
+      // 🔥 paksa reset app
       window.location.href = "/signin";
     }
-
     return Promise.reject(err);
   }
 );

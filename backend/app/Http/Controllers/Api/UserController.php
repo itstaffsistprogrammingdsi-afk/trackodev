@@ -18,15 +18,21 @@ class UserController extends Controller
     // GET USERS
     // ============================================
 
-    public function index(Request $request)
-    {
-        if (!$request->user()->can('user.view')) {
-            return response()->json([
-                'message' => 'Unauthorized',
-            ], 403);
-        }
+    public function index(
+        Request $request
+    ): JsonResponse {
 
-        $query = User::query();
+        abort_unless(
+            $request->user()->can('user.view'),
+            403,
+            'Unauthorized'
+        );
+
+        $query = User::query()
+            ->with([
+                'roles',
+                'divisions'
+            ]);
 
         // ============================================
         // SEARCH
@@ -51,42 +57,42 @@ class UserController extends Controller
         }
 
         // ============================================
+        // FILTER ROLE
+        // ============================================
+
+        if ($request->filled('role')) {
+
+            $query->role(
+                $request->role
+            );
+        }
+
+        // ============================================
         // USERS
         // ============================================
 
         $users = $query
-            ->with('roles')
-            ->orderBy('name')
+            ->latest()
             ->paginate(10);
 
         // ============================================
-        // TRANSFORM ROLE
+        // ROLE STATS
         // ============================================
 
-        $users->getCollection()->transform(function ($user) {
+        $superAdminRole = Role::where(
+            'name',
+            User::ROLE_SUPER_ADMIN
+        )->first();
 
-            $user->role =
-                $user->roles->first()?->name
-                ?? 'user';
+        $adminRole = Role::where(
+            'name',
+            User::ROLE_ADMIN
+        )->first();
 
-            return $user;
-        });
-
-        // ============================================
-        // SAFE ROLE COUNT
-        // ============================================
-
-        $superAdminRole =
-            Role::where('name', 'super_admin')
-                ->first();
-
-        $adminRole =
-            Role::where('name', 'admin')
-                ->first();
-
-        $userRole =
-            Role::where('name', 'user')
-                ->first();
+        $userRole = Role::where(
+            'name',
+            User::ROLE_USER
+        )->first();
 
         // ============================================
         // RESPONSE
@@ -94,7 +100,36 @@ class UserController extends Controller
 
         return response()->json([
 
-            ...$users->toArray(),
+            // ========================================
+            // USERS
+            // ========================================
+
+            'data' => UserResource::collection(
+                $users->items()
+            ),
+
+            // ========================================
+            // PAGINATION
+            // ========================================
+
+            'current_page' =>
+                $users->currentPage(),
+
+            'last_page' =>
+                $users->lastPage(),
+
+            'per_page' =>
+                $users->perPage(),
+
+            'total' =>
+                $users->total(),
+
+            'links' =>
+                $users->linkCollection(),
+
+            // ========================================
+            // STATS
+            // ========================================
 
             'stats' => [
 
@@ -102,25 +137,16 @@ class UserController extends Controller
                     User::count(),
 
                 'total_super_admin' =>
-                    $superAdminRole
-                        ? $superAdminRole
-                            ->users()
-                            ->count()
-                        : 0,
+                    $superAdminRole?->users()->count()
+                    ?? 0,
 
                 'total_admin' =>
-                    $adminRole
-                        ? $adminRole
-                            ->users()
-                            ->count()
-                        : 0,
+                    $adminRole?->users()->count()
+                    ?? 0,
 
                 'total_user' =>
-                    $userRole
-                        ? $userRole
-                            ->users()
-                            ->count()
-                        : 0,
+                    $userRole?->users()->count()
+                    ?? 0,
             ],
         ]);
     }
@@ -133,15 +159,13 @@ class UserController extends Controller
         Request $request
     ): JsonResponse {
 
-        if (
-            !$request->user()->can('user.create')
-        ) {
-            return response()->json([
-                'message' => 'Unauthorized',
-            ], 403);
-        }
+        abort_unless(
+            $request->user()->can('user.create'),
+            403,
+            'Unauthorized'
+        );
 
-        $request->validate([
+        $validated = $request->validate([
 
             'name' => [
                 'required',
@@ -172,28 +196,43 @@ class UserController extends Controller
             ],
         ]);
 
+        // ============================================
+        // CREATE USER
+        // ============================================
+
         $user = User::create([
 
-            'name' => $request->name,
+            'name' =>
+                $validated['name'],
 
-            'email' => $request->email,
+            'email' =>
+                $validated['email'],
 
-            'password' => Hash::make(
-                $request->password
-            ),
+            'password' =>
+                Hash::make(
+                    $validated['password']
+                ),
 
-            'phone' => $request->phone,
+            'phone' =>
+                $validated['phone'] ?? null,
         ]);
 
+        // ============================================
+        // ASSIGN ROLE
+        // ============================================
+
         $user->assignRole(
-            $request->role
+            $validated['role']
         );
 
-        $user->load('roles');
+        $user->load([
+            'roles',
+            'divisions'
+        ]);
 
-        $user->role =
-            $user->roles->first()?->name
-            ?? 'user';
+        // ============================================
+        // RESPONSE
+        // ============================================
 
         return response()->json([
 
@@ -215,22 +254,21 @@ class UserController extends Controller
         User $user
     ): JsonResponse {
 
-        if (
-            !$request->user()->can('user.view')
-        ) {
-            return response()->json([
-                'message' => 'Unauthorized',
-            ], 403);
-        }
+        abort_unless(
+            $request->user()->can('user.view'),
+            403,
+            'Unauthorized'
+        );
 
-        $user->load('roles');
-
-        $user->role =
-            $user->roles->first()?->name
-            ?? 'user';
+        $user->load([
+            'roles',
+            'divisions'
+        ]);
 
         return response()->json([
-            'data' => new UserResource($user),
+
+            'data' =>
+                new UserResource($user),
         ]);
     }
 
@@ -246,16 +284,14 @@ class UserController extends Controller
         $isSelf =
             $request->user()->id === $user->id;
 
-        if (
-            !$request->user()->can('user.update')
-            && !$isSelf
-        ) {
-            return response()->json([
-                'message' => 'Unauthorized',
-            ], 403);
-        }
+        abort_unless(
+            $request->user()->can('user.update')
+            || $isSelf,
+            403,
+            'Unauthorized'
+        );
 
-        $request->validate([
+        $validated = $request->validate([
 
             'name' => [
                 'sometimes',
@@ -280,35 +316,46 @@ class UserController extends Controller
             ],
         ]);
 
+        // ============================================
+        // UPDATE USER
+        // ============================================
+
         $user->update([
 
             'name' =>
-                $request->name
-                    ?? $user->name,
+                $validated['name']
+                ?? $user->name,
 
             'email' =>
-                $request->email
-                    ?? $user->email,
+                $validated['email']
+                ?? $user->email,
 
             'phone' =>
-                $request->phone
-                    ?? $user->phone,
+                $validated['phone']
+                ?? $user->phone,
         ]);
 
+        // ============================================
+        // UPDATE ROLE
+        // ============================================
+
         if (
-            $request->filled('role')
+            isset($validated['role'])
         ) {
 
             $user->syncRoles([
-                $request->role,
+                $validated['role'],
             ]);
         }
 
-        $user->load('roles');
+        $user->load([
+            'roles',
+            'divisions'
+        ]);
 
-        $user->role =
-            $user->roles->first()?->name
-            ?? 'user';
+        // ============================================
+        // RESPONSE
+        // ============================================
 
         return response()->json([
 
@@ -329,30 +376,52 @@ class UserController extends Controller
         User $user
     ): JsonResponse {
 
-        if (
-            !$request->user()->can('user.delete')
-        ) {
-            return response()->json([
-                'message' => 'Unauthorized',
-            ], 403);
-        }
+        abort_unless(
+            $request->user()->can('user.delete'),
+            403,
+            'Unauthorized'
+        );
+
+        // ============================================
+        // PREVENT SELF DELETE
+        // ============================================
 
         if (
             $request->user()->id === $user->id
         ) {
+
             return response()->json([
+
                 'message' =>
                     'Tidak bisa menghapus akun sendiri.',
+
             ], 422);
         }
 
+        // ============================================
+        // REMOVE RELATIONS
+        // ============================================
+
         $user->syncRoles([]);
+
+        $user->divisions()->detach();
+
+        // ============================================
+        // DELETE USER
+        // ============================================
 
         $user->delete();
 
+        // ============================================
+        // RESPONSE
+        // ============================================
+
         return response()->json([
+
             'message' =>
                 'User berhasil dihapus.',
         ]);
     }
+
+
 }

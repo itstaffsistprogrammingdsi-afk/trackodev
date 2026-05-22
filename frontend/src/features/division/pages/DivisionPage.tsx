@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useDivisions } from '../hooks/useDivisions'
-import DivisionCard from '../components/DivisionCard'
+import DivisionCard from '../components/cards/DivisionCard'
 import CreateDivisionModal from '../components/CreateDivisionModal'
 
 export default function DivisionPage() {

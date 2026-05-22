@@ -14,7 +14,6 @@ class Card extends Model
 
     protected $fillable = [
         'board_id',
-        'campaign_id',
         'created_by',
         'title',
         'description',

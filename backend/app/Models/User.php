@@ -130,11 +130,7 @@ class User extends Authenticatable
 
     public function divisions(): BelongsToMany
     {
-        return $this->belongsToMany(
-            Division::class,
-            'division_user'
-        )
-            ->withPivot('role')
+        return $this->belongsToMany(Division::class,'division_user')
             ->withTimestamps();
     }
 
@@ -145,9 +141,7 @@ class User extends Authenticatable
     public function campaigns(): BelongsToMany
     {
         return $this->belongsToMany(
-            Campaign::class,
-            'campaign_user'
-        )
+            Campaign::class, 'campaign_user')
             ->withTimestamps();
     }
 
@@ -193,22 +187,14 @@ class User extends Authenticatable
     // DIVISION HELPERS
     // ============================================
 
-    public function isDivisionAdmin(
-        string $divisionId
-    ): bool {
+    public function inDivision($divisionId): bool
+    {
         return $this->divisions()
-            ->where('division_id', $divisionId)
-            ->wherePivot('role', 'admin')
+            ->where('divisions.id', $divisionId)
             ->exists();
     }
 
-    public function isDivisionMember(
-        string $divisionId
-    ): bool {
-        return $this->divisions()
-            ->where('division_id', $divisionId)
-            ->exists();
-    }
+
 
     // ============================================
     // ASSIGNMENTS
@@ -237,4 +223,12 @@ class User extends Authenticatable
             'designer_id'
         );
     }
+
+    public function accessibleCampaigns()
+{
+    return Campaign::whereHas(
+        'workspace.division.users',
+        fn ($q) => $q->where('users.id', $this->id)
+    );
+}
 }

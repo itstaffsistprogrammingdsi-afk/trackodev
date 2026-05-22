@@ -25,6 +25,6 @@ class Board extends Model
 
     public function assignments()
 {
-    return $this->hasMany(Assignment::class, 'submission_id');
+    return $this->hasMany(Assignment::class, 'board_id');
 }
 }

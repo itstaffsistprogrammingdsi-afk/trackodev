@@ -11,12 +11,24 @@ return new class extends Migration
      */
 public function up(): void
 {
-    Schema::create('campaign_user', function (Blueprint $table) {
-        $table->foreignUuid('campaign_id')->constrained('campaigns')->cascadeOnDelete();
-        $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
-        $table->timestamps();
-        $table->primary(['campaign_id', 'user_id']);
-    });
+Schema::create('campaign_user', function (Blueprint $table) {
+    $table->uuid('campaign_id');
+    $table->uuid('user_id');
+
+    $table->timestamps();
+
+    $table->primary(['campaign_id', 'user_id']);
+
+    $table->foreign('campaign_id')
+        ->references('id')
+        ->on('campaigns')
+        ->cascadeOnDelete();
+
+    $table->foreign('user_id')
+        ->references('id')
+        ->on('users')
+        ->cascadeOnDelete();
+});
 }
 
     /**

@@ -7,9 +7,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserResource extends JsonResource
 {
-    public function toArray(Request $request): array
-    {
+    public function toArray(
+        Request $request
+    ): array {
+
+        $roles = $this
+            ->getRoleNames()
+            ->values();
+
         return [
+
+            // ========================================
+            // BASIC
+            // ========================================
 
             'id' => $this->id,
 
@@ -17,14 +27,26 @@ class UserResource extends JsonResource
 
             'email' => $this->email,
 
+            'phone' => $this->phone,
+
             'avatar' => $this->avatar,
 
+            // ========================================
             // ROLE
-            'roles' => $this
-                ->getRoleNames()
-                ->values(),
+            // ========================================
 
-            // PERMISSION
+            // BACKWARD COMPATIBLE
+            'role' =>
+                $roles->first()
+                ?? 'user',
+
+            // SPATIE ROLES
+            'roles' => $roles,
+
+            // ========================================
+            // PERMISSIONS
+            // ========================================
+
             'permissions' => $this
                 ->getAllPermissions()
                 ->pluck('name')
