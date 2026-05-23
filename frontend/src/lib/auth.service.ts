@@ -2,11 +2,12 @@ import api from "./axios";
 
 // ====== TYPE USER ======
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   avatar?: string;
   role?: string;
+  permissions?: string[];
 }
 
 // ====== LOGIN ======

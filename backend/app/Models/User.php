@@ -224,11 +224,24 @@ class User extends Authenticatable
         );
     }
 
-    public function accessibleCampaigns()
+public function accessibleCampaigns()
 {
-    return Campaign::whereHas(
-        'workspace.division.users',
-        fn ($q) => $q->where('users.id', $this->id)
-    );
+    $divisionIds = $this->divisions()
+        ->pluck('divisions.id');
+
+    return Campaign::query()
+        ->with([
+            'workspace',
+            'workspace.division',
+            'members',
+            'cards',
+            'cards.members',
+        ])
+        ->whereHas('workspace', function ($query) use ($divisionIds) {
+            $query->whereIn(
+                'division_id',
+                $divisionIds
+            );
+        });
 }
 }

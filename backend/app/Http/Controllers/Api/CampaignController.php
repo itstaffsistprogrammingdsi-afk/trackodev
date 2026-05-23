@@ -23,32 +23,44 @@ class CampaignController extends Controller
     {
         $user = $request->user();
 
-        if (
-            !$user->isSuperAdmin() &&
-            !$user->hasRole('admin') &&
-            !$user->inDivision($workspace->division_id)
-        ) {
-            abort(403);
-        }
+        $campaigns = $workspace->campaigns()
+            ->when(
+                !$user->isSuperAdmin(),
+                function ($q) use ($user) {
 
-        $query = $workspace->campaigns()
-            ->with(['creator', 'members']);
+                    $q->where(function ($sub) use ($user) {
 
-        if (!$user->isSuperAdmin() && !$user->hasRole('admin')) {
-            $query->whereHas('users', function ($q) use ($user) {
-                $q->where('users.id', $user->id);
-            });
-        }
-
-        $campaigns = $query->latest()->get();
+                        $sub->whereHas(
+                            'members',
+                            fn($m) =>
+                            $m->where(
+                                'users.id',
+                                $user->id
+                            )
+                        )
+                            ->orWhere(
+                                'created_by',
+                                $user->id
+                            );
+                    });
+                }
+            )
+            ->with([
+                'creator',
+                'members'
+            ])
+            ->latest()
+            ->get();
 
         return response()->json([
             'data' => CampaignResource::collection($campaigns)
         ]);
     }
 
-    public function store(Request $request, Workspace $workspace): JsonResponse
-    {
+    public function store(
+        Request $request,
+        Workspace $workspace
+    ): JsonResponse {
 
         $request->validate([
             'name'         => 'required|string|max:255',
@@ -79,11 +91,6 @@ class CampaignController extends Controller
                 $request->user()->id,
             ]);
 
-        $memberIds = collect($request->member_ids ?? [])
-            ->push($request->user()->id)
-            ->unique();
-
-        $campaign->users()->sync($memberIds->toArray());
         /*
     |--------------------------------------------------------------------------
     | Default Board
@@ -207,17 +214,8 @@ class CampaignController extends Controller
         ], 201);
     }
 
-    public function show(Campaign $campaign, Request $request): JsonResponse
+    public function show(Campaign $campaign): JsonResponse
     {
-        $user = $request->user();
-
-        if (!$user->isSuperAdmin() && !$user->hasRole('admin')) {
-            abort_unless(
-                $campaign->users()->where('users.id', $user->id)->exists(),
-                403
-            );
-        }
-
         $this->authorize('view', $campaign);
 
         $campaign->load(['creator', 'members', 'boards.cards']);

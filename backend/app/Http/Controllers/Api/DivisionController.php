@@ -7,68 +7,23 @@ use App\Http\Resources\DivisionResource;
 use App\Http\Resources\UserResource;
 use App\Models\Division;
 use App\Models\User;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class DivisionController extends Controller
 {
-    use AuthorizesRequests;
-
-    /**
-     * List divisions.
-     */
-    public function index(
-        Request $request
-    ): JsonResponse {
-
-        $user = $request->user();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Super Admin lihat semua division
-        |--------------------------------------------------------------------------
-        */
-
-        if ($user->isSuperAdmin()) {
-
-            $divisions = Division::latest()->get();
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | User biasa hanya division miliknya
-        |--------------------------------------------------------------------------
-        */
-        else {
-
-            $divisions = $user
-                ->divisions()
-                ->latest()
-                ->get();
-        }
+    public function index(): JsonResponse
+    {
+        $divisions = Division::all();
 
         return response()->json([
-            'data' => DivisionResource::collection(
-                $divisions
-            )
+            'data' => DivisionResource::collection($divisions)
         ]);
     }
 
-    /**
-     * Create division.
-     * Hanya super admin.
-     */
-    public function store(
-        Request $request
-    ): JsonResponse {
-
-        abort_unless(
-            $request->user()->isSuperAdmin(),
-            403
-        );
-
+    public function store(Request $request): JsonResponse
+    {
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -104,46 +59,23 @@ class DivisionController extends Controller
 
         return response()->json([
             'message' => 'Divisi berhasil dibuat.',
-            'data' => new DivisionResource(
-                $division
-            ),
+            'data' => new DivisionResource($division),
         ], 201);
     }
 
-    /**
-     * Detail division.
-     */
     public function show(
-        Request $request,
         Division $division
     ): JsonResponse {
 
-        abort_unless(
-            $request->user()->isSuperAdmin()
-            || $request->user()->inDivision($division->id),
-            403
-        );
-
         return response()->json([
-            'data' => new DivisionResource(
-                $division
-            )
+            'data' => new DivisionResource($division)
         ]);
     }
 
-    /**
-     * Update division.
-     * Hanya super admin.
-     */
     public function update(
         Request $request,
         Division $division
     ): JsonResponse {
-
-        abort_unless(
-            $request->user()->isSuperAdmin(),
-            403
-        );
 
         $validated = $request->validate([
 
@@ -208,41 +140,20 @@ class DivisionController extends Controller
         ]);
     }
 
-    /**
-     * Delete division.
-     * Hanya super admin.
-     */
     public function destroy(
-        Request $request,
         Division $division
     ): JsonResponse {
-
-        abort_unless(
-            $request->user()->isSuperAdmin(),
-            403
-        );
 
         $division->delete();
 
         return response()->json([
-            'message' =>
-                'Divisi berhasil dihapus.'
+            'message' => 'Divisi berhasil dihapus.'
         ]);
     }
 
-    /**
-     * List member division.
-     */
     public function members(
-        Request $request,
         Division $division
     ): JsonResponse {
-
-        abort_unless(
-            $request->user()->isSuperAdmin()
-            || $request->user()->inDivision($division->id),
-            403
-        );
 
         $members = $division
             ->users()
@@ -257,19 +168,10 @@ class DivisionController extends Controller
         ]);
     }
 
-    /**
-     * Tambah member division.
-     * Hanya super admin.
-     */
     public function addMember(
         Request $request,
         Division $division
     ): JsonResponse {
-
-        abort_unless(
-            $request->user()->isSuperAdmin(),
-            403
-        );
 
         $request->validate([
 
@@ -285,9 +187,17 @@ class DivisionController extends Controller
             ]
 
         ]);
-$division->users()->syncWithoutDetaching([
-    $request->user_id
-]);
+
+        $division
+            ->users()
+            ->syncWithoutDetaching([
+
+                $request->user_id => [
+                    'role' =>
+                    $request->role
+                ]
+
+            ]);
 
         return response()->json([
             'message' =>
@@ -295,20 +205,11 @@ $division->users()->syncWithoutDetaching([
         ]);
     }
 
-    /**
-     * Update role member.
-     * Hanya super admin.
-     */
     public function updateMember(
         Request $request,
         Division $division,
         User $user
     ): JsonResponse {
-
-        abort_unless(
-            $request->user()->isSuperAdmin(),
-            403
-        );
 
         $request->validate([
             'role' => [
@@ -323,7 +224,7 @@ $division->users()->syncWithoutDetaching([
                 $user->id,
                 [
                     'role' =>
-                        $request->role
+                    $request->role
                 ]
             );
 
@@ -333,20 +234,10 @@ $division->users()->syncWithoutDetaching([
         ]);
     }
 
-    /**
-     * Remove member division.
-     * Hanya super admin.
-     */
     public function removeMember(
-        Request $request,
         Division $division,
         User $user
     ): JsonResponse {
-
-        abort_unless(
-            $request->user()->isSuperAdmin(),
-            403
-        );
 
         $division
             ->users()

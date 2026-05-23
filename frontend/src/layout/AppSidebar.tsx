@@ -35,13 +35,12 @@ const navItems: NavItem[] = [
     path: "/",
   },
   {
-<<<<<<< HEAD
+
     name: "Task Management",
-=======
-    name: "Containers",
->>>>>>> 4277e65 (pc)
     icon: <BoxCubeIcon />,
-    path: "/divisions",
+    subItems: [{ name: "Divisions", path: "/divisions", pro: false }],
+    // subItems: [{ name: "Workspace", path: "/divisions/:id", pro: false }],
+    
   },
     {
     name: "Forms",

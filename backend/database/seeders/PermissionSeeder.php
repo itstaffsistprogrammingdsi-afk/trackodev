@@ -106,6 +106,7 @@ class PermissionSeeder extends Seeder
             'user.view',
             'user.create',
             'user.update',
+            'user.delete',
 
             //DIVISION
             'division.view',
@@ -136,6 +137,9 @@ class PermissionSeeder extends Seeder
 
         $user->syncPermissions([
             
+            // USER
+            'user.view',
+
             //DIVISION
             'division.view',
 

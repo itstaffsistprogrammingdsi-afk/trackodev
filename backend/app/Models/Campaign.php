@@ -65,4 +65,6 @@ public function users()
 {
     return $this->belongsToMany(User::class, 'campaign_user');
 }
+
+
 }
