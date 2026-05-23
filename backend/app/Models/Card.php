@@ -62,7 +62,8 @@ class Card extends Model
 
     public function labels(): BelongsToMany
     {
-        return $this->belongsToMany(Label::class)->withTimestamps();;
+        return $this->belongsToMany(Label::class);
+        // ->withTimestamps();;
     }
 
 public function brands()

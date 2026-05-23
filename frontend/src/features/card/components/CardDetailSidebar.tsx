@@ -1,6 +1,6 @@
 import {
-  Archive,
-  Bell,
+  // Archive,
+  // Bell,
   Clock3,
   List,
   Paperclip,
@@ -244,12 +244,6 @@ export default function CardDetailSidebar({
           </h3>
 
           <div className="space-y-2">
-            <SidebarButton icon={<Users size={17} />} label="Join" />
-
-            <SidebarButton icon={<Bell size={17} />} label="Subscribe" />
-
-            <SidebarButton icon={<Archive size={17} />} label="Archive" />
-
             <button
               onClick={handleDelete}
               className="flex h-11 w-full items-center gap-3 rounded-xl bg-red-50 px-4 text-sm font-medium text-red-600 transition hover:bg-red-100"
