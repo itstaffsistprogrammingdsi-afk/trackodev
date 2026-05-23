@@ -110,13 +110,15 @@ Route::middleware([
     Route::apiResource(
         'users',
         UserController::class
-    )->middleware([
-        'index'   => 'permission:user.view',
-        'store'   => 'permission:user.create',
-        'show'    => 'permission:user.view',
-        'update'  => 'permission:user.update',
-        'destroy' => 'permission:user.delete',
-    ]);
+    )
+    // ->middleware([
+    //     'index'   => 'permission:user.view',
+    //     'store'   => 'permission:user.create',
+    //     'show'    => 'permission:user.view',
+    //     'update'  => 'permission:user.update',
+    //     'destroy' => 'permission:user.delete',
+    // ])
+    ;
 
     Route::get(
         'users-stats',

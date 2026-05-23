@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -10,10 +11,30 @@ use Illuminate\Http\Request;
 
 class BoardController extends Controller
 {
-    public function index(Campaign $campaign): JsonResponse
-    {
-        $boards = $campaign->boards()->with('cards')->get();
-        return response()->json(['data' => BoardResource::collection($boards)]);
+    public function index(
+        Request $request,
+        Campaign $campaign
+    ): JsonResponse {
+
+        $user = $request->user();
+
+        abort_unless(
+            $campaign->members()
+                ->where('users.id', $user->id)
+                ->exists()
+                || $campaign->created_by === $user->id
+                || $user->isSuperAdmin(),
+            403,
+            'Unauthorized'
+        );
+
+        $boards = $campaign->boards()
+            ->with('cards')
+            ->get();
+
+        return response()->json([
+            'data' => BoardResource::collection($boards)
+        ]);
     }
 
     public function store(Request $request, Campaign $campaign): JsonResponse

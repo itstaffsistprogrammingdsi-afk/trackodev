@@ -24,17 +24,31 @@ class CampaignController extends Controller
         $user = $request->user();
 
         $campaigns = $workspace->campaigns()
-            ->when(!$user->isSuperAdmin(), function ($q) use ($user) {
-                $q->where(function ($sub) use ($user) {
-                    $sub->whereHas(
-                        'members',
-                        fn($m) =>
-                        $m->where('user_id', $user->id)
-                    )
-                        ->orWhere('created_by', $user->id);
-                });
-            })
-            ->with(['creator', 'members'])
+            ->when(
+                !$user->isSuperAdmin(),
+                function ($q) use ($user) {
+
+                    $q->where(function ($sub) use ($user) {
+
+                        $sub->whereHas(
+                            'members',
+                            fn($m) =>
+                            $m->where(
+                                'users.id',
+                                $user->id
+                            )
+                        )
+                            ->orWhere(
+                                'created_by',
+                                $user->id
+                            );
+                    });
+                }
+            )
+            ->with([
+                'creator',
+                'members'
+            ])
             ->latest()
             ->get();
 

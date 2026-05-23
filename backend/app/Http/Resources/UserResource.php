@@ -16,41 +16,15 @@ class UserResource extends JsonResource
             ->values();
 
         return [
-
-            // ========================================
-            // BASIC
-            // ========================================
-
             'id' => $this->id,
-
             'name' => $this->name,
-
             'email' => $this->email,
 
-            'phone' => $this->phone,
-
-            'avatar' => $this->avatar,
-
-            // ========================================
-            // ROLE
-            // ========================================
-
-            // BACKWARD COMPATIBLE
-            'role' =>
-                $roles->first()
-                ?? 'user',
-
-            // SPATIE ROLES
-            'roles' => $roles,
-
-            // ========================================
-            // PERMISSIONS
-            // ========================================
+            'roles' => $this->getRoleNames(),
 
             'permissions' => $this
                 ->getAllPermissions()
-                ->pluck('name')
-                ->values(),
+                ->pluck('name'),
         ];
     }
 }

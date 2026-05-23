@@ -32,7 +32,7 @@ class CardController extends Controller
                 'tasks.subtasks',
                 'labels',
                 'board',
-                
+
             ])
             ->orderBy('order')
             ->get();
@@ -42,62 +42,64 @@ class CardController extends Controller
         ]);
     }
 
-public function store(Request $request, Board $board): JsonResponse
-{
-    $validated = $request->validate([
-        'title'       => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'priority'    => 'nullable|in:low,medium,high,urgent',
-        'due_date'    => 'nullable|date',
-    ]);
+    public function store(Request $request, Board $board): JsonResponse
+    {
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'priority'    => 'nullable|in:low,medium,high,urgent',
+            'due_date'    => 'nullable|date',
+        ]);
 
-    // pastikan user login (kalau auth wajib)
-    $userId = auth()->id();
+        // pastikan user login (kalau auth wajib)
+        $userId = auth()->id();
 
-    if (!$userId) {
+        if (!$userId) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        // ambil order terakhir per board
+        $lastOrder = $board->cards()->max('order') ?? 0;
+
+        // create card via relation (sudah inject board_id otomatis)
+        $card = $board->cards()->create([
+            'title'       => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'priority'    => $validated['priority'] ?? 'medium',
+            'due_date'    => $validated['due_date'] ?? null,
+            'created_by'  => $userId,
+            'order'       => $lastOrder + 1,
+        ]);
+
+        // $campaignMembers = $board
+        //     ->campaign
+        //     ->members()
+        //     ->pluck('users.id')
+        //     ->toArray();
+
+        // $campaign = $card->board->campaign;
+
+        // $card->assignees()->syncWithoutDetaching($campaignMembers);
+
+        // eager load relasi yang dibutuhkan FE
+        $card->load([
+            'creator',
+            'assignees',
+            'tasks.subtasks',
+            'labels',
+            'board',
+            'comments',
+            'attachments',
+            'brands',
+        ]);
+
         return response()->json([
-            'message' => 'Unauthenticated.',
-        ], 401);
+            'message' => 'Card berhasil dibuat.',
+            'data'    => new CardResource($card),
+        ], 201);
     }
-
-    // ambil order terakhir per board
-    $lastOrder = $board->cards()->max('order') ?? 0;
-
-    // create card via relation (sudah inject board_id otomatis)
-    $card = $board->cards()->create([
-        'title'       => $validated['title'],
-        'description' => $validated['description'] ?? null,
-        'priority'    => $validated['priority'] ?? 'medium',
-        'due_date'    => $validated['due_date'] ?? null,
-        'created_by'  => $userId,
-        'order'       => $lastOrder + 1,
-    ]);
-
-    $campaignMembers = $board
-    ->campaign
-    ->members()
-    ->pluck('users.id')
-    ->toArray();
-
-$card->assignees()->syncWithoutDetaching($campaignMembers);
-
-    // eager load relasi yang dibutuhkan FE
-    $card->load([
-        'creator',
-        'assignees',
-        'tasks.subtasks',
-        'labels',
-        'board',
-        'comments',
-        'attachments',
-        'brands',
-    ]);
-
-    return response()->json([
-        'message' => 'Card berhasil dibuat.',
-        'data'    => new CardResource($card),
-    ], 201);
-}
 
     public function show(Card $card): JsonResponse
     {
@@ -215,26 +217,69 @@ $card->assignees()->syncWithoutDetaching($campaignMembers);
     |--------------------------------------------------------------------------
     */
 
-    public function assign(
-        Request $request,
-        Card $card
-    ): JsonResponse {
-        $validated = $request->validate([
-            'user_id' => 'required|uuid|exists:users,id',
+public function assign(
+    Request $request,
+    Card $card
+): JsonResponse {
+
+    $validated = $request->validate([
+        'user_id' => 'required|uuid|exists:users,id',
+    ]);
+
+    $userId = $validated['user_id'];
+
+    // ========================================
+    // ASSIGN TO CARD
+    // ========================================
+
+    $card->assignees()
+        ->syncWithoutDetaching([
+            $userId,
         ]);
 
-        $card->assignees()
-            ->syncWithoutDetaching([
-                $validated['user_id'],
-            ]);
+    // ========================================
+    // AUTO JOIN CAMPAIGN
+    // ========================================
 
-        $card->load('assignees');
+    $campaign = $card
+        ->board
+        ->campaign;
 
-        return response()->json([
-            'message' => 'Member berhasil di-assign.',
-            'data'    => $card->assignees,
+    $campaign->members()
+        ->syncWithoutDetaching([
+            $userId,
         ]);
-    }
+
+    // ========================================
+    // OPTIONAL:
+    // AUTO JOIN WORKSPACE
+    // ========================================
+
+    // if ($campaign->workspace) {
+
+    //     $campaign->workspace
+    //         ->members()
+    //         ->syncWithoutDetaching([
+    //             $userId,
+    //         ]);
+    // }
+
+    // ========================================
+    // RELOAD
+    // ========================================
+
+    $card->load([
+        'assignees',
+    ]);
+
+    return response()->json([
+        'message' =>
+            'Member berhasil di-assign.',
+
+        'data' =>
+            $card->assignees,
+    ]);
+}
 
     public function unassign(
         Card $card,
