@@ -8,7 +8,6 @@ use App\Models\Board;
 use App\Models\Card;
 use App\Models\CardAttachment;
 use App\Models\CardComment;
-use App\Models\Label;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -302,41 +301,7 @@ public function assign(
     |--------------------------------------------------------------------------
     */
 
-    public function addLabel(
-        Request $request,
-        Card $card
-    ): JsonResponse {
-        $validated = $request->validate([
-            'label_id' => 'required|uuid|exists:labels,id',
-        ]);
 
-        $card->labels()
-            ->syncWithoutDetaching([
-                $validated['label_id'],
-            ]);
-
-        $card->load('labels');
-
-        return response()->json([
-            'message' => 'Label berhasil ditambahkan.',
-            'data'    => $card->labels,
-        ]);
-    }
-
-    public function removeLabel(
-        Card $card,
-        Label $label
-    ): JsonResponse {
-        $card->labels()
-            ->detach($label->id);
-
-        $card->load('labels');
-
-        return response()->json([
-            'message' => 'Label berhasil dihapus.',
-            'data'    => $card->labels,
-        ]);
-    }
 
     /*
     |--------------------------------------------------------------------------
