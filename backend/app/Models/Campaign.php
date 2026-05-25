@@ -18,7 +18,7 @@ class Campaign extends Model
         'description', 'type', 'due_date'
     ];
 
-    protected $casts = ['due_date' => 'date'];
+    protected $casts = ['due_date' => 'datetime'];
 
     public function workspace(): BelongsTo
     {

@@ -19,7 +19,8 @@ class CardResource extends JsonResource
             | BRANDS
             |------------------------------------------------
             */
-            'brands' => $this->relationLoaded('brands')
+            'brands' => $this->relationLoaded
+            ('brands')
                 ? $this->brands->map(fn ($brand) => [
                     'id'    => $brand->id,
                     'name'  => $brand->name,
@@ -29,7 +30,7 @@ class CardResource extends JsonResource
 
             'description' => $this->description,
             'priority'    => $this->priority,
-            'due_date'    => $this->due_date?->toDateString(),
+            'due_date'    => $this->due_date?->toDateTimeString(),
             'order'       => $this->order,
 
             /*

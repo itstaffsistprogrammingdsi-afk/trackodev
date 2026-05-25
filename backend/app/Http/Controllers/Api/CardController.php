@@ -144,6 +144,11 @@ class CardController extends Controller
             'assignees',
             'tasks.subtasks',
             'labels',
+            'brands',
+            'board',
+            'attachments',
+            'comments.user',
+            'comments.replies.user',
         ]);
 
         return response()->json([
@@ -216,69 +221,69 @@ class CardController extends Controller
     |--------------------------------------------------------------------------
     */
 
-public function assign(
-    Request $request,
-    Card $card
-): JsonResponse {
+    public function assign(
+        Request $request,
+        Card $card
+    ): JsonResponse {
 
-    $validated = $request->validate([
-        'user_id' => 'required|uuid|exists:users,id',
-    ]);
-
-    $userId = $validated['user_id'];
-
-    // ========================================
-    // ASSIGN TO CARD
-    // ========================================
-
-    $card->assignees()
-        ->syncWithoutDetaching([
-            $userId,
+        $validated = $request->validate([
+            'user_id' => 'required|uuid|exists:users,id',
         ]);
 
-    // ========================================
-    // AUTO JOIN CAMPAIGN
-    // ========================================
+        $userId = $validated['user_id'];
 
-    $campaign = $card
-        ->board
-        ->campaign;
+        // ========================================
+        // ASSIGN TO CARD
+        // ========================================
 
-    $campaign->members()
-        ->syncWithoutDetaching([
-            $userId,
+        $card->assignees()
+            ->syncWithoutDetaching([
+                $userId,
+            ]);
+
+        // ========================================
+        // AUTO JOIN CAMPAIGN
+        // ========================================
+
+        $campaign = $card
+            ->board
+            ->campaign;
+
+        $campaign->members()
+            ->syncWithoutDetaching([
+                $userId,
+            ]);
+
+        // ========================================
+        // OPTIONAL:
+        // AUTO JOIN WORKSPACE
+        // ========================================
+
+        // if ($campaign->workspace) {
+
+        //     $campaign->workspace
+        //         ->members()
+        //         ->syncWithoutDetaching([
+        //             $userId,
+        //         ]);
+        // }
+
+        // ========================================
+        // RELOAD
+        // ========================================
+
+        $card->load([
+            'assignees',
         ]);
 
-    // ========================================
-    // OPTIONAL:
-    // AUTO JOIN WORKSPACE
-    // ========================================
-
-    // if ($campaign->workspace) {
-
-    //     $campaign->workspace
-    //         ->members()
-    //         ->syncWithoutDetaching([
-    //             $userId,
-    //         ]);
-    // }
-
-    // ========================================
-    // RELOAD
-    // ========================================
-
-    $card->load([
-        'assignees',
-    ]);
-
-    return response()->json([
-        'message' =>
+        return response()->json([
+            'message' =>
             'Member berhasil di-assign.',
 
-        'data' =>
+            'data' =>
             $card->assignees,
-    ]);
-}
+        ]);
+    }
 
     public function unassign(
         Card $card,

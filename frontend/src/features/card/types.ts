@@ -84,9 +84,12 @@ export type Card = {
   description?: string;
 
   campaign_id?: string;
-  
+
   board_id: string;
 
+  created_at?: string;
+
+  created_by?: User | null;
 
   priority?:
     | "low"
@@ -104,21 +107,10 @@ export type Card = {
 
   labels?: Label[];
 
-  /*
-  |--------------------------------------------------------------------------
-  | BRAND
-  |--------------------------------------------------------------------------
-  */
-
- brands?: Brand[];
-
-  /*
-  |--------------------------------------------------------------------------
-  | CAMPAIGN
-  |--------------------------------------------------------------------------
-  */
+  brands?: Brand[];
 
   campaign?: Campaign | null;
+
   board?: Board;
 };
 

@@ -214,7 +214,7 @@ export const createBrand = async (
 // =========================================
 export const attachBrand = async (
   cardId: string,
-  brandId: number,
+  brandId: string,
 ) => {
   const res = await api.post(
     `/cards/${cardId}/brands/${brandId}/attach`,
@@ -228,7 +228,7 @@ export const attachBrand = async (
 // =========================================
 export const detachBrand = async (
   cardId: string,
-  brandId: number,
+  brandId: string,
 ) => {
   const res = await api.delete(
     `/cards/${cardId}/brands/${brandId}/detach`,

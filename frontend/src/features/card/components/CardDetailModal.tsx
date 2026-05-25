@@ -31,12 +31,16 @@ interface Props {
   card: Card | null;
   isOpen: boolean;
   onClose: () => void;
+  onUpdated?: () => void;
+  onDeleted?: (cardId: string) => void;
 }
 
 export default function CardDetailModal({
   card,
   isOpen,
   onClose,
+  onUpdated,
+  onDeleted,
 }: Props) {
   // =========================================
   // DETAIL
@@ -49,15 +53,18 @@ export default function CardDetailModal({
   // =========================================
   // DESCRIPTION
   // =========================================
-  const {
-    description,
-    setDescription,
+const {
+  description,
+  setDescription,
 
-    dueDate,
-    setDueDate,
+  dueDate,
+  setDueDate,
 
-    saving,
-  } = useCardDescription(detail);
+  saving,
+} = useCardDescription(
+  detail,
+  onUpdated, // ✅ TAMBAHAN
+);
 
   // =========================================
   // COMMENTS
@@ -68,7 +75,7 @@ export default function CardDetailModal({
     setComment,
     sending,
     handleAddComment,
-  } = useComments(card?.id, isOpen);
+  } = useComments(card?.id, isOpen, onUpdated);
 
   // =========================================
   // TASKS
@@ -82,7 +89,7 @@ export default function CardDetailModal({
     handleAddTask,
     toggleTask,
     deleteTask,
-  } = useTasks(card?.id, isOpen);
+  } = useTasks(card?.id, isOpen, onUpdated);
 
   // =========================================
   // ATTACHMENTS
@@ -92,7 +99,7 @@ export default function CardDetailModal({
     setAttachments,
     loading: attachmentLoading,
     fetchAttachments,
-  } = useAttachments(card?.id, isOpen);
+  } = useAttachments(card?.id, isOpen, onUpdated);
 
   // =========================================
   // UI STATE
@@ -131,6 +138,8 @@ export default function CardDetailModal({
     useCardMembers({
       cardId: card?.id,
       fetchDetail,
+
+      onUpdated
     });
 
   // =========================================
@@ -139,6 +148,7 @@ export default function CardDetailModal({
   const { handleDelete } = useDeleteCard({
     cardId: card?.id,
     onClose,
+    onDeleted,
   });
 
   // =========================================

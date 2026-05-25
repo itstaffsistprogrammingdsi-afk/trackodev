@@ -25,7 +25,7 @@ class Card extends Model
         'order'
     ];
 
-    protected $casts = ['due_date' => 'date'];
+    protected $casts = ['due_date' => 'datetime'];
 
     public function board(): BelongsTo
     {

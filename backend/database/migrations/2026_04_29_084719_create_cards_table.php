@@ -18,7 +18,7 @@ public function up(): void
         $table->string('title');
         $table->text('description')->nullable();
         $table->enum('priority', ['low', 'medium', 'high', 'urgent'])->default('medium');
-        $table->date('due_date')->nullable();
+        $table->dateTime('due_date')->nullable();
         $table->integer('order')->default(0);
         $table->timestamps();
     });
