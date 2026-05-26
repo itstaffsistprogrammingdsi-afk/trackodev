@@ -37,11 +37,11 @@ interface ReturnType {
   fetchBrands: () => Promise<void>;
 
   handleAttachBrand: (
-    brandId: number,
+    brandId: string,
   ) => Promise<void>;
 
   handleDetachBrand: (
-    brandId: number,
+    brandId: string,
   ) => Promise<void>;
 
   handleCreateBrand: () => Promise<void>;
@@ -82,20 +82,16 @@ export function useCardDetail(
   // FETCH CARD DETAIL
   // =========================================
   const fetchDetail = useCallback(async () => {
-    if (!card) return;
+    if (!card?.id) return;
 
     setLoading(true);
 
     try {
-      const [cardRes, userRes] =
-        await Promise.all([
-          api.get(`/cards/${card.id}`),
-          api.get(`/users`),
-        ]);
+      const cardRes = await api.get(
+        `/cards/${card.id}`,
+      );
 
       setDetail(cardRes.data.data);
-
-      setUsers(userRes.data.data || []);
     } catch (err) {
       console.error(
         "FAILED FETCH CARD DETAIL",
@@ -104,7 +100,23 @@ export function useCardDetail(
     } finally {
       setLoading(false);
     }
-  }, [card]);
+  }, [card?.id]);
+
+  // =========================================
+  // FETCH USERS
+  // =========================================
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await api.get("/users");
+
+      setUsers(res.data.data || []);
+    } catch (err) {
+      console.error(
+        "FAILED FETCH USERS",
+        err,
+      );
+    }
+  }, []);
 
   // =========================================
   // FETCH BRANDS
@@ -126,9 +138,9 @@ export function useCardDetail(
   // ATTACH BRAND
   // =========================================
   const handleAttachBrand = async (
-    brandId: number,
+    brandId: string,
   ) => {
-    if (!detail) return;
+    if (!detail?.id) return;
 
     try {
       await attachBrand(detail.id, brandId);
@@ -146,9 +158,9 @@ export function useCardDetail(
   // DETACH BRAND
   // =========================================
   const handleDetachBrand = async (
-    brandId: number,
+    brandId: string,
   ) => {
-    if (!detail) return;
+    if (!detail?.id) return;
 
     try {
       await detachBrand(detail.id, brandId);
@@ -168,12 +180,18 @@ export function useCardDetail(
   const handleCreateBrand = async () => {
     if (!brandName.trim()) return;
 
+    if (!detail?.campaign_id) {
+      console.error("CAMPAIGN ID NOT FOUND");
+
+      return;
+    }
+
     try {
-await createBrand(
-  detail?.campaign_id ?? "",
-  brandName,
-  brandColor
-);
+      await createBrand(
+        detail.campaign_id,
+        brandName,
+        brandColor,
+      );
 
       setBrandName("");
 
@@ -189,20 +207,49 @@ await createBrand(
   };
 
   // =========================================
-  // INITIAL FETCH
+  // FETCH USERS + BRANDS
+  // ONLY WHEN MODAL OPEN
   // =========================================
   useEffect(() => {
-    if (card && isOpen) {
-      fetchDetail();
+    if (!isOpen) return;
 
-      fetchBrands();
-    }
+    fetchUsers();
+
+    fetchBrands();
   }, [
-    card,
     isOpen,
-    fetchDetail,
+    fetchUsers,
     fetchBrands,
   ]);
+
+  // =========================================
+  // FETCH CARD DETAIL
+  // ONLY WHEN CARD ID CHANGED
+  // =========================================
+  useEffect(() => {
+    if (!card?.id || !isOpen) return;
+
+    fetchDetail();
+  }, [
+    card?.id,
+    isOpen,
+    fetchDetail,
+  ]);
+
+  // =========================================
+  // RESET STATE WHEN MODAL CLOSED
+  // =========================================
+  useEffect(() => {
+    if (isOpen) return;
+
+    setDetail(null);
+
+    setLoading(false);
+
+    setBrandName("");
+
+    setBrandColor("#3b82f6");
+  }, [isOpen]);
 
   return {
     detail,

@@ -10,7 +10,10 @@ interface ReturnType {
   comments: CardComment[];
 
   comment: string;
-  setComment: React.Dispatch<React.SetStateAction<string>>;
+
+  setComment: React.Dispatch<
+    React.SetStateAction<string>
+  >;
 
   sending: boolean;
 
@@ -20,12 +23,16 @@ interface ReturnType {
 export default function useComments(
   cardId?: number | string,
   isOpen?: boolean,
+  onUpdated?: () => void,
 ): ReturnType {
-  const [comments, setComments] = useState<CardComment[]>([]);
+  const [comments, setComments] =
+    useState<CardComment[]>([]);
 
-  const [comment, setComment] = useState("");
+  const [comment, setComment] =
+    useState("");
 
-  const [sending, setSending] = useState(false);
+  const [sending, setSending] =
+    useState(false);
 
   // =========================================
   // FETCH COMMENTS
@@ -35,11 +42,17 @@ export default function useComments(
       if (!cardId) return;
 
       try {
-        const res = await api.get(`/cards/${cardId}/comments`);
+        const res = await api.get(
+          `/cards/${cardId}/comments`,
+        );
 
         setComments(res.data.data || []);
+        onUpdated?.();
       } catch (err) {
-        console.error("FAILED FETCH COMMENTS", err);
+        console.error(
+          "FAILED FETCH COMMENTS",
+          err,
+        );
       }
     };
 
@@ -52,13 +65,16 @@ export default function useComments(
   // ADD COMMENT
   // =========================================
   const handleAddComment = async () => {
-    if (!comment.trim() || !cardId) return;
+    if (!comment.trim()) return;
+
+    if (!cardId) return;
 
     const temp: CardComment = {
       id: Date.now().toString(),
       content: comment,
     };
 
+    // 🔥 optimistic update
     setComments((prev) => [temp, ...prev]);
 
     const currentComment = comment;
@@ -68,15 +84,27 @@ export default function useComments(
     try {
       setSending(true);
 
-await addComment(String(cardId), currentComment);
+      await addComment(
+        String(cardId),
+        currentComment,
+      );
 
-      const res = await api.get(`/cards/${cardId}/comments`);
+      // 🔥 sync ulang dari backend
+      const res = await api.get(
+        `/cards/${cardId}/comments`,
+      );
 
       setComments(res.data.data || []);
     } catch (err) {
-      console.error("FAILED ADD COMMENT", err);
+      console.error(
+        "FAILED ADD COMMENT",
+        err,
+      );
 
-      setComments((prev) => prev.filter((c) => c.id !== temp.id));
+      // rollback
+      setComments((prev) =>
+        prev.filter((c) => c.id !== temp.id),
+      );
     } finally {
       setSending(false);
     }
@@ -86,6 +114,7 @@ await addComment(String(cardId), currentComment);
     comments,
 
     comment,
+
     setComment,
 
     sending,

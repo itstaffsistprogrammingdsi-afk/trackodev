@@ -2,10 +2,17 @@ import api from "@/lib/axios";
 
 interface Props {
   cardId?: string;
+
   onClose: () => void;
+
+  onDeleted?: (cardId: string) => void;
 }
 
-export default function useDeleteCard({ cardId, onClose }: Props) {
+export default function useDeleteCard({
+  cardId,
+  onClose,
+  onDeleted,
+}: Props) {
   const handleDelete = async () => {
     if (!cardId) return;
 
@@ -16,9 +23,16 @@ export default function useDeleteCard({ cardId, onClose }: Props) {
     try {
       await api.delete(`/cards/${cardId}`);
 
+      // realtime remove
+      onDeleted?.(cardId);
+
+      // close modal
       onClose();
     } catch (err) {
-      console.error("FAILED DELETE CARD", err);
+      console.error(
+        "FAILED DELETE CARD",
+        err,
+      );
     }
   };
 

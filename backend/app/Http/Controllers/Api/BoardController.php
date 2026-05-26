@@ -29,7 +29,7 @@ class BoardController extends Controller
         );
 
         $boards = $campaign->boards()
-            ->with('cards')
+            ->with('cards.creator')
             ->get();
 
         return response()->json([

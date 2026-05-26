@@ -52,6 +52,11 @@ const navItems: NavItem[] = [
     icon: <ListIcon />,
     path: "/chats",
   },
+  {
+    name: "Report",
+    icon: <ListIcon />,
+    path: "/report",
+  },
   // {
   //   name: "Campaigns",
   //   icon: <PieChartIcon />,
@@ -84,34 +89,34 @@ const navItems: NavItem[] = [
 ];
 
 const othersItems: NavItem[] = [
-  {
-    icon: <PieChartIcon />,
-    name: "Charts",
-    subItems: [
-      { name: "Line Chart", path: "/line-chart", pro: false },
-      { name: "Bar Chart", path: "/bar-chart", pro: false },
-    ],
-  },
-  {
-    icon: <BoxCubeIcon />,
-    name: "UI Elements",
-    subItems: [
-      { name: "Alerts", path: "/alerts", pro: false },
-      { name: "Avatar", path: "/avatars", pro: false },
-      { name: "Badge", path: "/badge", pro: false },
-      { name: "Buttons", path: "/buttons", pro: false },
-      { name: "Images", path: "/images", pro: false },
-      { name: "Videos", path: "/videos", pro: false },
-    ],
-  },
-  {
-    icon: <PlugInIcon />,
-    name: "Authentication",
-    subItems: [
-      { name: "Sign In", path: "/signin", pro: false },
-      { name: "Sign Up", path: "/signup", pro: false },
-    ],
-  },
+  // {
+  //   icon: <PieChartIcon />,
+  //   name: "Charts",
+  //   subItems: [
+  //     { name: "Line Chart", path: "/line-chart", pro: false },
+  //     { name: "Bar Chart", path: "/bar-chart", pro: false },
+  //   ],
+  // },
+  // {
+  //   icon: <BoxCubeIcon />,
+  //   name: "UI Elements",
+  //   subItems: [
+  //     { name: "Alerts", path: "/alerts", pro: false },
+  //     { name: "Avatar", path: "/avatars", pro: false },
+  //     { name: "Badge", path: "/badge", pro: false },
+  //     { name: "Buttons", path: "/buttons", pro: false },
+  //     { name: "Images", path: "/images", pro: false },
+  //     { name: "Videos", path: "/videos", pro: false },
+  //   ],
+  // },
+  // {
+  //   icon: <PlugInIcon />,
+  //   name: "Authentication",
+  //   subItems: [
+  //     { name: "Sign In", path: "/signin", pro: false },
+  //     { name: "Sign Up", path: "/signup", pro: false },
+  //   ],
+  // },
 ];
 
 const AppSidebar: React.FC = () => {
@@ -364,7 +369,7 @@ const AppSidebar: React.FC = () => {
             <div className="border-t border-gray-200 dark:border-gray-800 my-2" />
 
             {/* Dark Mode */}
-            <div className="flex items-center gap-3 w-full px-2 py-2 rounded-lg transition hover:bg-gray-100 dark:hover:bg-white/5">
+            {/* <div className="flex items-center gap-3 w-full px-2 py-2 rounded-lg transition hover:bg-gray-100 dark:hover:bg-white/5">
               <span className="w-8 h-8 flex items-center justify-center">
                 <ThemeToggleButton />
               </span>
@@ -374,7 +379,7 @@ const AppSidebar: React.FC = () => {
                   Dark mode
                 </span>
               )}
-            </div>
+            </div> */}
 
             <div>
               <h2

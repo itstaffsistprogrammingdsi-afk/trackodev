@@ -21,6 +21,7 @@ export interface Attachment {
 export default function useAttachments(
   cardId?: string,
   isOpen?: boolean,
+  onUpdated?: () => void,
 ) {
   const [attachments, setAttachments] =
     useState<Attachment[]>([]);
@@ -29,9 +30,8 @@ export default function useAttachments(
     useState(false);
 
   // =========================================
-  // FETCH
+  // FETCH ATTACHMENTS
   // =========================================
-
   const fetchAttachments =
     async () => {
       if (!cardId) return;
@@ -46,8 +46,13 @@ export default function useAttachments(
         setAttachments(
           res.data.data || [],
         );
+
+        onUpdated?.();
       } catch (err) {
-        console.error(err);
+        console.error(
+          "FAILED FETCH ATTACHMENTS",
+          err,
+        );
       } finally {
         setLoading(false);
       }
@@ -61,8 +66,11 @@ export default function useAttachments(
 
   return {
     attachments,
+
     setAttachments,
+
     loading,
+
     fetchAttachments,
   };
 }

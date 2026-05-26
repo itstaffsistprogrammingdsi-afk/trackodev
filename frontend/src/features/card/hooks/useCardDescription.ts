@@ -16,12 +16,12 @@ interface ReturnType {
 
 export default function useCardDescription(
   detail: Card | null,
+  onUpdated?: (card: Partial<Card>) => void,
 ): ReturnType {
   // =========================================
   // STATE
   // =========================================
-  const [description, setDescription] =
-    useState("");
+  const [description, setDescription] = useState("");
 
   const [dueDate, setDueDate] = useState("");
 
@@ -44,13 +44,13 @@ export default function useCardDescription(
     setDescription(detail.description || "");
 
     // DUE DATE
-    setDueDate(
-      detail.due_date
-        ? new Date(detail.due_date)
-            .toISOString()
-            .slice(0, 16)
-        : "",
-    );
+setDueDate(
+  detail.due_date
+    ? detail.due_date
+        .replace(" ", "T")
+        .slice(0, 16)
+    : "",
+);
 
     // RESET FIRST LOAD
     descriptionFirstLoad.current = true;
@@ -73,14 +73,16 @@ export default function useCardDescription(
       try {
         setSaving(true);
 
-        await updateCard(detail.id, {
-          description,
-        });
+await updateCard(detail.id, {
+  description,
+});
+
+onUpdated?.({
+  id: detail.id,
+  description,
+});
       } catch (err) {
-        console.error(
-          "FAILED SAVE DESCRIPTION",
-          err,
-        );
+        console.error("FAILED SAVE DESCRIPTION", err);
       } finally {
         setSaving(false);
       }
@@ -105,14 +107,16 @@ export default function useCardDescription(
       try {
         setSaving(true);
 
-        await updateCard(detail.id, {
-          due_date: dueDate,
-        });
+await updateCard(detail.id, {
+  due_date: dueDate,
+});
+
+onUpdated?.({
+  id: detail.id,
+  due_date: dueDate,
+});
       } catch (err) {
-        console.error(
-          "FAILED SAVE DUE DATE",
-          err,
-        );
+        console.error("FAILED SAVE DUE DATE", err);
       } finally {
         setSaving(false);
       }

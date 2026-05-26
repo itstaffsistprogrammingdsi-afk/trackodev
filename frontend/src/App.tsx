@@ -40,6 +40,9 @@ import FormResponsesPage from "@/features/form/pages/FormResponsesPage";
 import EditFormPage from "@/features/form/pages/EditFormPage";
 import PublicFormPage from "@/features/form/pages/PublicFormPage";
 
+import ChatPage from "./pages/Chats/ChatPage";
+import Report from "./pages/Reports/reportpage";
+
 export default function App() {
   return (
     <Router>
@@ -66,6 +69,9 @@ export default function App() {
         >
           <Route index element={<Home />} />
           <Route path="/" element={<Home />} />
+
+          <Route path="/chats" element={<ChatPage />} />
+          <Route path="/report" element={<Report />} />
 
           <Route path="/test" element={<TestConnection />} />
           <Route path="/divisions" element={<DivisionPage />} />

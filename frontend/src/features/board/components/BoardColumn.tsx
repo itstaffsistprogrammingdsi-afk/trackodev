@@ -1,27 +1,50 @@
 import { useState } from 'react'
+
 import { useDroppable } from '@dnd-kit/core'
+
 import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 
 import { Board } from '../types'
+
 import CardItem from '@/features/card/components/CardItem'
+
 import { createCard } from '@/features/card/api/card.api'
+
+import { Card } from '@/features/card/types'
 
 type Props = {
   board: Board
-  onCardCreated?: () => void // 🔥 trigger refetch dari parent
+
+  onCardCreated?: () => void
+
+  onRefresh?: () => void
+
+  // 🔥 TAMBAHAN
+  onOpenCard?: (card: Card) => void
 }
 
-export default function BoardColumn({ board, onCardCreated }: Props) {
+export default function BoardColumn({
+  board,
+  onCardCreated,
+  onRefresh,
+
+  // 🔥 TAMBAHAN
+  onOpenCard,
+}: Props) {
   const { setNodeRef } = useDroppable({
     id: board.id,
   })
 
-  const [isAdding, setIsAdding] = useState(false)
+  const [isAdding, setIsAdding] =
+    useState(false)
+
   const [title, setTitle] = useState('')
-  const [loading, setLoading] = useState(false)
+
+  const [loading, setLoading] =
+    useState(false)
 
   const handleCreate = async () => {
     if (!title.trim()) return
@@ -34,10 +57,12 @@ export default function BoardColumn({ board, onCardCreated }: Props) {
       })
 
       setTitle('')
+
       setIsAdding(false)
 
-      // 🔥 trigger refresh dari parent (BoardPage)
       onCardCreated?.()
+
+      onRefresh?.()
     } catch (err) {
       console.error(err)
     } finally {
@@ -50,21 +75,30 @@ export default function BoardColumn({ board, onCardCreated }: Props) {
       ref={setNodeRef}
       className="w-72 bg-gray-100 rounded-xl p-3 min-h-[200px] flex flex-col"
     >
-      <h3 className="font-semibold mb-2">{board.name}</h3>
+      <h3 className="font-semibold mb-2">
+        {board.name}
+      </h3>
 
-      {/* LIST CARD */}
       <SortableContext
         items={board.cards.map((c) => c.id)}
-        strategy={verticalListSortingStrategy}
+        strategy={
+          verticalListSortingStrategy
+        }
       >
         <div className="space-y-2 flex-1">
           {board.cards.map((card) => (
-            <CardItem key={card.id} card={card} />
+            <CardItem
+              key={card.id}
+              card={card}
+              onRefresh={onRefresh}
+
+              /* 🔥 TAMBAHAN */
+              onOpen={onOpenCard}
+            />
           ))}
         </div>
       </SortableContext>
 
-      {/* ADD TASK */}
       {!isAdding ? (
         <button
           onClick={() => setIsAdding(true)}
@@ -76,7 +110,9 @@ export default function BoardColumn({ board, onCardCreated }: Props) {
         <div className="mt-3 space-y-2">
           <textarea
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) =>
+              setTitle(e.target.value)
+            }
             placeholder="Task title..."
             className="w-full border p-2 rounded"
           />
@@ -87,10 +123,16 @@ export default function BoardColumn({ board, onCardCreated }: Props) {
               disabled={loading}
               className="bg-blue-600 text-white px-3 py-1 rounded"
             >
-              {loading ? 'Adding...' : 'Add'}
+              {loading
+                ? 'Adding...'
+                : 'Add'}
             </button>
 
-            <button onClick={() => setIsAdding(false)}>
+            <button
+              onClick={() =>
+                setIsAdding(false)
+              }
+            >
               Cancel
             </button>
           </div>
