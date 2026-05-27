@@ -166,12 +166,6 @@ export default function FormPage() {
                     Copy Link
                   </button>
 
-                  <button
-                    onClick={() => navigate(`/forms/${form.id}/builder`)}
-                    className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-                  >
-                    Builder
-                  </button>
 
                   <button
                     onClick={() => navigate(`/forms/${form.id}/responses`)}

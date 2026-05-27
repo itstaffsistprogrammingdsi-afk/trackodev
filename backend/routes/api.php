@@ -26,19 +26,7 @@ use App\Http\Controllers\Api\AssignmentController;
 // ============================================
 // HEALTH CHECK
 // ============================================
-// ============================================
-// PUBLIC FORMS
-// ============================================
 
-Route::get(
-    '/public/forms/{slug}',
-    [PublicFormController::class, 'show']
-);
-
-Route::post(
-    '/public/forms/{slug}/submit',
-    [PublicFormController::class, 'submit']
-);
 
 Route::get('/ping', function () {
 
@@ -627,3 +615,18 @@ Route::middleware([
         [AssignmentController::class, 'assign']
     )->middleware('permission:task.assign');
 });
+
+
+// ============================================
+// PUBLIC FORMS
+// ============================================
+
+Route::get(
+    '/public/forms/{slug}',
+    [PublicFormController::class, 'show']
+);
+
+Route::post(
+    '/public/forms/{slug}/submit',
+    [PublicFormController::class, 'submit']
+);
