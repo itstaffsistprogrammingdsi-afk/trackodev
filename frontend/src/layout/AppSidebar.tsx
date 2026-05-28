@@ -1,426 +1,954 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import UserDropdown from "../components/header/UserDropdown";
-import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-// Assume these icons are imported from an icon library
+import { Link, useLocation } from "react-router-dom";
+
+import UserDropdown from "../components/header/UserDropdown";
+
 import {
   BoxCubeIcon,
-  // CalenderIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
   ListIcon,
-  // PageIcon,
-  PieChartIcon,
-  PlugInIcon,
-  // TableIcon,
   UserCircleIcon,
 } from "../icons";
 
 import { useSidebar } from "../context/SidebarContext";
-// import SidebarWidget from "./SidebarWidget";
+
+/* -------------------------------------------------------------------------- */
+/*                                   TYPES                                    */
+/* -------------------------------------------------------------------------- */
+
+type ChildItem = {
+  name: string;
+  path: string;
+};
+
+type SubItem = {
+  name: string;
+  path: string;
+  children?: ChildItem[];
+};
 
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
+  subItems?: SubItem[];
 };
 
-const navItems: NavItem[] = [
-  {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    path: "/",
-  },
-  {
+/* -------------------------------------------------------------------------- */
+/*                                DARK MODE HOOK                              */
+/* -------------------------------------------------------------------------- */
 
-    name: "Task Management",
-    icon: <BoxCubeIcon />,
-    subItems: [{ name: "Divisions", path: "/divisions", pro: false }],
-    // subItems: [{ name: "Workspace", path: "/divisions/:id", pro: false }],
-    
-  },
-    {
-    name: "Forms",
-    icon: <ListIcon />,
-    path: "/forms",
-  },
-  {
-    name: "Chats",
-    icon: <ListIcon />,
-    path: "/chats",
-  },
-  {
-    name: "Report",
-    icon: <ListIcon />,
-    path: "/report",
-  },
-  // {
-  //   name: "Campaigns",
-  //   icon: <PieChartIcon />,
-  //   path: "/campaigns",
-  // },
-  // {
-  //   icon: <CalenderIcon />,
-  //   name: "Calendar",
-  //   path: "/calendar",
-  // },
-  {
-    icon: <UserCircleIcon />,
-    name: "User Management",
-    path: "/profile",
-  },
-
-  // {
-  //   name: "Tables",
-  //   icon: <TableIcon />,
-  //   subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  // },
-  // {
-  //   name: "Pages",
-  //   icon: <PageIcon />,
-  //   subItems: [
-  //     { name: "Blank Page", path: "/blank", pro: false },
-  //     { name: "404 Error", path: "/error-404", pro: false },
-  //   ],
-  // },
-];
-
-const othersItems: NavItem[] = [
-  // {
-  //   icon: <PieChartIcon />,
-  //   name: "Charts",
-  //   subItems: [
-  //     { name: "Line Chart", path: "/line-chart", pro: false },
-  //     { name: "Bar Chart", path: "/bar-chart", pro: false },
-  //   ],
-  // },
-  // {
-  //   icon: <BoxCubeIcon />,
-  //   name: "UI Elements",
-  //   subItems: [
-  //     { name: "Alerts", path: "/alerts", pro: false },
-  //     { name: "Avatar", path: "/avatars", pro: false },
-  //     { name: "Badge", path: "/badge", pro: false },
-  //     { name: "Buttons", path: "/buttons", pro: false },
-  //     { name: "Images", path: "/images", pro: false },
-  //     { name: "Videos", path: "/videos", pro: false },
-  //   ],
-  // },
-  // {
-  //   icon: <PlugInIcon />,
-  //   name: "Authentication",
-  //   subItems: [
-  //     { name: "Sign In", path: "/signin", pro: false },
-  //     { name: "Sign Up", path: "/signup", pro: false },
-  //   ],
-  // },
-];
-
-const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
-  const location = useLocation();
-
-  const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others";
-    index: number;
-  } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {},
-  );
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // const isActive = (path: string) => location.pathname === path;
-  const isActive = useCallback(
-    (path: string) => location.pathname === path,
-    [location.pathname],
-  );
+function useDarkMode() {
+  const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    let submenuMatched = false;
-    ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
-              submenuMatched = true;
-            }
-          });
-        }
-      });
-    });
+    if (typeof window === "undefined") return;
 
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
-    }
-  }, [location, isActive]);
+    const storedTheme =
+      localStorage.getItem("theme");
+
+    const initialDark =
+      storedTheme === "dark" ||
+      (!storedTheme &&
+        window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches);
+
+    setDark(initialDark);
+  }, []);
 
   useEffect(() => {
-    if (openSubmenu !== null) {
-      const key = `${openSubmenu.type}-${openSubmenu.index}`;
-      if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
-          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
-        }));
-      }
-    }
-  }, [openSubmenu]);
+    if (typeof window === "undefined") return;
 
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-      return { type: menuType, index };
-    });
+    const root =
+      document.documentElement;
+
+    if (dark) {
+      root.classList.add("dark");
+
+      localStorage.setItem(
+        "theme",
+        "dark"
+      );
+    } else {
+      root.classList.remove("dark");
+
+      localStorage.setItem(
+        "theme",
+        "light"
+      );
+    }
+  }, [dark]);
+
+  const toggleDark = useCallback(() => {
+    setDark((prev) => !prev);
+  }, []);
+
+  return {
+    dark,
+    toggleDark,
   };
+}
 
-  const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
-    <ul className="flex flex-col gap-4">
-      {items.map((nav, index) => (
-        <li key={nav.name}>
-          {nav.subItems ? (
-            <button
-              onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`menu-item group ${
-                openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-active"
-                  : "menu-item-inactive"
-              } cursor-pointer ${
-                !isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "lg:justify-start"
-              }`}
-            >
-              <span
-                className={`menu-item-icon-size  ${
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
-                }`}
-              >
-                {nav.icon}
-              </span>
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <span className="menu-item-text">{nav.name}</span>
-              )}
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <ChevronDownIcon
-                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-                    openSubmenu?.type === menuType &&
-                    openSubmenu?.index === index
-                      ? "rotate-180 text-brand-500"
-                      : ""
-                  }`}
-                />
-              )}
-            </button>
-          ) : (
-            nav.path && (
-              <Link
-                to={nav.path}
-                className={`menu-item group ${
-                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-                }`}
-              >
-                <span
-                  className={`menu-item-icon-size ${
-                    isActive(nav.path)
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
-                  }`}
-                >
-                  {nav.icon}
-                </span>
-                {(isExpanded || isHovered || isMobileOpen) && (
-                  <span className="menu-item-text">{nav.name}</span>
-                )}
-              </Link>
-            )
-          )}
-          {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
-            <div
-              ref={(el) => {
-                subMenuRefs.current[`${menuType}-${index}`] = el;
-              }}
-              className="overflow-hidden transition-all duration-300"
-              style={{
-                height:
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? `${subMenuHeight[`${menuType}-${index}`]}px`
-                    : "0px",
-              }}
-            >
-              <ul className="mt-2 space-y-1 ml-9">
-                {nav.subItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link
-                      to={subItem.path}
-                      className={`menu-dropdown-item ${
-                        isActive(subItem.path)
-                          ? "menu-dropdown-item-active"
-                          : "menu-dropdown-item-inactive"
-                      }`}
-                    >
-                      {subItem.name}
-                      <span className="flex items-center gap-1 ml-auto">
-                        {subItem.new && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge`}
-                          >
-                            new
-                          </span>
-                        )}
-                        {subItem.pro && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge`}
-                          >
-                            pro
-                          </span>
-                        )}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
+/* -------------------------------------------------------------------------- */
+/*                                 UTILITIES                                  */
+/* -------------------------------------------------------------------------- */
+
+const DotIcon = memo(() => {
+  return (
+    <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
   );
+});
+
+const menuItemBase =
+  "flex items-center gap-3 rounded-xl transition-all duration-200";
+
+const menuItemInactive =
+  "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5";
+
+const menuItemActive =
+  "bg-indigo-500 text-white shadow-sm";
+
+/* -------------------------------------------------------------------------- */
+/*                                ROUTE MATCHER                               */
+/* -------------------------------------------------------------------------- */
+
+function normalizePath(path: string) {
+  if (!path || path === "/") {
+    return "/";
+  }
+
+  return path.replace(/\/+$/, "");
+}
+
+function matchDynamicRoute(
+  pathname: string,
+  routePath: string
+) {
+  const pathnameParts =
+    normalizePath(pathname).split("/");
+
+  const routeParts =
+    normalizePath(routePath).split("/");
+
+  if (
+    pathnameParts.length !==
+    routeParts.length
+  ) {
+    return false;
+  }
+
+  return routeParts.every(
+    (part, index) => {
+      if (part.startsWith(":")) {
+        return true;
+      }
+
+      return (
+        part === pathnameParts[index]
+      );
+    }
+  );
+}
+
+function matchPathname(
+  pathname: string,
+  routePath: string
+) {
+  if (!routePath) {
+    return false;
+  }
+
+  const normalizedPathname =
+    normalizePath(pathname);
+
+  const normalizedRoute =
+    normalizePath(routePath);
+
+  if (
+    normalizedRoute.includes(":")
+  ) {
+    return matchDynamicRoute(
+      normalizedPathname,
+      normalizedRoute
+    );
+  }
+
+  if (normalizedRoute === "/") {
+    return normalizedPathname === "/";
+  }
 
   return (
-    <aside
-      className={`fixed flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
-        ${
-          isExpanded || isMobileOpen
-            ? "w-[250px]"
-            : isHovered
-              ? "w-[250px]"
-              : "w-[90px]"
-        }
-        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0`}
-      onMouseEnter={() => !isExpanded && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div
-        className={`py-8 flex ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
-      >
-        <Link to="/">
-          {isExpanded || isHovered || isMobileOpen ? (
-            <>
-              <img
-                className="dark:hidden"
-                src="/images/logo/logof.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-              <img
-                className="hidden dark:block"
-                src="/images/logo/logof.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-            </>
-          ) : (
-            <img
-              src="/images/logo/icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
-          )}
+    normalizedPathname ===
+      normalizedRoute ||
+    normalizedPathname.startsWith(
+      `${normalizedRoute}/`
+    )
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                            PERSIST LAST PARAMS                             */
+/* -------------------------------------------------------------------------- */
+
+function usePersistedRouteParams() {
+  const location = useLocation();
+
+  const [divisionId, setDivisionId] =
+    useState<string | null>(() =>
+      localStorage.getItem(
+        "lastDivisionId"
+      )
+    );
+
+  const [workspaceId, setWorkspaceId] =
+    useState<string | null>(() =>
+      localStorage.getItem(
+        "lastWorkspaceId"
+      )
+    );
+
+  const [campaignId, setCampaignId] =
+    useState<string | null>(() =>
+      localStorage.getItem(
+        "lastCampaignId"
+      )
+    );
+
+  useEffect(() => {
+    const divisionMatch =
+      location.pathname.match(
+        /^\/divisions\/([^/]+)/
+      );
+
+    if (divisionMatch?.[1]) {
+      const id = divisionMatch[1];
+
+      setDivisionId(id);
+
+      localStorage.setItem(
+        "lastDivisionId",
+        id
+      );
+    }
+
+    const workspaceMatch =
+      location.pathname.match(
+        /^\/workspaces\/([^/]+)/
+      );
+
+    if (workspaceMatch?.[1]) {
+      const id = workspaceMatch[1];
+
+      setWorkspaceId(id);
+
+      localStorage.setItem(
+        "lastWorkspaceId",
+        id
+      );
+    }
+
+    const campaignMatch =
+      location.pathname.match(
+        /^\/campaigns\/([^/]+)/
+      );
+
+    if (campaignMatch?.[1]) {
+      const id = campaignMatch[1];
+
+      setCampaignId(id);
+
+      localStorage.setItem(
+        "lastCampaignId",
+        id
+      );
+    }
+  }, [location.pathname]);
+
+  return {
+    divisionId,
+    workspaceId,
+    campaignId,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                 TREE LEAF                                  */
+/* -------------------------------------------------------------------------- */
+
+const TreeLeaf = memo(
+  function TreeLeaf({
+    name,
+    path,
+    active,
+  }: {
+    name: string;
+    path: string;
+    active: boolean;
+  }) {
+    return (
+      <li>
+        <Link
+          to={path}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all
+          ${
+            active
+              ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400"
+              : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          }`}
+        >
+          <DotIcon />
+
+          <span className="truncate">
+            {name}
+          </span>
         </Link>
-      </div>
+      </li>
+    );
+  }
+);
 
-      <div className="flex flex-col overflow-x-visible overflow-y-auto duration-300 ease-linear no-scrollbar">
-        <nav className="mb-6">
-          <div className="flex flex-col gap-2">
-            <div className="px-2">
-              <UserDropdown compact={!isExpanded && !isHovered} />
-            </div>
+/* -------------------------------------------------------------------------- */
+/*                                TREE BRANCH                                 */
+/* -------------------------------------------------------------------------- */
 
-            <div className="border-t border-gray-200 dark:border-gray-800 my-2" />
+const TreeBranch = memo(
+  function TreeBranch({
+    subItem,
+    isActive,
+  }: {
+    subItem: SubItem;
+    isActive: (
+      path: string
+    ) => boolean;
+  }) {
+    const hasChildren =
+      !!subItem.children?.length;
 
-            {/* Dark Mode */}
-            {/* <div className="flex items-center gap-3 w-full px-2 py-2 rounded-lg transition hover:bg-gray-100 dark:hover:bg-white/5">
-              <span className="w-8 h-8 flex items-center justify-center">
-                <ThemeToggleButton />
+    const active = useMemo(() => {
+      return (
+        isActive(subItem.path) ||
+        subItem.children?.some(
+          (child) =>
+            isActive(child.path)
+        ) ||
+        false
+      );
+    }, [isActive, subItem]);
+
+    const [open, setOpen] =
+      useState(active);
+
+    useEffect(() => {
+      if (active) {
+        setOpen(true);
+      }
+    }, [active]);
+
+    const contentRef =
+      useRef<HTMLDivElement>(null);
+
+    const [height, setHeight] =
+      useState(0);
+
+    useEffect(() => {
+      if (!contentRef.current)
+        return;
+
+      const element =
+        contentRef.current;
+
+      const updateHeight = () => {
+        setHeight(
+          element.scrollHeight
+        );
+      };
+
+      updateHeight();
+
+      const resizeObserver =
+        new ResizeObserver(
+          updateHeight
+        );
+
+      resizeObserver.observe(
+        element
+      );
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }, []);
+
+    return (
+      <li>
+        {hasChildren ? (
+          <>
+            <button
+              type="button"
+              onClick={() =>
+                setOpen(
+                  (prev) => !prev
+                )
+              }
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all
+              ${
+                active
+                  ? "text-indigo-600 dark:text-indigo-400"
+                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+              }`}
+            >
+              <span className="flex-1 text-left truncate">
+                {subItem.name}
               </span>
 
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Dark mode
-                </span>
-              )}
-            </div> */}
+              <ChevronDownIcon
+                className={`w-4 h-4 transition-transform duration-200 shrink-0
+                ${
+                  open
+                    ? "rotate-180"
+                    : ""
+                }`}
+              />
+            </button>
 
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
-                ) : (
-                  <HorizontaLDots className="size-6" />
+            <div
+              ref={contentRef}
+              className="overflow-hidden transition-all duration-300"
+              style={{
+                maxHeight: open
+                  ? `${height}px`
+                  : "0px",
+              }}
+            >
+              <ul className="ml-4 mt-1 border-l border-gray-200 dark:border-gray-700 pl-3 space-y-1">
+                {subItem.children?.map(
+                  (child) => (
+                    <TreeLeaf
+                      key={child.path}
+                      name={child.name}
+                      path={child.path}
+                      active={isActive(
+                        child.path
+                      )}
+                    />
+                  )
                 )}
-              </h2>
-              {renderMenuItems(navItems, "main")}
+              </ul>
             </div>
-            <div className="">
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
-            </div>
-          </div>
-        </nav>
-        {/* {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null} */}
-      </div>
-    </aside>
+          </>
+        ) : (
+          <Link
+            to={subItem.path}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all
+            ${
+              active
+                ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400"
+                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+            }`}
+          >
+            <DotIcon />
+
+            <span className="truncate">
+              {subItem.name}
+            </span>
+          </Link>
+        )}
+      </li>
+    );
+  }
+);
+
+/* -------------------------------------------------------------------------- */
+/*                                MAIN SIDEBAR                                */
+/* -------------------------------------------------------------------------- */
+
+const AppSidebar: React.FC = () => {
+  const {
+    isExpanded,
+    isHovered,
+    isMobileOpen,
+    setIsHovered,
+    toggleSidebar,
+    toggleMobileSidebar,
+  } = useSidebar();
+
+  const location =
+    useLocation();
+
+  const {
+    dark,
+    toggleDark,
+  } = useDarkMode();
+
+  const {
+    divisionId,
+    workspaceId,
+    campaignId,
+  } = usePersistedRouteParams();
+
+  const [
+    openSubmenu,
+    setOpenSubmenu,
+  ] = useState<number | null>(
+    null
+  );
+
+  const slim =
+    !isExpanded &&
+    !isHovered &&
+    !isMobileOpen;
+
+  /* -------------------------------------------------------------------------- */
+  /*                                DYNAMIC MENU                               */
+  /* -------------------------------------------------------------------------- */
+
+  const navItems =
+    useMemo<NavItem[]>(
+      () => [
+        {
+          icon: <GridIcon />,
+          name: "Dashboard",
+          path: "/",
+        },
+
+        {
+          name: "Task Management",
+          icon: <BoxCubeIcon />,
+          subItems: [
+            {
+              name: "Task Manager",
+              path: "/divisions",
+
+              children: [
+                {
+                  name:
+                    "Divisions List",
+
+                  path: "/divisions",
+                },
+
+                {
+                  name: "Workspace",
+
+                  path:
+                    divisionId
+                      ? `/divisions/${divisionId}`
+                      : "/divisions",
+                },
+
+                {
+                  name: "Campaigns",
+
+                  path:
+                    workspaceId
+                      ? `/workspaces/${workspaceId}/campaigns`
+                      : "/divisions",
+                },
+
+                {
+                  name: "Board",
+
+                  path:
+                    campaignId
+                      ? `/campaigns/${campaignId}`
+                      : workspaceId
+                      ? `/workspaces/${workspaceId}/campaigns`
+                      : "/divisions",
+                },
+              ],
+            },
+          ],
+        },
+
+        {
+          name: "Forms",
+          icon: <ListIcon />,
+          subItems: [
+            {
+              name: "All Forms",
+              path: "/forms",
+            },
+
+            {
+              name: "Create Form",
+              path: "/forms/create",
+            },
+
+          ],
+        },
+
+        {
+          name: "Chats",
+          icon: <ListIcon />,
+          path: "/chats",
+        },
+
+        {
+          name: "Report",
+          icon: <ListIcon />,
+          path: "/report",
+        },
+
+        {
+          icon: <UserCircleIcon />,
+          name: "User Management",
+          path: "/profile",
+        },
+      ],
+      [
+        divisionId,
+        workspaceId,
+        campaignId,
+      ]
+    );
+
+  /* -------------------------------------------------------------------------- */
+  /*                               ACTIVE MATCHER                              */
+  /* -------------------------------------------------------------------------- */
+
+  const isActive = useCallback(
+    (path: string) => {
+      return matchPathname(
+        location.pathname,
+        path
+      );
+    },
+    [location.pathname]
+  );
+
+  useEffect(() => {
+    const activeMenuIndex =
+      navItems.findIndex(
+        (item) => {
+          if (!item.subItems) {
+            return false;
+          }
+
+          return item.subItems.some(
+            (sub) =>
+              isActive(sub.path) ||
+              sub.children?.some(
+                (child) =>
+                  isActive(
+                    child.path
+                  )
+              )
+          );
+        }
+      );
+
+    setOpenSubmenu((prev) => {
+      if (
+        activeMenuIndex === -1
+      ) {
+        return prev;
+      }
+
+      return activeMenuIndex;
+    });
+  }, [navItems, isActive]);
+
+  const handleMouseEnter =
+    () => {
+      if (!isExpanded) {
+        setIsHovered(true);
+      }
+    };
+
+  const handleMouseLeave =
+    () => {
+      setIsHovered(false);
+    };
+
+  return (
+    <>
+      {isMobileOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          onClick={
+            toggleMobileSidebar
+          }
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed top-0 left-0 z-50 h-screen bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 transition-all duration-300
+        ${
+          slim
+            ? "w-[72px]"
+            : "w-[260px]"
+        }
+        ${
+          isMobileOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+        }`}
+        onMouseEnter={
+          handleMouseEnter
+        }
+        onMouseLeave={
+          handleMouseLeave
+        }
+      >
+        {/* HEADER */}
+
+        <div className="flex items-center justify-between px-4 py-5 border-b border-gray-100 dark:border-gray-800">
+          <Link
+            to="/"
+            className="flex items-center shrink-0"
+          >
+            {slim ? (
+              <img
+                src="/images/logo/icon.svg"
+                alt="Logo"
+                className="w-8 h-8 object-contain"
+              />
+            ) : (
+              <img
+                src="/images/logo/logof.svg"
+                alt="Logo"
+                className="h-8 object-contain"
+              />
+            )}
+          </Link>
+
+          {!slim && (
+            <button
+              type="button"
+              onClick={
+                toggleSidebar
+              }
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+              aria-label="Toggle sidebar"
+            >
+              ☰
+            </button>
+          )}
+        </div>
+
+        {/* CONTENT */}
+
+        <div className="flex flex-col h-[calc(100vh-73px)] overflow-y-auto px-3 py-4 space-y-4">
+          <UserDropdown
+            compact={slim}
+          />
+
+          <div className="border-t border-gray-100 dark:border-gray-800" />
+
+          {/* DARK MODE */}
+
+          <button
+            type="button"
+            onClick={toggleDark}
+            className={`${menuItemBase} ${menuItemInactive} w-full px-3 py-2.5 ${
+              slim
+                ? "justify-center"
+                : ""
+            }`}
+          >
+            <span className="shrink-0">
+              {dark
+                ? "☀️"
+                : "🌙"}
+            </span>
+
+            {!slim && (
+              <span className="text-sm font-medium">
+                {dark
+                  ? "Light Mode"
+                  : "Dark Mode"}
+              </span>
+            )}
+          </button>
+
+          <div className="border-t border-gray-100 dark:border-gray-800" />
+
+          {/* MENU */}
+
+          <nav className="space-y-1">
+            {!slim ? (
+              <p className="mb-2 px-2 text-[10px] uppercase tracking-widest text-gray-400">
+                Menu
+              </p>
+            ) : (
+              <div className="flex justify-center mb-2">
+                <HorizontaLDots className="w-5 h-5 text-gray-300 dark:text-gray-600" />
+              </div>
+            )}
+
+            <ul className="space-y-1">
+              {navItems.map(
+                (
+                  item,
+                  index
+                ) => {
+                  const isOpen =
+                    openSubmenu ===
+                    index;
+
+                  if (
+                    item.subItems
+                  ) {
+                    return (
+                      <li
+                        key={
+                          item.name
+                        }
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenSubmenu(
+                              (
+                                prev
+                              ) =>
+                                prev ===
+                                index
+                                  ? null
+                                  : index
+                            )
+                          }
+                          className={`${menuItemBase} w-full px-3 py-2.5
+                          ${
+                            isOpen
+                              ? menuItemActive
+                              : menuItemInactive
+                          }
+                          ${
+                            slim
+                              ? "justify-center"
+                              : ""
+                          }`}
+                        >
+                          <span className="shrink-0">
+                            {
+                              item.icon
+                            }
+                          </span>
+
+                          {!slim && (
+                            <>
+                              <span className="flex-1 text-left text-sm font-medium truncate">
+                                {
+                                  item.name
+                                }
+                              </span>
+
+                              <ChevronDownIcon
+                                className={`w-4 h-4 shrink-0 transition-transform
+                                ${
+                                  isOpen
+                                    ? "rotate-180"
+                                    : ""
+                                }`}
+                              />
+                            </>
+                          )}
+                        </button>
+
+                        {!slim && (
+                          <div
+                            className={`overflow-hidden transition-all duration-300
+                            ${
+                              isOpen
+                                ? "max-h-[600px] opacity-100"
+                                : "max-h-0 opacity-0"
+                            }`}
+                          >
+                            <ul className="ml-4 mt-2 border-l border-gray-200 dark:border-gray-700 pl-3 space-y-1">
+                              {item.subItems.map(
+                                (
+                                  subItem
+                                ) => (
+                                  <TreeBranch
+                                    key={
+                                      subItem.path
+                                    }
+                                    subItem={
+                                      subItem
+                                    }
+                                    isActive={
+                                      isActive
+                                    }
+                                  />
+                                )
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  }
+
+                  if (
+                    !item.path
+                  ) {
+                    return null;
+                  }
+
+                  return (
+                    <li
+                      key={
+                        item.name
+                      }
+                    >
+                      <Link
+                        to={
+                          item.path
+                        }
+                        className={`${menuItemBase} px-3 py-2.5
+                        ${
+                          isActive(
+                            item.path
+                          )
+                            ? menuItemActive
+                            : menuItemInactive
+                        }
+                        ${
+                          slim
+                            ? "justify-center"
+                            : ""
+                        }`}
+                      >
+                        <span className="shrink-0">
+                          {
+                            item.icon
+                          }
+                        </span>
+
+                        {!slim && (
+                          <span className="text-sm font-medium truncate">
+                            {
+                              item.name
+                            }
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                }
+              )}
+            </ul>
+          </nav>
+        </div>
+      </aside>
+    </>
   );
 };
 
-
-
-export default AppSidebar;
+export default memo(
+  AppSidebar
+);
