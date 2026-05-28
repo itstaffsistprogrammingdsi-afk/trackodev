@@ -28,6 +28,10 @@ class UserController extends Controller
             'Unauthorized'
         );
 
+        // ============================================
+        // QUERY
+        // ============================================
+
         $query = User::query()
             ->with([
                 'roles',
@@ -68,31 +72,108 @@ class UserController extends Controller
         }
 
         // ============================================
-        // USERS
+        // FILTER DIVISION
         // ============================================
+
+        if (
+            $request->filled('division_id')
+            && $request->boolean('assign')
+        ) {
+
+            $divisionId =
+                $request->division_id;
+
+            $query->where(function ($q)
+            use ($divisionId) {
+
+                $q->whereHas(
+                    'divisions',
+                    function ($sub)
+                    use ($divisionId) {
+
+                        $sub->where(
+                            'divisions.id',
+                            $divisionId
+                        );
+                    }
+                )
+
+                    // user tanpa division
+                    ->orWhereDoesntHave(
+                        'divisions'
+                    );
+            });
+        }
+
+        // ============================================
+        // ASSIGN MODE
+        // ============================================
+
+        if (
+            $request->boolean('all') ||
+            $request->boolean('assign')
+        ) {
+
+            $users = $query
+                ->latest()
+                ->get();
+
+            return response()->json([
+
+                'data' => UserResource::collection(
+                    $users
+                ),
+            ]);
+        }
+
+        // ============================================
+        // PAGINATED MODE
+        // ============================================
+
+        $perPage = $request->integer(
+            'per_page',
+            10
+        );
 
         $users = $query
             ->latest()
-            ->paginate(10);
+            ->paginate($perPage);
 
-        // ============================================
-        // ROLE STATS
-        // ============================================
-
+    // ============================================
+    // ROLE STATS
+    // ============================================
+        /** @var Role|null $superAdminRole */
         $superAdminRole = Role::where(
             'name',
             User::ROLE_SUPER_ADMIN
         )->first();
 
+        /** @var Role|null $adminRole */
         $adminRole = Role::where(
             'name',
             User::ROLE_ADMIN
         )->first();
 
+        /** @var Role|null $userRole */
         $userRole = Role::where(
             'name',
             User::ROLE_USER
         )->first();
+
+        // $superAdminRole = Role::where(
+        //     'name',
+        //     User::ROLE_SUPER_ADMIN
+        // )->first();
+
+        // $adminRole = Role::where(
+        //     'name',
+        //     User::ROLE_ADMIN
+        // )->first();
+
+        // $userRole = Role::where(
+        //     'name',
+        //     User::ROLE_USER
+        // )->first();
 
         // ============================================
         // RESPONSE
@@ -113,19 +194,19 @@ class UserController extends Controller
             // ========================================
 
             'current_page' =>
-                $users->currentPage(),
+            $users->currentPage(),
 
             'last_page' =>
-                $users->lastPage(),
+            $users->lastPage(),
 
             'per_page' =>
-                $users->perPage(),
+            $users->perPage(),
 
             'total' =>
-                $users->total(),
+            $users->total(),
 
             'links' =>
-                $users->linkCollection(),
+            $users->linkCollection(),
 
             // ========================================
             // STATS
@@ -134,18 +215,18 @@ class UserController extends Controller
             'stats' => [
 
                 'total_users' =>
-                    User::count(),
+                User::count(),
 
                 'total_super_admin' =>
-                    $superAdminRole?->users()->count()
+                $superAdminRole?->users()->count()
                     ?? 0,
 
                 'total_admin' =>
-                    $adminRole?->users()->count()
+                $adminRole?->users()->count()
                     ?? 0,
 
                 'total_user' =>
-                    $userRole?->users()->count()
+                $userRole?->users()->count()
                     ?? 0,
             ],
         ]);
@@ -203,18 +284,18 @@ class UserController extends Controller
         $user = User::create([
 
             'name' =>
-                $validated['name'],
+            $validated['name'],
 
             'email' =>
-                $validated['email'],
+            $validated['email'],
 
             'password' =>
-                Hash::make(
-                    $validated['password']
-                ),
+            Hash::make(
+                $validated['password']
+            ),
 
             'phone' =>
-                $validated['phone'] ?? null,
+            $validated['phone'] ?? null,
         ]);
 
         // ============================================
@@ -237,10 +318,10 @@ class UserController extends Controller
         return response()->json([
 
             'message' =>
-                'User berhasil dibuat.',
+            'User berhasil dibuat.',
 
             'data' =>
-                new UserResource($user),
+            new UserResource($user),
 
         ], 201);
     }
@@ -268,7 +349,7 @@ class UserController extends Controller
         return response()->json([
 
             'data' =>
-                new UserResource($user),
+            new UserResource($user),
         ]);
     }
 
@@ -286,7 +367,7 @@ class UserController extends Controller
 
         abort_unless(
             $request->user()->can('user.update')
-            || $isSelf,
+                || $isSelf,
             403,
             'Unauthorized'
         );
@@ -323,15 +404,15 @@ class UserController extends Controller
         $user->update([
 
             'name' =>
-                $validated['name']
+            $validated['name']
                 ?? $user->name,
 
             'email' =>
-                $validated['email']
+            $validated['email']
                 ?? $user->email,
 
             'phone' =>
-                $validated['phone']
+            $validated['phone']
                 ?? $user->phone,
         ]);
 
@@ -360,10 +441,10 @@ class UserController extends Controller
         return response()->json([
 
             'message' =>
-                'User berhasil diupdate.',
+            'User berhasil diupdate.',
 
             'data' =>
-                new UserResource($user),
+            new UserResource($user),
         ]);
     }
 
@@ -393,7 +474,7 @@ class UserController extends Controller
             return response()->json([
 
                 'message' =>
-                    'Tidak bisa menghapus akun sendiri.',
+                'Tidak bisa menghapus akun sendiri.',
 
             ], 422);
         }
@@ -419,71 +500,72 @@ class UserController extends Controller
         return response()->json([
 
             'message' =>
-                'User berhasil dihapus.',
+            'User berhasil dihapus.',
         ]);
     }
 
-    public function mentionable(Request $request
-): JsonResponse {
+    public function mentionable(
+        Request $request
+    ): JsonResponse {
 
-    $user = $request->user();
+        $user = $request->user();
 
-    $query = User::query()
-        ->select([
-            'id',
-            'name',
-            'email',
-            'avatar'
-        ]);
-
-    // ============================================
-    // SEARCH
-    // ============================================
-
-    if ($request->filled('search')) {
-
-        $search = $request->search;
-
-        $query->where(function ($q) use ($search) {
-
-            $q->where(
+        $query = User::query()
+            ->select([
+                'id',
                 'name',
-                'like',
-                "%{$search}%"
-            )->orWhere(
                 'email',
-                'like',
-                "%{$search}%"
+                'avatar'
+            ]);
+
+        // ============================================
+        // SEARCH
+        // ============================================
+
+        if ($request->filled('search')) {
+
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'name',
+                    'like',
+                    "%{$search}%"
+                )->orWhere(
+                    'email',
+                    'like',
+                    "%{$search}%"
+                );
+            });
+        }
+
+        // ============================================
+        // FILTER BERDASARKAN DIVISION
+        // ============================================
+
+        if (!$user->isSuperAdmin()) {
+
+            $divisionIds = $user
+                ->divisions
+                ->pluck('id');
+
+            $query->whereHas(
+                'divisions',
+                fn($q) =>
+                $q->whereIn(
+                    'divisions.id',
+                    $divisionIds
+                )
             );
-        });
+        }
+
+        $users = $query
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'data' => UserResource::collection($users)
+        ]);
     }
-
-    // ============================================
-    // FILTER BERDASARKAN DIVISION
-    // ============================================
-
-    if (!$user->isSuperAdmin()) {
-
-        $divisionIds = $user
-            ->divisions
-            ->pluck('id');
-
-        $query->whereHas(
-            'divisions',
-            fn ($q) =>
-            $q->whereIn(
-                'divisions.id',
-                $divisionIds
-            )
-        );
-    }
-
-    $users = $query
-        ->limit(10)
-        ->get();
-
-    return response()->json([
-        'data' => UserResource::collection($users)
-    ]);
-}
 }
