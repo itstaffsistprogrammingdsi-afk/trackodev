@@ -10,11 +10,82 @@ use Illuminate\Http\Request;
 
 class WorkspaceController extends Controller
 {
-    public function index(Division $division): JsonResponse
-    {
-        $workspaces = $division->workspaces()->get();
-        return response()->json(['data' => WorkspaceResource::collection($workspaces)]);
+public function index(
+    Request $request,
+    Division $division
+): JsonResponse {
+
+    $user = $request->user();
+
+    // ========================================
+    // SUPER ADMIN
+    // ========================================
+
+    if ($user->isSuperAdmin()) {
+
+        $workspaces = $division
+            ->workspaces()
+            ->get();
+
+        return response()->json([
+            'data' => WorkspaceResource::collection(
+                $workspaces
+            )
+        ]);
     }
+
+    // ========================================
+    // ADMIN
+    // ========================================
+
+    if ($user->isAdmin()) {
+
+        $hasDivision = $user
+            ->divisions()
+            ->where('divisions.id', $division->id)
+            ->exists();
+
+        abort_unless(
+            $hasDivision,
+            403,
+            'Unauthorized'
+        );
+
+        $workspaces = $division
+            ->workspaces()
+            ->get();
+
+        return response()->json([
+            'data' => WorkspaceResource::collection(
+                $workspaces
+            )
+        ]);
+    }
+
+    // ========================================
+    // USER
+    // ========================================
+
+    $workspaces = $division
+        ->workspaces()
+        ->whereHas(
+            'campaigns.members',
+            function ($q) use ($user) {
+
+                $q->where(
+                    'users.id',
+                    $user->id
+                );
+            }
+        )
+        ->get();
+
+    return response()->json([
+        'data' => WorkspaceResource::collection(
+            $workspaces
+        )
+    ]);
+}
 
     public function store(Request $request, Division $division): JsonResponse
     {

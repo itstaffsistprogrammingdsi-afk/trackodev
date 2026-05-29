@@ -27,4 +27,14 @@ class Board extends Model
 {
     return $this->hasMany(Assignment::class, 'board_id');
 }
+
+public function canBeAccessedBy(
+    User $user
+): bool {
+
+    return $this->campaign
+        ->canBeAccessedBy($user);
 }
+
+}
+

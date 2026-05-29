@@ -226,8 +226,54 @@ class User extends Authenticatable
 
 public function accessibleCampaigns()
 {
-    $divisionIds = $this->divisions()
-        ->pluck('divisions.id');
+    // ========================================
+    // SUPER ADMIN
+    // ========================================
+
+    if ($this->isSuperAdmin()) {
+
+        return Campaign::query()
+            ->with([
+                'workspace',
+                'workspace.division',
+                'members',
+                'cards',
+                'cards.members',
+            ]);
+    }
+
+    // ========================================
+    // ADMIN
+    // ========================================
+
+    if ($this->isAdmin()) {
+
+        $divisionIds = $this->divisions()
+            ->pluck('divisions.id');
+
+        return Campaign::query()
+            ->with([
+                'workspace',
+                'workspace.division',
+                'members',
+                'cards',
+                'cards.members',
+            ])
+            ->whereHas(
+                'workspace',
+                function ($query) use ($divisionIds) {
+
+                    $query->whereIn(
+                        'division_id',
+                        $divisionIds
+                    );
+                }
+            );
+    }
+
+    // ========================================
+    // USER
+    // ========================================
 
     return Campaign::query()
         ->with([
@@ -237,11 +283,25 @@ public function accessibleCampaigns()
             'cards',
             'cards.members',
         ])
-        ->whereHas('workspace', function ($query) use ($divisionIds) {
-            $query->whereIn(
-                'division_id',
-                $divisionIds
-            );
-        });
+        ->whereHas(
+            'members',
+            function ($query) {
+
+                $query->where(
+                    'users.id',
+                    $this->id
+                );
+            }
+        );
+}
+
+public function workspaces(): BelongsToMany
+{
+    return $this->belongsToMany(
+        Workspace::class,
+        'workspace_user',
+        'user_id',
+        'workspace_id'
+    )->withTimestamps();
 }
 }

@@ -66,5 +66,30 @@ public function users()
     return $this->belongsToMany(User::class, 'campaign_user');
 }
 
+public function canBeAccessedBy(
+    User $user
+): bool {
+
+    if ($user->isSuperAdmin()) {
+        return true;
+    }
+
+    if ($user->isAdmin()) {
+
+        return $user->divisions()
+            ->where(
+                'divisions.id',
+                $this->workspace->division_id
+            )
+            ->exists();
+    }
+
+    return $this->members()
+        ->where(
+            'users.id',
+            $user->id
+        )
+        ->exists();
+}
 
 }

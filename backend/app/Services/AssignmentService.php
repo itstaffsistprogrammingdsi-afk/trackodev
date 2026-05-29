@@ -92,19 +92,19 @@ class AssignmentService
             | 5. DESIGNER VALIDATION
             |------------------------------------------
             */
-            if (!empty($data['designer_id'])) {
+            // if (!empty($data['designer_id'])) {
 
-                $isMember = DB::table('campaign_user')
-                    ->where('campaign_id', $campaign->id)
-                    ->where('user_id', $data['designer_id'])
-                    ->exists();
+            //     $isMember = DB::table('campaign_user')
+            //         ->where('campaign_id', $campaign->id)
+            //         ->where('user_id', $data['designer_id'])
+            //         ->exists();
 
-                if (!$isMember) {
-                    throw ValidationException::withMessages([
-                        'designer_id' => 'Designer bukan member campaign'
-                    ]);
-                }
-            }
+            //     if (!$isMember) {
+            //         throw ValidationException::withMessages([
+            //             'designer_id' => 'Designer bukan member campaign'
+            //         ]);
+            //     }
+            // }
 
             /*
             |------------------------------------------
@@ -182,6 +182,10 @@ class AssignmentService
                 $card->assignees()->syncWithoutDetaching([
                     $data['designer_id']
                 ]);
+                $campaign->members()
+                    ->syncWithoutDetaching([
+                        $data['designer_id']
+                    ]);
             }
 
             /*
