@@ -18,15 +18,11 @@ class BoardController extends Controller
 
         $user = $request->user();
 
-        abort_unless(
-            $campaign->members()
-                ->where('users.id', $user->id)
-                ->exists()
-                || $campaign->created_by === $user->id
-                || $user->isSuperAdmin(),
-            403,
-            'Unauthorized'
-        );
+abort_unless(
+    $campaign->canBeAccessedBy($user),
+    403,
+    'Unauthorized'
+);
 
         $boards = $campaign->boards()
             ->with('cards.creator')

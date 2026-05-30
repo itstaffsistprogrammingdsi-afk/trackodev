@@ -14,7 +14,11 @@ class FormSubmissionController extends Controller
         $submissions = FormSubmission::with([
             'form.workspace',
             'user',
-            'card'
+            'card',
+
+            // TAMBAHAN
+            'assignment.coordinator',
+            'assignment.designer',
         ])
             ->where('form_id', $formId)
             ->latest()
@@ -42,7 +46,11 @@ class FormSubmissionController extends Controller
         $submission = FormSubmission::with([
             'form.workspace',
             'user',
-            'card'
+            'card',
+
+            // TAMBAHAN
+            'assignment.coordinator',
+            'assignment.designer',
         ])->findOrFail($id);
 
         return response()->json($submission);

@@ -610,10 +610,10 @@ Route::middleware([
     // ASSIGNMENT
     // ========================================
 
-    Route::post(
-        'responses/{submission}/assign',
-        [AssignmentController::class, 'assign']
-    )->middleware('permission:task.assign');
+Route::post(
+    'form-submissions/{submission}/assign',
+    [AssignmentController::class, 'assign']
+)->middleware('permission:task.assign');
 });
 
 

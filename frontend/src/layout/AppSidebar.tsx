@@ -7,7 +7,10 @@ import {
   useState,
 } from "react";
 
-import { Link, useLocation } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+} from "react-router-dom";
 
 import UserDropdown from "../components/header/UserDropdown";
 
@@ -49,13 +52,20 @@ type NavItem = {
 /* -------------------------------------------------------------------------- */
 
 function useDarkMode() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] =
+    useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (
+      typeof window ===
+      "undefined"
+    )
+      return;
 
     const storedTheme =
-      localStorage.getItem("theme");
+      localStorage.getItem(
+        "theme"
+      );
 
     const initialDark =
       storedTheme === "dark" ||
@@ -68,20 +78,28 @@ function useDarkMode() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (
+      typeof window ===
+      "undefined"
+    )
+      return;
 
     const root =
       document.documentElement;
 
     if (dark) {
-      root.classList.add("dark");
+      root.classList.add(
+        "dark"
+      );
 
       localStorage.setItem(
         "theme",
         "dark"
       );
     } else {
-      root.classList.remove("dark");
+      root.classList.remove(
+        "dark"
+      );
 
       localStorage.setItem(
         "theme",
@@ -90,9 +108,10 @@ function useDarkMode() {
     }
   }, [dark]);
 
-  const toggleDark = useCallback(() => {
-    setDark((prev) => !prev);
-  }, []);
+  const toggleDark =
+    useCallback(() => {
+      setDark((prev) => !prev);
+    }, []);
 
   return {
     dark,
@@ -123,12 +142,20 @@ const menuItemActive =
 /*                                ROUTE MATCHER                               */
 /* -------------------------------------------------------------------------- */
 
-function normalizePath(path: string) {
-  if (!path || path === "/") {
+function normalizePath(
+  path: string
+) {
+  if (
+    !path ||
+    path === "/"
+  ) {
     return "/";
   }
 
-  return path.replace(/\/+$/, "");
+  return path.replace(
+    /\/+$/,
+    ""
+  );
 }
 
 function matchDynamicRoute(
@@ -136,10 +163,14 @@ function matchDynamicRoute(
   routePath: string
 ) {
   const pathnameParts =
-    normalizePath(pathname).split("/");
+    normalizePath(
+      pathname
+    ).split("/");
 
   const routeParts =
-    normalizePath(routePath).split("/");
+    normalizePath(
+      routePath
+    ).split("/");
 
   if (
     pathnameParts.length !==
@@ -150,16 +181,23 @@ function matchDynamicRoute(
 
   return routeParts.every(
     (part, index) => {
-      if (part.startsWith(":")) {
+      if (
+        part.startsWith(":")
+      ) {
         return true;
       }
 
       return (
-        part === pathnameParts[index]
+        part ===
+        pathnameParts[index]
       );
     }
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*                           FIXED ACTIVE MATCHER                             */
+/* -------------------------------------------------------------------------- */
 
 function matchPathname(
   pathname: string,
@@ -175,6 +213,7 @@ function matchPathname(
   const normalizedRoute =
     normalizePath(routePath);
 
+  // dynamic route
   if (
     normalizedRoute.includes(":")
   ) {
@@ -184,16 +223,46 @@ function matchPathname(
     );
   }
 
-  if (normalizedRoute === "/") {
-    return normalizedPathname === "/";
+  // root
+  if (
+    normalizedRoute === "/"
+  ) {
+    return (
+      normalizedPathname ===
+      "/"
+    );
   }
 
-  return (
+  // exact match
+  if (
     normalizedPathname ===
-      normalizedRoute ||
-    normalizedPathname.startsWith(
-      `${normalizedRoute}/`
-    )
+    normalizedRoute
+  ) {
+    return true;
+  }
+
+  // nested route
+  const pathnameParts =
+    normalizedPathname.split(
+      "/"
+    );
+
+  const routeParts =
+    normalizedRoute.split(
+      "/"
+    );
+
+  if (
+    routeParts.length >
+    pathnameParts.length
+  ) {
+    return false;
+  }
+
+  return routeParts.every(
+    (part, index) =>
+      pathnameParts[index] ===
+      part
   );
 }
 
@@ -202,28 +271,41 @@ function matchPathname(
 /* -------------------------------------------------------------------------- */
 
 function usePersistedRouteParams() {
-  const location = useLocation();
+  const location =
+    useLocation();
 
-  const [divisionId, setDivisionId] =
-    useState<string | null>(() =>
-      localStorage.getItem(
-        "lastDivisionId"
-      )
-    );
+  const [
+    divisionId,
+    setDivisionId,
+  ] = useState<
+    string | null
+  >(() =>
+    localStorage.getItem(
+      "lastDivisionId"
+    )
+  );
 
-  const [workspaceId, setWorkspaceId] =
-    useState<string | null>(() =>
-      localStorage.getItem(
-        "lastWorkspaceId"
-      )
-    );
+  const [
+    workspaceId,
+    setWorkspaceId,
+  ] = useState<
+    string | null
+  >(() =>
+    localStorage.getItem(
+      "lastWorkspaceId"
+    )
+  );
 
-  const [campaignId, setCampaignId] =
-    useState<string | null>(() =>
-      localStorage.getItem(
-        "lastCampaignId"
-      )
-    );
+  const [
+    campaignId,
+    setCampaignId,
+  ] = useState<
+    string | null
+  >(() =>
+    localStorage.getItem(
+      "lastCampaignId"
+    )
+  );
 
   useEffect(() => {
     const divisionMatch =
@@ -231,8 +313,11 @@ function usePersistedRouteParams() {
         /^\/divisions\/([^/]+)/
       );
 
-    if (divisionMatch?.[1]) {
-      const id = divisionMatch[1];
+    if (
+      divisionMatch?.[1]
+    ) {
+      const id =
+        divisionMatch[1];
 
       setDivisionId(id);
 
@@ -247,8 +332,11 @@ function usePersistedRouteParams() {
         /^\/workspaces\/([^/]+)/
       );
 
-    if (workspaceMatch?.[1]) {
-      const id = workspaceMatch[1];
+    if (
+      workspaceMatch?.[1]
+    ) {
+      const id =
+        workspaceMatch[1];
 
       setWorkspaceId(id);
 
@@ -263,8 +351,11 @@ function usePersistedRouteParams() {
         /^\/campaigns\/([^/]+)/
       );
 
-    if (campaignMatch?.[1]) {
-      const id = campaignMatch[1];
+    if (
+      campaignMatch?.[1]
+    ) {
+      const id =
+        campaignMatch[1];
 
       setCampaignId(id);
 
@@ -333,18 +424,28 @@ const TreeBranch = memo(
     ) => boolean;
   }) {
     const hasChildren =
-      !!subItem.children?.length;
+      !!subItem.children
+        ?.length;
 
-    const active = useMemo(() => {
-      return (
-        isActive(subItem.path) ||
-        subItem.children?.some(
-          (child) =>
-            isActive(child.path)
-        ) ||
-        false
-      );
-    }, [isActive, subItem]);
+    const active =
+      useMemo(() => {
+        return (
+          isActive(
+            subItem.path
+          ) ||
+          subItem.children?.some(
+            (child) =>
+              isActive(
+                child.path
+              )
+          ) ||
+          false
+        );
+      }, [
+        isActive,
+        subItem.path,
+        subItem.children,
+      ]);
 
     const [open, setOpen] =
       useState(active);
@@ -356,23 +457,28 @@ const TreeBranch = memo(
     }, [active]);
 
     const contentRef =
-      useRef<HTMLDivElement>(null);
+      useRef<HTMLDivElement>(
+        null
+      );
 
     const [height, setHeight] =
       useState(0);
 
     useEffect(() => {
-      if (!contentRef.current)
+      if (
+        !contentRef.current
+      )
         return;
 
       const element =
         contentRef.current;
 
-      const updateHeight = () => {
-        setHeight(
-          element.scrollHeight
-        );
-      };
+      const updateHeight =
+        () => {
+          setHeight(
+            element.scrollHeight
+          );
+        };
 
       updateHeight();
 
@@ -398,7 +504,8 @@ const TreeBranch = memo(
               type="button"
               onClick={() =>
                 setOpen(
-                  (prev) => !prev
+                  (prev) =>
+                    !prev
                 )
               }
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all
@@ -409,7 +516,9 @@ const TreeBranch = memo(
               }`}
             >
               <span className="flex-1 text-left truncate">
-                {subItem.name}
+                {
+                  subItem.name
+                }
               </span>
 
               <ChevronDownIcon
@@ -426,18 +535,25 @@ const TreeBranch = memo(
               ref={contentRef}
               className="overflow-hidden transition-all duration-300"
               style={{
-                maxHeight: open
-                  ? `${height}px`
-                  : "0px",
+                maxHeight:
+                  open
+                    ? `${height}px`
+                    : "0px",
               }}
             >
               <ul className="ml-4 mt-1 border-l border-gray-200 dark:border-gray-700 pl-3 space-y-1">
                 {subItem.children?.map(
                   (child) => (
                     <TreeLeaf
-                      key={child.path}
-                      name={child.name}
-                      path={child.path}
+                      key={
+                        child.path
+                      }
+                      name={
+                        child.name
+                      }
+                      path={
+                        child.path
+                      }
                       active={isActive(
                         child.path
                       )}
@@ -473,219 +589,257 @@ const TreeBranch = memo(
 /*                                MAIN SIDEBAR                                */
 /* -------------------------------------------------------------------------- */
 
-const AppSidebar: React.FC = () => {
-  const {
-    isExpanded,
-    isHovered,
-    isMobileOpen,
-    setIsHovered,
-    toggleSidebar,
-    toggleMobileSidebar,
-  } = useSidebar();
+const AppSidebar: React.FC =
+  () => {
+    const {
+      isExpanded,
+      isHovered,
+      isMobileOpen,
+      setIsHovered,
+      toggleSidebar,
+      toggleMobileSidebar,
+    } = useSidebar();
 
-  const location =
-    useLocation();
+    const location =
+      useLocation();
 
-  const {
-    dark,
-    toggleDark,
-  } = useDarkMode();
+    const {
+      dark,
+      toggleDark,
+    } = useDarkMode();
 
-  const {
-    divisionId,
-    workspaceId,
-    campaignId,
-  } = usePersistedRouteParams();
+    const {
+      divisionId,
+      workspaceId,
+      campaignId,
+    } =
+      usePersistedRouteParams();
 
-  const [
-    openSubmenu,
-    setOpenSubmenu,
-  ] = useState<number | null>(
-    null
-  );
+    const [
+      openSubmenu,
+      setOpenSubmenu,
+    ] = useState<
+      number | null
+    >(null);
 
-  const slim =
-    !isExpanded &&
-    !isHovered &&
-    !isMobileOpen;
+    const slim =
+      !isExpanded &&
+      !isHovered &&
+      !isMobileOpen;
 
-  /* -------------------------------------------------------------------------- */
-  /*                                DYNAMIC MENU                               */
-  /* -------------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /*                               DYNAMIC MENU                             */
+    /* ---------------------------------------------------------------------- */
 
-  const navItems =
-    useMemo<NavItem[]>(
-      () => [
-        {
-          icon: <GridIcon />,
-          name: "Dashboard",
-          path: "/",
-        },
+    const navItems =
+      useMemo<NavItem[]>(
+        () => [
+          {
+            icon:
+              <GridIcon />,
+            name:
+              "Dashboard",
+            path: "/",
+          },
 
-        {
-          name: "Task Management",
-          icon: <BoxCubeIcon />,
-          subItems: [
-            {
-              name: "Task Manager",
-              path: "/divisions",
+          {
+            name:
+              "Task Management",
+            icon:
+              <BoxCubeIcon />,
+            subItems: [
+              {
+                name:
+                  "Task Manager",
 
-              children: [
-                {
-                  name:
-                    "Divisions List",
+                path:
+                  "/divisions",
 
-                  path: "/divisions",
-                },
+                children: [
+                  {
+                    name:
+                      "Divisions List",
 
-                {
-                  name: "Workspace",
+                    path:
+                      "/divisions",
+                  },
 
-                  path:
-                    divisionId
-                      ? `/divisions/${divisionId}`
-                      : "/divisions",
-                },
+                  {
+                    name:
+                      "Workspace",
 
-                {
-                  name: "Campaigns",
+                    path:
+                      divisionId
+                        ? `/divisions/${divisionId}`
+                        : "/divisions",
+                  },
 
-                  path:
-                    workspaceId
-                      ? `/workspaces/${workspaceId}/campaigns`
-                      : "/divisions",
-                },
+                  {
+                    name:
+                      "Campaigns",
 
-                {
-                  name: "Board",
+                    path:
+                      workspaceId
+                        ? `/workspaces/${workspaceId}/campaigns`
+                        : "/divisions",
+                  },
 
-                  path:
-                    campaignId
-                      ? `/campaigns/${campaignId}`
-                      : workspaceId
-                      ? `/workspaces/${workspaceId}/campaigns`
-                      : "/divisions",
-                },
-              ],
-            },
-          ],
-        },
+                  {
+                    name:
+                      "Board",
 
-        {
-          name: "Forms",
-          icon: <ListIcon />,
-          subItems: [
-            {
-              name: "All Forms",
-              path: "/forms",
-            },
+                    path:
+                      campaignId
+                        ? `/campaigns/${campaignId}`
+                        : workspaceId
+                        ? `/workspaces/${workspaceId}/campaigns`
+                        : "/divisions",
+                  },
+                ],
+              },
+            ],
+          },
 
-            {
-              name: "Create Form",
-              path: "/forms/create",
-            },
+          {
+            name: "Forms",
+            icon:
+              <ListIcon />,
+            subItems: [
+              {
+                name:
+                  "All Forms",
+                path:
+                  "/forms",
+              },
 
-          ],
-        },
+              {
+                name:
+                  "Create Form",
+                path:
+                  "/forms/create",
+              },
+            ],
+          },
 
-        {
-          name: "Chats",
-          icon: <ListIcon />,
-          path: "/chats",
-        },
+          {
+            name: "Chats",
+            icon:
+              <ListIcon />,
+            path: "/chats",
+          },
 
-        {
-          name: "Report",
-          icon: <ListIcon />,
-          path: "/report",
-        },
+          {
+            name: "Report",
+            icon:
+              <ListIcon />,
+            path: "/report",
+          },
 
-        {
-          icon: <UserCircleIcon />,
-          name: "User Management",
-          path: "/profile",
-        },
-      ],
-      [
-        divisionId,
-        workspaceId,
-        campaignId,
-      ]
-    );
-
-  /* -------------------------------------------------------------------------- */
-  /*                               ACTIVE MATCHER                              */
-  /* -------------------------------------------------------------------------- */
-
-  const isActive = useCallback(
-    (path: string) => {
-      return matchPathname(
-        location.pathname,
-        path
+          {
+            icon:
+              <UserCircleIcon />,
+            name:
+              "User Management",
+            path: "/profile",
+          },
+        ],
+        [
+          divisionId,
+          workspaceId,
+          campaignId,
+        ]
       );
-    },
-    [location.pathname]
-  );
 
-  useEffect(() => {
-    const activeMenuIndex =
-      navItems.findIndex(
-        (item) => {
-          if (!item.subItems) {
-            return false;
+    /* ---------------------------------------------------------------------- */
+    /*                              ACTIVE MATCHER                            */
+    /* ---------------------------------------------------------------------- */
+
+    const isActive =
+      useCallback(
+        (path: string) => {
+          return matchPathname(
+            location.pathname,
+            path
+          );
+        },
+        [location.pathname]
+      );
+
+    useEffect(() => {
+      const activeMenuIndex =
+        navItems.findIndex(
+          (item) => {
+            if (
+              !item.subItems
+            ) {
+              return false;
+            }
+
+            return item.subItems.some(
+              (sub) =>
+                isActive(
+                  sub.path
+                ) ||
+                sub.children?.some(
+                  (
+                    child
+                  ) =>
+                    isActive(
+                      child.path
+                    )
+                )
+            );
+          }
+        );
+
+      setOpenSubmenu(
+        (prev) => {
+          if (
+            activeMenuIndex ===
+            -1
+          ) {
+            return prev;
           }
 
-          return item.subItems.some(
-            (sub) =>
-              isActive(sub.path) ||
-              sub.children?.some(
-                (child) =>
-                  isActive(
-                    child.path
-                  )
-              )
-          );
+          return activeMenuIndex;
         }
       );
+    }, [
+      navItems,
+      isActive,
+    ]);
 
-    setOpenSubmenu((prev) => {
-      if (
-        activeMenuIndex === -1
-      ) {
-        return prev;
-      }
+    const handleMouseEnter =
+      () => {
+        if (
+          !isExpanded
+        ) {
+          setIsHovered(
+            true
+          );
+        }
+      };
 
-      return activeMenuIndex;
-    });
-  }, [navItems, isActive]);
+    const handleMouseLeave =
+      () => {
+        setIsHovered(false);
+      };
 
-  const handleMouseEnter =
-    () => {
-      if (!isExpanded) {
-        setIsHovered(true);
-      }
-    };
+    return (
+      <>
+        {isMobileOpen && (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={
+              toggleMobileSidebar
+            }
+            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          />
+        )}
 
-  const handleMouseLeave =
-    () => {
-      setIsHovered(false);
-    };
-
-  return (
-    <>
-      {isMobileOpen && (
-        <button
-          type="button"
-          aria-label="Close sidebar"
-          onClick={
-            toggleMobileSidebar
-          }
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-        />
-      )}
-
-      <aside
-        className={`fixed top-0 left-0 z-50 h-screen bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 transition-all duration-300
+        <aside
+          className={`fixed top-0 left-0 z-50 h-screen bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 transition-all duration-300
         ${
           slim
             ? "w-[72px]"
@@ -696,132 +850,134 @@ const AppSidebar: React.FC = () => {
             ? "translate-x-0"
             : "-translate-x-full lg:translate-x-0"
         }`}
-        onMouseEnter={
-          handleMouseEnter
-        }
-        onMouseLeave={
-          handleMouseLeave
-        }
-      >
-        {/* HEADER */}
+          onMouseEnter={
+            handleMouseEnter
+          }
+          onMouseLeave={
+            handleMouseLeave
+          }
+        >
+          {/* HEADER */}
 
-        <div className="flex items-center justify-between px-4 py-5 border-b border-gray-100 dark:border-gray-800">
-          <Link
-            to="/"
-            className="flex items-center shrink-0"
-          >
-            {slim ? (
-              <img
-                src="/images/logo/icon.svg"
-                alt="Logo"
-                className="w-8 h-8 object-contain"
-              />
-            ) : (
-              <img
-                src="/images/logo/logof.svg"
-                alt="Logo"
-                className="h-8 object-contain"
-              />
+          <div className="flex items-center justify-between px-4 py-5 border-b border-gray-100 dark:border-gray-800">
+            <Link
+              to="/"
+              className="flex items-center shrink-0"
+            >
+              {slim ? (
+                <img
+                  src="/images/logo/icon.svg"
+                  alt="Logo"
+                  className="w-8 h-8 object-contain"
+                />
+              ) : (
+                <img
+                  src="/images/logo/logof.svg"
+                  alt="Logo"
+                  className="h-8 object-contain"
+                />
+              )}
+            </Link>
+
+            {!slim && (
+              <button
+                type="button"
+                onClick={
+                  toggleSidebar
+                }
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                aria-label="Toggle sidebar"
+              >
+                ☰
+              </button>
             )}
-          </Link>
+          </div>
 
-          {!slim && (
+          {/* CONTENT */}
+
+          <div className="flex flex-col h-[calc(100vh-73px)] overflow-y-auto px-3 py-4 space-y-4">
+            <UserDropdown
+              compact={slim}
+            />
+
+            <div className="border-t border-gray-100 dark:border-gray-800" />
+
+            {/* DARK MODE */}
+
             <button
               type="button"
               onClick={
-                toggleSidebar
+                toggleDark
               }
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-              aria-label="Toggle sidebar"
+              className={`${menuItemBase} ${menuItemInactive} w-full px-3 py-2.5 ${
+                slim
+                  ? "justify-center"
+                  : ""
+              }`}
             >
-              ☰
-            </button>
-          )}
-        </div>
-
-        {/* CONTENT */}
-
-        <div className="flex flex-col h-[calc(100vh-73px)] overflow-y-auto px-3 py-4 space-y-4">
-          <UserDropdown
-            compact={slim}
-          />
-
-          <div className="border-t border-gray-100 dark:border-gray-800" />
-
-          {/* DARK MODE */}
-
-          <button
-            type="button"
-            onClick={toggleDark}
-            className={`${menuItemBase} ${menuItemInactive} w-full px-3 py-2.5 ${
-              slim
-                ? "justify-center"
-                : ""
-            }`}
-          >
-            <span className="shrink-0">
-              {dark
-                ? "☀️"
-                : "🌙"}
-            </span>
-
-            {!slim && (
-              <span className="text-sm font-medium">
+              <span className="shrink-0">
                 {dark
-                  ? "Light Mode"
-                  : "Dark Mode"}
+                  ? "☀️"
+                  : "🌙"}
               </span>
-            )}
-          </button>
 
-          <div className="border-t border-gray-100 dark:border-gray-800" />
+              {!slim && (
+                <span className="text-sm font-medium">
+                  {dark
+                    ? "Light Mode"
+                    : "Dark Mode"}
+                </span>
+              )}
+            </button>
 
-          {/* MENU */}
+            <div className="border-t border-gray-100 dark:border-gray-800" />
 
-          <nav className="space-y-1">
-            {!slim ? (
-              <p className="mb-2 px-2 text-[10px] uppercase tracking-widest text-gray-400">
-                Menu
-              </p>
-            ) : (
-              <div className="flex justify-center mb-2">
-                <HorizontaLDots className="w-5 h-5 text-gray-300 dark:text-gray-600" />
-              </div>
-            )}
+            {/* MENU */}
 
-            <ul className="space-y-1">
-              {navItems.map(
-                (
-                  item,
-                  index
-                ) => {
-                  const isOpen =
-                    openSubmenu ===
-                    index;
+            <nav className="space-y-1">
+              {!slim ? (
+                <p className="mb-2 px-2 text-[10px] uppercase tracking-widest text-gray-400">
+                  Menu
+                </p>
+              ) : (
+                <div className="flex justify-center mb-2">
+                  <HorizontaLDots className="w-5 h-5 text-gray-300 dark:text-gray-600" />
+                </div>
+              )}
 
-                  if (
-                    item.subItems
-                  ) {
-                    return (
-                      <li
-                        key={
-                          item.name
-                        }
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenSubmenu(
-                              (
-                                prev
-                              ) =>
-                                prev ===
-                                index
-                                  ? null
-                                  : index
-                            )
+              <ul className="space-y-1">
+                {navItems.map(
+                  (
+                    item,
+                    index
+                  ) => {
+                    const isOpen =
+                      openSubmenu ===
+                      index;
+
+                    if (
+                      item.subItems
+                    ) {
+                      return (
+                        <li
+                          key={
+                            item.name
                           }
-                          className={`${menuItemBase} w-full px-3 py-2.5
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenSubmenu(
+                                (
+                                  prev
+                                ) =>
+                                  prev ===
+                                  index
+                                    ? null
+                                    : index
+                              )
+                            }
+                            className={`${menuItemBase} w-full px-3 py-2.5
                           ${
                             isOpen
                               ? menuItemActive
@@ -832,84 +988,82 @@ const AppSidebar: React.FC = () => {
                               ? "justify-center"
                               : ""
                           }`}
-                        >
-                          <span className="shrink-0">
-                            {
-                              item.icon
-                            }
-                          </span>
+                          >
+                            <span className="shrink-0">
+                              {
+                                item.icon
+                              }
+                            </span>
 
-                          {!slim && (
-                            <>
-                              <span className="flex-1 text-left text-sm font-medium truncate">
-                                {
-                                  item.name
-                                }
-                              </span>
+                            {!slim && (
+                              <>
+                                <span className="flex-1 text-left text-sm font-medium truncate">
+                                  {
+                                    item.name
+                                  }
+                                </span>
 
-                              <ChevronDownIcon
-                                className={`w-4 h-4 shrink-0 transition-transform
+                                <ChevronDownIcon
+                                  className={`w-4 h-4 shrink-0 transition-transform
                                 ${
                                   isOpen
                                     ? "rotate-180"
                                     : ""
                                 }`}
-                              />
-                            </>
-                          )}
-                        </button>
+                                />
+                              </>
+                            )}
+                          </button>
 
-                        {!slim && (
-                          <div
-                            className={`overflow-hidden transition-all duration-300
+                          {!slim && (
+                            <div
+                              className={`overflow-hidden transition-all duration-300
                             ${
                               isOpen
                                 ? "max-h-[600px] opacity-100"
                                 : "max-h-0 opacity-0"
                             }`}
-                          >
-                            <ul className="ml-4 mt-2 border-l border-gray-200 dark:border-gray-700 pl-3 space-y-1">
-                              {item.subItems.map(
-                                (
-                                  subItem
-                                ) => (
-                                  <TreeBranch
-                                    key={
-                                      subItem.path
-                                    }
-                                    subItem={
-                                      subItem
-                                    }
-                                    isActive={
-                                      isActive
-                                    }
-                                  />
-                                )
-                              )}
-                            </ul>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  }
+                            >
+                              <ul className="ml-4 mt-2 border-l border-gray-200 dark:border-gray-700 pl-3 space-y-1">
+                                {item.subItems.map(
+                                  (
+                                    subItem
+                                  ) => (
+                                    <TreeBranch
+                                      key={`${item.name}-${subItem.path}`}
+                                      subItem={
+                                        subItem
+                                      }
+                                      isActive={
+                                        isActive
+                                      }
+                                    />
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    }
 
-                  if (
-                    !item.path
-                  ) {
-                    return null;
-                  }
+                    if (
+                      !item.path
+                    ) {
+                      return null;
+                    }
 
-                  return (
-                    <li
-                      key={
-                        item.name
-                      }
-                    >
-                      <Link
-                        to={
-                          item.path
+                    return (
+                      <li
+                        key={
+                          item.name
                         }
-                        className={`${menuItemBase} px-3 py-2.5
+                      >
+                        <Link
+                          to={
+                            item.path
+                          }
+                          className={`${menuItemBase} px-3 py-2.5
                         ${
                           isActive(
                             item.path
@@ -922,32 +1076,32 @@ const AppSidebar: React.FC = () => {
                             ? "justify-center"
                             : ""
                         }`}
-                      >
-                        <span className="shrink-0">
-                          {
-                            item.icon
-                          }
-                        </span>
-
-                        {!slim && (
-                          <span className="text-sm font-medium truncate">
+                        >
+                          <span className="shrink-0">
                             {
-                              item.name
+                              item.icon
                             }
                           </span>
-                        )}
-                      </Link>
-                    </li>
-                  );
-                }
-              )}
-            </ul>
-          </nav>
-        </div>
-      </aside>
-    </>
-  );
-};
+
+                          {!slim && (
+                            <span className="text-sm font-medium truncate">
+                              {
+                                item.name
+                              }
+                            </span>
+                          )}
+                        </Link>
+                      </li>
+                    );
+                  }
+                )}
+              </ul>
+            </nav>
+          </div>
+        </aside>
+      </>
+    );
+  };
 
 export default memo(
   AppSidebar

@@ -3,59 +3,123 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // 🔥 WAJIB
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 use App\Http\Resources\CampaignResource;
 use App\Http\Resources\UserResource;
+
 use App\Models\Campaign;
 use App\Models\ChatRoom;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\Board;
+
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Models\Board;
+use Illuminate\Support\Facades\DB;
 
 class CampaignController extends Controller
 {
-    use AuthorizesRequests; // 🔥 INI YANG FIX ERROR authorize()
+    use AuthorizesRequests;
 
-    public function index(Request $request, Workspace $workspace): JsonResponse
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | INDEX
+    |--------------------------------------------------------------------------
+    */
+
+    public function index(
+        Request $request,
+        Workspace $workspace
+    ): JsonResponse {
+
         $user = $request->user();
 
-        $campaigns = $workspace->campaigns()
-            ->when(
-                !$user->isSuperAdmin(),
-                function ($q) use ($user) {
-
-                    $q->where(function ($sub) use ($user) {
-
-                        $sub->whereHas(
-                            'members',
-                            fn($m) =>
-                            $m->where(
-                                'users.id',
-                                $user->id
-                            )
-                        )
-                            ->orWhere(
-                                'created_by',
-                                $user->id
-                            );
-                    });
-                }
-            )
+        $query = $workspace
+            ->campaigns()
             ->with([
                 'creator',
-                'members'
-            ])
+                'members',
+            ]);
+
+        // ========================================
+        // SUPER ADMIN
+        // ========================================
+
+        if ($user->isSuperAdmin()) {
+
+            $campaigns = $query
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'data' => CampaignResource::collection(
+                    $campaigns
+                ),
+            ]);
+        }
+
+        // ========================================
+        // ADMIN
+        // ========================================
+
+        if ($user->isAdmin()) {
+
+            $hasDivision = $user
+                ->divisions()
+                ->where(
+                    'divisions.id',
+                    $workspace->division_id
+                )
+                ->exists();
+
+            abort_unless(
+                $hasDivision,
+                403,
+                'Unauthorized'
+            );
+
+            $campaigns = $query
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'data' => CampaignResource::collection(
+                    $campaigns
+                ),
+            ]);
+        }
+
+        // ========================================
+        // USER
+        // ========================================
+
+        $campaigns = $query
+            ->whereHas(
+                'members',
+                function ($q) use ($user) {
+
+                    $q->where(
+                        'users.id',
+                        $user->id
+                    );
+                }
+            )
             ->latest()
             ->get();
 
         return response()->json([
-            'data' => CampaignResource::collection($campaigns)
+            'data' => CampaignResource::collection(
+                $campaigns
+            ),
         ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | STORE
+    |--------------------------------------------------------------------------
+    */
 
     public function store(
         Request $request,
@@ -71,60 +135,68 @@ class CampaignController extends Controller
             'member_ids.*' => 'uuid|exists:users,id',
         ]);
 
-        $campaign = $workspace
-            ->campaigns()
-            ->create([
+        $campaign = DB::transaction(function () use (
+            $request,
+            $workspace
+        ) {
 
-                'name' =>
-                $request->name,
+            // ========================================
+            // CREATE CAMPAIGN
+            // ========================================
 
-                'description' =>
-                $request->description,
+            $campaign = $workspace
+                ->campaigns()
+                ->create([
 
-                'type' =>
-                $request->type,
+                    'name' =>
+                    $request->name,
 
-                'due_date' =>
-                $request->due_date,
+                    'description' =>
+                    $request->description,
 
-                'created_by' =>
-                $request->user()->id,
-            ]);
+                    'type' =>
+                    $request->type,
 
-        /*
-    |--------------------------------------------------------------------------
-    | Default Board
-    |--------------------------------------------------------------------------
-    */
+                    'due_date' =>
+                    $request->due_date,
 
-        collect([
+                    'created_by' =>
+                    $request->user()->id,
+                ]);
 
-            [
-                'name' => 'By Request',
-                'type' => 'request',
-                'order' => 1
-            ],
+            /*
+            |--------------------------------------------------------------------------
+            | DEFAULT BOARD
+            |--------------------------------------------------------------------------
+            */
 
-            [
-                'name' => 'Todo',
-                'type' => 'todo',
-                'order' => 2
-            ],
+            collect([
 
-            [
-                'name' => 'Progress',
-                'type' => 'progress',
-                'order' => 3
-            ],
+                [
+                    'name'  => 'By Request',
+                    'type'  => 'request',
+                    'order' => 1,
+                ],
 
-            [
-                'name' => 'Done',
-                'type' => 'done',
-                'order' => 4
-            ],
+                [
+                    'name'  => 'Todo',
+                    'type'  => 'todo',
+                    'order' => 2,
+                ],
 
-        ])
-            ->each(function (
+                [
+                    'name'  => 'Progress',
+                    'type'  => 'progress',
+                    'order' => 3,
+                ],
+
+                [
+                    'name'  => 'Done',
+                    'type'  => 'done',
+                    'order' => 4,
+                ],
+
+            ])->each(function (
                 $board
             ) use (
                 $campaign
@@ -146,39 +218,58 @@ class CampaignController extends Controller
 
                     'color' =>
                     '#6366f1',
-
                 ]);
             });
 
-        /*
-    |--------------------------------------------------------------------------
-    | Member
-    |--------------------------------------------------------------------------
-    */
+            /*
+            |--------------------------------------------------------------------------
+            | MEMBER IDS
+            |--------------------------------------------------------------------------
+            */
 
-        $memberIds =
-            collect(
+            $memberIds = collect(
                 $request->member_ids ?? []
             )
-            ->push(
-                $request->user()->id
-            )
-            ->unique();
+                ->push(
+                    $request->user()->id
+                )
+                ->unique()
+                ->values();
 
-        $campaign
-            ->members()
-            ->sync(
-                $memberIds->toArray()
-            );
+            /*
+            |--------------------------------------------------------------------------
+            | CAMPAIGN MEMBERS
+            |--------------------------------------------------------------------------
+            */
 
-        /*
-    |--------------------------------------------------------------------------
-    | Chat Room
-    |--------------------------------------------------------------------------
-    */
+            $campaign
+                ->members()
+                ->sync(
+                    $memberIds->toArray()
+                );
 
-        $chatRoom =
-            ChatRoom::create([
+            /*
+            |--------------------------------------------------------------------------
+            | WORKSPACE MEMBERS
+            |--------------------------------------------------------------------------
+            | FIX:
+            | otomatis join workspace
+            |--------------------------------------------------------------------------
+            */
+
+            $workspace
+                ->members()
+                ->syncWithoutDetaching(
+                    $memberIds->toArray()
+                );
+
+            /*
+            |--------------------------------------------------------------------------
+            | CHAT ROOM
+            |--------------------------------------------------------------------------
+            */
+
+            $chatRoom = ChatRoom::create([
 
                 'campaign_id' =>
                 $campaign->id,
@@ -190,11 +281,20 @@ class CampaignController extends Controller
                 $campaign->name,
             ]);
 
-        $chatRoom
-            ->members()
-            ->sync(
-                $memberIds->toArray()
-            );
+            /*
+            |--------------------------------------------------------------------------
+            | CHAT ROOM MEMBERS
+            |--------------------------------------------------------------------------
+            */
+
+            $chatRoom
+                ->members()
+                ->sync(
+                    $memberIds->toArray()
+                );
+
+            return $campaign;
+        });
 
         return response()->json([
 
@@ -207,27 +307,56 @@ class CampaignController extends Controller
                 $campaign->load([
                     'creator',
                     'members',
-                    'boards'
+                    'boards',
                 ])
-            )
+            ),
 
         ], 201);
     }
 
-    public function show(Campaign $campaign): JsonResponse
-    {
-        $this->authorize('view', $campaign);
+    /*
+    |--------------------------------------------------------------------------
+    | SHOW
+    |--------------------------------------------------------------------------
+    */
 
-        $campaign->load(['creator', 'members', 'boards.cards']);
+    public function show(
+        Campaign $campaign
+    ): JsonResponse {
+
+        $this->authorize(
+            'view',
+            $campaign
+        );
+
+        $campaign->load([
+            'creator',
+            'members',
+            'boards.cards',
+        ]);
 
         return response()->json([
-            'data' => new CampaignResource($campaign)
+            'data' => new CampaignResource(
+                $campaign
+            ),
         ]);
     }
 
-    public function update(Request $request, Campaign $campaign): JsonResponse
-    {
-        $this->authorize('update', $campaign);
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE
+    |--------------------------------------------------------------------------
+    */
+
+    public function update(
+        Request $request,
+        Campaign $campaign
+    ): JsonResponse {
+
+        $this->authorize(
+            'update',
+            $campaign
+        );
 
         $request->validate([
             'name'        => 'sometimes|string|max:255',
@@ -237,59 +366,183 @@ class CampaignController extends Controller
         ]);
 
         $campaign->update(
-            $request->only(['name', 'description', 'type', 'due_date'])
+            $request->only([
+                'name',
+                'description',
+                'type',
+                'due_date',
+            ])
         );
 
         return response()->json([
-            'message' => 'Campaign berhasil diupdate.',
-            'data'    => new CampaignResource($campaign),
+            'message' =>
+            'Campaign berhasil diupdate.',
+
+            'data' =>
+            new CampaignResource(
+                $campaign
+            ),
         ]);
     }
 
-    public function destroy(Campaign $campaign): JsonResponse
-    {
-        $this->authorize('delete', $campaign);
+    /*
+    |--------------------------------------------------------------------------
+    | DESTROY
+    |--------------------------------------------------------------------------
+    */
+
+    public function destroy(
+        Campaign $campaign
+    ): JsonResponse {
+
+        $this->authorize(
+            'delete',
+            $campaign
+        );
 
         $campaign->delete();
 
         return response()->json([
-            'message' => 'Campaign berhasil dihapus.'
+            'message' =>
+            'Campaign berhasil dihapus.',
         ]);
     }
 
-    public function members(Campaign $campaign): JsonResponse
-    {
-        $this->authorize('view', $campaign);
+    /*
+    |--------------------------------------------------------------------------
+    | MEMBERS
+    |--------------------------------------------------------------------------
+    */
+
+    public function members(
+        Campaign $campaign
+    ): JsonResponse {
+
+        $this->authorize(
+            'view',
+            $campaign
+        );
 
         return response()->json([
-            'data' => UserResource::collection($campaign->members)
+            'data' => UserResource::collection(
+                $campaign->members
+            ),
         ]);
     }
 
-    public function addMember(Request $request, Campaign $campaign): JsonResponse
-    {
-        $this->authorize('update', $campaign);
+    /*
+    |--------------------------------------------------------------------------
+    | ADD MEMBER
+    |--------------------------------------------------------------------------
+    */
+
+    public function addMember(
+        Request $request,
+        Campaign $campaign
+    ): JsonResponse {
+
+        $this->authorize(
+            'update',
+            $campaign
+        );
 
         $request->validate([
-            'user_id' => 'required|uuid|exists:users,id',
+            'user_id' =>
+            'required|uuid|exists:users,id',
         ]);
 
-        $campaign->members()->syncWithoutDetaching([$request->user_id]);
-        $campaign->chatRoom?->members()->syncWithoutDetaching([$request->user_id]);
+        $userId = $request->user_id;
+
+        DB::transaction(function () use (
+            $campaign,
+            $userId
+        ) {
+
+            // ========================================
+            // CAMPAIGN MEMBER
+            // ========================================
+
+            $campaign
+                ->members()
+                ->syncWithoutDetaching([
+                    $userId,
+                ]);
+
+            // ========================================
+            // WORKSPACE MEMBER
+            // ========================================
+
+            $campaign
+                ->workspace
+                ?->members()
+                ->syncWithoutDetaching([
+                    $userId,
+                ]);
+
+            // ========================================
+            // CHAT ROOM MEMBER
+            // ========================================
+
+            $campaign
+                ->chatRoom
+                ?->members()
+                ->syncWithoutDetaching([
+                    $userId,
+                ]);
+        });
 
         return response()->json([
-            'message' => 'Member berhasil ditambahkan ke campaign.'
+            'message' =>
+            'Member berhasil ditambahkan ke campaign.',
         ]);
     }
 
-    public function removeMember(Campaign $campaign, User $user): JsonResponse
-    {
-        $this->authorize('update', $campaign);
+    /*
+    |--------------------------------------------------------------------------
+    | REMOVE MEMBER
+    |--------------------------------------------------------------------------
+    */
 
-        $campaign->members()->detach($user->id);
+    public function removeMember(
+        Campaign $campaign,
+        User $user
+    ): JsonResponse {
+
+        $this->authorize(
+            'update',
+            $campaign
+        );
+
+        // ========================================
+        // REMOVE FROM CAMPAIGN
+        // ========================================
+
+        $campaign
+            ->members()
+            ->detach($user->id);
+
+        // ========================================
+        // REMOVE FROM CHAT ROOM
+        // ========================================
+
+        $campaign
+            ->chatRoom
+            ?->members()
+            ->detach($user->id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | NOTE
+        |--------------------------------------------------------------------------
+        | Tidak auto remove dari workspace
+        | karena user bisa masih dipakai
+        | di campaign lain dalam workspace yg sama
+        |--------------------------------------------------------------------------
+        */
 
         return response()->json([
-            'message' => 'Member berhasil dihapus dari campaign.'
+            'message' =>
+            'Member berhasil dihapus dari campaign.',
         ]);
     }
 }

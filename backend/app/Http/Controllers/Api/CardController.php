@@ -9,12 +9,93 @@ use App\Models\Card;
 use App\Models\CardAttachment;
 use App\Models\CardComment;
 use App\Models\User;
+use App\Models\Campaign;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class CardController extends Controller
 {
+    /*
+    |----------------------------------------------------------------------
+    | ACCESS CONTROL
+    |----------------------------------------------------------------------
+    */
+
+    protected function canAccessCampaign(
+        Campaign $campaign
+    ): bool {
+
+        $user = auth()->user();
+
+        if (!$user) {
+            return false;
+        }
+
+        // ========================================
+        // SUPER ADMIN
+        // ========================================
+
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        // ========================================
+        // ADMIN
+        // ========================================
+
+        if ($user->isAdmin()) {
+
+            return $user
+                ->divisions()
+                ->where(
+                    'divisions.id',
+                    $campaign
+                        ->workspace
+                        ->division_id
+                )
+                ->exists();
+        }
+
+        // ========================================
+        // USER
+        // ========================================
+
+        return $campaign
+            ->members()
+            ->where(
+                'users.id',
+                $user->id
+            )
+            ->exists();
+    }
+
+    protected function authorizeBoard(
+        Board $board
+    ): void {
+
+        abort_unless(
+            $this->canAccessCampaign(
+                $board->campaign
+            ),
+            403,
+            'Unauthorized'
+        );
+    }
+
+    protected function authorizeCard(
+        Card $card
+    ): void {
+
+        abort_unless(
+            $this->canAccessCampaign(
+                $card->board->campaign
+            ),
+            403,
+            'Unauthorized'
+        );
+    }
     /*
     |--------------------------------------------------------------------------
     | CARD
@@ -23,6 +104,8 @@ class CardController extends Controller
 
     public function index(Board $board): JsonResponse
     {
+        $this->authorizeBoard($board);
+
         $cards = $board
             ->cards()
             ->with([
@@ -43,6 +126,7 @@ class CardController extends Controller
 
     public function store(Request $request, Board $board): JsonResponse
     {
+        $this->authorizeBoard($board);
         $validated = $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -102,6 +186,8 @@ class CardController extends Controller
 
     public function show(Card $card): JsonResponse
     {
+        $this->authorizeCard($card);
+
         $card->load([
             'creator',
             'assignees',
@@ -123,6 +209,7 @@ class CardController extends Controller
         Request $request,
         Card $card
     ): JsonResponse {
+        $this->authorizeCard($card);
         $request->validate([
             'title'       => 'sometimes|string|max:255',
             'description' => 'nullable|string',
@@ -157,57 +244,99 @@ class CardController extends Controller
         ]);
     }
 
-    public function move(
-        Request $request,
-        Card $card
-    ): JsonResponse {
-        $request->validate([
-            'board_id' => 'required|uuid|exists:boards,id',
-            'order'    => 'nullable|integer|min:0',
-        ]);
+public function move(
+    Request $request,
+    Card $card
+): JsonResponse {
 
-        $board = Board::findOrFail(
-            $request->input('board_id')
-        );
+    $request->validate([
+        'board_id' => 'required|uuid|exists:boards,id',
+        'order'    => 'nullable|integer|min:0',
+    ]);
 
-        $lastOrder = $board->cards()->max('order');
+    $board = Board::findOrFail(
+        $request->input('board_id')
+    );
 
-        $card->update([
-            'board_id' => $board->id,
-            'order'    => $request->input(
-                'order',
-                ($lastOrder ?? 0) + 1
-            ),
-        ]);
+    $this->authorizeCard($card);
+    $this->authorizeBoard($board);
+
+    // ========================================
+    // EXCLUDE CURRENT CARD
+    // AGAR TIDAK DUPLICATE ORDER
+    // ========================================
+
+    $lastOrder = $board
+        ->cards()
+        ->where('id', '!=', $card->id)
+        ->max('order');
+
+    $card->update([
+        'board_id' => $board->id,
+
+        'order' => $request->input(
+            'order',
+            ($lastOrder ?? 0) + 1
+        ),
+    ]);
+
+    return response()->json([
+        'message' => 'Card berhasil dipindahkan.',
+    ]);
+}
+
+public function reorder(
+    Request $request
+): JsonResponse {
+
+    $request->validate([
+        'cards'         => 'required|array',
+        'cards.*.id'    => 'required|uuid|exists:cards,id',
+        'cards.*.order' => 'required|integer|min:0',
+    ]);
+
+    // ========================================
+    // CEK DUPLICATE ORDER
+    // ========================================
+
+    $orders = collect($request->cards)
+        ->pluck('order');
+
+    if ($orders->duplicates()->isNotEmpty()) {
 
         return response()->json([
-            'message' => 'Card berhasil dipindahkan.',
-        ]);
+            'message' => 'Order tidak boleh duplikat.',
+        ], 422);
     }
 
-    public function reorder(
-        Request $request
-    ): JsonResponse {
-        $request->validate([
-            'cards'         => 'required|array',
-            'cards.*.id'    => 'required|uuid|exists:cards,id',
-            'cards.*.order' => 'required|integer|min:0',
-        ]);
+    // ========================================
+    // TRANSACTION
+    // ========================================
+
+    DB::transaction(function () use ($request) {
 
         foreach ($request->cards as $item) {
-            Card::where('id', $item['id'])
-                ->update([
-                    'order' => $item['order'],
-                ]);
-        }
 
-        return response()->json([
-            'message' => 'Card berhasil direorder.',
-        ]);
-    }
+            $card = Card::findOrFail(
+                $item['id']
+            );
+
+            $this->authorizeCard($card);
+
+            $card->update([
+                'order' => $item['order'],
+            ]);
+        }
+    });
+
+    return response()->json([
+        'message' => 'Card berhasil direorder.',
+    ]);
+}
 
     public function destroy(Card $card): JsonResponse
     {
+        $this->authorizeCard($card);
         $card->delete();
 
         return response()->json([
@@ -225,6 +354,8 @@ class CardController extends Controller
         Request $request,
         Card $card
     ): JsonResponse {
+
+        $this->authorizeCard($card);
 
         $validated = $request->validate([
             'user_id' => 'required|uuid|exists:users,id',
@@ -289,6 +420,8 @@ class CardController extends Controller
         Card $card,
         User $user
     ): JsonResponse {
+        $this->authorizeCard($card);
+
         $card->assignees()
             ->detach($user->id);
 
@@ -317,6 +450,7 @@ class CardController extends Controller
     public function attachments(
         Card $card
     ): JsonResponse {
+        $this->authorizeCard($card);
         return response()->json([
             'data' => $card->attachments,
         ]);
@@ -326,6 +460,7 @@ class CardController extends Controller
         Request $request,
         Card $card
     ): JsonResponse {
+        $this->authorizeCard($card);
         $request->validate([
             'type' => 'required|in:file,link',
 
@@ -374,6 +509,8 @@ class CardController extends Controller
 
         $attachment = CardAttachment::create($data);
 
+
+
         return response()->json([
             'message' => 'Attachment berhasil ditambahkan.',
             'data'    => $attachment,
@@ -383,6 +520,9 @@ class CardController extends Controller
     public function removeAttachment(
         CardAttachment $attachment
     ): JsonResponse {
+        $card = Card::findOrFail($attachment->card_id);
+        $this->authorizeCard($card);
+
         if (
             $attachment->file_path &&
             Storage::disk('public')->exists(
@@ -404,6 +544,9 @@ class CardController extends Controller
     public function download(
         CardAttachment $attachment
     ) {
+        $card = Card::findOrFail($attachment->card_id);
+        $this->authorizeCard($card);
+
         if (!$attachment->file_path) {
             return response()->json([
                 'message' => 'File tidak ditemukan.',
@@ -435,6 +578,8 @@ class CardController extends Controller
     */
     public function comments(Card $card): JsonResponse
     {
+        $this->authorizeCard($card);
+
         $comments = $card
             ->comments()
             ->with([
@@ -453,6 +598,8 @@ class CardController extends Controller
         Request $request,
         Card $card
     ): JsonResponse {
+        $this->authorizeCard($card);
+
         $validated = $request->validate([
             'content'   => 'required|string',
             'parent_id' => 'nullable|uuid|exists:card_comments,id',
@@ -477,6 +624,9 @@ class CardController extends Controller
         Request $request,
         CardComment $comment
     ): JsonResponse {
+        $card = Card::findOrFail($comment->card_id);
+        $this->authorizeCard($card);
+
         $validated = $request->validate([
             'content' => 'required|string',
         ]);
@@ -496,6 +646,9 @@ class CardController extends Controller
     public function deleteComment(
         CardComment $comment
     ): JsonResponse {
+        $card = Card::findOrFail($comment->card_id);
+        $this->authorizeCard($card);
+
         $comment->delete();
 
         return response()->json([

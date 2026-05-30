@@ -63,6 +63,8 @@ export interface Form {
   updated_at: string;
 
   workspace_id: string;
+
+  division_id?: string;
 }
 
 export interface FormSubmission {
@@ -82,13 +84,26 @@ export interface FormSubmission {
   pdf_path?: string | null;
 
   // FORM ANSWER
-  data: Record<
-    string,
-    string | number | boolean | string[]
-  >;
+  data: Record<string, string | number | boolean | string[]>;
 
   created_at: string;
   updated_at: string;
+
+  assignment?: {
+    id: string;
+
+    coordinator?: {
+      id: string;
+      name: string;
+    };
+
+    designer?: {
+      id: string;
+      name: string;
+    };
+
+    deadline?: string;
+  };
 }
 
 export interface ForwardSubmissionResponse {
@@ -96,47 +111,37 @@ export interface ForwardSubmissionResponse {
   data: FormSubmission;
 }
 
-// export type AssignSubmissionPayload = {
-//   campaign_id: string;
+export type AssignSubmissionPayload = {
+  campaign_id: string;
 
-//   designer_id?: string;
-//   coordinator_id?: string;
+  designer_id?: string;
 
-//   deadline?: string;
+  coordinator_id?: string;
 
-//   estimated_hours: number;
+  deadline?: string;
 
-//   priority:
-//     | "low"
-//     | "medium"
-//     | "high"
-//     | "urgent";
+  estimated_hours?: number;
 
-//   notes?: string;
-// };
+  priority?: "low" | "medium" | "high" | "urgent";
 
+  notes?: string;
+};
 
 // =========================
 // PUBLIC FORM VALUE
 // =========================
 
-export type FormValue =
-  | string
-  | number
-  | boolean
-  | string[];
+export type FormValue = string | number | boolean | string[];
 
-export type FormValues = Record<
-  string,
-  FormValue
->;
+export type FormValues = Record<string, FormValue>;
 
-export type OtherValues = Record<
-  string,
-  string
->;
+export type OtherValues = Record<string, string>;
 
-export type FileValues = Record<
-  string,
-  File | null
->;
+export type FileValues = Record<string, File | null>;
+
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  division_id?: string;
+};

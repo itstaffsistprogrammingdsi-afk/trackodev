@@ -23,6 +23,10 @@ class Assignment extends Model
 
         'campaign_id',
 
+        'board_id',
+
+        'card_id',
+
         'assigned_by',
 
         'coordinator_id',
@@ -78,6 +82,22 @@ class Assignment extends Model
         return $this->belongsTo(
             Campaign::class,
             'campaign_id'
+        );
+    }
+
+    public function board()
+    {
+        return $this->belongsTo(
+            Board::class,
+            'board_id'
+        );
+    }
+
+    public function card()
+    {
+        return $this->belongsTo(
+            Card::class,
+            'card_id'
         );
     }
 

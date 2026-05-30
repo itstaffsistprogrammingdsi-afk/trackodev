@@ -114,6 +114,10 @@ export const forwardSubmission = async (
 export type AssignSubmissionPayload = {
   campaign_id: string
 
+    // UI ONLY
+  division_id?: string
+  workspace_id?: string
+
   designer_id?: string
   coordinator_id?: string
 
@@ -129,11 +133,27 @@ export const assignSubmission = async (
   submissionId: string,
   payload: AssignSubmissionPayload
 ) => {
-
   const res = await api.post(
     `/form-submissions/${submissionId}/assign`,
     payload
-  )
+  );
 
-  return res.data.data
+  return res.data.data;
+};
+
+export async function searchDesigners(
+  q: string,
+  divisionId?: string
+) {
+  const res = await api.get("/users", {
+    params: {
+      search: q,
+      division_id: divisionId,
+
+      // IMPORTANT
+      assign: true,
+    },
+  });
+
+  return res.data.data;
 }
