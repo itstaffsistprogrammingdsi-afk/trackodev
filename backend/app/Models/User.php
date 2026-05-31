@@ -131,6 +131,7 @@ class User extends Authenticatable
     public function divisions(): BelongsToMany
     {
         return $this->belongsToMany(Division::class,'division_user')
+            ->withPivot('role')
             ->withTimestamps();
     }
 

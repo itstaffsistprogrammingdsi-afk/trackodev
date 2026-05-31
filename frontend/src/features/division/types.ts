@@ -19,6 +19,8 @@ export interface User {
 
   role?: RoleType
   roles?: string[]
+
+  division_role?: "admin" | "member"
 }
 
 export type DivisionMember = User
@@ -33,6 +35,9 @@ export interface CreateDivisionPayload {
   name: string
   code?: string
   description?: string
+
+  admin_ids: string[]
+  member_ids: string[]
 }
 
 export interface UpdateDivisionPayload {

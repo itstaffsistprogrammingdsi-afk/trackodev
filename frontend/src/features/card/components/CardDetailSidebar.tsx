@@ -216,7 +216,7 @@ export default function CardDetailSidebar({
             {/* ATTACHMENT */}
             <SidebarButton
               icon={<Paperclip size={17} />}
-              label="Attachment"
+              label="Result Attachment"
               onClick={toggleAttachment}
               badge={attachmentBadge}
             />

@@ -22,46 +22,83 @@ class DivisionController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255'
-            ],
+public function store(Request $request): JsonResponse
+{
+    $validated = $request->validate([
 
-            'code' => [
-                'nullable',
-                'string',
-                'max:10',
-                'unique:divisions,code'
-            ],
+        'name' => [
+            'required',
+            'string',
+            'max:255'
+        ],
 
-            'description' => [
-                'nullable',
-                'string'
-            ],
-        ]);
+        'code' => [
+            'nullable',
+            'string',
+            'max:10',
+            'unique:divisions,code'
+        ],
 
-        $division = Division::create([
-            'name' => $validated['name'],
+        'description' => [
+            'nullable',
+            'string'
+        ],
 
-            'code' => $validated['code'] ?? null,
+        'admin_ids' => [
+            'array'
+        ],
 
-            'slug' => Str::slug(
-                $validated['name']
-            ) . '-' . Str::random(4),
+        'admin_ids.*' => [
+            'uuid',
+            'exists:users,id'
+        ],
 
-            'description' =>
-                $validated['description'] ?? null,
-        ]);
+        'member_ids' => [
+            'array'
+        ],
 
-        return response()->json([
-            'message' => 'Divisi berhasil dibuat.',
-            'data' => new DivisionResource($division),
-        ], 201);
+        'member_ids.*' => [
+            'uuid',
+            'exists:users,id'
+        ],
+    ]);
+
+    $division = Division::create([
+        'name' => $validated['name'],
+        'code' => $validated['code'] ?? null,
+        'slug' => Str::slug($validated['name']) . '-' . Str::random(4),
+        'description' => $validated['description'] ?? null,
+    ]);
+
+    $syncData = [];
+
+    foreach ($validated['admin_ids'] ?? [] as $userId) {
+        $syncData[$userId] = [
+            'role' => 'admin'
+        ];
     }
+
+    foreach ($validated['member_ids'] ?? [] as $userId) {
+
+        if (!isset($syncData[$userId])) {
+
+            $syncData[$userId] = [
+                'role' => 'member'
+            ];
+        }
+    }
+
+    if (!empty($syncData)) {
+        $division->users()->sync($syncData);
+    }
+
+    return response()->json([
+        'message' => 'Divisi berhasil dibuat.',
+        'data' => new DivisionResource(
+            $division->load('users')
+        ),
+    ], 201);
+}
 
     public function show(
         Division $division

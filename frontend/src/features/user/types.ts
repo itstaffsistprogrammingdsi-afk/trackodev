@@ -8,7 +8,10 @@ export interface User {
   avatar?: string | null;
 
   role?: string;
+  roles?: string[];
 
   division_id?: string;
+
+  division_role?: "admin" | "member";
 }
 
