@@ -384,6 +384,30 @@ Route::middleware([
         [CardController::class, 'download']
     )->middleware('permission:task.view');
 
+// ========================================
+// BRIEF ATTACHMENTS
+// ========================================
+
+Route::get(
+    'cards/{card}/brief-attachments',
+    [CardController::class, 'briefAttachments']
+)->middleware('permission:task.view');
+
+Route::post(
+    'cards/{card}/brief-attachments',
+    [CardController::class, 'addBriefAttachment']
+)->middleware('permission:task.update');
+
+Route::delete(
+    'brief-attachments/{attachment}',
+    [CardController::class, 'removeBriefAttachment']
+)->middleware('permission:task.update');
+
+Route::get(
+    'brief-attachments/{attachment}/download',
+    [CardController::class, 'downloadBriefAttachment']
+)->middleware('permission:task.view');
+
     // ========================================
     // COMMENTS
     // ========================================

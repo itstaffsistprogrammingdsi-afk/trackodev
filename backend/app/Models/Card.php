@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+use App\Models\CardBriefAttachment;
+
 class Card extends Model
 {
     use HasUuids;
@@ -145,4 +147,11 @@ class Card extends Model
         ->whereNull('parent_id')
         ->orderBy('created_at');
     }
+
+    public function briefAttachments()
+{
+    return $this->hasMany(
+        CardBriefAttachment::class, 'card_id'
+    );
+}
 }

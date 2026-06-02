@@ -211,21 +211,25 @@ export default function AssignmentModal({
       return;
     }
 
-    const payload = {
-      campaign_id: form.campaign_id,
+const payload = {
+  division_id: form.division_id,
 
-      designer_id: form.designer_id,
+  workspace_id: form.workspace_id,
 
-      coordinator_id: authUser.id,
+  campaign_id: form.campaign_id,
 
-      deadline: form.deadline,
+  designer_id: form.designer_id,
 
-      estimated_hours: Number(form.estimated_hours) || 1,
+  coordinator_id: authUser.id,
 
-      priority: form.priority || "medium",
+  deadline: form.deadline,
 
-      notes: form.notes?.trim() || "",
-    };
+  estimated_hours: Number(form.estimated_hours) || 1,
+
+  priority: form.priority || "medium",
+
+  notes: form.notes?.trim() || "",
+};
 
     assignMutation.mutate(
       {

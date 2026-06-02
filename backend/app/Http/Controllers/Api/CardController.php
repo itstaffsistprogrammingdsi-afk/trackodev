@@ -7,6 +7,7 @@ use App\Http\Resources\CardResource;
 use App\Models\Board;
 use App\Models\Card;
 use App\Models\CardAttachment;
+use App\Models\CardBriefAttachment;
 use App\Models\CardComment;
 use App\Models\User;
 use App\Models\Campaign;
@@ -175,6 +176,7 @@ class CardController extends Controller
             'board',
             'comments',
             'attachments',
+            'briefAttachments',
             'brands',
         ]);
 
@@ -198,6 +200,7 @@ class CardController extends Controller
             'comments.user',
             'comments.replies.user',
             'board',
+            'briefAttachments',
         ]);
 
         return response()->json([
@@ -234,6 +237,7 @@ class CardController extends Controller
             'brands',
             'board',
             'attachments',
+            'briefAttachments',
             'comments.user',
             'comments.replies.user',
         ]);
@@ -244,95 +248,217 @@ class CardController extends Controller
         ]);
     }
 
-public function move(
-    Request $request,
-    Card $card
-): JsonResponse {
+    public function briefAttachments(
+        Card $card
+    ): JsonResponse {
 
-    $request->validate([
-        'board_id' => 'required|uuid|exists:boards,id',
-        'order'    => 'nullable|integer|min:0',
-    ]);
-
-    $board = Board::findOrFail(
-        $request->input('board_id')
-    );
-
-    $this->authorizeCard($card);
-    $this->authorizeBoard($board);
-
-    // ========================================
-    // EXCLUDE CURRENT CARD
-    // AGAR TIDAK DUPLICATE ORDER
-    // ========================================
-
-    $lastOrder = $board
-        ->cards()
-        ->where('id', '!=', $card->id)
-        ->max('order');
-
-    $card->update([
-        'board_id' => $board->id,
-
-        'order' => $request->input(
-            'order',
-            ($lastOrder ?? 0) + 1
-        ),
-    ]);
-
-    return response()->json([
-        'message' => 'Card berhasil dipindahkan.',
-    ]);
-}
-
-public function reorder(
-    Request $request
-): JsonResponse {
-
-    $request->validate([
-        'cards'         => 'required|array',
-        'cards.*.id'    => 'required|uuid|exists:cards,id',
-        'cards.*.order' => 'required|integer|min:0',
-    ]);
-
-    // ========================================
-    // CEK DUPLICATE ORDER
-    // ========================================
-
-    $orders = collect($request->cards)
-        ->pluck('order');
-
-    if ($orders->duplicates()->isNotEmpty()) {
+        $this->authorizeCard($card);
 
         return response()->json([
-            'message' => 'Order tidak boleh duplikat.',
-        ], 422);
+            'data' => $card->briefAttachments
+        ]);
     }
 
-    // ========================================
-    // TRANSACTION
-    // ========================================
+    public function addBriefAttachment(
+        Request $request,
+        Card $card
+    ): JsonResponse {
 
-    DB::transaction(function () use ($request) {
+        $this->authorizeCard($card);
 
-        foreach ($request->cards as $item) {
+        $request->validate([
 
-            $card = Card::findOrFail(
-                $item['id']
+            'type' => 'required|in:file,link',
+
+            'link_url' => [
+                'required_if:type,link',
+                'nullable',
+                'url',
+            ],
+
+            'file' => [
+                'required_if:type,file',
+                'nullable',
+                'file',
+                'mimes:pdf,png,jpg,jpeg,gif,doc,docx,xls,xlsx',
+                'max:10240',
+            ],
+        ]);
+
+        $data = [
+
+            'card_id' => $card->id,
+
+            'uploaded_by' => auth()->id(),
+
+            'attachment_type' => $request->type,
+        ];
+
+        if ($request->type === 'file') {
+
+            $file = $request->file('file');
+
+            $path = $file->store(
+                'brief-attachments',
+                'public'
             );
 
-            $this->authorizeCard($card);
+            $data['file_name'] = $file->getClientOriginalName();
 
-            $card->update([
-                'order' => $item['order'],
-            ]);
+            $data['file_path'] = $path;
+
+            $data['file_type'] = $file->getMimeType();
+
+            $data['file_size'] = $file->getSize();
+        } else {
+
+            $data['link_url'] = $request->link_url;
         }
-    });
 
-    return response()->json([
-        'message' => 'Card berhasil direorder.',
-    ]);
-}
+        $attachment =
+            CardBriefAttachment::create($data);
+
+        return response()->json([
+            'message' => 'Brief attachment berhasil ditambahkan.',
+            'data' => $attachment,
+        ], 201);
+    }
+
+    public function removeBriefAttachment(
+        CardBriefAttachment $attachment
+    ): JsonResponse {
+
+        $card = Card::findOrFail(
+            $attachment->card_id
+        );
+
+        $this->authorizeCard($card);
+
+        if (
+            $attachment->file_path &&
+            Storage::disk('public')->exists(
+                $attachment->file_path
+            )
+        ) {
+            Storage::disk('public')->delete(
+                $attachment->file_path
+            );
+        }
+
+        $attachment->delete();
+
+        return response()->json([
+            'message' => 'Brief attachment berhasil dihapus.'
+        ]);
+    }
+
+    public function downloadBriefAttachment(
+        CardBriefAttachment $attachment
+    ) {
+
+        $card = Card::findOrFail(
+            $attachment->card_id
+        );
+
+        $this->authorizeCard($card);
+
+        return response()->download(
+            storage_path(
+                'app/public/' .
+                    $attachment->file_path
+            ),
+            $attachment->file_name
+        );
+    }
+    public function move(
+        Request $request,
+        Card $card
+    ): JsonResponse {
+
+        $request->validate([
+            'board_id' => 'required|uuid|exists:boards,id',
+            'order'    => 'nullable|integer|min:0',
+        ]);
+
+        $board = Board::findOrFail(
+            $request->input('board_id')
+        );
+
+        $this->authorizeCard($card);
+        $this->authorizeBoard($board);
+
+        // ========================================
+        // EXCLUDE CURRENT CARD
+        // AGAR TIDAK DUPLICATE ORDER
+        // ========================================
+
+        $lastOrder = $board
+            ->cards()
+            ->where('id', '!=', $card->id)
+            ->max('order');
+
+        $card->update([
+            'board_id' => $board->id,
+
+            'order' => $request->input(
+                'order',
+                ($lastOrder ?? 0) + 1
+            ),
+        ]);
+
+        return response()->json([
+            'message' => 'Card berhasil dipindahkan.',
+        ]);
+    }
+
+    public function reorder(
+        Request $request
+    ): JsonResponse {
+
+        $request->validate([
+            'cards'         => 'required|array',
+            'cards.*.id'    => 'required|uuid|exists:cards,id',
+            'cards.*.order' => 'required|integer|min:0',
+        ]);
+
+        // ========================================
+        // CEK DUPLICATE ORDER
+        // ========================================
+
+        $orders = collect($request->cards)
+            ->pluck('order');
+
+        if ($orders->duplicates()->isNotEmpty()) {
+
+            return response()->json([
+                'message' => 'Order tidak boleh duplikat.',
+            ], 422);
+        }
+
+        // ========================================
+        // TRANSACTION
+        // ========================================
+
+        DB::transaction(function () use ($request) {
+
+            foreach ($request->cards as $item) {
+
+                $card = Card::findOrFail(
+                    $item['id']
+                );
+
+                $this->authorizeCard($card);
+
+                $card->update([
+                    'order' => $item['order'],
+                ]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Card berhasil direorder.',
+        ]);
+    }
 
     public function destroy(Card $card): JsonResponse
     {

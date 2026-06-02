@@ -2,7 +2,7 @@ import {
   // Archive,
   // Bell,
   Clock3,
-  List,
+  // List,
   Paperclip,
   Tag,
   Layers,
@@ -38,8 +38,11 @@ interface Props {
   showDueDate: boolean;
   setShowDueDate: React.Dispatch<React.SetStateAction<boolean>>;
 
-  showAttachment: boolean;
-  setShowAttachment: React.Dispatch<React.SetStateAction<boolean>>;
+  showBrief: boolean;
+  setShowBrief: React.Dispatch<React.SetStateAction<boolean>>;
+
+  showResult: boolean;
+  setShowResult: React.Dispatch<React.SetStateAction<boolean>>;
 
   memberSearch: string;
   setMemberSearch: React.Dispatch<React.SetStateAction<string>>;
@@ -58,15 +61,21 @@ interface Props {
 
   setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
 
-  attachments: Attachment[];
+// RESULT
+attachments: Attachment[];
+setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
+attachmentLoading: boolean;
+fetchAttachments: () => Promise<void>;
 
-  setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
-
-  attachmentLoading: boolean;
-  fetchAttachments: () => Promise<void>;
+// BRIEF
+briefAttachments: Attachment[];
+setBriefAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
+briefLoading: boolean;
+fetchBriefAttachments: () => Promise<void>;
 }
 
 export default function CardDetailSidebar({
+
   card,
 
   users,
@@ -81,8 +90,11 @@ export default function CardDetailSidebar({
   showDueDate,
   setShowDueDate,
 
-  showAttachment,
-  setShowAttachment,
+  showBrief,
+  setShowBrief,
+
+  showResult,
+  setShowResult,
 
   memberSearch,
   setMemberSearch,
@@ -100,10 +112,17 @@ export default function CardDetailSidebar({
 
   setDetail,
 
+  // RESULT
   attachments,
   setAttachments,
   attachmentLoading,
   fetchAttachments,
+
+  // BRIEF
+  briefAttachments,
+  setBriefAttachments,
+  briefLoading,
+  fetchBriefAttachments,
 }: Props) {
   const toggleMembers = () => {
     setShowMembers((prev) => !prev);
@@ -113,9 +132,14 @@ export default function CardDetailSidebar({
     setShowDueDate((prev) => !prev);
   };
 
-  const toggleAttachment = () => {
-    setShowAttachment((prev) => !prev);
-  };
+
+  const toggleBrief = () => {
+  setShowBrief((prev) => !prev);
+};
+
+const toggleResult = () => {
+  setShowResult((prev) => !prev);
+};
 
   const toggleBrands = () => {
     setShowBrands((prev) => !prev);
@@ -125,23 +149,26 @@ export default function CardDetailSidebar({
     setShowLabels((prev) => !prev);
   };
 
-  const attachmentSummary = {
-    images: attachments.filter(
-      (a) => a.attachment_type === "file" && a.file_type?.startsWith("image/"),
-    ).length,
 
-    documents: attachments.filter(
-      (a) => a.attachment_type === "file" && !a.file_type?.startsWith("image/"),
-    ).length,
+const resultSummary = {
+  files: attachments.filter(
+    (a) => a.attachment_type === "file"
+  ).length,
 
-    links: attachments.filter((a) => a.attachment_type === "link").length,
-  };
+  links: attachments.filter(
+    (a) => a.attachment_type === "link"
+  ).length,
+};
 
-  const attachmentBadge = [
-    `Images ${attachmentSummary.images}`,
-    `Files ${attachmentSummary.documents}`,
-    `Links ${attachmentSummary.links}`,
-  ].join("   •   ");
+const briefSummary = {
+  files: briefAttachments.filter(
+    (a) => a.attachment_type === "file",
+  ).length,
+
+  links: briefAttachments.filter(
+    (a) => a.attachment_type === "link",
+  ).length,
+};
 
   return (
     <div className="w-[290px] border-l bg-white p-5 overflow-y-auto">
@@ -213,27 +240,50 @@ export default function CardDetailSidebar({
               </div>
             )}
 
-            {/* ATTACHMENT */}
+            {/* RESULT ATTACHMENT */}
             <SidebarButton
-              icon={<Paperclip size={17} />}
-              label="Result Attachment"
-              onClick={toggleAttachment}
-              badge={attachmentBadge}
-            />
+  icon={<Paperclip size={17} />}
+  label="Result Attachment"
+  onClick={toggleResult}
+  badge={`${resultSummary.files} Files • ${resultSummary.links} Links`}
+/>
 
-            {showAttachment && (
-              <AttachmentSection
-                cardId={card.id}
-                attachments={attachments}
-                setAttachments={setAttachments}
-                loading={attachmentLoading}
-                fetchAttachments={fetchAttachments}
-                showUploader
-              />
-            )}
+{showResult && (
+  <AttachmentSection
+    attachments={attachments}
+    setAttachments={setAttachments}
+    loading={attachmentLoading}
+    fetchAttachments={fetchAttachments}
+    showUploader
+    title="Result Attachment"
+    uploadEndpoint={`/cards/${card.id}/attachments`}
+    deleteEndpoint="/attachments"
+    downloadEndpoint="/attachments"
+  />
+)}
 
-            {/* CUSTOM FIELD */}
-            <SidebarButton icon={<List size={17} />} label="Custom Field" />
+{/* BRIEF ATTACHMENT */}
+<SidebarButton
+  icon={<Paperclip size={17} />}
+  label="Brief Attachment"
+  onClick={toggleBrief}
+  badge={`${briefSummary.files} Files • ${briefSummary.links} Links`}
+/>
+
+{showBrief && (
+  <AttachmentSection
+    attachments={briefAttachments}
+    setAttachments={setBriefAttachments}
+    loading={briefLoading}
+    fetchAttachments={fetchBriefAttachments}
+    showUploader
+    title="Brief Attachment"
+    uploadEndpoint={`/cards/${card.id}/brief-attachments`}
+    deleteEndpoint="/brief-attachments"
+    downloadEndpoint="/brief-attachments"
+  />
+)}
+
           </div>
         </div>
 

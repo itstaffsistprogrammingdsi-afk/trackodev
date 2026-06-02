@@ -16,16 +16,12 @@ import useAttachments from "../hooks/useAttachments";
 import TaskSection from "./sections/TaskSection";
 import CommentSection from "./sections/CommentSection";
 import AttachmentSection from "./sections/AttachmentSection";
+import useBriefAttachments from "../hooks/useBriefAttachments";
 
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
 
-import {
-  AlignLeft,
-  Clock3,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+import { AlignLeft, Clock3, Loader2, Sparkles } from "lucide-react";
 
 interface Props {
   card: Card | null;
@@ -45,37 +41,34 @@ export default function CardDetailModal({
   // =========================================
   // DETAIL
   // =========================================
-  const { detail, users, loading, fetchDetail, setDetail } =
-    useCardDetail(card, isOpen);
+  const { detail, users, loading, fetchDetail, setDetail } = useCardDetail(
+    card,
+    isOpen,
+  );
 
   const [showLabels, setShowLabels] = useState(false);
 
   // =========================================
   // DESCRIPTION
   // =========================================
-const {
-  description,
-  setDescription,
+  const {
+    description,
+    setDescription,
 
-  dueDate,
-  setDueDate,
+    dueDate,
+    setDueDate,
 
-  saving,
-} = useCardDescription(
-  detail,
-  onUpdated, // ✅ TAMBAHAN
-);
+    saving,
+  } = useCardDescription(
+    detail,
+    onUpdated, // ✅ TAMBAHAN
+  );
 
   // =========================================
   // COMMENTS
   // =========================================
-  const {
-    comments,
-    comment,
-    setComment,
-    sending,
-    handleAddComment,
-  } = useComments(card?.id, isOpen, onUpdated);
+  const { comments, comment, setComment, sending, handleAddComment } =
+    useComments(card?.id, isOpen, onUpdated);
 
   // =========================================
   // TASKS
@@ -101,6 +94,17 @@ const {
     fetchAttachments,
   } = useAttachments(card?.id, isOpen, onUpdated);
 
+  const {
+    attachments: briefAttachments,
+    setAttachments: setBriefAttachments,
+    loading: briefLoading,
+    fetchAttachments: fetchBriefAttachments,
+  } = useBriefAttachments(
+    card?.id,
+    isOpen,
+    // onUpdated
+  );
+
   // =========================================
   // UI STATE
   // =========================================
@@ -113,8 +117,11 @@ const {
     showDueDate,
     setShowDueDate,
 
-    showAttachment,
-    setShowAttachment,
+    showResult,
+    setShowResult,
+
+    showBrief,
+    setShowBrief,
 
     showBrands,
     setShowBrands,
@@ -134,13 +141,12 @@ const {
   // =========================================
   // MEMBER
   // =========================================
-  const { handleAssign, handleUnassign } =
-    useCardMembers({
-      cardId: card?.id,
-      fetchDetail,
+  const { handleAssign, handleUnassign } = useCardMembers({
+    cardId: card?.id,
+    fetchDetail,
 
-      onUpdated
-    });
+    onUpdated,
+  });
 
   // =========================================
   // DELETE
@@ -209,9 +215,7 @@ const {
                     : ""
                 }
                 onClose={onClose}
-                onToggleMembers={() =>
-                  setShowMembers((prev) => !prev)
-                }
+                onToggleMembers={() => setShowMembers((prev) => !prev)}
               />
             </div>
 
@@ -234,9 +238,7 @@ const {
                 >
                   <Loader2 className="w-8 h-8 animate-spin mb-4" />
 
-                  <p className="text-sm font-medium">
-                    Loading card detail...
-                  </p>
+                  <p className="text-sm font-medium">Loading card detail...</p>
                 </div>
               ) : (
                 <>
@@ -261,10 +263,7 @@ const {
                           flex items-center justify-center
                         "
                       >
-                        <AlignLeft
-                          size={18}
-                          className="text-slate-600"
-                        />
+                        <AlignLeft size={18} className="text-slate-600" />
                       </div>
 
                       <div className="flex-1">
@@ -300,9 +299,7 @@ const {
 
                     <textarea
                       value={description}
-                      onChange={(e) =>
-                        setDescription(e.target.value)
-                      }
+                      onChange={(e) => setDescription(e.target.value)}
                       placeholder="Tambahkan deskripsi..."
                       className="
                         w-full
@@ -346,6 +343,26 @@ const {
                       deleteTask={deleteTask}
                     />
                   </div>
+                  <div
+                    className="
+                      bg-white
+                      border border-slate-200
+                      rounded-3xl
+                      p-5 sm:p-6
+                      shadow-sm
+                    "
+                    
+                  >
+                    <h4 className="text-lg font-semibold text-slate-800">Brief Attachments</h4>
+                    <AttachmentSection
+                      title="Brief Attachments"
+                      attachments={briefAttachments}
+                      setAttachments={setBriefAttachments}
+                      fetchAttachments={fetchBriefAttachments}
+                      deleteEndpoint="/brief-attachments"
+                      downloadEndpoint="/brief-attachments"
+                    />
+                  </div>
 
                   {/* ========================================= */}
                   {/* ATTACHMENTS */}
@@ -359,12 +376,14 @@ const {
                       shadow-sm
                     "
                   >
+                    <h4 className="text-lg font-semibold text-slate-800">Result Attachments</h4>
                     <AttachmentSection
-                      cardId={card.id}
+                      title="Result Attachments"
                       attachments={attachments}
                       setAttachments={setAttachments}
-                      loading={attachmentLoading}
                       fetchAttachments={fetchAttachments}
+                      deleteEndpoint="/attachments"
+                      downloadEndpoint="/attachments"
                     />
                   </div>
 
@@ -410,10 +429,7 @@ const {
                           flex items-center justify-center
                         "
                       >
-                        <Clock3
-                          size={18}
-                          className="text-slate-600"
-                        />
+                        <Clock3 size={18} className="text-slate-600" />
                       </div>
 
                       <div>
@@ -467,10 +483,7 @@ const {
                               mb-4
                             "
                           >
-                            <Sparkles
-                              size={22}
-                              className="text-slate-400"
-                            />
+                            <Sparkles size={22} className="text-slate-400" />
                           </div>
 
                           <h3 className="font-medium text-slate-700">
@@ -517,8 +530,6 @@ const {
                 setShowMembers={setShowMembers}
                 showDueDate={showDueDate}
                 setShowDueDate={setShowDueDate}
-                showAttachment={showAttachment}
-                setShowAttachment={setShowAttachment}
                 memberSearch={memberSearch}
                 setMemberSearch={setMemberSearch}
                 handleAssign={handleAssign}
@@ -533,6 +544,14 @@ const {
                 setAttachments={setAttachments}
                 attachmentLoading={attachmentLoading}
                 fetchAttachments={fetchAttachments}
+                briefAttachments={briefAttachments}
+                setBriefAttachments={setBriefAttachments}
+                briefLoading={briefLoading}
+                fetchBriefAttachments={fetchBriefAttachments}
+                showResult={showResult}
+                setShowResult={setShowResult}
+                showBrief={showBrief}
+                setShowBrief={setShowBrief}
               />
             </div>
           </div>

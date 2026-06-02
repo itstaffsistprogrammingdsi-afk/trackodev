@@ -21,25 +21,35 @@ import {
 import { Attachment } from "../../types";
 
 interface Props {
-  cardId: string;
-
   attachments: Attachment[];
 
-  setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
+  setAttachments?: React.Dispatch<React.SetStateAction<Attachment[]>>;
 
-  loading: boolean;
+  loading?: boolean;
 
   fetchAttachments: () => Promise<void>;
 
   showUploader?: boolean;
+
+  title?: string;
+
+  uploadEndpoint?: string;
+
+  deleteEndpoint?: string;
+
+  downloadEndpoint?: string;
 }
 
 export default function AttachmentSection({
-  cardId,
   attachments,
-  setAttachments,
+  // setAttachments,
   loading,
+  fetchAttachments,
   showUploader = false,
+  title = "Attachment",
+  uploadEndpoint,
+  deleteEndpoint,
+  downloadEndpoint,
 }: Props) {
   const [uploading, setUploading] = useState(false);
 
@@ -100,14 +110,14 @@ export default function AttachmentSection({
   const isImage = (type?: string) => {
     if (!type) return false;
 
-    return type.startsWith("image/");
+    return type === "image" || type.startsWith("image/");
   };
 
   // =========================================
   // PDF CHECK
   // =========================================
   const isPdf = (type?: string) => {
-    return type === "application/pdf";
+    return type === "pdf" || type === "application/pdf";
   };
 
   // =========================================
@@ -121,9 +131,12 @@ export default function AttachmentSection({
 
   const handleDownload = async (attachment: Attachment) => {
     try {
-      const response = await api.get(`/attachments/${attachment.id}/download`, {
-        responseType: "blob",
-      });
+      const response = await api.get(
+        `${downloadEndpoint}/${attachment.id}/download`,
+        {
+          responseType: "blob",
+        },
+      );
 
       const blob = new Blob([response.data]);
 
@@ -148,16 +161,15 @@ export default function AttachmentSection({
   };
 
   // =========================================
-  // UPLOAD
+  // UPLOAD FILE
   // =========================================
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
     if (!file) return;
 
-    // =========================================
-    // VALIDASI SIZE (10MB)
-    // =========================================
+    if (!uploadEndpoint) return; // ✅ IMPORTANT GUARD
+
     if (file.size > MAX_FILE_SIZE) {
       alert("Ukuran file maksimal 10MB");
       e.target.value = "";
@@ -165,20 +177,20 @@ export default function AttachmentSection({
     }
 
     const formData = new FormData();
+
     formData.append("type", "file");
     formData.append("file", file);
 
     try {
       setUploading(true);
 
-      await api.post(`/cards/${cardId}/attachments`, formData, {
+      await api.post(uploadEndpoint, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
-      const res = await api.get(`/cards/${cardId}/attachments`);
-      setAttachments(res.data.data || []);
+      await fetchAttachments?.(); // ✅ optional safe call
     } catch (err) {
       console.error(err);
     } finally {
@@ -193,19 +205,19 @@ export default function AttachmentSection({
   const handleAddLink = async () => {
     if (!linkUrl.trim()) return;
 
+    if (!uploadEndpoint) return; // ✅ IMPORTANT GUARD
+
     try {
       setUploading(true);
 
-      await api.post(`/cards/${cardId}/attachments`, {
+      await api.post(uploadEndpoint, {
         type: "link",
         link_url: linkUrl,
       });
 
       setLinkUrl("");
 
-      const res = await api.get(`/cards/${cardId}/attachments`);
-
-      setAttachments(res.data.data || []);
+      await fetchAttachments?.(); // ✅ safe call
     } catch (err) {
       console.error(err);
     } finally {
@@ -222,9 +234,9 @@ export default function AttachmentSection({
     if (!ok) return;
 
     try {
-      await api.delete(`/attachments/${id}`);
+      await api.delete(`${deleteEndpoint}/${id}`);
 
-      setAttachments((prev) => prev.filter((a) => a.id !== id));
+      await fetchAttachments();
     } catch (err) {
       console.error(err);
     }
@@ -240,9 +252,7 @@ export default function AttachmentSection({
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
             {/* HEADER */}
             <div className="mb-4">
-              <h3 className="text-sm font-semibold text-gray-800">
-                Upload Attachment
-              </h3>
+              <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
 
               <p className="mt-1 text-xs text-gray-500">
                 Upload file atau tambahkan link external
