@@ -18,6 +18,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+use App\Services\ActivityLogService;
+
 class CampaignController extends Controller
 {
     use AuthorizesRequests;
@@ -296,6 +298,13 @@ class CampaignController extends Controller
             return $campaign;
         });
 
+        ActivityLogService::log(
+            $request->user(),
+            'created',
+            'campaign',
+            $campaign->id,
+            "Membuat campaign '{$campaign->name}' di workspace '{$workspace->name}'"
+        );
         return response()->json([
 
             'message' =>
@@ -402,6 +411,14 @@ class CampaignController extends Controller
 
         $campaign->delete();
 
+        ActivityLogService::log(
+            request()->user(),
+            'deleted',
+            'campaign',
+            $campaign->id,
+            "Menghapus campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'"
+        );
+
         return response()->json([
             'message' =>
             'Campaign berhasil dihapus.',
@@ -491,6 +508,13 @@ class CampaignController extends Controller
                 ]);
         });
 
+        ActivityLogService::log(
+            $request->user(),
+            'added_member',
+            'campaign',
+            $campaign->id,
+            "Menambahkan member ke campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'"
+        );
         return response()->json([
             'message' =>
             'Member berhasil ditambahkan ke campaign.',
@@ -540,6 +564,13 @@ class CampaignController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        ActivityLogService::log(
+            request()->user(),
+            'removed_member',
+            'campaign',
+            $campaign->id,
+            "Menghapus member dari campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'"
+        );
         return response()->json([
             'message' =>
             'Member berhasil dihapus dari campaign.',

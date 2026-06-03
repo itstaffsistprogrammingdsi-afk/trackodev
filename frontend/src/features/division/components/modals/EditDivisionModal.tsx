@@ -33,11 +33,11 @@ EditDivisionModal({
       division.code || ''
     )
 
-  const [description,
-    setDescription] =
-      useState(
-        division.description || ''
-      )
+  // const [description,
+  //   setDescription] =
+  //     useState(
+  //       division.description || ''
+  //     )
 
   if (!open) return null
 
@@ -50,8 +50,8 @@ EditDivisionModal({
 
         data: {
           name,
-          code,
-          description
+          code
+          // description
         }
 
       })
@@ -67,7 +67,8 @@ EditDivisionModal({
         <h2 className="text-xl font-semibold">
           Edit Division
         </h2>
-
+        
+        Nama Divisi
         <input
           value={name}
           onChange={(e) =>
@@ -76,8 +77,8 @@ EditDivisionModal({
             )
           }
           className="w-full border p-2 rounded"
-        />
-
+        /> 
+        Kode Divisi
         <input
           value={code}
           onChange={(e) =>
@@ -86,9 +87,9 @@ EditDivisionModal({
             )
           }
           className="w-full border p-2 rounded"
-        />
+        /> 
 
-        <textarea
+        {/* <textarea
           value={description}
           onChange={(e) =>
             setDescription(
@@ -96,7 +97,7 @@ EditDivisionModal({
             )
           }
           className="w-full border p-2 rounded"
-        />
+        /> */}
 
         <div className="flex justify-end gap-2">
 

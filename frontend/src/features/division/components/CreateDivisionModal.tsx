@@ -6,7 +6,7 @@ import { useUsers } from "@/features/user/hooks/useUsers";
 
 import UserPicker from "./UserPicker";
 
-import type { User } from "../types";
+import type { User } from "@/features/user/types";
 
 interface Props {
   open: boolean;
@@ -25,8 +25,8 @@ export default function CreateDivisionModal({
 
   const [code, setCode] = useState("");
 
-  const [description, setDescription] =
-    useState("");
+  // const [description, setDescription] =
+  //   useState("");
 
   const [selectedAdmins, setSelectedAdmins] =
     useState<User[]>([]);
@@ -118,7 +118,7 @@ export default function CreateDivisionModal({
 
       code: code || undefined,
 
-      description,
+      // description,
 
       admin_ids: selectedAdmins.map(
         (user) => user.id
@@ -131,7 +131,7 @@ export default function CreateDivisionModal({
 
     setName("");
     setCode("");
-    setDescription("");
+    // setDescription("");
 
     setSelectedAdmins([]);
     setSelectedMembers([]);
@@ -191,7 +191,7 @@ export default function CreateDivisionModal({
             </div>
           </div>
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium mb-2">
               Description
             </label>
@@ -205,7 +205,7 @@ export default function CreateDivisionModal({
               placeholder="Description..."
               className="w-full border rounded-xl px-3 py-2"
             />
-          </div>
+          </div> */}
 
           {/* PICKERS */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

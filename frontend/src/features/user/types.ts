@@ -1,3 +1,8 @@
+export type RoleType =
+  | "super_admin"
+  | "admin"
+  | "user";
+
 export interface User {
   id: string;
 
@@ -7,11 +12,12 @@ export interface User {
 
   avatar?: string | null;
 
-  role?: string;
+  role?: RoleType;
   roles?: string[];
 
   division_id?: string;
 
-  division_role?: "admin" | "member";
+  division_role?:
+    | "admin"
+    | "member";
 }
-

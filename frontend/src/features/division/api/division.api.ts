@@ -85,6 +85,7 @@ export const addDivisionMember = async (
   divisionId: string,
   data: {
     user_id: string
+    role: "admin" | "member"
   }
 ) => {
 

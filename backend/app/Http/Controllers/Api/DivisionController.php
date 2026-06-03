@@ -7,6 +7,7 @@ use App\Http\Resources\DivisionResource;
 use App\Http\Resources\UserResource;
 use App\Models\Division;
 use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ class DivisionController extends Controller
 {
     public function index(): JsonResponse
     {
-        $divisions = Division::all();
+$divisions = Division::with('users')->get();
 
         return response()->json([
             'data' => DivisionResource::collection($divisions)
@@ -69,6 +70,7 @@ public function store(Request $request): JsonResponse
         'slug' => Str::slug($validated['name']) . '-' . Str::random(4),
         'description' => $validated['description'] ?? null,
     ]);
+    
 
     $syncData = [];
 
@@ -92,12 +94,28 @@ public function store(Request $request): JsonResponse
         $division->users()->sync($syncData);
     }
 
+    ActivityLogService::log(
+    user: auth()->user(),
+    action: 'division.created',
+    entityType: 'division',
+    entityId: $division->id,
+    description: 'Membuat divisi ' . $division->name,
+    meta: [
+        'name' => $division->name,
+        'code' => $division->code,
+        'admin_ids' => $validated['admin_ids'] ?? [],
+        'member_ids' => $validated['member_ids'] ?? [],
+    ]
+);
+
     return response()->json([
         'message' => 'Divisi berhasil dibuat.',
         'data' => new DivisionResource(
             $division->load('users')
         ),
     ], 201);
+
+
 }
 
     public function show(
@@ -105,7 +123,7 @@ public function store(Request $request): JsonResponse
     ): JsonResponse {
 
         return response()->json([
-            'data' => new DivisionResource($division)
+            'data' => new DivisionResource($division->load('users'))
         ]);
     }
 
@@ -169,12 +187,22 @@ public function store(Request $request): JsonResponse
             $updateData
         );
 
+            ActivityLogService::log(
+                user: auth()->user(),
+                action: 'division.updated',
+                entityType: 'division',
+                entityId: $division->id,
+                description: 'Memperbarui divisi ' . $division->name,
+                meta: $updateData
+            );
         return response()->json([
             'message' => 'Divisi berhasil diupdate.',
             'data' => new DivisionResource(
                 $division->fresh()
             ),
         ]);
+
+
     }
 
     public function destroy(
@@ -182,6 +210,18 @@ public function store(Request $request): JsonResponse
     ): JsonResponse {
 
         $division->delete();
+
+        ActivityLogService::log(
+    user: auth()->user(),
+    action: 'division.deleted',
+    entityType: 'division',
+    entityId: $division->id,
+    description: 'Menghapus divisi ' . $division->name,
+    meta: [
+        'name' => $division->name,
+        'code' => $division->code,
+    ]
+);
 
         return response()->json([
             'message' => 'Divisi berhasil dihapus.'
@@ -236,6 +276,17 @@ public function store(Request $request): JsonResponse
 
             ]);
 
+            ActivityLogService::log(
+                user: auth()->user(),
+                action: 'division.member_added',
+                entityType: 'division',
+                entityId: $division->id,
+                description: 'Menambahkan member ke divisi ' . $division->name,
+                meta: [
+                    'user_id' => $request->user_id,
+                    'role' => $request->role,
+                ]
+            );
         return response()->json([
             'message' =>
                 'Member berhasil ditambahkan.'
@@ -264,7 +315,17 @@ public function store(Request $request): JsonResponse
                     $request->role
                 ]
             );
-
+                ActivityLogService::log(
+                    user: auth()->user(),
+                    action: 'division.member_updated',
+                    entityType: 'division',
+                    entityId: $division->id,
+                    description: 'Memperbarui peran member di divisi ' . $division->name,
+                    meta: [
+                        'user_id' => $user->id,
+                        'role' => $request->role,
+                    ]
+                );
         return response()->json([
             'message' =>
                 'Role member berhasil diupdate.'
@@ -282,6 +343,16 @@ public function store(Request $request): JsonResponse
                 $user->id
             );
 
+                ActivityLogService::log(
+                    user: auth()->user(),
+                    action: 'division.member_removed',
+                    entityType: 'division',
+                    entityId: $division->id,
+                    description: 'Mengeluarkan member dari divisi ' . $division->name,
+                    meta: [
+                        'user_id' => $user->id,
+                    ]
+                );
         return response()->json([
             'message' =>
                 'Member berhasil dikeluarkan dari divisi.'
