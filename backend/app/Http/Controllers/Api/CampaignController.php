@@ -303,7 +303,8 @@ class CampaignController extends Controller
             'created',
             'campaign',
             $campaign->id,
-            "Membuat campaign '{$campaign->name}' di workspace '{$workspace->name}'"
+            "Membuat campaign '{$campaign->name}' di workspace '{$workspace->name}'",
+            ['campaign_id' => $campaign->id, 'workspace_id' => $workspace->id]
         );
         return response()->json([
 
@@ -416,7 +417,8 @@ class CampaignController extends Controller
             'deleted',
             'campaign',
             $campaign->id,
-            "Menghapus campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'"
+            "Menghapus campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
+            ['campaign_id' => $campaign->id, 'workspace_id' => $campaign->workspace->id]
         );
 
         return response()->json([
@@ -513,7 +515,8 @@ class CampaignController extends Controller
             'added_member',
             'campaign',
             $campaign->id,
-            "Menambahkan member ke campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'"
+            "Menambahkan member ke campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
+            ['campaign_id' => $campaign->id, 'workspace_id' => $campaign->workspace->id]
         );
         return response()->json([
             'message' =>
@@ -569,7 +572,8 @@ class CampaignController extends Controller
             'removed_member',
             'campaign',
             $campaign->id,
-            "Menghapus member dari campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'"
+            "Menghapus member dari campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
+            ['campaign_id' => $campaign->id, 'workspace_id' => $campaign->workspace->id]
         );
         return response()->json([
             'message' =>

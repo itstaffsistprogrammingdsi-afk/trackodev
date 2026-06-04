@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Card;
 use App\Models\Label;
 use Illuminate\Http\Request;
+use App\Services\ActivityLogService;
 
 class CardLabelController extends Controller
 {
@@ -28,6 +29,15 @@ class CardLabelController extends Controller
                 $validated['label_id']
             ]);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'attached',
+            'card',
+            $card->id,
+            "Melampirkan label ke card '{$card->title}'",
+            ['card_id' => $card->id, 'label_id' => $validated['label_id']]
+        );
+
         return response()->json(
             $card->load('labels')
         );
@@ -42,6 +52,15 @@ class CardLabelController extends Controller
     ) {
         $card->labels()
             ->detach($label->id);
+
+        ActivityLogService::log(
+            auth()->user(),
+            'detached',
+            'card',
+            $card->id,
+            "Melepas label dari card '{$card->title}'",
+            ['card_id' => $card->id, 'label_id' => $label->id]
+        );
 
         return response()->json(
             $card->load('labels')
@@ -73,6 +92,15 @@ class CardLabelController extends Controller
         } else {
             $card->labels()->attach($labelId);
         }
+
+        ActivityLogService::log(
+            auth()->user(),
+            'toggled',
+            'card',
+            $card->id,
+            "Mengalihkan label pada card '{$card->title}'",
+            ['card_id' => $card->id, 'label_id' => $labelId]
+        );
 
         return response()->json(
             $card->load('labels')

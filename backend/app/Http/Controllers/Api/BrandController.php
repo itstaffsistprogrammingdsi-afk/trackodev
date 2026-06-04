@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Brand;
+use App\Services\ActivityLogService;
+use Illuminate\Http\Request;
 
 class BrandController extends Controller
 {
@@ -23,6 +24,15 @@ class BrandController extends Controller
 
         $brand = Brand::create($validated);
 
+
+        ActivityLogService::log(
+            auth()->user(),
+            'created',
+            'brand',
+            $brand->id,
+            "Membuat brand '{$brand->name}'",
+            ['brand_id' => $brand->id, 'campaign_id' => $brand->campaign_id]
+        );
         return response()->json($brand, 201);
     }
 
@@ -45,12 +55,29 @@ class BrandController extends Controller
 
         $brand->update($validated);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'updated',
+            'brand',
+            $brand->id,
+            "Mengupdate brand '{$brand->name}'",
+            ['brand_id' => $brand->id, 'campaign_id' => $brand->campaign_id]
+        );
         return response()->json($brand);
     }
 
     public function destroy(string $id)
     {
         $brand = Brand::findOrFail($id);
+
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'brand',
+            $brand->id,
+            "Menghapus brand '{$brand->name}'",
+            ['brand_id' => $brand->id, 'campaign_id' => $brand->campaign_id]
+        );
 
         $brand->delete();
 

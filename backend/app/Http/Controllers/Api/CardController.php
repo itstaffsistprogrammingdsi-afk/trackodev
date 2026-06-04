@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogService;
 
 class CardController extends Controller
 {
@@ -157,6 +158,15 @@ class CardController extends Controller
             'order'       => $lastOrder + 1,
         ]);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'created',
+            'card',
+            $card->id,
+            "Membuat card '{$card->title}' di board '{$card->board->name}'",
+            ['card_id' => $card->id]
+        );
+
         // $campaignMembers = $board
         //     ->campaign
         //     ->members()
@@ -242,6 +252,14 @@ class CardController extends Controller
             'comments.replies.user',
         ]);
 
+        ActivityLogService::log(
+            $request->user(),
+            'updated',
+            'card',
+            $card->id,
+            "Mengupdate card '{$card->title}' di board '{$card->board->name}'",
+            ['card_id' => $card->id]
+        );
         return response()->json([
             'message' => 'Card berhasil diupdate.',
             'data'    => new CardResource($card),
@@ -318,6 +336,15 @@ class CardController extends Controller
         $attachment =
             CardBriefAttachment::create($data);
 
+        ActivityLogService::log(
+            $request->user(),
+            'created',
+            'card_brief_attachment',
+            $attachment->id,
+            "Menambahkan brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
+            ['card_id' => $card->id]
+        );
+
         return response()->json([
             'message' => 'Brief attachment berhasil ditambahkan.',
             'data' => $attachment,
@@ -347,6 +374,15 @@ class CardController extends Controller
 
         $attachment->delete();
 
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'card_brief_attachment',
+            $attachment->id,
+            "Menghapus brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
+            ['card_id' => $card->id]
+        );
+
         return response()->json([
             'message' => 'Brief attachment berhasil dihapus.'
         ]);
@@ -361,6 +397,14 @@ class CardController extends Controller
         );
 
         $this->authorizeCard($card);
+
+        ActivityLogService::log(
+            auth()->user(),
+            'downloaded',
+            'card_brief_attachment',
+            $attachment->id,
+            "Mengunduh brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->download(
             storage_path(
@@ -406,6 +450,14 @@ class CardController extends Controller
             ),
         ]);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'moved',
+            'card',
+            $card->id,
+            "Memindahkan card '{$card->title}' ke board '{$board->name}'",
+            ['card_id' => $card->id]
+        );
         return response()->json([
             'message' => 'Card berhasil dipindahkan.',
         ]);
@@ -443,9 +495,7 @@ class CardController extends Controller
 
             foreach ($request->cards as $item) {
 
-                $card = Card::findOrFail(
-                    $item['id']
-                );
+                $card = Card::findOrFail($item['id']);
 
                 $this->authorizeCard($card);
 
@@ -455,6 +505,35 @@ class CardController extends Controller
             }
         });
 
+        /*
+|--------------------------------------------------------------------------
+| AMBIL CONTEXT BOARD YANG VALID
+|--------------------------------------------------------------------------
+*/
+
+        // ambil card pertama untuk mendapatkan board context yang benar
+        $firstCard = Card::find($request->cards[0]['id'] ?? null);
+
+        // fallback aman
+        $boardId = $firstCard?->board_id;
+
+        if (!$boardId) {
+            $boardId = $request->input('board_id');
+        }
+
+        /*
+|--------------------------------------------------------------------------
+| ACTIVITY LOG
+|--------------------------------------------------------------------------
+*/
+
+        ActivityLogService::log(
+            auth()->user(),
+            'reordered',
+            'board',
+            $boardId,
+            "Merubah urutan card di board '{$boardId}'",
+        );
         return response()->json([
             'message' => 'Card berhasil direorder.',
         ]);
@@ -464,6 +543,14 @@ class CardController extends Controller
     {
         $this->authorizeCard($card);
         $card->delete();
+
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'card',
+            $card->id,
+            "Menghapus card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->json([
             'message' => 'Card berhasil dihapus.',
@@ -533,6 +620,14 @@ class CardController extends Controller
             'assignees',
         ]);
 
+        ActivityLogService::log(
+            $request->user(),
+            'assigned',
+            'card',
+            $card->id,
+            "Menambahkan assignee di card '{$card->title}' di board '{$card->board->name}'"
+        );
+
         return response()->json([
             'message' =>
             'Member berhasil di-assign.',
@@ -552,6 +647,14 @@ class CardController extends Controller
             ->detach($user->id);
 
         $card->load('assignees');
+
+        ActivityLogService::log(
+            auth()->user(),
+            'unassigned',
+            'card',
+            $card->id,
+            "Menghapus assignee di card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->json([
             'message' => 'Member berhasil di-unassign.',
@@ -636,6 +739,13 @@ class CardController extends Controller
         $attachment = CardAttachment::create($data);
 
 
+        ActivityLogService::log(
+            $request->user(),
+            'created',
+            'card_attachment',
+            $attachment->id,
+            "Menambahkan attachment di card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->json([
             'message' => 'Attachment berhasil ditambahkan.',
@@ -662,6 +772,13 @@ class CardController extends Controller
 
         $attachment->delete();
 
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'card_attachment',
+            $attachment->id,
+            "Menghapus attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
         return response()->json([
             'message' => 'Attachment berhasil dihapus.',
         ]);
@@ -689,6 +806,13 @@ class CardController extends Controller
             ], 404);
         }
 
+        ActivityLogService::log(
+            auth()->user(),
+            'downloaded',
+            'card_attachment',
+            $attachment->id,
+            "Mengunduh attachment di card '{$card->title}' di board '{$card->board->name}'"
+        );
         return response()->download(
             storage_path(
                 'app/public/' . $attachment->file_path
@@ -715,6 +839,14 @@ class CardController extends Controller
             ->latest()
             ->get();
 
+        $firstComment = $comments->first();
+        ActivityLogService::log(
+            auth()->user(),
+            'viewed',
+            'card_comments',
+            $card->id,
+            $firstComment ? "Melihat komentar '{$firstComment->content}' di card '{$card->title}' di board '{$card->board->name}'" : "Melihat komentar di card '{$card->title}' di board '{$card->board->name}'"
+        );
         return response()->json([
             'data' => $comments,
         ]);
@@ -740,6 +872,14 @@ class CardController extends Controller
 
         $comment->load('user');
 
+        ActivityLogService::log(
+            auth()->user(),
+            'created',
+            'card_comment',
+            $comment->id,
+            "Menambahkan komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
+
         return response()->json([
             'message' => 'Komentar berhasil ditambahkan.',
             'data'    => $comment,
@@ -763,6 +903,14 @@ class CardController extends Controller
 
         $comment->load('user');
 
+        ActivityLogService::log(
+            auth()->user(),
+            'updated',
+            'card_comment',
+            $comment->id,
+            "Mengupdate komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
+
         return response()->json([
             'message' => 'Komentar berhasil diupdate.',
             'data'    => $comment,
@@ -776,6 +924,14 @@ class CardController extends Controller
         $this->authorizeCard($card);
 
         $comment->delete();
+
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'card_comment',
+            $comment->id,
+            "Menghapus komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->json([
             'message' => 'Komentar berhasil dihapus.',

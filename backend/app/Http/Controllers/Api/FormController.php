@@ -7,6 +7,7 @@ use App\Models\Form;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Services\ActivityLogService;
 
 class FormController extends Controller
 {
@@ -46,6 +47,14 @@ class FormController extends Controller
             'is_active' => true,
         ]);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'created',
+            'form',
+            $form->id,
+            "Membuat form '{$form->name}'"
+        );
+
         return response()->json($form, 201);
     }
 
@@ -83,12 +92,28 @@ class FormController extends Controller
 
         $form->update($data);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'updated',
+            'form',
+            $form->id,
+            "Mengupdate form '{$form->name}'"
+        );
+
         return response()->json($form);
     }
 
     public function destroy($id)
     {
         $form = Form::findOrFail($id);
+
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'form',
+            $form->id,
+            "Menghapus form '{$form->name}'"
+        );
 
         if ($form->header_image) {
             Storage::disk('public')->delete($form->header_image);

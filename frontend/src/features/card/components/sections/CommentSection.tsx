@@ -28,7 +28,25 @@ export default function CommentSection({
       <div className="space-y-3">
         {comments.map((c) => (
           <div key={c.id} className="bg-white rounded-xl p-4 border">
-            <div className="text-sm text-gray-700">{c.content}</div>
+<div
+  key={c.id}
+  className="bg-white rounded-xl p-4 border"
+>
+
+    <div className="font-medium text-sm text-gray-900">
+    {c.content}
+  </div>
+  
+  <div className="text-xs text-gray-400">
+    {c.user?.name ?? "Unknown User"}
+  </div>
+
+    <div className="text-xs text-gray-400">
+    {c.created_at
+      ? new Date(c.created_at).toLocaleString()
+      : ""}
+  </div>
+</div>
           </div>
         ))}
       </div>

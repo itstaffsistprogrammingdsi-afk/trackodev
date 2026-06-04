@@ -8,6 +8,7 @@ use App\Models\FormSubmission;
 use App\Services\AssignmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\ActivityLogService;
 
 class AssignmentController extends Controller
 {
@@ -41,31 +42,31 @@ class AssignmentController extends Controller
             $validated = $request->validate([
 
                 'division_id' =>
-                    'required|exists:divisions,id',
+                'required|exists:divisions,id',
 
                 'workspace_id' =>
-                    'required|exists:workspaces,id',
+                'required|exists:workspaces,id',
 
                 'campaign_id' =>
-                    'required|exists:campaigns,id',
+                'required|exists:campaigns,id',
 
                 'designer_id' =>
-                    'nullable|exists:users,id',
+                'nullable|exists:users,id',
 
                 'coordinator_id' =>
-                    'nullable|exists:users,id',
+                'nullable|exists:users,id',
 
                 'deadline' =>
-                    'nullable|date',
+                'nullable|date',
 
                 'estimated_hours' =>
-                    'nullable|integer|min:1',
+                'nullable|integer|min:1',
 
                 'priority' =>
-                    'nullable|in:low,medium,high,urgent',
+                'nullable|in:low,medium,high,urgent',
 
                 'notes' =>
-                    'nullable|string|max:2000',
+                'nullable|string|max:2000',
             ]);
 
             $campaign = Campaign::query()
@@ -88,12 +89,20 @@ class AssignmentController extends Controller
                 $validated
             );
 
+            ActivityLogService::log(
+                auth()->user(),
+                'assigned',
+                'form_submission',
+                $submission->id,
+                "Menugaskan response form submission ID {$submission->id} ke campaign '{$campaign->name}'",
+                ['submission_id' => $submission->id, 'campaign_id' => $campaign->id]    
+            );
+
             return response()->json([
                 'step' => 'success',
                 'message' => 'Assignment berhasil dibuat',
                 'data' => $assignment
             ], 201);
-
         } catch (\Throwable $e) {
 
             return response()->json([

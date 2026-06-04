@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use App\Services\ActivityLogService;
 
 use Spatie\Permission\Models\Role;
 
@@ -179,6 +180,21 @@ class UserController extends Controller
         // RESPONSE
         // ============================================
 
+        ActivityLogService::log(
+            $request->user(),
+            'viewed',
+            'user_list',
+            (string) $request->user()->id,
+            "Melihat daftar user dengan filter: " . json_encode($request->only([
+                'search',
+                'role',
+                'division_id',
+                'assign',
+                'all',
+                'per_page'
+            ]))
+        );
+
         return response()->json([
 
             // ========================================
@@ -315,6 +331,14 @@ class UserController extends Controller
         // RESPONSE
         // ============================================
 
+        ActivityLogService::log(
+            auth()->user(),
+            'created',
+            'user',
+            $user->id,
+            "Membuat user '{$user->name}' dengan role '{$validated['role']}'"
+        );
+
         return response()->json([
 
             'message' =>
@@ -438,6 +462,14 @@ class UserController extends Controller
         // RESPONSE
         // ============================================
 
+        ActivityLogService::log(
+            auth()->user(),
+            'updated',
+            'user',
+            $user->id,
+            "Mengupdate user '{$user->name}'"
+        );
+
         return response()->json([
 
             'message' =>
@@ -496,6 +528,14 @@ class UserController extends Controller
         // ============================================
         // RESPONSE
         // ============================================
+
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'user',
+            $user->id,
+            "Menghapus user '{$user->name}'"
+        );
 
         return response()->json([
 
@@ -563,6 +603,14 @@ class UserController extends Controller
         $users = $query
             ->limit(10)
             ->get();
+
+        ActivityLogService::log(
+            $request->user(),
+            'viewed',
+            'mentionable_users',
+            (string) $request->user()->id,
+            "Melihat daftar user mentionable dengan filter: " . json_encode($request->only('search'))
+        );
 
         return response()->json([
             'data' => UserResource::collection($users)

@@ -154,4 +154,14 @@ class Card extends Model
         CardBriefAttachment::class, 'card_id'
     );
 }
+
+public function activities()
+{
+    return $this->hasMany(
+        ActivityLog::class,
+        'entity_id',
+        'id'
+    )->where('entity_type', 'card');
+}
+
 }
