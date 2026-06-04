@@ -26,6 +26,9 @@ export const createDivision = async (
     name: string
     code?: string
     description?: string
+
+    admin_ids: string[]
+    member_ids: string[]
   }
 ) => {
   const res = await api.post(
@@ -82,6 +85,7 @@ export const addDivisionMember = async (
   divisionId: string,
   data: {
     user_id: string
+    role: "admin" | "member"
   }
 ) => {
 

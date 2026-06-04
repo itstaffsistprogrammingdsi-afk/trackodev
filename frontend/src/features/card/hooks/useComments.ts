@@ -72,6 +72,13 @@ export default function useComments(
     const temp: CardComment = {
       id: Date.now().toString(),
       content: comment,
+
+      user: {
+        id: "temp-user",
+        name: "You",
+        email: "",
+      },
+      
     };
 
     // 🔥 optimistic update

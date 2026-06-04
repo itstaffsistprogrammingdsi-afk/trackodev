@@ -1,27 +1,26 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
-
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\DivisionController;
-use App\Http\Controllers\Api\WorkspaceController;
-use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\BoardController;
-use App\Http\Controllers\Api\CardController;
-use App\Http\Controllers\Api\LabelController;
-use App\Http\Controllers\Api\CardLabelController;
 use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\CardBrandController;
-use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\CardController;
+use App\Http\Controllers\Api\CardLabelController;
 use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\DivisionController;
 use App\Http\Controllers\Api\FormController;
 use App\Http\Controllers\Api\FormFieldController;
 use App\Http\Controllers\Api\FormSubmissionController;
+use App\Http\Controllers\Api\LabelController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PublicFormController;
-use App\Http\Controllers\Api\AssignmentController;
+use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\WorkspaceController;
+use Illuminate\Support\Facades\Route;
 
 // ============================================
 // HEALTH CHECK
@@ -99,13 +98,13 @@ Route::middleware([
         'users',
         UserController::class
     )
-    // ->middleware([
-    //     'index'   => 'permission:user.view',
-    //     'store'   => 'permission:user.create',
-    //     'show'    => 'permission:user.view',
-    //     'update'  => 'permission:user.update',
-    //     'destroy' => 'permission:user.delete',
-    // ])
+        // ->middleware([
+        //     'index'   => 'permission:user.view',
+        //     'store'   => 'permission:user.create',
+        //     'show'    => 'permission:user.view',
+        //     'update'  => 'permission:user.update',
+        //     'destroy' => 'permission:user.delete',
+        // ])
     ;
 
     Route::get(
@@ -304,6 +303,15 @@ Route::middleware([
     )->middleware('permission:task.delete');
 
     // ========================================
+    // ACTIVITY LOGS
+    // ========================================
+
+    Route::get(
+        'cards/{card}/activities',
+        [ActivityLogController::class, 'cardActivities']
+    )->middleware('permission:task.view');
+
+    // ========================================
     // CARD ASSIGNMENT
     // ========================================
 
@@ -382,6 +390,30 @@ Route::middleware([
     Route::get(
         'attachments/{attachment}/download',
         [CardController::class, 'download']
+    )->middleware('permission:task.view');
+
+    // ========================================
+    // BRIEF ATTACHMENTS
+    // ========================================
+
+    Route::get(
+        'cards/{card}/brief-attachments',
+        [CardController::class, 'briefAttachments']
+    )->middleware('permission:task.view');
+
+    Route::post(
+        'cards/{card}/brief-attachments',
+        [CardController::class, 'addBriefAttachment']
+    )->middleware('permission:task.update');
+
+    Route::delete(
+        'brief-attachments/{attachment}',
+        [CardController::class, 'removeBriefAttachment']
+    )->middleware('permission:task.update');
+
+    Route::get(
+        'brief-attachments/{attachment}/download',
+        [CardController::class, 'downloadBriefAttachment']
     )->middleware('permission:task.view');
 
     // ========================================
@@ -610,10 +642,10 @@ Route::middleware([
     // ASSIGNMENT
     // ========================================
 
-Route::post(
-    'form-submissions/{submission}/assign',
-    [AssignmentController::class, 'assign']
-)->middleware('permission:task.assign');
+    Route::post(
+        'form-submissions/{submission}/assign',
+        [AssignmentController::class, 'assign']
+    )->middleware('permission:task.assign');
 });
 
 

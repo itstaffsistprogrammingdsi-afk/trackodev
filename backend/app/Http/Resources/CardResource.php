@@ -88,6 +88,9 @@ class CardResource extends JsonResource
             |------------------------------------------------
             */
             'created_at' => $this->created_at?->toDateTimeString(),
+
+            'brief_attachments' => $this->whenLoaded( 'briefAttachments',fn () => $this->briefAttachments
+    ),
         ];
     }
 }

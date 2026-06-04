@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -7,24 +8,78 @@ use App\Models\Division;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\ActivityLogService;
 
 class WorkspaceController extends Controller
 {
-public function index(
-    Request $request,
-    Division $division
-): JsonResponse {
+    public function index(
+        Request $request,
+        Division $division
+    ): JsonResponse {
 
-    $user = $request->user();
+        $user = $request->user();
 
-    // ========================================
-    // SUPER ADMIN
-    // ========================================
+        // ========================================
+        // SUPER ADMIN
+        // ========================================
 
-    if ($user->isSuperAdmin()) {
+        if ($user->isSuperAdmin()) {
+
+            $workspaces = $division
+                ->workspaces()
+                ->get();
+
+            return response()->json([
+                'data' => WorkspaceResource::collection(
+                    $workspaces
+                )
+            ]);
+        }
+
+        // ========================================
+        // ADMIN
+        // ========================================
+
+        if ($user->isAdmin()) {
+
+            $hasDivision = $user
+                ->divisions()
+                ->where('divisions.id', $division->id)
+                ->exists();
+
+            abort_unless(
+                $hasDivision,
+                403,
+                'Unauthorized'
+            );
+
+            $workspaces = $division
+                ->workspaces()
+                ->get();
+
+            return response()->json([
+                'data' => WorkspaceResource::collection(
+                    $workspaces
+                )
+            ]);
+        }
+
+        // ========================================
+        // USER
+        // ========================================
 
         $workspaces = $division
             ->workspaces()
+            ->whereHas(
+                'campaigns.members',
+                function ($q) use ($user) {
+
+                    $q->where(
+                        'users.id',
+                        $user->id
+                    );
+                }
+            )
             ->get();
 
         return response()->json([
@@ -33,59 +88,6 @@ public function index(
             )
         ]);
     }
-
-    // ========================================
-    // ADMIN
-    // ========================================
-
-    if ($user->isAdmin()) {
-
-        $hasDivision = $user
-            ->divisions()
-            ->where('divisions.id', $division->id)
-            ->exists();
-
-        abort_unless(
-            $hasDivision,
-            403,
-            'Unauthorized'
-        );
-
-        $workspaces = $division
-            ->workspaces()
-            ->get();
-
-        return response()->json([
-            'data' => WorkspaceResource::collection(
-                $workspaces
-            )
-        ]);
-    }
-
-    // ========================================
-    // USER
-    // ========================================
-
-    $workspaces = $division
-        ->workspaces()
-        ->whereHas(
-            'campaigns.members',
-            function ($q) use ($user) {
-
-                $q->where(
-                    'users.id',
-                    $user->id
-                );
-            }
-        )
-        ->get();
-
-    return response()->json([
-        'data' => WorkspaceResource::collection(
-            $workspaces
-        )
-    ]);
-}
 
     public function store(Request $request, Division $division): JsonResponse
     {
@@ -96,6 +98,13 @@ public function index(
 
         $workspace = $division->workspaces()->create($request->only(['name', 'description']));
 
+        ActivityLogService::log(
+            $request->user(),
+            'created',
+            'workspace',
+            $workspace->id,
+            "Membuat workspace '{$workspace->name}' di divisi '{$division->name}'"
+        );
         return response()->json([
             'message' => 'Workspace berhasil dibuat.',
             'data'    => new WorkspaceResource($workspace),
@@ -116,6 +125,13 @@ public function index(
 
         $workspace->update($request->only(['name', 'description']));
 
+        ActivityLogService::log(
+            $request->user(),
+            'updated',
+            'workspace',
+            $workspace->id,
+            "Mengupdate workspace '{$workspace->name}'"
+        );
         return response()->json([
             'message' => 'Workspace berhasil diupdate.',
             'data'    => new WorkspaceResource($workspace),
@@ -124,7 +140,21 @@ public function index(
 
     public function destroy(Workspace $workspace): JsonResponse
     {
+
         $workspace->delete();
+
+        ActivityLogService::log(
+            user: auth()->user(),
+            action: 'workspace.deleted',
+            entityType: 'workspace',
+            entityId: $workspace->id,
+            description: 'Menghapus workspace ' . $workspace->name,
+            meta: [
+                'name' => $workspace->name,
+                'division_id' => $workspace->division_id,
+                'division_name' => $workspace->division->name,
+            ]
+        );
         return response()->json(['message' => 'Workspace berhasil dihapus.']);
     }
 }

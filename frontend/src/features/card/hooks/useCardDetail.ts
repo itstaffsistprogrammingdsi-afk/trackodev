@@ -4,6 +4,8 @@ import api from "@/lib/axios";
 
 import { Brand, Card, User } from "../types";
 
+import { getUsers } from "@/features/user/api/user.api";
+
 import {
   attachBrand,
   detachBrand,
@@ -106,17 +108,22 @@ export function useCardDetail(
   // FETCH USERS
   // =========================================
   const fetchUsers = useCallback(async () => {
-    try {
-      const res = await api.get("/users");
+  try {
+    const users = await getUsers();
 
-      setUsers(res.data.data || []);
-    } catch (err) {
-      console.error(
-        "FAILED FETCH USERS",
-        err,
-      );
-    }
-  }, []);
+    console.log(
+      "TOTAL USERS",
+      users.length
+    );
+
+    setUsers(users);
+  } catch (err) {
+    console.error(
+      "FAILED FETCH USERS",
+      err,
+    );
+  }
+}, []);
 
   // =========================================
   // FETCH BRANDS

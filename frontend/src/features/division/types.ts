@@ -1,27 +1,18 @@
+import type { User } from "../user/types";
+
 export interface Division {
-  id: string
-  name: string
-  code?: string | null
-  slug: string
-  description?: string | null
-  created_at: string
+  id: string;
+  name: string;
+  code?: string | null;
+  slug: string;
+  description?: string | null;
+  created_at: string;
+  admin_ids: string[];
+  member_ids: string[];
+  users?: User[];
 }
 
-export type RoleType =
-  | 'super_admin'
-  | 'admin'
-  | 'user'
-
-export interface User {
-  id: string
-  name: string
-  email: string
-
-  role?: RoleType
-  roles?: string[]
-}
-
-export type DivisionMember = User
+export type DivisionMember = User;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,30 +21,34 @@ export type DivisionMember = User
 */
 
 export interface CreateDivisionPayload {
-  name: string
-  code?: string
-  description?: string
+  name: string;
+  code?: string;
+  description?: string;
+
+  admin_ids: string[];
+  member_ids: string[];
 }
 
 export interface UpdateDivisionPayload {
-  id: string
+  id: string;
 
   data: {
-    name?: string
-    code?: string
-    description?: string
-  }
+    name?: string;
+    code?: string;
+    description?: string;
+  };
 }
 
 export interface AddDivisionMemberPayload {
-  divisionId: string
+  divisionId: string;
 
   data: {
-    user_id: string
-  }
+    user_id: string;
+    role: "admin" | "member";
+  };
 }
 
 export interface RemoveDivisionMemberPayload {
-  divisionId: string
-  userId: string
+  divisionId: string;
+  userId: string;
 }

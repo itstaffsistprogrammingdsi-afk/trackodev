@@ -1,65 +1,158 @@
+import { useNavigate } from "react-router-dom";
+import { Trash2, FolderKanban } from "lucide-react";
+
 import { Workspace } from "../types";
 import { useDeleteWorkspace } from "../hooks/useWorkspaces";
-import { useNavigate } from "react-router-dom";
-import { Trash2 } from "lucide-react";
 
 type Props = {
   workspace: Workspace;
   divisionId: string;
 };
 
-export default function WorkspaceCard({ workspace, divisionId }: Props) {
+export default function WorkspaceCard({
+  workspace,
+  divisionId,
+}: Props) {
   const navigate = useNavigate();
-  const del = useDeleteWorkspace(divisionId);
+
+  const deleteWorkspace =
+    useDeleteWorkspace(divisionId);
 
   const handleOpen = () => {
-    navigate(`/workspaces/${workspace.id}/campaigns`);
+    navigate(
+      `/workspaces/${workspace.id}/campaigns`
+    );
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
     e.stopPropagation();
-    if (del.isPending) return;
 
-    const ok = confirm("Yakin ingin menghapus workspace ini?");
-    if (!ok) return;
+    if (deleteWorkspace.isPending) return;
 
-    del.mutate(workspace.id);
+    const confirmed = window.confirm(
+      `Hapus workspace "${workspace.name}" ?`
+    );
+
+    if (!confirmed) return;
+
+    deleteWorkspace.mutate(workspace.id);
   };
 
   return (
     <article
       onClick={handleOpen}
-      className="group p-4 rounded-2xl border bg-white dark:bg-gray-900 hover:shadow-lg transition cursor-pointer flex flex-col gap-2"
+      className="
+        group
+        bg-white
+        dark:bg-slate-900
+        border
+        border-slate-200
+        dark:border-slate-800
+        rounded-2xl
+        p-5
+        cursor-pointer
+        transition-all
+        hover:shadow-lg
+        hover:-translate-y-1
+      "
     >
-      {/* HEADER */}
-      <header className="space-y-1">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-blue-500 transition">
-          {workspace.name}
-        </h3>
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <div
+          className="
+            flex
+            items-center
+            justify-center
+            h-11
+            w-11
+            rounded-xl
+            bg-blue-50
+            dark:bg-blue-950/40
+            shrink-0
+          "
+        >
+          <FolderKanban
+            size={22}
+            className="text-blue-600"
+          />
+        </div>
 
-        <p className="text-sm text-gray-500 line-clamp-2">
-          {workspace.description || "No description"}
-        </p>
-      </header>
+        <div className="flex-1 min-w-0">
+          <h3
+            className="
+              text-base
+              font-semibold
+              text-slate-900
+              dark:text-white
+              truncate
+            "
+          >
+            {workspace.name}
+          </h3>
 
-      {/* FOOTER */}
-      <footer className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+          <p
+            className="
+              mt-1
+              text-sm
+              text-slate-500
+              dark:text-slate-400
+              line-clamp-2
+            "
+          >
+            {workspace.description ||
+              "Tidak ada deskripsi workspace"}
+          </p>
+        </div>
+      </div>
 
-        <span className="text-xs text-gray-400">
+      {/* Footer */}
+      <div
+        className="
+          mt-4
+          pt-3
+          border-t
+          border-slate-200
+          dark:border-slate-800
+          flex
+          items-center
+          justify-between
+        "
+      >
+        <span
+          className="
+            text-xs
+            font-medium
+            text-slate-400
+          "
+        >
           Workspace
         </span>
 
         <button
+          type="button"
           onClick={handleDelete}
-          disabled={del.isPending}
-          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 disabled:opacity-50 transition"
-          aria-label="Delete workspace"
+          disabled={deleteWorkspace.isPending}
+          className="
+            flex
+            items-center
+            gap-1.5
+            text-xs
+            font-medium
+            text-red-500
+            hover:text-red-600
+            disabled:opacity-50
+            transition
+          "
         >
           <Trash2 size={14} />
-          Delete
-        </button>
 
-      </footer>
+          {deleteWorkspace.isPending
+            ? "Deleting..."
+            : "Delete"}
+        </button>
+      </div>
     </article>
   );
 }

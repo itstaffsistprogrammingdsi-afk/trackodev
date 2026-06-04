@@ -7,6 +7,7 @@ use App\Models\Label;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Services\ActivityLogService;
 
 class LabelController extends Controller
 {
@@ -50,6 +51,15 @@ class LabelController extends Controller
             ),
         ]);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'created',
+            'label',
+            $label->id,
+            "Membuat label '{$label->name}'",
+            ['label_id' => $label->id]
+        );
+
         return response()->json(
             $label,
             201
@@ -90,6 +100,15 @@ class LabelController extends Controller
             ),
         ]);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'updated',
+            'label',
+            $label->id,
+            "Mengupdate label '{$label->name}'",
+            ['label_id' => $label->id]
+        );
+
         return response()->json(
             $label->fresh()
         );
@@ -100,6 +119,15 @@ class LabelController extends Controller
      */
     public function destroy(Label $label)
     {
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'label',
+            $label->id,
+            "Menghapus label '{$label->name}'",
+            ['label_id' => $label->id]
+        );
+
         $label->delete();
 
         return response()->json([
@@ -122,16 +150,16 @@ class LabelController extends Controller
 
         while (
             Label::query()
-                ->where('slug', $slug)
-                ->when(
-                    $ignoreId,
-                    fn ($query) => $query->where(
-                        'id',
-                        '!=',
-                        $ignoreId
-                    )
+            ->where('slug', $slug)
+            ->when(
+                $ignoreId,
+                fn($query) => $query->where(
+                    'id',
+                    '!=',
+                    $ignoreId
                 )
-                ->exists()
+            )
+            ->exists()
         ) {
             $slug = $baseSlug . '-' . $counter;
 

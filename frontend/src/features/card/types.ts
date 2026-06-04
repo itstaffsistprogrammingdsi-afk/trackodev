@@ -19,6 +19,8 @@ export type CardComment = {
   id: string;
   content: string;
   created_at?: string;
+
+  user?: User;
 };
 
 export type CardTask = {

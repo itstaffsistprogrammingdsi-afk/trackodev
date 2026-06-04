@@ -7,6 +7,7 @@ use App\Http\Resources\CardResource;
 use App\Models\Board;
 use App\Models\Card;
 use App\Models\CardAttachment;
+use App\Models\CardBriefAttachment;
 use App\Models\CardComment;
 use App\Models\User;
 use App\Models\Campaign;
@@ -14,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogService;
 
 class CardController extends Controller
 {
@@ -156,6 +158,15 @@ class CardController extends Controller
             'order'       => $lastOrder + 1,
         ]);
 
+        ActivityLogService::log(
+            auth()->user(),
+            'created',
+            'card',
+            $card->id,
+            "Membuat card '{$card->title}' di board '{$card->board->name}'",
+            ['card_id' => $card->id]
+        );
+
         // $campaignMembers = $board
         //     ->campaign
         //     ->members()
@@ -175,6 +186,7 @@ class CardController extends Controller
             'board',
             'comments',
             'attachments',
+            'briefAttachments',
             'brands',
         ]);
 
@@ -198,6 +210,7 @@ class CardController extends Controller
             'comments.user',
             'comments.replies.user',
             'board',
+            'briefAttachments',
         ]);
 
         return response()->json([
@@ -234,110 +247,310 @@ class CardController extends Controller
             'brands',
             'board',
             'attachments',
+            'briefAttachments',
             'comments.user',
             'comments.replies.user',
         ]);
 
+        ActivityLogService::log(
+            $request->user(),
+            'updated',
+            'card',
+            $card->id,
+            "Mengupdate card '{$card->title}' di board '{$card->board->name}'",
+            ['card_id' => $card->id]
+        );
         return response()->json([
             'message' => 'Card berhasil diupdate.',
             'data'    => new CardResource($card),
         ]);
     }
 
-public function move(
-    Request $request,
-    Card $card
-): JsonResponse {
+    public function briefAttachments(
+        Card $card
+    ): JsonResponse {
 
-    $request->validate([
-        'board_id' => 'required|uuid|exists:boards,id',
-        'order'    => 'nullable|integer|min:0',
-    ]);
-
-    $board = Board::findOrFail(
-        $request->input('board_id')
-    );
-
-    $this->authorizeCard($card);
-    $this->authorizeBoard($board);
-
-    // ========================================
-    // EXCLUDE CURRENT CARD
-    // AGAR TIDAK DUPLICATE ORDER
-    // ========================================
-
-    $lastOrder = $board
-        ->cards()
-        ->where('id', '!=', $card->id)
-        ->max('order');
-
-    $card->update([
-        'board_id' => $board->id,
-
-        'order' => $request->input(
-            'order',
-            ($lastOrder ?? 0) + 1
-        ),
-    ]);
-
-    return response()->json([
-        'message' => 'Card berhasil dipindahkan.',
-    ]);
-}
-
-public function reorder(
-    Request $request
-): JsonResponse {
-
-    $request->validate([
-        'cards'         => 'required|array',
-        'cards.*.id'    => 'required|uuid|exists:cards,id',
-        'cards.*.order' => 'required|integer|min:0',
-    ]);
-
-    // ========================================
-    // CEK DUPLICATE ORDER
-    // ========================================
-
-    $orders = collect($request->cards)
-        ->pluck('order');
-
-    if ($orders->duplicates()->isNotEmpty()) {
+        $this->authorizeCard($card);
 
         return response()->json([
-            'message' => 'Order tidak boleh duplikat.',
-        ], 422);
+            'data' => $card->briefAttachments
+        ]);
     }
 
-    // ========================================
-    // TRANSACTION
-    // ========================================
+    public function addBriefAttachment(
+        Request $request,
+        Card $card
+    ): JsonResponse {
 
-    DB::transaction(function () use ($request) {
+        $this->authorizeCard($card);
 
-        foreach ($request->cards as $item) {
+        $request->validate([
 
-            $card = Card::findOrFail(
-                $item['id']
+            'type' => 'required|in:file,link',
+
+            'link_url' => [
+                'required_if:type,link',
+                'nullable',
+                'url',
+            ],
+
+            'file' => [
+                'required_if:type,file',
+                'nullable',
+                'file',
+                'mimes:pdf,png,jpg,jpeg,gif,doc,docx,xls,xlsx',
+                'max:10240',
+            ],
+        ]);
+
+        $data = [
+
+            'card_id' => $card->id,
+
+            'uploaded_by' => auth()->id(),
+
+            'attachment_type' => $request->type,
+        ];
+
+        if ($request->type === 'file') {
+
+            $file = $request->file('file');
+
+            $path = $file->store(
+                'brief-attachments',
+                'public'
             );
 
-            $this->authorizeCard($card);
+            $data['file_name'] = $file->getClientOriginalName();
 
-            $card->update([
-                'order' => $item['order'],
-            ]);
+            $data['file_path'] = $path;
+
+            $data['file_type'] = $file->getMimeType();
+
+            $data['file_size'] = $file->getSize();
+        } else {
+
+            $data['link_url'] = $request->link_url;
         }
-    });
 
-    return response()->json([
-        'message' => 'Card berhasil direorder.',
-    ]);
-}
+        $attachment =
+            CardBriefAttachment::create($data);
+
+        ActivityLogService::log(
+            $request->user(),
+            'created',
+            'card_brief_attachment',
+            $attachment->id,
+            "Menambahkan brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
+            ['card_id' => $card->id]
+        );
+
+        return response()->json([
+            'message' => 'Brief attachment berhasil ditambahkan.',
+            'data' => $attachment,
+        ], 201);
+    }
+
+    public function removeBriefAttachment(
+        CardBriefAttachment $attachment
+    ): JsonResponse {
+
+        $card = Card::findOrFail(
+            $attachment->card_id
+        );
+
+        $this->authorizeCard($card);
+
+        if (
+            $attachment->file_path &&
+            Storage::disk('public')->exists(
+                $attachment->file_path
+            )
+        ) {
+            Storage::disk('public')->delete(
+                $attachment->file_path
+            );
+        }
+
+        $attachment->delete();
+
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'card_brief_attachment',
+            $attachment->id,
+            "Menghapus brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
+            ['card_id' => $card->id]
+        );
+
+        return response()->json([
+            'message' => 'Brief attachment berhasil dihapus.'
+        ]);
+    }
+
+    public function downloadBriefAttachment(
+        CardBriefAttachment $attachment
+    ) {
+
+        $card = Card::findOrFail(
+            $attachment->card_id
+        );
+
+        $this->authorizeCard($card);
+
+        ActivityLogService::log(
+            auth()->user(),
+            'downloaded',
+            'card_brief_attachment',
+            $attachment->id,
+            "Mengunduh brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
+
+        return response()->download(
+            storage_path(
+                'app/public/' .
+                    $attachment->file_path
+            ),
+            $attachment->file_name
+        );
+    }
+    public function move(
+        Request $request,
+        Card $card
+    ): JsonResponse {
+
+        $request->validate([
+            'board_id' => 'required|uuid|exists:boards,id',
+            'order'    => 'nullable|integer|min:0',
+        ]);
+
+        $board = Board::findOrFail(
+            $request->input('board_id')
+        );
+
+        $this->authorizeCard($card);
+        $this->authorizeBoard($board);
+
+        // ========================================
+        // EXCLUDE CURRENT CARD
+        // AGAR TIDAK DUPLICATE ORDER
+        // ========================================
+
+        $lastOrder = $board
+            ->cards()
+            ->where('id', '!=', $card->id)
+            ->max('order');
+
+        $card->update([
+            'board_id' => $board->id,
+
+            'order' => $request->input(
+                'order',
+                ($lastOrder ?? 0) + 1
+            ),
+        ]);
+
+        ActivityLogService::log(
+            auth()->user(),
+            'moved',
+            'card',
+            $card->id,
+            "Memindahkan card '{$card->title}' ke board '{$board->name}'",
+            ['card_id' => $card->id]
+        );
+        return response()->json([
+            'message' => 'Card berhasil dipindahkan.',
+        ]);
+    }
+
+    public function reorder(
+        Request $request
+    ): JsonResponse {
+
+        $request->validate([
+            'cards'         => 'required|array',
+            'cards.*.id'    => 'required|uuid|exists:cards,id',
+            'cards.*.order' => 'required|integer|min:0',
+        ]);
+
+        // ========================================
+        // CEK DUPLICATE ORDER
+        // ========================================
+
+        $orders = collect($request->cards)
+            ->pluck('order');
+
+        if ($orders->duplicates()->isNotEmpty()) {
+
+            return response()->json([
+                'message' => 'Order tidak boleh duplikat.',
+            ], 422);
+        }
+
+        // ========================================
+        // TRANSACTION
+        // ========================================
+
+        DB::transaction(function () use ($request) {
+
+            foreach ($request->cards as $item) {
+
+                $card = Card::findOrFail($item['id']);
+
+                $this->authorizeCard($card);
+
+                $card->update([
+                    'order' => $item['order'],
+                ]);
+            }
+        });
+
+        /*
+|--------------------------------------------------------------------------
+| AMBIL CONTEXT BOARD YANG VALID
+|--------------------------------------------------------------------------
+*/
+
+        // ambil card pertama untuk mendapatkan board context yang benar
+        $firstCard = Card::find($request->cards[0]['id'] ?? null);
+
+        // fallback aman
+        $boardId = $firstCard?->board_id;
+
+        if (!$boardId) {
+            $boardId = $request->input('board_id');
+        }
+
+        /*
+|--------------------------------------------------------------------------
+| ACTIVITY LOG
+|--------------------------------------------------------------------------
+*/
+
+        ActivityLogService::log(
+            auth()->user(),
+            'reordered',
+            'board',
+            $boardId,
+            "Merubah urutan card di board '{$boardId}'",
+        );
+        return response()->json([
+            'message' => 'Card berhasil direorder.',
+        ]);
+    }
 
     public function destroy(Card $card): JsonResponse
     {
         $this->authorizeCard($card);
         $card->delete();
+
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'card',
+            $card->id,
+            "Menghapus card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->json([
             'message' => 'Card berhasil dihapus.',
@@ -407,6 +620,14 @@ public function reorder(
             'assignees',
         ]);
 
+        ActivityLogService::log(
+            $request->user(),
+            'assigned',
+            'card',
+            $card->id,
+            "Menambahkan assignee di card '{$card->title}' di board '{$card->board->name}'"
+        );
+
         return response()->json([
             'message' =>
             'Member berhasil di-assign.',
@@ -426,6 +647,14 @@ public function reorder(
             ->detach($user->id);
 
         $card->load('assignees');
+
+        ActivityLogService::log(
+            auth()->user(),
+            'unassigned',
+            'card',
+            $card->id,
+            "Menghapus assignee di card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->json([
             'message' => 'Member berhasil di-unassign.',
@@ -510,6 +739,13 @@ public function reorder(
         $attachment = CardAttachment::create($data);
 
 
+        ActivityLogService::log(
+            $request->user(),
+            'created',
+            'card_attachment',
+            $attachment->id,
+            "Menambahkan attachment di card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->json([
             'message' => 'Attachment berhasil ditambahkan.',
@@ -536,6 +772,13 @@ public function reorder(
 
         $attachment->delete();
 
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'card_attachment',
+            $attachment->id,
+            "Menghapus attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
         return response()->json([
             'message' => 'Attachment berhasil dihapus.',
         ]);
@@ -563,6 +806,13 @@ public function reorder(
             ], 404);
         }
 
+        ActivityLogService::log(
+            auth()->user(),
+            'downloaded',
+            'card_attachment',
+            $attachment->id,
+            "Mengunduh attachment di card '{$card->title}' di board '{$card->board->name}'"
+        );
         return response()->download(
             storage_path(
                 'app/public/' . $attachment->file_path
@@ -589,6 +839,14 @@ public function reorder(
             ->latest()
             ->get();
 
+        $firstComment = $comments->first();
+        ActivityLogService::log(
+            auth()->user(),
+            'viewed',
+            'card_comments',
+            $card->id,
+            $firstComment ? "Melihat komentar '{$firstComment->content}' di card '{$card->title}' di board '{$card->board->name}'" : "Melihat komentar di card '{$card->title}' di board '{$card->board->name}'"
+        );
         return response()->json([
             'data' => $comments,
         ]);
@@ -614,6 +872,14 @@ public function reorder(
 
         $comment->load('user');
 
+        ActivityLogService::log(
+            auth()->user(),
+            'created',
+            'card_comment',
+            $comment->id,
+            "Menambahkan komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
+
         return response()->json([
             'message' => 'Komentar berhasil ditambahkan.',
             'data'    => $comment,
@@ -637,6 +903,14 @@ public function reorder(
 
         $comment->load('user');
 
+        ActivityLogService::log(
+            auth()->user(),
+            'updated',
+            'card_comment',
+            $comment->id,
+            "Mengupdate komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
+
         return response()->json([
             'message' => 'Komentar berhasil diupdate.',
             'data'    => $comment,
@@ -650,6 +924,14 @@ public function reorder(
         $this->authorizeCard($card);
 
         $comment->delete();
+
+        ActivityLogService::log(
+            auth()->user(),
+            'deleted',
+            'card_comment',
+            $comment->id,
+            "Menghapus komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+        );
 
         return response()->json([
             'message' => 'Komentar berhasil dihapus.',

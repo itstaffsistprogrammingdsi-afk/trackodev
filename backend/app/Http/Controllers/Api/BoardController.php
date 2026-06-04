@@ -8,6 +8,7 @@ use App\Models\Board;
 use App\Models\Campaign;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\ActivityLogService;
 
 class BoardController extends Controller
 {
@@ -18,11 +19,11 @@ class BoardController extends Controller
 
         $user = $request->user();
 
-abort_unless(
-    $campaign->canBeAccessedBy($user),
-    403,
-    'Unauthorized'
-);
+        abort_unless(
+            $campaign->canBeAccessedBy($user),
+            403,
+            'Unauthorized'
+        );
 
         $boards = $campaign->boards()
             ->with('cards.creator')
@@ -48,6 +49,14 @@ abort_unless(
             'order' => $order,
         ]);
 
+        ActivityLogService::log(
+            $request->user(),
+            'created',
+            'board',
+            $board->id,
+            "Membuat board '{$board->name}' di campaign '{$campaign->name}'",
+            ['board_id' => $board->id, 'campaign_id' => $campaign->id]
+        );
         return response()->json([
             'message' => 'Board berhasil dibuat.',
             'data'    => new BoardResource($board),
@@ -62,6 +71,15 @@ abort_unless(
         ]);
 
         $board->update($request->only(['name', 'color']));
+
+        ActivityLogService::log(
+            $request->user(),
+            'updated',
+            'board',
+            $board->id,
+            "Mengupdate board '{$board->name}' di campaign '{$board->campaign->name}'",
+            ['board_id' => $board->id, 'campaign_id' => $board->campaign->id]
+        );
 
         return response()->json([
             'message' => 'Board berhasil diupdate.',
@@ -78,14 +96,38 @@ abort_unless(
         ]);
 
         foreach ($request->boards as $item) {
-            Board::where('id', $item['id'])->update(['order' => $item['order']]);
+            Board::where('id', $item['id'])
+                ->update(['order' => $item['order']]);
         }
 
-        return response()->json(['message' => 'Board berhasil direorder.']);
+        // ambil 1 board sebagai reference untuk campaign
+        $firstBoard = Board::find($request->boards[0]['id'] ?? null);
+
+        ActivityLogService::log(
+            $request->user(),
+            'reordered',
+            'board',
+            $firstBoard?->campaign_id, // FIX: tidak null sembarangan
+            "Mengubah urutan board pada campaign {$firstBoard?->campaign_id}",
+            ['board_id' => $firstBoard?->id, 'campaign_id' => $firstBoard?->campaign_id]
+        );
+
+        return response()->json([
+            'message' => 'Board berhasil direorder.'
+        ]);
     }
 
     public function destroy(Board $board): JsonResponse
     {
+        ActivityLogService::log(
+            request()->user(),
+            'deleted',
+            'board',
+            $board->id,
+            "Menghapus board '{$board->name}' di campaign '{$board->campaign->name}'",
+            ['board_id' => $board->id, 'campaign_id' => $board->campaign->id]
+        );
+
         $board->delete();
         return response()->json(['message' => 'Board berhasil dihapus.']);
     }

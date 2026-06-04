@@ -5,7 +5,11 @@ export default function useCardSidebar() {
 
   const [showDueDate, setShowDueDate] = useState(false);
 
-  const [showAttachment, setShowAttachment] = useState(false);
+  // const [showAttachment, setShowAttachment] = useState(false);
+
+  const [showBrief, setShowBrief] = useState(false);
+
+const [showResult, setShowResult] = useState(false);
 
   const [memberSearch, setMemberSearch] = useState("");
 
@@ -19,13 +23,14 @@ export default function useCardSidebar() {
     showDueDate,
     setShowDueDate,
 
-    showAttachment,
-    setShowAttachment,
-
     memberSearch,
     setMemberSearch,
 
     showBrands,
     setShowBrands,  
+
+    showBrief, setShowBrief,
+
+    showResult, setShowResult,
   };
 }

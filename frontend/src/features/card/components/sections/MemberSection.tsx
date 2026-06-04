@@ -25,14 +25,20 @@ export default function MemberSection({
   // =========================================
   // FILTER USERS
   // =========================================
-  const filteredUsers = users.filter((user) => {
-    const keyword = memberSearch.toLowerCase();
+const filteredUsers = users
+  .filter((user) => {
+    const keyword = memberSearch.trim().toLowerCase();
+
+    if (!keyword) {
+      return true;
+    }
 
     return (
       user.name.toLowerCase().includes(keyword) ||
       user.email.toLowerCase().includes(keyword)
     );
-  });
+  })
+  .slice(0, 10);
 
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 shadow-sm space-y-5">
@@ -114,9 +120,9 @@ export default function MemberSection({
             Available Members
           </p>
 
-          <span className="text-xs text-gray-400">
-            {filteredUsers.length} users
-          </span>
+<span className="text-xs text-gray-400">
+  Showing {filteredUsers.length} of {users.length} users
+</span>
         </div>
 
         {/* LIST */}
@@ -168,11 +174,11 @@ export default function MemberSection({
           })}
 
           {/* EMPTY */}
-          {filteredUsers.length === 0 && (
+          {filteredUsers.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white py-8 text-center text-sm text-gray-500">
               Member tidak ditemukan
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
