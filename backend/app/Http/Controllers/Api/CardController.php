@@ -156,6 +156,7 @@ class CardController extends Controller
             'due_date'    => $validated['due_date'] ?? null,
             'created_by'  => $userId,
             'order'       => $lastOrder + 1,
+            'completed_at' => null,
         ]);
 
         ActivityLogService::log(
@@ -441,15 +442,20 @@ class CardController extends Controller
             ->where('id', '!=', $card->id)
             ->max('order');
 
-        $card->update([
-            'board_id' => $board->id,
+$card->update([
+    'board_id' => $board->id,
+    'order'    => $request->input(
+        'order',
+        ($lastOrder ?? 0) + 1
+    ),
+]);
+if ($board->type === 'done') {
+    $card->completed_at = now();
+} else {
+    $card->completed_at = null;
+}
 
-            'order' => $request->input(
-                'order',
-                ($lastOrder ?? 0) + 1
-            ),
-        ]);
-
+$card->save();
         ActivityLogService::log(
             auth()->user(),
             'card',
@@ -461,6 +467,8 @@ class CardController extends Controller
         return response()->json([
             'message' => 'Card berhasil dipindahkan.',
         ]);
+
+    
     }
 
     public function reorder(

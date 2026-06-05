@@ -7,7 +7,7 @@ import MemberMentionInput from "./MemberMentionInput";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, Pencil, Trash2, X, Check } from "lucide-react";
+import { Users, Pencil, Trash2, X, Check, } from "lucide-react";
 
 export default function CampaignCard({
   campaign,
@@ -165,7 +165,7 @@ export default function CampaignCard({
     <article className="p-4 rounded-2xl border bg-white dark:bg-gray-900 hover:shadow-lg transition flex flex-col gap-3">
       {/* HEADER */}
       <header className="space-y-1">
-        <Link to={`/campaigns/${campaign.id}`}>
+        <Link to={`/campaigns/${campaign.id}/boards`}>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {name}
           </h3>
@@ -194,32 +194,59 @@ export default function CampaignCard({
       </section>
 
       {/* ACTIONS */}
-      <footer className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-        <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
-          {campaign.type}
-        </span>
-        <button
-          onClick={() => setShowMembers(true)}
-          className="p-2 rounded-lg hover:bg-blue-50"
-        >
-          <Users size={16} />
-        </button>
+<footer className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+    {campaign.type}
+  </span>
 
-        <button
-          onClick={() => setShowEdit(true)}
-          className="p-2 rounded-lg hover:bg-yellow-50"
-        >
-          <Pencil size={16} />
-        </button>
+  {/* DETAIL */}
+  {/* <Link
+    to={`/campaigns/${campaign.id}`}
+    className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600"
+    title="Detail Campaign"
+  >
+    <Eye size={16} />
+  </Link> */}
 
-        <button
-          onClick={handleDeleteCampaign}
-          disabled={loading}
-          className="p-2 rounded-lg hover:bg-red-50 text-red-600 disabled:opacity-50"
-        >
-          <Trash2 size={16} />
-        </button>
-      </footer>
+  {/* MEMBERS */}
+  <button
+    onClick={() => setShowMembers(true)}
+    className="p-2 rounded-lg hover:bg-blue-50"
+    title="Manage Members"
+  >
+    <Users size={16} />
+  </button>
+
+  {/* EDIT */}
+  <button
+    onClick={() => setShowEdit(true)}
+    className="p-2 rounded-lg hover:bg-yellow-50"
+    title="Edit Campaign"
+  >
+    <Pencil size={16} />
+  </button>
+
+  {/* DELETE */}
+  <button
+    onClick={handleDeleteCampaign}
+    disabled={loading}
+    className="p-2 rounded-lg hover:bg-red-50 text-red-600 disabled:opacity-50"
+    title="Delete Campaign"
+  >
+    <Trash2 size={16} />
+  </button>
+
+  <Link
+  to={`/campaigns/${campaign.id}`}
+  className="ml-auto text-sm font-small text-gray-500 hover:text-gray-700"
+>
+  View Details →
+</Link>
+
+{/* <Link to={`/campaigns/${campaign.id}/boards`}>
+  View Boards →
+</Link> */}
+</footer>
 
       {/* MODALS (tidak diubah karena sudah clean) */}
       {showMembers && (

@@ -54,6 +54,7 @@ class Card extends Model
     protected $casts = [
 
         'due_date' => 'datetime',
+        'completed_at' => 'datetime',
     ];
 
     /*
