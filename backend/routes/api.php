@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\PublicFormController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
@@ -646,6 +647,9 @@ Route::middleware([
         'form-submissions/{submission}/assign',
         [AssignmentController::class, 'assign']
     )->middleware('permission:task.assign');
+
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/dashboard/activities', [DashboardController::class, 'activities']);
 });
 
 

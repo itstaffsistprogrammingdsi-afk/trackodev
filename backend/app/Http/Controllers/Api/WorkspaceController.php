@@ -100,9 +100,9 @@ class WorkspaceController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'created',
             'workspace',
             $workspace->id,
+            'created',
             "Membuat workspace '{$workspace->name}' di divisi '{$division->name}'"
         );
         return response()->json([
@@ -127,9 +127,9 @@ class WorkspaceController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'updated',
             'workspace',
-            $workspace->id,
+            (string) $workspace->id,
+            'updated',
             "Mengupdate workspace '{$workspace->name}'"
         );
         return response()->json([
@@ -145,9 +145,9 @@ class WorkspaceController extends Controller
 
         ActivityLogService::log(
             user: auth()->user(),
-            action: 'workspace.deleted',
             entityType: 'workspace',
-            entityId: $workspace->id,
+            entityId: (string) $workspace->id,
+            action: 'workspace.deleted',
             description: 'Menghapus workspace ' . $workspace->name,
             meta: [
                 'name' => $workspace->name,

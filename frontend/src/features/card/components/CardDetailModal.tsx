@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Activity, Card } from "../types";
+import { Card } from "../types";
 
 import useDeleteCard from "../hooks/useDeleteCard";
 import useCardMembers from "../hooks/useCardMembers";
@@ -20,6 +20,9 @@ import useBriefAttachments from "../hooks/useBriefAttachments";
 
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
+
+import useCardActivities from "../hooks/useCardActivities";
+
 
 import { AlignLeft, Clock3, Loader2, Sparkles } from "lucide-react";
 
@@ -108,8 +111,6 @@ export default function CardDetailModal({
   // =========================================
   // UI STATE
   // =========================================
-  const activities: Activity[] = [];
-
   const {
     showMembers,
     setShowMembers,
@@ -157,10 +158,19 @@ export default function CardDetailModal({
     onDeleted,
   });
 
+  const { activities, loading: activityLoading } = useCardActivities(
+  card?.id,
+  isOpen
+);
+
+
   // =========================================
   // CLOSE
   // =========================================
   if (!isOpen || !card) return null;
+
+
+
 
   return (
     <div
@@ -408,95 +418,105 @@ export default function CardDetailModal({
                     />
                   </div>
 
-                  {/* ========================================= */}
-                  {/* ACTIVITY */}
-                  {/* ========================================= */}
-                  <section
-                    className="
-                      bg-white
-                      border border-slate-200
-                      rounded-3xl
-                      p-5 sm:p-6
-                      shadow-sm
-                    "
-                  >
-                    <div className="flex items-center gap-3 mb-5">
-                      <div
-                        className="
-                          w-10 h-10
-                          rounded-2xl
-                          bg-slate-100
-                          flex items-center justify-center
-                        "
-                      >
-                        <Clock3 size={18} className="text-slate-600" />
-                      </div>
+{/* ========================================= */}
+{/* ACTIVITY */}
+{/* ========================================= */}
+<section className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm">
 
-                      <div>
-                        <h2
-                          className="
-                            text-base sm:text-lg
-                            font-semibold
-                            text-slate-800
-                          "
-                        >
-                          Activity
-                        </h2>
+  {/* HEADER */}
+  <div className="flex items-center gap-3 mb-5">
+    <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center">
+      <Clock3 size={18} className="text-slate-600" />
+    </div>
 
-                        <p className="text-sm text-slate-400">
-                          Timeline & changes
-                        </p>
-                      </div>
-                    </div>
+    <div>
+      <h2 className="text-base sm:text-lg font-semibold text-slate-800">
+        Activity
+      </h2>
+      <p className="text-sm text-slate-400">
+        Timeline & changes history
+      </p>
+    </div>
+  </div>
 
-                    <div className="space-y-3">
-                      {activities.length > 0 ? (
-                        activities.map((activity) => (
-                          <div
-                            key={activity.id}
-                            className="
-                              rounded-2xl
-                              border border-slate-200
-                              bg-slate-50
-                              p-4
-                              text-sm
-                              text-slate-600
-                            "
-                          >
-                            {activity.text}
-                          </div>
-                        ))
-                      ) : (
-                        <div
-                          className="
-                            flex flex-col items-center justify-center
-                            py-12
-                            text-center
-                          "
-                        >
-                          <div
-                            className="
-                              w-14 h-14
-                              rounded-2xl
-                              bg-slate-100
-                              flex items-center justify-center
-                              mb-4
-                            "
-                          >
-                            <Sparkles size={22} className="text-slate-400" />
-                          </div>
+  {/* LOADING */}
+  {activityLoading ? (
+    <div className="py-10 text-center text-sm text-slate-400">
+      Loading activity...
+    </div>
+  ) : activities.length > 0 ? (
+    <>
+      {/* LIST */}
+      <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+        {activities.slice(0, 8).map((activity) => (
+          <div
+            key={activity.id}
+            className="
+              rounded-2xl
+              border border-slate-200
+              bg-slate-50
+              p-4
+              text-sm
+              hover:bg-slate-100
+              transition
+            "
+          >
+            {/* TEXT */}
+            <div className="text-slate-800 font-medium leading-snug">
+              {activity.description ??
+                activity.action ??
+                "Activity recorded"}
+            </div>
 
-                          <h3 className="font-medium text-slate-700">
-                            No activity yet
-                          </h3>
+            {/* META */}
+            <div className="flex justify-between mt-2">
+              <span className="text-xs text-slate-500">
+                {activity.user?.name ?? "System"}
+              </span>
 
-                          <p className="text-sm text-slate-400 mt-1">
-                            Activity history will appear here
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </section>
+              <span className="text-xs text-slate-400">
+                {activity.created_at
+                  ? new Date(activity.created_at).toLocaleString("id-ID", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })
+                  : "-"}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* FOOTER INFO */}
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-xs text-slate-400">
+          Showing {Math.min(8, activities.length)} of {activities.length}
+        </span>
+
+        {activities.length > 8 && (
+          <span className="text-xs text-blue-600 font-medium cursor-pointer hover:underline">
+            View full activity →
+          </span>
+        )}
+      </div>
+    </>
+  ) : (
+    /* EMPTY STATE */
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <Sparkles size={22} className="text-slate-400" />
+      </div>
+
+      <h3 className="font-medium text-slate-700">
+        No activity yet
+      </h3>
+
+      <p className="text-sm text-slate-400 mt-1">
+        Activity history will appear here
+      </p>
+    </div>
+  )}
+</section>
                 </>
               )}
             </div>

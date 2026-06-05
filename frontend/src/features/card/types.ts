@@ -132,3 +132,24 @@ export interface Board {
   id: string;
   campaign_id: string;
 }
+
+export interface ActivityLog {
+  id: string;
+
+  user_id: string;
+
+  action: string;
+
+  entity_type: string;
+
+  description?: string;
+
+  created_at: string;
+
+  meta?: Record<string, unknown>;
+
+  user?: {
+    id: string;
+    name: string;
+  };
+}

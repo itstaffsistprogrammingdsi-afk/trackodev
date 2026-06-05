@@ -31,11 +31,12 @@ class CardLabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'attached',
+            
             'card',
-            $card->id,
+            (string) $card->id,
+            'attached',
             "Melampirkan label ke card '{$card->title}'",
-            ['card_id' => $card->id, 'label_id' => $validated['label_id']]
+            ['card_id' => (string) $card->id, 'label_id' => (string) $validated['label_id']]
         );
 
         return response()->json(
@@ -55,11 +56,12 @@ class CardLabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'detached',
+            
             'card',
-            $card->id,
+            (string) $card->id,
+            'detached',
             "Melepas label dari card '{$card->title}'",
-            ['card_id' => $card->id, 'label_id' => $label->id]
+            ['card_id' => (string) $card->id, 'label_id' => (string) $label->id]
         );
 
         return response()->json(
@@ -95,11 +97,12 @@ class CardLabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'toggled',
+            
             'card',
-            $card->id,
+            (string) $card->id,
+            'toggled',
             "Mengalihkan label pada card '{$card->title}'",
-            ['card_id' => $card->id, 'label_id' => $labelId]
+            ['card_id' => (string) $card->id, 'label_id' => (string) $labelId]
         );
 
         return response()->json(

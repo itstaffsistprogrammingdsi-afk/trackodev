@@ -17,22 +17,17 @@ class ActivityLogController extends Controller
 
 public function cardActivities(Card $card): JsonResponse
 {
+    $activities = ActivityLog::with('user')
+        ->where('entity_type', 'card')
+        ->where('entity_id', $card->id)
+        ->latest()
+        ->get();
+
     return response()->json([
+        'success' => true,
         'card_id' => $card->id,
-        'total_logs' => ActivityLog::count(),
-
-        'card_entity_logs' => ActivityLog::where(
-            'entity_id',
-            $card->id
-        )->count(),
-
-        'sample_logs' => ActivityLog::latest()
-            ->take(5)
-            ->get([
-                'entity_type',
-                'entity_id',
-                'meta',
-            ]),
+        'total_logs' => $activities->count(),
+        'activities' => $activities,
     ]);
 }
 }

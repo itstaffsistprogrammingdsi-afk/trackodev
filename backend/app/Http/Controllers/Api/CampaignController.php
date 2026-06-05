@@ -300,9 +300,10 @@ class CampaignController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'created',
+            
             'campaign',
-            $campaign->id,
+            (string) $campaign->id,
+            'created',
             "Membuat campaign '{$campaign->name}' di workspace '{$workspace->name}'",
             ['campaign_id' => $campaign->id, 'workspace_id' => $workspace->id]
         );
@@ -414,9 +415,10 @@ class CampaignController extends Controller
 
         ActivityLogService::log(
             request()->user(),
-            'deleted',
+            
             'campaign',
-            $campaign->id,
+            (string) $campaign->id,
+            'deleted',
             "Menghapus campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
             ['campaign_id' => $campaign->id, 'workspace_id' => $campaign->workspace->id]
         );
@@ -512,11 +514,12 @@ class CampaignController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'added_member',
+            
             'campaign',
-            $campaign->id,
+            (string) $campaign->id,
+            'added_member',
             "Menambahkan member ke campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
-            ['campaign_id' => $campaign->id, 'workspace_id' => $campaign->workspace->id]
+            ['campaign_id' => (string) $campaign->id, 'workspace_id' => (string) $campaign->workspace->id]
         );
         return response()->json([
             'message' =>
@@ -569,11 +572,12 @@ class CampaignController extends Controller
 
         ActivityLogService::log(
             request()->user(),
-            'removed_member',
+            
             'campaign',
-            $campaign->id,
+            (string) $campaign->id,
+            'removed_member',
             "Menghapus member dari campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
-            ['campaign_id' => $campaign->id, 'workspace_id' => $campaign->workspace->id]
+            ['campaign_id' => (string) $campaign->id, 'workspace_id' => (string) $campaign->workspace->id]
         );
         return response()->json([
             'message' =>

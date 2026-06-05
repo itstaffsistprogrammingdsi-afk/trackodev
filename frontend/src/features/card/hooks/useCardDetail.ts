@@ -111,11 +111,6 @@ export function useCardDetail(
   try {
     const users = await getUsers();
 
-    console.log(
-      "TOTAL USERS",
-      users.length
-    );
-
     setUsers(users);
   } catch (err) {
     console.error(

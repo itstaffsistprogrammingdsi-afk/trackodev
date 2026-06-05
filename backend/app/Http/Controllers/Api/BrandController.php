@@ -27,9 +27,10 @@ class BrandController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'created',
+            
             'brand',
-            $brand->id,
+            (string) $brand->id,
+            'created',
             "Membuat brand '{$brand->name}'",
             ['brand_id' => $brand->id, 'campaign_id' => $brand->campaign_id]
         );
@@ -57,9 +58,10 @@ class BrandController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'updated',
+            
             'brand',
-            $brand->id,
+            (string) $brand->id,
+            'updated',
             "Mengupdate brand '{$brand->name}'",
             ['brand_id' => $brand->id, 'campaign_id' => $brand->campaign_id]
         );
@@ -72,9 +74,10 @@ class BrandController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
+            
             'brand',
-            $brand->id,
+            (string) $brand->id,
+            'deleted',
             "Menghapus brand '{$brand->name}'",
             ['brand_id' => $brand->id, 'campaign_id' => $brand->campaign_id]
         );

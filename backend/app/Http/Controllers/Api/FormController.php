@@ -49,9 +49,10 @@ class FormController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'created',
+            
             'form',
-            $form->id,
+            (string) $form->id,
+            'created',
             "Membuat form '{$form->name}'"
         );
 
@@ -94,9 +95,10 @@ class FormController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'updated',
+            
             'form',
-            $form->id,
+            (string) $form->id,
+            'updated',
             "Mengupdate form '{$form->name}'"
         );
 
@@ -109,9 +111,10 @@ class FormController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
+            
             'form',
-            $form->id,
+            (string) $form->id,
+            'deleted',
             "Menghapus form '{$form->name}'"
         );
 
