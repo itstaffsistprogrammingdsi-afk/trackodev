@@ -117,12 +117,16 @@ class AssignmentService
             | 8. CREATE CARD
             |------------------------------------------
             */
+            $cardDescription = $this->buildSubmissionDescription(
+                $submission,
+                $data['notes'] ?? null
+            );
             $card = Card::create([
                 'board_id'        => $board->id,
                 'campaign_id'     => $campaign->id,
                 'created_by'      => $data['assigned_by'] ?? null,
                 'title'           => $assignmentNumber . ' - ' . ($submission->form->name ?? 'Request'),
-                'description'     => $data['notes'] ?? 'Generated from form submission',
+                'description'     => $cardDescription,
                 'source_type'     => 'form',
                 'submission_id'   => $submission->id,
                 'assignment_id'   => $assignment->id,
@@ -147,28 +151,35 @@ class AssignmentService
 
             $files = [];
 
-            // file utama
-            if (!empty($submissionData['file'])) {
-                $files[] = [
-                    'path' => $submissionData['file'],
-                    'type' => 'pdf'
-                ];
-            }
+            foreach ($submissionData as $key => $value) {
 
-            // foto
-            if (!empty($submissionData['foto'])) {
-                $files[] = [
-                    'path' => $submissionData['foto'],
-                    'type' => 'image'
-                ];
-            }
+                if (!is_string($value)) {
+                    continue;
+                }
 
-            // multi file fallback
-            if (!empty($submissionData['files']) && is_array($submissionData['files'])) {
-                foreach ($submissionData['files'] as $file) {
+                $extension = strtolower(pathinfo($value, PATHINFO_EXTENSION));
+
+                if (in_array($extension, [
+                    'jpg',
+                    'jpeg',
+                    'png',
+                    'gif',
+                    'webp',
+                    'pdf',
+                    'doc',
+                    'docx',
+                    'xls',
+                    'xlsx',
+                    'ppt',
+                    'pptx',
+                    'zip',
+                    'rar'
+                ])) {
+
                     $files[] = [
-                        'path' => $file,
-                        'type' => 'file'
+                        'field' => $key,
+                        'path'  => $value,
+                        'type'  => $extension,
                     ];
                 }
             }
@@ -269,5 +280,69 @@ class AssignmentService
         }
 
         return "{$code}/TASK/{$year}/{$month}/" . str_pad($seq, 3, '0', STR_PAD_LEFT);
+    }
+
+    protected function buildSubmissionDescription(
+        FormSubmission $submission,
+        ?string $notes = null
+    ): string {
+
+        $description = '';
+
+        if (!empty($notes)) {
+            $description .= "## Catatan Assignment\n";
+            $description .= $notes . "\n\n";
+        }
+
+        $form = $submission->form;
+
+        if (!$form) {
+            return trim($description);
+        }
+
+        $fields = $form->fields()
+            ->orderBy('order')
+            ->get();
+
+        $description .= "## Brief Form\n\n";
+
+        foreach ($fields as $field) {
+
+            $value = $submission->data[$field->name] ?? null;
+
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            // Skip upload/file field
+            if (
+                in_array(
+                    strtolower($field->type),
+                    ['file', 'image', 'attachment', 'upload']
+                )
+            ) {
+                continue;
+            }
+
+if (is_array($value)) {
+    $value = collect($value)
+        ->map(function ($item) {
+            return is_array($item)
+                ? json_encode($item)
+                : $item;
+        })
+        ->implode(', ');
+}
+
+            $description .= "{$field->label}\n";
+            $description .= "{$value}\n\n";
+        }
+
+
+$description = trim($description);
+
+return $description !== ''
+    ? $description
+    : 'Generated from submission #' . $submission->id;
     }
 }

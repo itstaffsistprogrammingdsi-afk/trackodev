@@ -1,4 +1,4 @@
-// ============================================attachmentsectio
+// ============================================
 // FILE: AttachmentSection.tsx
 // ============================================
 
@@ -104,21 +104,29 @@ export default function AttachmentSection({
     return `${import.meta.env.VITE_API_URL}/storage/${path}`;
   };
 
-  // =========================================
-  // IMAGE CHECK
-  // =========================================
-  const isImage = (type?: string) => {
-    if (!type) return false;
+const isImage = (fileName?: string, fileType?: string) => {
+  const value = (fileType || fileName || "").toLowerCase();
 
-    return type === "image" || type.startsWith("image/");
-  };
+  return (
+    value.startsWith("image/") ||
+    value.endsWith(".jpg") ||
+    value.endsWith(".jpeg") ||
+    value.endsWith(".png") ||
+    value.endsWith(".gif") ||
+    value.endsWith(".webp") ||
+    ["jpg", "jpeg", "png", "gif", "webp"].includes(value)
+  );
+};
 
-  // =========================================
-  // PDF CHECK
-  // =========================================
-  const isPdf = (type?: string) => {
-    return type === "pdf" || type === "application/pdf";
-  };
+const isPdf = (fileName?: string, fileType?: string) => {
+  const value = (fileType || fileName || "").toLowerCase();
+
+  return (
+    value === "pdf" ||
+    value === "application/pdf" ||
+    value.endsWith(".pdf")
+  );
+};
 
   // =========================================
   // OPEN PREVIEW
@@ -426,17 +434,18 @@ export default function AttachmentSection({
                     >
                       {/* IMAGE */}
                       {item.attachment_type === "file" &&
-                        isImage(item.file_type) && (
+                        isImage(item.file_type, item.file_name) && (
                           <img
                             src={fileUrl}
                             alt={item.file_name}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           />
                         )}
+                        
 
                       {/* PDF */}
                       {item.attachment_type === "file" &&
-                        isPdf(item.file_type) && (
+                        isPdf(item.file_type, item.file_name) && (
                           <div className="flex h-full w-full flex-col items-center justify-center bg-red-50 text-red-600">
                             <FileText size={26} />
 
@@ -448,8 +457,8 @@ export default function AttachmentSection({
 
                       {/* OTHER FILE */}
                       {item.attachment_type === "file" &&
-                        !isImage(item.file_type) &&
-                        !isPdf(item.file_type) && (
+                        !isImage(item.file_type, item.file_name) &&
+                        !isPdf(item.file_type, item.file_name) && (
                           <div className="flex h-full w-full flex-col items-center justify-center text-gray-500">
                             <File size={24} />
 

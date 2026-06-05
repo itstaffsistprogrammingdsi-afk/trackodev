@@ -156,13 +156,14 @@ class CardController extends Controller
             'due_date'    => $validated['due_date'] ?? null,
             'created_by'  => $userId,
             'order'       => $lastOrder + 1,
+            'completed_at' => null,
         ]);
 
         ActivityLogService::log(
             auth()->user(),
-            'created',
             'card',
-            $card->id,
+            (string) $card->id,
+            'created',
             "Membuat card '{$card->title}' di board '{$card->board->name}'",
             ['card_id' => $card->id]
         );
@@ -254,9 +255,9 @@ class CardController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'updated',
             'card',
-            $card->id,
+            (string) $card->id,
+            'updated',
             "Mengupdate card '{$card->title}' di board '{$card->board->name}'",
             ['card_id' => $card->id]
         );
@@ -338,9 +339,9 @@ class CardController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'created',
             'card_brief_attachment',
-            $attachment->id,
+            (string) $attachment->id,
+            'created',
             "Menambahkan brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
             ['card_id' => $card->id]
         );
@@ -376,9 +377,9 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
             'card_brief_attachment',
-            $attachment->id,
+            (string) $attachment->id,
+            'deleted',
             "Menghapus brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
             ['card_id' => $card->id]
         );
@@ -400,9 +401,9 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'downloaded',
             'card_brief_attachment',
-            $attachment->id,
+            (string) $attachment->id,
+            'downloaded',
             "Mengunduh brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'"
         );
 
@@ -441,26 +442,33 @@ class CardController extends Controller
             ->where('id', '!=', $card->id)
             ->max('order');
 
-        $card->update([
-            'board_id' => $board->id,
+$card->update([
+    'board_id' => $board->id,
+    'order'    => $request->input(
+        'order',
+        ($lastOrder ?? 0) + 1
+    ),
+]);
+if ($board->type === 'done') {
+    $card->completed_at = now();
+} else {
+    $card->completed_at = null;
+}
 
-            'order' => $request->input(
-                'order',
-                ($lastOrder ?? 0) + 1
-            ),
-        ]);
-
+$card->save();
         ActivityLogService::log(
             auth()->user(),
-            'moved',
             'card',
-            $card->id,
+            (string) $card->id,
+            'moved',
             "Memindahkan card '{$card->title}' ke board '{$board->name}'",
             ['card_id' => $card->id]
         );
         return response()->json([
             'message' => 'Card berhasil dipindahkan.',
         ]);
+
+    
     }
 
     public function reorder(
@@ -529,9 +537,9 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'reordered',
             'board',
             $boardId,
+            'reordered',
             "Merubah urutan card di board '{$boardId}'",
         );
         return response()->json([
@@ -546,9 +554,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
             'card',
-            $card->id,
+            (string) $card->id,
+            'deleted',
+
             "Menghapus card '{$card->title}' di board '{$card->board->name}'"
         );
 
@@ -622,9 +631,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'assigned',
             'card',
-            $card->id,
+            (string) $card->id,
+            'assigned',
+
             "Menambahkan assignee di card '{$card->title}' di board '{$card->board->name}'"
         );
 
@@ -650,9 +660,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'unassigned',
+
             'card',
-            $card->id,
+            (string) $card->id,
+            'unassigned',
             "Menghapus assignee di card '{$card->title}' di board '{$card->board->name}'"
         );
 
@@ -741,9 +752,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'created',
+
             'card_attachment',
-            $attachment->id,
+            (string) $attachment->id,
+            'created',
             "Menambahkan attachment di card '{$card->title}' di board '{$card->board->name}'"
         );
 
@@ -774,9 +786,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
+
             'card_attachment',
-            $attachment->id,
+            (string) $attachment->id,
+            'deleted',
             "Menghapus attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'"
         );
         return response()->json([
@@ -808,9 +821,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'downloaded',
+
             'card_attachment',
-            $attachment->id,
+            (string) $attachment->id,
+            'downloaded',
             "Mengunduh attachment di card '{$card->title}' di board '{$card->board->name}'"
         );
         return response()->download(
@@ -840,13 +854,15 @@ class CardController extends Controller
             ->get();
 
         $firstComment = $comments->first();
-        ActivityLogService::log(
-            auth()->user(),
-            'viewed',
-            'card_comments',
-            $card->id,
-            $firstComment ? "Melihat komentar '{$firstComment->content}' di card '{$card->title}' di board '{$card->board->name}'" : "Melihat komentar di card '{$card->title}' di board '{$card->board->name}'"
-        );
+
+        // ActivityLogService::log(
+        //     auth()->user(),
+
+        //     'card_comments',
+        //     (string) $card->id,
+        //     'viewed',
+        //     $firstComment ? "Melihat komentar '{$firstComment->content}' di card '{$card->title}' di board '{$card->board->name}'" : "Melihat komentar di card '{$card->title}' di board '{$card->board->name}'"
+        // );
         return response()->json([
             'data' => $comments,
         ]);
@@ -874,9 +890,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'created',
+
             'card_comment',
-            $comment->id,
+            (string) $comment->id,
+            'created',
             "Menambahkan komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
         );
 
@@ -905,9 +922,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'updated',
+
             'card_comment',
-            $comment->id,
+            (string) $comment->id,
+            'updated',
             "Mengupdate komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
         );
 
@@ -927,9 +945,10 @@ class CardController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
+
             'card_comment',
-            $comment->id,
+            (string) $comment->id,
+            'deleted',
             "Menghapus komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
         );
 

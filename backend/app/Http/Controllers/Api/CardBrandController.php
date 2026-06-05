@@ -17,11 +17,12 @@ class CardBrandController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'attached',
+            
             'card',
-            $card->id,
+            (string) $card->id,
+            'attached',
             "Melampirkan brand ke card '{$card->title}'",
-            ['card_id' => $card->id, 'brand_id' => $brand->id]
+            ['card_id' => (string) $card->id, 'brand_id' => (string) $brand->id]
         );
         return response()->json([
             'message' => 'Brand attached successfully'
@@ -34,11 +35,12 @@ class CardBrandController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'detached',
+            
             'card',
-            $card->id,
+            (string) $card->id,
+            'detached',
             "Melepas brand dari card '{$card->title}'",
-            ['card_id' => $card->id, 'brand_id' => $brand->id]
+            ['card_id' => (string) $card->id, 'brand_id' => (string) $brand->id]
         );
 
         return response()->json([

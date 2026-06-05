@@ -13,6 +13,8 @@ class CardResource extends JsonResource
             'id'       => $this->id,
             'board_id' => $this->board_id,
             'title'    => $this->title,
+            'completed_at' => $this->completed_at?->toDateTimeString(),
+            'is_completed' => $this->completed_at !== null,
 
             /*
             |------------------------------------------------
@@ -90,6 +92,8 @@ class CardResource extends JsonResource
             'created_at' => $this->created_at?->toDateTimeString(),
 
             'brief_attachments' => $this->whenLoaded( 'briefAttachments',fn () => $this->briefAttachments
+
+
     ),
         ];
     }

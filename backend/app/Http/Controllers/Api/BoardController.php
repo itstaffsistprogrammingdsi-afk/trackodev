@@ -51,9 +51,10 @@ class BoardController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'created',
+            
             'board',
-            $board->id,
+            (string) $board->id,
+            'created',
             "Membuat board '{$board->name}' di campaign '{$campaign->name}'",
             ['board_id' => $board->id, 'campaign_id' => $campaign->id]
         );
@@ -74,9 +75,10 @@ class BoardController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'updated',
+            
             'board',
-            $board->id,
+            (string) $board->id,
+            'updated',
             "Mengupdate board '{$board->name}' di campaign '{$board->campaign->name}'",
             ['board_id' => $board->id, 'campaign_id' => $board->campaign->id]
         );
@@ -105,9 +107,10 @@ class BoardController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'reordered',
+            
             'board',
-            $firstBoard?->campaign_id, // FIX: tidak null sembarangan
+            (string) $firstBoard?->campaign_id, // FIX: tidak null sembarangan
+            'reordered',
             "Mengubah urutan board pada campaign {$firstBoard?->campaign_id}",
             ['board_id' => $firstBoard?->id, 'campaign_id' => $firstBoard?->campaign_id]
         );
@@ -121,9 +124,10 @@ class BoardController extends Controller
     {
         ActivityLogService::log(
             request()->user(),
-            'deleted',
+            
             'board',
-            $board->id,
+            (string) $board->id,
+            'deleted',
             "Menghapus board '{$board->name}' di campaign '{$board->campaign->name}'",
             ['board_id' => $board->id, 'campaign_id' => $board->campaign->id]
         );

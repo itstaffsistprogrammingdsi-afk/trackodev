@@ -26,9 +26,10 @@ class TaskController extends Controller
         $task  = $card->tasks()->create(['title' => $request->title, 'order' => $order]);
         ActivityLogService::log(
             auth()->user(),
-            'created',
+
             'task',
-            $task->id,
+            (string) $task->id,
+            'created',
             "Membuat task '{$task->title}' di card '{$card->title}' di board '{$card->board->name}'",
             ['card_id' => $card->id, 'task_id' => $task->id]
         );
@@ -41,9 +42,10 @@ class TaskController extends Controller
         $task->update($request->only(['title']));
         ActivityLogService::log(
             auth()->user(),
-            'updated',
+            
             'task',
-            $task->id,
+            (string) $task->id,
+            'updated',
             "Mengupdate task '{$task->title}' di card '{$task->card->title}' di board '{$task->card->board->name}'",
             ['card_id' => $task->card->id, 'task_id' => $task->id]
         );
@@ -55,9 +57,10 @@ class TaskController extends Controller
         $task->update(['is_completed' => !$task->is_completed]);
         ActivityLogService::log(
             auth()->user(),
-            'completed',
+            
             'task',
-            $task->id,
+            (string) $task->id,
+            'completed',
             "Mengubah status task '{$task->title}' di card '{$task->card->title}' di board '{$task->card->board->name}'",
             ['card_id' => $task->card->id, 'task_id' => $task->id]
         );
@@ -78,9 +81,10 @@ class TaskController extends Controller
         $firstTask = Task::find($request->tasks[0]['id'] ?? null);
         ActivityLogService::log(
             auth()->user(),
-            'reordered',
+            
             'task',
-            $firstTask ? $firstTask->id : null,
+            $firstTask ? (string) $firstTask->id : null,
+            'reordered',
             "Merubah urutan task '{$firstTask->title}' di card '{$firstTask->card->title}' di board '{$firstTask->card->board->name}'",
             ['card_id' => $firstTask->card->id, 'task_id' => $firstTask->id]
         );
@@ -92,9 +96,10 @@ class TaskController extends Controller
         $task->delete();
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
+            
             'task',
-            $task->id,
+            (string) $task->id,
+            'deleted',
             "Menghapus task '{$task->title}' di card '{$task->card->title}' di board '{$task->card->board->name}'",
             ['card_id' => $task->card->id, 'task_id' => $task->id]
         );
@@ -114,9 +119,10 @@ class TaskController extends Controller
         $subtask = $task->subtasks()->create(['title' => $request->title, 'order' => $order]);
         ActivityLogService::log(
             auth()->user(),
-            'created',
+            
             'subtask',
-            $subtask->id,
+            (string) $subtask->id,
+            'created',
             "Membuat subtask di task '{$task->title}' di card '{$task->card->title}' di board '{$task->card->board->name}'",
             ['card_id' => $task->card->id, 'task_id' => $task->id, 'subtask_id' => $subtask->id]
         );
@@ -129,9 +135,10 @@ class TaskController extends Controller
         $subtask->update($request->only(['title']));
         ActivityLogService::log(
             auth()->user(),
-            'updated',
+            
             'subtask',
-            $subtask->id,
+            (string) $subtask->id,
+            'updated',
             "Mengupdate subtask di task '{$subtask->task->title}' di card '{$subtask->task->card->title}' di board '{$subtask->task->card->board->name}'",
             ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id]
         );
@@ -143,9 +150,10 @@ class TaskController extends Controller
         $subtask->update(['is_completed' => !$subtask->is_completed]);
         ActivityLogService::log(
             auth()->user(),
-            'completed',
+            
             'subtask',
-            $subtask->id,
+            (string) $subtask->id,
+            'completed',
             "Mengubah status subtask di task '{$subtask->task->title}' di card '{$subtask->task->card->title}' di board '{$subtask->task->card->board->name}'",
             ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id]
         );
@@ -157,9 +165,10 @@ class TaskController extends Controller
         $subtask->delete();
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
+            
             'subtask',
-            $subtask->id,
+            (string) $subtask->id,
+            'deleted',
             "Menghapus subtask di task '{$subtask->task->title}' di card '{$subtask->task->card->title}' di board '{$subtask->task->card->board->name}'",
             ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id]
         );

@@ -26,29 +26,30 @@ export default function CommentSection({
       </div>
 
       <div className="space-y-3">
-        {comments.map((c) => (
-          <div key={c.id} className="bg-white rounded-xl p-4 border">
-<div
-  key={c.id}
-  className="bg-white rounded-xl p-4 border"
->
-
+{comments.map((c) => (
+  <div key={c.id} className="bg-white rounded-xl p-4 border">
     <div className="font-medium text-sm text-gray-900">
-    {c.content}
-  </div>
-  
-  <div className="text-xs text-gray-400">
-    {c.user?.name ?? "Unknown User"}
-  </div>
+      {c.content}
+    </div>
 
-    <div className="text-xs text-gray-400">
+<div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+  <span className="font-medium text-gray-700">
+    {c.user?.name ?? "Unknown User"}
+  </span>
+
+  <span>•</span>
+
+  <span>
     {c.created_at
-      ? new Date(c.created_at).toLocaleString()
+      ? new Date(c.created_at).toLocaleString("id-ID", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
       : ""}
-  </div>
+  </span>
 </div>
-          </div>
-        ))}
+  </div>
+))}
       </div>
 
       <div className="flex gap-3 mt-4">

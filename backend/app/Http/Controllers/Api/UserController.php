@@ -333,9 +333,10 @@ class UserController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'created',
+            
             'user',
-            $user->id,
+            (string) $user->id,
+            'created',
             "Membuat user '{$user->name}' dengan role '{$validated['role']}'"
         );
 
@@ -464,9 +465,10 @@ class UserController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'updated',
+            
             'user',
-            $user->id,
+            (string) $user->id,
+            'updated',
             "Mengupdate user '{$user->name}'"
         );
 
@@ -531,9 +533,10 @@ class UserController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
+            
             'user',
-            $user->id,
+            (string) $user->id,
+            'deleted',
             "Menghapus user '{$user->name}'"
         );
 
@@ -606,9 +609,10 @@ class UserController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            'viewed',
+            
             'mentionable_users',
             (string) $request->user()->id,
+            'viewed',
             "Melihat daftar user mentionable dengan filter: " . json_encode($request->only('search'))
         );
 

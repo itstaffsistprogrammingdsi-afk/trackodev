@@ -247,3 +247,11 @@ export const getBrands = async () => {
 
   return res.data as Brand[];
 };
+
+export async function getCardActivities(cardId: string, page = 1, limit = 8) {
+  const res = await api.get(
+    `/cards/${cardId}/activities?page=${page}&limit=${limit}`
+  );
+
+  return res.data;
+}

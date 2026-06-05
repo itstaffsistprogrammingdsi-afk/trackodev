@@ -42,6 +42,7 @@ import PublicFormPage from "@/features/form/pages/PublicFormPage";
 
 import ChatPage from "./pages/Chats/ChatPage";
 import Report from "./pages/Reports/reportpage";
+import CampaignDetailPage from "./features/campaign/pages/CampaignDetailPage";
 
 export default function App() {
   return (
@@ -84,6 +85,11 @@ export default function App() {
 
           <Route
             path="/campaigns/:campaignId"
+            element={<CampaignDetailPage />}
+          />
+
+            <Route
+            path="/campaigns/:campaignId/boards"
             element={<BoardPage />}
           />
 

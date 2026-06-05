@@ -53,11 +53,12 @@ class LabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'created',
+            
             'label',
-            $label->id,
+            (string) $label->id,
+            'created',
             "Membuat label '{$label->name}'",
-            ['label_id' => $label->id]
+            ['label_id' => (string) $label->id]
         );
 
         return response()->json(
@@ -102,11 +103,12 @@ class LabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            'updated',
+            
             'label',
-            $label->id,
+            (string) $label->id,
+            'updated',
             "Mengupdate label '{$label->name}'",
-            ['label_id' => $label->id]
+            ['label_id' => (string) $label->id]
         );
 
         return response()->json(
@@ -121,11 +123,12 @@ class LabelController extends Controller
     {
         ActivityLogService::log(
             auth()->user(),
-            'deleted',
+            
             'label',
-            $label->id,
+            (string) $label->id,
+            'deleted',
             "Menghapus label '{$label->name}'",
-            ['label_id' => $label->id]
+            ['label_id' => (string) $label->id]
         );
 
         $label->delete();

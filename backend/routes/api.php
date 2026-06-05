@@ -17,9 +17,11 @@ use App\Http\Controllers\Api\FormSubmissionController;
 use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PublicFormController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
@@ -646,6 +648,19 @@ Route::middleware([
         'form-submissions/{submission}/assign',
         [AssignmentController::class, 'assign']
     )->middleware('permission:task.assign');
+
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/dashboard/activities', [DashboardController::class, 'activities']);
+
+Route::prefix('reports')->group(function () {
+
+    Route::get('/tasks', [ReportController::class, 'tasks']);
+    Route::get('/members', [ReportController::class, 'members']);
+    Route::get('/divisions', [ReportController::class, 'divisions']);
+    Route::get('/productivity', [ReportController::class, 'productivity']);
+    Route::get('/forms', [ReportController::class, 'forms']);
+
+});
 });
 
 

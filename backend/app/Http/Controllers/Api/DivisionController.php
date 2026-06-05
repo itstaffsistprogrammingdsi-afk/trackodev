@@ -98,7 +98,7 @@ public function store(Request $request): JsonResponse
     user: auth()->user(),
     action: 'division.created',
     entityType: 'division',
-    entityId: $division->id,
+    entityId: (string) $division->id,
     description: 'Membuat divisi ' . $division->name,
     meta: [
         'name' => $division->name,
@@ -189,9 +189,10 @@ public function store(Request $request): JsonResponse
 
             ActivityLogService::log(
                 user: auth()->user(),
-                action: 'division.updated',
+                
                 entityType: 'division',
-                entityId: $division->id,
+                entityId: (string) $division->id,
+                action: 'division.updated',
                 description: 'Memperbarui divisi ' . $division->name,
                 meta: $updateData
             );
@@ -213,9 +214,10 @@ public function store(Request $request): JsonResponse
 
         ActivityLogService::log(
     user: auth()->user(),
-    action: 'division.deleted',
+    
     entityType: 'division',
-    entityId: $division->id,
+    entityId: (string) $division->id,
+    action: 'division.deleted',
     description: 'Menghapus divisi ' . $division->name,
     meta: [
         'name' => $division->name,
@@ -278,13 +280,14 @@ public function store(Request $request): JsonResponse
 
             ActivityLogService::log(
                 user: auth()->user(),
-                action: 'division.member_added',
+                
                 entityType: 'division',
-                entityId: $division->id,
+                entityId: (string) $division->id,
+                action: 'division.member_added',
                 description: 'Menambahkan member ke divisi ' . $division->name,
                 meta: [
-                    'user_id' => $request->user_id,
-                    'role' => $request->role,
+                    'user_id' => (string) $request->user_id,
+                    'role' => (string) $request->role,
                 ]
             );
         return response()->json([
@@ -317,13 +320,14 @@ public function store(Request $request): JsonResponse
             );
                 ActivityLogService::log(
                     user: auth()->user(),
-                    action: 'division.member_updated',
+                    
                     entityType: 'division',
-                    entityId: $division->id,
+                    entityId: (string) $division->id,
+                    action: 'division.member_updated',
                     description: 'Memperbarui peran member di divisi ' . $division->name,
                     meta: [
-                        'user_id' => $user->id,
-                        'role' => $request->role,
+                        'user_id' => (string) $user->id,
+                        'role' => (string) $request->role,
                     ]
                 );
         return response()->json([
@@ -345,12 +349,13 @@ public function store(Request $request): JsonResponse
 
                 ActivityLogService::log(
                     user: auth()->user(),
-                    action: 'division.member_removed',
+                    
                     entityType: 'division',
-                    entityId: $division->id,
+                    entityId: (string) $division->id,
+                    action: 'division.member_removed',
                     description: 'Mengeluarkan member dari divisi ' . $division->name,
                     meta: [
-                        'user_id' => $user->id,
+                        'user_id' => (string) $user->id,
                     ]
                 );
         return response()->json([
