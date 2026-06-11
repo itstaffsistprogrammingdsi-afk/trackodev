@@ -13,12 +13,14 @@ use App\Models\ChatRoom;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\Board;
+use App\Models\Card;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
 use App\Services\ActivityLogService;
+
+use Carbon\Carbon;
 
 class CampaignController extends Controller
 {
@@ -300,7 +302,7 @@ class CampaignController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            
+
             'campaign',
             (string) $campaign->id,
             'created',
@@ -415,7 +417,7 @@ class CampaignController extends Controller
 
         ActivityLogService::log(
             request()->user(),
-            
+
             'campaign',
             (string) $campaign->id,
             'deleted',
@@ -514,7 +516,7 @@ class CampaignController extends Controller
 
         ActivityLogService::log(
             $request->user(),
-            
+
             'campaign',
             (string) $campaign->id,
             'added_member',
@@ -572,7 +574,7 @@ class CampaignController extends Controller
 
         ActivityLogService::log(
             request()->user(),
-            
+
             'campaign',
             (string) $campaign->id,
             'removed_member',
@@ -582,6 +584,272 @@ class CampaignController extends Controller
         return response()->json([
             'message' =>
             'Member berhasil dihapus dari campaign.',
+        ]);
+    }
+
+
+
+    public function gantt(Campaign $campaign): JsonResponse
+    {
+        $cards = $campaign->boards()
+            ->with('cards')
+            ->get()
+            ->flatMap(fn($board) => $board->cards)
+            ->values();
+
+        if ($cards->isEmpty()) {
+            return response()->json([
+                'total_days' => 0,
+                'tasks' => [],
+            ]);
+        }
+
+        $minDate = Carbon::parse(
+            $cards->min('created_at')
+        )->startOfDay();
+
+        $tasks = $cards->map(function ($card) use ($minDate) {
+
+            $startDate = Carbon::parse(
+                $card->created_at
+            )->startOfDay();
+
+            // ========================================
+            // END DATE
+            // ========================================
+
+            if ($card->status === 'completed') {
+
+                $endDate = $card->completed_at
+                    ? Carbon::parse($card->completed_at)->startOfDay()
+                    : Carbon::now()->startOfDay();
+            } elseif ($card->due_date) {
+
+                $endDate = Carbon::parse(
+                    $card->due_date
+                )->startOfDay();
+            } else {
+
+                $endDate = Carbon::now()->startOfDay();
+            }
+
+            // ========================================
+            // START POSITION
+            // ========================================
+
+            $start = (int) max(
+                0,
+                $minDate->diffInDays($startDate)
+            ) + 1;
+
+            // ========================================
+            // BAR LENGTH
+            // ========================================
+
+            $length = (int) max(
+                1,
+                $startDate->diffInDays($endDate)
+            );
+
+            return [
+                'id' => $card->id,
+                'name' => $card->title,
+                'start' => $start,
+                'length' => $length,
+
+                // todo | in_progress | completed
+                'status' => $card->status,
+            ];
+        });
+
+        $maxEndDay = $tasks->max(function ($task) {
+            return $task['start'] + $task['length'];
+        });
+
+        return response()->json([
+            'total_days' => max(30, $maxEndDay),
+            'tasks' => $tasks->values(),
+        ]);
+    }
+
+    public function boardProgress(Campaign $campaign): JsonResponse
+    {
+        $cards = Card::query()
+            ->join('boards', 'cards.board_id', '=', 'boards.id')
+            ->where('boards.campaign_id', $campaign->id)
+            ->select('cards.*')
+            ->get();
+
+        $overdue = $cards->filter(function ($card) {
+            return $card->status !== 'completed'
+                && $card->due_date
+                && Carbon::parse($card->due_date)->isPast();
+        })->count();
+
+        return response()->json([
+            'total' => $cards->count(),
+
+            'todo' => $cards
+                ->where('status', 'todo')
+                ->count(),
+
+            'in_progress' => $cards
+                ->where('status', 'in_progress')
+                ->count(),
+
+            'completed' => $cards
+                ->where('status', 'completed')
+                ->count(),
+
+            'overdue' => $overdue,
+        ]);
+    }
+
+    public function stats(Campaign $campaign): JsonResponse
+    {
+        $cards = Card::query()
+            ->join('boards', 'cards.board_id', '=', 'boards.id')
+            ->where('boards.campaign_id', $campaign->id)
+            ->select('cards.*')
+            ->get();
+
+        $now = Carbon::now()->startOfDay();
+
+        $total = $cards->count();
+
+        $completed = $cards
+            ->where('status', 'completed')
+            ->count();
+
+        $inProgress = $cards
+            ->where('status', 'in_progress')
+            ->count();
+
+        $overdue = $cards->filter(function ($card) use ($now) {
+
+            return $card->status !== 'completed'
+                && $card->due_date
+                && Carbon::parse($card->due_date)
+                ->startOfDay()
+                ->lt($now);
+        })->count();
+
+        return response()->json([
+            'total_tasks' => $total,
+            'completed'   => $completed,
+            'in_progress' => $inProgress,
+            'overdue'     => $overdue,
+        ]);
+    }
+
+    public function overdueTasks(Campaign $campaign): JsonResponse
+    {
+        $now = Carbon::now();
+
+        $cards = Card::query()
+            ->join('boards', 'cards.board_id', '=', 'boards.id')
+            ->where('boards.campaign_id', $campaign->id)
+
+            // hanya task aktif
+            ->where('cards.status', '!=', 'completed')
+
+            ->whereNotNull('cards.due_date')
+            ->where('cards.due_date', '<', $now)
+
+            ->select('cards.*')
+            ->orderBy('cards.due_date', 'asc')
+            ->get();
+
+        return response()->json([
+            'data' => $cards->map(function ($card) use ($now) {
+
+                $due = Carbon::parse($card->due_date);
+
+                $totalHours = $due->diffInHours($now);
+
+                $days = intdiv($totalHours, 24);
+                $hours = $totalHours % 24;
+
+                if ($days > 0) {
+
+                    $text = $days . ' day' . ($days > 1 ? 's' : '');
+
+                    if ($hours > 0) {
+                        $text .= ' ' . $hours . ' hour' . ($hours > 1 ? 's' : '');
+                    }
+
+                    $text .= ' overdue';
+                } else {
+
+                    $text = $hours . ' hour' .
+                        ($hours > 1 ? 's' : '') .
+                        ' overdue';
+                }
+
+                return [
+                    'id' => $card->id,
+                    'title' => $card->title,
+                    'code' => $card->code,
+
+                    'status' => $card->status,
+                    'due_date' => $card->due_date,
+
+                    'due_text' => $text,
+                ];
+            })->values(),
+        ]);
+    }
+
+    public function health(Campaign $campaign): JsonResponse
+    {
+        $cards = Card::query()
+            ->join('boards', 'cards.board_id', '=', 'boards.id')
+            ->where('boards.campaign_id', $campaign->id)
+            ->select('cards.*')
+            ->get();
+
+        $total = $cards->count();
+
+        $completed = $cards
+            ->where('status', 'completed')
+            ->count();
+
+        $overdue = $cards->filter(function ($card) {
+
+            return $card->status !== 'completed'
+                && $card->due_date
+                && Carbon::parse($card->due_date)
+                ->startOfDay()
+                ->lt(now()->startOfDay());
+        })->count();
+
+        $activeMembers = $campaign
+            ->members()
+            ->count();
+
+        $completionRate = $total > 0
+            ? round(($completed / $total) * 100)
+            : 0;
+
+        // ====================================
+        // HEALTH SCORE
+        // ====================================
+
+        $status = 'Healthy';
+
+        if ($overdue >= 5 || $completionRate < 50) {
+            $status = 'At Risk';
+        }
+
+        if ($overdue >= 10 || $completionRate < 25) {
+            $status = 'Critical';
+        }
+
+        return response()->json([
+            'completion_rate' => $completionRate,
+            'overdue_tasks'   => $overdue,
+            'active_members'  => $activeMembers,
+            'status'          => $status,
         ]);
     }
 }

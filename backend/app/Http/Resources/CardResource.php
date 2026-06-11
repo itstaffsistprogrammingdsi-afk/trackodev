@@ -15,6 +15,7 @@ class CardResource extends JsonResource
             'title'    => $this->title,
             'completed_at' => $this->completed_at?->toDateTimeString(),
             'is_completed' => $this->completed_at !== null,
+            
 
             /*
             |------------------------------------------------

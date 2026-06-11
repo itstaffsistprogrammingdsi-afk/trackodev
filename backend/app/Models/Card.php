@@ -48,13 +48,18 @@ class Card extends Model
 
         'due_date',
 
-        'order'
+        'order',
+
+        'status',
+
+        'completed_at',
     ];
 
     protected $casts = [
 
-        'due_date' => 'datetime',
+        'due_date'     => 'datetime',
         'completed_at' => 'datetime',
+        'status'       => 'string',
     ];
 
     /*

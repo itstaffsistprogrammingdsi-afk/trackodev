@@ -60,9 +60,9 @@ class ProductivityReportService extends TaskReportService
             $totalCreated++;
 
             // COMPLETED TREND
-            if ($card->completed_at) {
+            if ($card->status === 'done') {
 
-                $completedDate = Carbon::parse($card->completed_at)->format('Y-m-d');
+                $completedDate = Carbon::parse($card->status === 'done')->format('Y-m-d');
 
                 if (isset($period[$completedDate])) {
                     $period[$completedDate]['completed']++;
@@ -74,7 +74,7 @@ class ProductivityReportService extends TaskReportService
                 // LEAD TIME (created → done)
                 // ================================
                 $leadTime = Carbon::parse($card->created_at)
-                    ->diffInHours($card->completed_at);
+                    ->diffInHours($card->status === 'done');
 
                 $totalLeadTime += $leadTime;
                 $leadTimeCount++;

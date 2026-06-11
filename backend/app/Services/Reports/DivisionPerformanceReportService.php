@@ -42,7 +42,7 @@ class DivisionPerformanceReportService extends TaskReportService
 
             $division['total_cards']++;
 
-            $isCompleted = !is_null($card->completed_at);
+            $isCompleted = !is_null($card->status === 'done');
 
             $isOverdue = $card->due_date
                 && $card->due_date->lt($now)
