@@ -236,6 +236,30 @@ Route::middleware([
         [CampaignController::class, 'removeMember']
     )->middleware('permission:campaign.update');
 
+    Route::get(
+    'campaigns/{campaign}/gantt',
+    [CampaignController::class, 'gantt']
+)->middleware('permission:campaign.view');
+
+Route::get(
+    'campaigns/{campaign}/board-progress',
+    [CampaignController::class, 'boardProgress']
+)->middleware('permission:campaign.view');
+
+Route::get(
+    '/campaigns/{campaign}/stats',
+    [CampaignController::class, 'stats']
+);
+
+Route::get(
+    '/campaigns/{campaign}/overdue-tasks',
+    [CampaignController::class, 'overdueTasks']
+);
+Route::get(
+    '/campaigns/{campaign}/health',
+    [CampaignController::class, 'health']
+);
+
     // ========================================
     // BOARDS
     // ========================================

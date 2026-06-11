@@ -1,15 +1,60 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   Clock3,
-  Eye,
+  AlertTriangle,
   Circle,
 } from "lucide-react";
 
-export default function BoardProgress() {
-  const total = 37;
-  const done = 16;
-  const percent = Math.round((done / total) * 100);
+import { getBoardProgress } from "../api/campaign.api";
+import type { BoardProgressData } from "../types";
+
+type Props = {
+  campaignId: string;
+};
+
+export default function BoardProgress({ campaignId }: Props) {
+  const [data, setData] = useState<BoardProgressData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const res = await getBoardProgress(campaignId);
+        setData(res);
+      } catch (err) {
+        console.error("BOARD PROGRESS ERROR:", err);
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (campaignId) fetch();
+  }, [campaignId]);
+
+  if (loading) {
+    return (
+      <div className="bg-white border rounded-2xl p-6">
+        Loading board progress...
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="bg-white border rounded-2xl p-6 text-gray-500">
+        No board progress data
+      </div>
+    );
+  }
+
+  const total = data.total ?? 0;
+
+  const completionPercent =
+    total > 0
+      ? Math.round((data.completed / total) * 100)
+      : 0;
 
   return (
     <div className="bg-white border rounded-2xl p-6 shadow-sm">
@@ -17,11 +62,11 @@ export default function BoardProgress() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-lg font-semibold">
-            Board Progress
+            Task Progress
           </h2>
 
           <p className="text-sm text-gray-500">
-            Real-time task distribution across workflow stages
+            Status distribution of all campaign tasks
           </p>
         </div>
 
@@ -31,56 +76,62 @@ export default function BoardProgress() {
           </span>
 
           <span className="px-3 py-1 rounded-full bg-green-50 text-green-600 font-medium">
-            {percent}% Done
+            {completionPercent}% Completed
           </span>
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* DONUT KPI */}
+
+        {/* DONUT */}
         <div className="flex flex-col items-center justify-center border rounded-2xl p-6">
-          <DonutProgress percent={percent} />
+          <DonutProgress percent={completionPercent} />
 
           <div className="mt-4 text-center">
             <div className="text-3xl font-bold">
-              {percent}%
+              {completionPercent}%
             </div>
 
             <div className="text-sm text-gray-500">
-              Overall Completion
+              Completion Rate
             </div>
           </div>
         </div>
 
-        {/* STATUS BREAKDOWN */}
+        {/* STATUS */}
         <div className="lg:col-span-2 grid gap-4 sm:grid-cols-2">
+
           <StatusCard
             title="Todo"
-            count={12}
+            count={data.todo}
             icon={<Circle size={18} />}
             color="text-slate-500"
+            total={total}
           />
 
           <StatusCard
             title="In Progress"
-            count={5}
+            count={data.in_progress}
             icon={<Clock3 size={18} />}
             color="text-blue-500"
+            total={total}
           />
 
           <StatusCard
-            title="Review"
-            count={4}
-            icon={<Eye size={18} />}
-            color="text-amber-500"
-          />
-
-          <StatusCard
-            title="Done"
-            count={16}
+            title="Completed"
+            count={data.completed}
             icon={<CheckCircle2 size={18} />}
             color="text-green-500"
+            total={total}
+          />
+
+          <StatusCard
+            title="Overdue"
+            count={data.overdue}
+            icon={<AlertTriangle size={18} />}
+            color="text-red-500"
+            total={total}
           />
         </div>
       </div>
@@ -89,8 +140,9 @@ export default function BoardProgress() {
 }
 
 /* =========================
-   DONUT PROGRESS
+   DONUT
 ========================= */
+
 function DonutProgress({
   percent,
 }: {
@@ -98,37 +150,40 @@ function DonutProgress({
 }) {
   const radius = 54;
   const stroke = 10;
-  const normalized = radius * 2 * Math.PI;
+
+  const circumference =
+    2 * Math.PI * radius;
+
+  const safePercent = Math.min(
+    Math.max(percent, 0),
+    100
+  );
+
   const offset =
-    normalized - (percent / 100) * normalized;
+    circumference -
+    (safePercent / 100) * circumference;
 
   return (
-    <svg
-      height={140}
-      width={140}
-      className="transform -rotate-90"
-    >
-      {/* background */}
+    <svg width={140} height={140} className="-rotate-90">
       <circle
-        stroke="#e5e7eb"
-        fill="transparent"
-        strokeWidth={stroke}
-        r={radius}
         cx={70}
         cy={70}
+        r={radius}
+        stroke="#e5e7eb"
+        strokeWidth={stroke}
+        fill="none"
       />
 
-      {/* progress */}
       <circle
-        stroke="#2563eb"
-        fill="transparent"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={normalized}
-        strokeDashoffset={offset}
-        r={radius}
         cx={70}
         cy={70}
+        r={radius}
+        stroke="#2563eb"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        fill="none"
       />
     </svg>
   );
@@ -137,17 +192,25 @@ function DonutProgress({
 /* =========================
    STATUS CARD
 ========================= */
+
 function StatusCard({
   title,
   count,
   icon,
   color,
+  total,
 }: {
   title: string;
   count: number;
   icon: React.ReactNode;
   color: string;
+  total: number;
 }) {
+  const percent =
+    total > 0
+      ? Math.round((count / total) * 100)
+      : 0;
+
   return (
     <div className="border rounded-xl p-4 hover:shadow-md transition bg-white">
       <div className="flex items-center justify-between">
@@ -155,18 +218,24 @@ function StatusCard({
           {title}
         </span>
 
-        <div className="text-gray-400">{icon}</div>
+        <div className="text-gray-400">
+          {icon}
+        </div>
       </div>
 
       <div className="mt-3 text-2xl font-bold">
         {count}
       </div>
 
+      <div className="text-xs text-gray-500 mt-1">
+        {percent}% of total tasks
+      </div>
+
       <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div
           className="h-full bg-blue-500 rounded-full"
           style={{
-            width: `${Math.min(count * 5, 100)}%`,
+            width: `${percent}%`,
           }}
         />
       </div>

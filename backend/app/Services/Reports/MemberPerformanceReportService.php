@@ -19,7 +19,7 @@ class MemberPerformanceReportService extends TaskReportService
 
         foreach ($cards as $card) {
 
-            $isCompleted = !is_null($card->completed_at);
+            $isCompleted = !is_null($card->status === 'done');
 
             $isOverdue = $card->due_date
                 && $card->due_date->lt($now)

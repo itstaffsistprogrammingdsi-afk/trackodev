@@ -25,10 +25,8 @@ class CardController extends Controller
     |----------------------------------------------------------------------
     */
 
-    protected function canAccessCampaign(
-        Campaign $campaign
-    ): bool {
-
+    protected function canAccessCampaign(Campaign $campaign): bool
+    {
         $user = auth()->user();
 
         if (!$user) {
@@ -38,7 +36,6 @@ class CardController extends Controller
         // ========================================
         // SUPER ADMIN
         // ========================================
-
         if ($user->isSuperAdmin()) {
             return true;
         }
@@ -46,54 +43,44 @@ class CardController extends Controller
         // ========================================
         // ADMIN
         // ========================================
-
         if ($user->isAdmin()) {
 
-            return $user
-                ->divisions()
-                ->where(
-                    'divisions.id',
-                    $campaign
-                        ->workspace
-                        ->division_id
-                )
+            $divisionId = $campaign->workspace?->division_id;
+
+            if (!$divisionId) {
+                return false;
+            }
+
+            return $user->divisions()
+                ->whereKey($divisionId)
                 ->exists();
         }
 
         // ========================================
         // USER
         // ========================================
-
-        return $campaign
-            ->members()
-            ->where(
-                'users.id',
-                $user->id
-            )
+        return $campaign->members()
+            ->whereKey($user->id)
             ->exists();
     }
 
-    protected function authorizeBoard(
-        Board $board
-    ): void {
+    protected function authorizeBoard(Board $board): void
+    {
+        $campaign = $board->campaign;
 
         abort_unless(
-            $this->canAccessCampaign(
-                $board->campaign
-            ),
+            $campaign && $this->canAccessCampaign($campaign),
             403,
             'Unauthorized'
         );
     }
 
-    protected function authorizeCard(
-        Card $card
-    ): void {
+    protected function authorizeCard(Card $card): void
+    {
+        $campaign = $card->board?->campaign;
 
         abort_unless(
-            $this->canAccessCampaign(
-                $card->board->campaign
-            ),
+            $campaign && $this->canAccessCampaign($campaign),
             403,
             'Unauthorized'
         );
@@ -116,9 +103,12 @@ class CardController extends Controller
                 'tasks.subtasks',
                 'labels',
                 'board',
+                'attachments',
+                'comments',
 
             ])
             ->orderBy('order')
+            ->orderBy('created_at')
             ->get();
 
         return response()->json([
@@ -129,6 +119,7 @@ class CardController extends Controller
     public function store(Request $request, Board $board): JsonResponse
     {
         $this->authorizeBoard($board);
+
         $validated = $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -136,49 +127,43 @@ class CardController extends Controller
             'due_date'    => 'nullable|date',
         ]);
 
-        // pastikan user login (kalau auth wajib)
-        $userId = auth()->id();
+        $user = auth()->user();
 
-        if (!$userId) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
-        }
-
-        // ambil order terakhir per board
         $lastOrder = $board->cards()->max('order') ?? 0;
 
-        // create card via relation (sudah inject board_id otomatis)
+        /**
+         * ========================================
+         * STATUS INITIALIZATION (SOURCE OF TRUTH)
+         * ========================================
+         * Kita tidak pakai completed_at sebagai logic utama lagi
+         * tapi tetap bisa dipakai untuk legacy/report tambahan
+         */
+        $initialStatus = match ($board->type) {
+            'done', 'finished', 'complete', 'selesai' => 'completed',
+            'progress', 'in_progress', 'doing'        => 'in_progress',
+            'request', 'backlog', 'todo'              => 'todo',
+            default                                    => 'todo',
+        };
+
         $card = $board->cards()->create([
-            'title'       => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'priority'    => $validated['priority'] ?? 'medium',
-            'due_date'    => $validated['due_date'] ?? null,
-            'created_by'  => $userId,
-            'order'       => $lastOrder + 1,
-            'completed_at' => null,
+            'title'        => $validated['title'],
+            'description'  => $validated['description'] ?? null,
+            'priority'     => $validated['priority'] ?? 'medium',
+            'due_date'     => $validated['due_date'] ?? null,
+            'created_by'   => $user->id,
+            'order'        => $lastOrder + 1,
+            'status'       => $initialStatus,
         ]);
 
         ActivityLogService::log(
-            auth()->user(),
+            $user,
             'card',
             (string) $card->id,
             'created',
-            "Membuat card '{$card->title}' di board '{$card->board->name}'",
+            "Membuat card '{$card->title}' di board '{$board->name}'",
             ['card_id' => $card->id]
         );
 
-        // $campaignMembers = $board
-        //     ->campaign
-        //     ->members()
-        //     ->pluck('users.id')
-        //     ->toArray();
-
-        // $campaign = $card->board->campaign;
-
-        // $card->assignees()->syncWithoutDetaching($campaignMembers);
-
-        // eager load relasi yang dibutuhkan FE
         $card->load([
             'creator',
             'assignees',
@@ -219,10 +204,8 @@ class CardController extends Controller
         ]);
     }
 
-    public function update(
-        Request $request,
-        Card $card
-    ): JsonResponse {
+    public function update(Request $request, Card $card): JsonResponse
+    {
         $this->authorizeCard($card);
         $request->validate([
             'title'       => 'sometimes|string|max:255',
@@ -249,8 +232,7 @@ class CardController extends Controller
             'board',
             'attachments',
             'briefAttachments',
-            'comments.user',
-            'comments.replies.user',
+
         ]);
 
         ActivityLogService::log(
@@ -267,9 +249,8 @@ class CardController extends Controller
         ]);
     }
 
-    public function briefAttachments(
-        Card $card
-    ): JsonResponse {
+    public function briefAttachments(Card $card): JsonResponse
+    {
 
         $this->authorizeCard($card);
 
@@ -278,10 +259,8 @@ class CardController extends Controller
         ]);
     }
 
-    public function addBriefAttachment(
-        Request $request,
-        Card $card
-    ): JsonResponse {
+    public function addBriefAttachment(Request $request, Card $card): JsonResponse
+    {
 
         $this->authorizeCard($card);
 
@@ -415,133 +394,121 @@ class CardController extends Controller
             $attachment->file_name
         );
     }
-    public function move(
-        Request $request,
-        Card $card
-    ): JsonResponse {
+public function move(Request $request, Card $card): JsonResponse
+{
+    $request->validate([
+        'board_id' => 'required|uuid|exists:boards,id',
+        'order'    => 'nullable|integer|min:0',
+    ]);
 
-        $request->validate([
-            'board_id' => 'required|uuid|exists:boards,id',
-            'order'    => 'nullable|integer|min:0',
-        ]);
+    $board = Board::findOrFail($request->input('board_id'));
 
-        $board = Board::findOrFail(
-            $request->input('board_id')
-        );
+    $this->authorizeCard($card);
+    $this->authorizeBoard($board);
 
-        $this->authorizeCard($card);
-        $this->authorizeBoard($board);
+    $lastOrder = $board
+        ->cards()
+        ->where('id', '!=', $card->id)
+        ->max('order');
 
-        // ========================================
-        // EXCLUDE CURRENT CARD
-        // AGAR TIDAK DUPLICATE ORDER
-        // ========================================
+    // ========================================
+    // STATUS NORMALIZATION
+    // ========================================
+    $boardType = strtolower($board->type);
 
-        $lastOrder = $board
-            ->cards()
-            ->where('id', '!=', $card->id)
-            ->max('order');
+    $status = match (true) {
+        in_array($boardType, ['done', 'finished', 'complete', 'qc_done']) => 'completed',
+        in_array($boardType, ['progress', 'in_progress', 'doing'])        => 'in_progress',
+        in_array($boardType, ['request', 'backlog', 'todo', 'start'])     => 'todo',
+        default                                                           => 'in_progress',
+    };
 
-$card->update([
-    'board_id' => $board->id,
-    'order'    => $request->input(
-        'order',
-        ($lastOrder ?? 0) + 1
-    ),
-]);
-if ($board->type === 'done') {
-    $card->completed_at = now();
-} else {
-    $card->completed_at = null;
-}
+    // ========================================
+    // UPDATE DATA
+    // ========================================
+    $updateData = [
+        'board_id' => $board->id,
+        'order'    => $request->input('order', ($lastOrder ?? 0) + 1),
+        'status'   => $status,
+    ];
 
-$card->save();
-        ActivityLogService::log(
-            auth()->user(),
-            'card',
-            (string) $card->id,
-            'moved',
-            "Memindahkan card '{$card->title}' ke board '{$board->name}'",
-            ['card_id' => $card->id]
-        );
-        return response()->json([
-            'message' => 'Card berhasil dipindahkan.',
-        ]);
-
-    
+    // ========================================
+    // COMPLETED AT (HISTORI SELESAI)
+    // ========================================
+    if (
+        $status === 'completed' &&
+        is_null($card->completed_at)
+    ) {
+        $updateData['completed_at'] = now();
     }
 
-    public function reorder(
-        Request $request
-    ): JsonResponse {
+    $card->update($updateData);
 
+    ActivityLogService::log(
+        auth()->user(),
+        'card',
+        (string) $card->id,
+        'moved',
+        "Memindahkan card '{$card->title}' ke board '{$board->name}'",
+        ['card_id' => $card->id]
+    );
+
+    return response()->json([
+        'message' => 'Card berhasil dipindahkan.',
+    ]);
+}
+
+    public function reorder(Request $request): JsonResponse
+    {
         $request->validate([
             'cards'         => 'required|array',
             'cards.*.id'    => 'required|uuid|exists:cards,id',
             'cards.*.order' => 'required|integer|min:0',
         ]);
 
-        // ========================================
-        // CEK DUPLICATE ORDER
-        // ========================================
-
-        $orders = collect($request->cards)
-            ->pluck('order');
+        $orders = collect($request->cards)->pluck('order');
 
         if ($orders->duplicates()->isNotEmpty()) {
-
             return response()->json([
                 'message' => 'Order tidak boleh duplikat.',
             ], 422);
         }
 
-        // ========================================
-        // TRANSACTION
-        // ========================================
+        $cardIds = collect($request->cards)->pluck('id');
 
-        DB::transaction(function () use ($request) {
+        $cards = Card::whereIn('id', $cardIds)->get()->keyBy('id');
+
+        // authorize batch (lebih efisien)
+        foreach ($cards as $card) {
+            $this->authorizeCard($card);
+        }
+
+        DB::transaction(function () use ($request, $cards) {
 
             foreach ($request->cards as $item) {
 
-                $card = Card::findOrFail($item['id']);
+                if (!isset($cards[$item['id']])) {
+                    continue;
+                }
 
-                $this->authorizeCard($card);
-
-                $card->update([
+                $cards[$item['id']]->update([
                     'order' => $item['order'],
                 ]);
             }
         });
 
-        /*
-|--------------------------------------------------------------------------
-| AMBIL CONTEXT BOARD YANG VALID
-|--------------------------------------------------------------------------
-*/
+        $firstCard = $cards->first();
 
-        // ambil card pertama untuk mendapatkan board context yang benar
-        $firstCard = Card::find($request->cards[0]['id'] ?? null);
-
-        // fallback aman
-        $boardId = $firstCard?->board_id;
-
-        if (!$boardId) {
-            $boardId = $request->input('board_id');
-        }
-
-        /*
-|--------------------------------------------------------------------------
-| ACTIVITY LOG
-|--------------------------------------------------------------------------
-*/
+        $boardId = $firstCard?->board_id ?? $request->input('board_id');
 
         ActivityLogService::log(
             auth()->user(),
             'board',
             $boardId,
             'reordered',
-            "Merubah urutan card di board '{$boardId}'",
+            "Merubah urutan card di board '{$boardId}'"
         );
+
         return response()->json([
             'message' => 'Card berhasil direorder.',
         ]);
@@ -572,10 +539,8 @@ $card->save();
     |--------------------------------------------------------------------------
     */
 
-    public function assign(
-        Request $request,
-        Card $card
-    ): JsonResponse {
+    public function assign(Request $request, Card $card): JsonResponse
+    {
 
         $this->authorizeCard($card);
 

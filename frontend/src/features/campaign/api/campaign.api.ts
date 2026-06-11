@@ -3,6 +3,11 @@ import {
   CreateCampaignRequest,
   UpdateCampaignRequest,
   Campaign,
+  GanttResponse,
+  BoardProgressData,
+  CampaignHealthData,
+  OverdueTask,
+  CampaignStatsData,
 } from "../types";
 
 export const getCampaigns = async (workspaceId: string): Promise<Campaign[]> => {
@@ -61,4 +66,36 @@ export const searchUsers = async (query: string) => {
   const res = await api.get(`/users/mentionable?search=${query}`)
 
   return res.data.data
+}
+
+export const getCampaignGantt = async (
+  id: string
+): Promise<GanttResponse> => {
+  const res = await api.get<GanttResponse>(`/campaigns/${id}/gantt`);
+  return res.data;
+}
+
+export const getBoardProgress = async (
+  campaignId: string
+): Promise<BoardProgressData> => {
+  const res = await api.get(
+    `/campaigns/${campaignId}/board-progress`
+  );
+
+  return res.data;
+}
+
+export const getCampaignStats = async (id: string): Promise<CampaignStatsData> => {
+  const res = await api.get(`/campaigns/${id}/stats`);
+  return res.data;
+}
+
+export const getOverdueTasks = async (id: string): Promise<OverdueTask[]> => {
+  const res = await api.get(`/campaigns/${id}/overdue-tasks`);
+  return res.data.data; // 🔥 langsung array
+};
+
+export const getCampaignHealth = async (id: string): Promise<CampaignHealthData> => {
+  const res = await api.get(`/campaigns/${id}/health`);
+  return res.data; // OK
 }
