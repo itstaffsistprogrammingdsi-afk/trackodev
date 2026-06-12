@@ -4,18 +4,21 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CardResource;
+use App\Jobs\SendCardAssignedEmailJob;
+// use App\Mail\CardAssignedMail;
 use App\Models\Board;
+use App\Models\Campaign;
 use App\Models\Card;
 use App\Models\CardAttachment;
 use App\Models\CardBriefAttachment;
 use App\Models\CardComment;
 use App\Models\User;
-use App\Models\Campaign;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
-use App\Services\ActivityLogService;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class CardController extends Controller
 {
@@ -116,35 +119,39 @@ class CardController extends Controller
         ]);
     }
 
-    public function store(Request $request, Board $board): JsonResponse
-    {
-        $this->authorizeBoard($board);
+public function store(Request $request, Board $board): JsonResponse
+{
+    $this->authorizeBoard($board);
 
-        $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'priority'    => 'nullable|in:low,medium,high,urgent',
-            'due_date'    => 'nullable|date',
-        ]);
+    $validated = $request->validate([
+        'title'       => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'priority'    => 'nullable|in:low,medium,high,urgent',
+        'due_date'    => 'nullable|date',
 
-        $user = auth()->user();
+        'assignees'   => 'nullable|array',
+        'assignees.*' => 'uuid|exists:users,id',
+    ]);
 
-        $lastOrder = $board->cards()->max('order') ?? 0;
+    $user = auth()->user();
 
-        /**
-         * ========================================
-         * STATUS INITIALIZATION (SOURCE OF TRUTH)
-         * ========================================
-         * Kita tidak pakai completed_at sebagai logic utama lagi
-         * tapi tetap bisa dipakai untuk legacy/report tambahan
-         */
-        $initialStatus = match ($board->type) {
-            'done', 'finished', 'complete', 'selesai' => 'completed',
-            'progress', 'in_progress', 'doing'        => 'in_progress',
-            'request', 'backlog', 'todo'              => 'todo',
-            default                                    => 'todo',
-        };
+    $lastOrder = $board->cards()->max('order') ?? 0;
 
+    $initialStatus = match ($board->type) {
+        'done', 'finished', 'complete', 'selesai' => 'completed',
+        'progress', 'in_progress', 'doing'        => 'in_progress',
+        default                                    => 'todo',
+    };
+
+    $assignees = $validated['assignees'] ?? [];
+
+    DB::beginTransaction();
+
+    try {
+
+        // =========================
+        // CREATE CARD
+        // =========================
         $card = $board->cards()->create([
             'title'        => $validated['title'],
             'description'  => $validated['description'] ?? null,
@@ -155,32 +162,68 @@ class CardController extends Controller
             'status'       => $initialStatus,
         ]);
 
-        ActivityLogService::log(
-            $user,
-            'card',
-            (string) $card->id,
-            'created',
-            "Membuat card '{$card->title}' di board '{$board->name}'",
-            ['card_id' => $card->id]
-        );
+        // =========================
+        // ASSIGN USERS (RELATION)
+        // =========================
+        if (!empty($assignees)) {
 
-        $card->load([
-            'creator',
-            'assignees',
-            'tasks.subtasks',
-            'labels',
-            'board',
-            'comments',
-            'attachments',
-            'briefAttachments',
-            'brands',
-        ]);
+            $card->assignees()->syncWithoutDetaching($assignees);
 
-        return response()->json([
-            'message' => 'Card berhasil dibuat.',
-            'data'    => new CardResource($card),
-        ], 201);
+            // auto join campaign members
+            $board->campaign
+                ->members()
+                ->syncWithoutDetaching($assignees);
+        }
+
+        DB::commit();
+
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        throw $e;
     }
+
+    // =========================
+    // LOAD RELATION (POST-COMMIT SAFE)
+    // =========================
+    $card->load([
+        'creator',
+        'assignees',
+        'board',
+    ]);
+
+    // =========================
+    // EMAIL QUEUE (SCALABLE FIX)
+    // =========================
+    if (!empty($assignees)) {
+
+        $card->assignees->each(function ($assignee) use ($card, $user) {
+
+            // BEST PRACTICE: dispatch job, NOT mail directly
+            SendCardAssignedEmailJob::dispatch(
+                $card->id,
+                $assignee->id,
+                $user->id
+            );
+        });
+    }
+
+    // =========================
+    // ACTIVITY LOG
+    // =========================
+    ActivityLogService::log(
+        $user,
+        'card',
+        (string) $card->id,
+        'created',
+        "Membuat card '{$card->title}' di board '{$board->name}'",
+        ['card_id' => $card->id]
+    );
+
+    return response()->json([
+        'message' => 'Card berhasil dibuat.',
+        'data'    => new CardResource($card),
+    ], 201);
+}
 
     public function show(Card $card): JsonResponse
     {

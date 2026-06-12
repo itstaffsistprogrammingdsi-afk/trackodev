@@ -10,6 +10,7 @@ export type CreateCardRequest = {
     | "urgent";
 
   due_date?: string;
+  assignees?: string[]
 };
 
 export type UpdateCardRequest =
