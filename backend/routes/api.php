@@ -22,7 +22,29 @@ use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\DashboardController;
+use App\Mail\CardAssignedMail;
+use App\Models\Card;
+use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/mail-card-test', function () {
+
+    $card = Card::first();
+
+    $assignedUser = User::first();
+
+    Mail::to($assignedUser->email)
+        ->send(
+            new CardAssignedMail(
+                $card,
+                $assignedUser,
+                $assignedUser
+            )
+        );
+
+    return 'Email terkirim';
+});
 
 // ============================================
 // HEALTH CHECK
