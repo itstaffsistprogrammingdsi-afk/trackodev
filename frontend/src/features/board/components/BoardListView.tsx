@@ -161,14 +161,14 @@ export default function BoardListView({
                     {/* DUE DATE */}
                     <td className="px-5 py-4 text-sm text-gray-600">
                       {card.due_date
-                        ? new Date(card.due_date).toLocaleDateString()
+                        ? new Date(card.due_date).toLocaleDateString("id-ID")
                         : "-"}
                     </td>
 
                     {/* CREATED */}
                     <td className="px-5 py-4 text-sm text-gray-500">
                       {card.created_at
-                        ? new Date(card.created_at).toLocaleDateString()
+                        ? new Date(card.created_at).toLocaleDateString("id-ID")
                         : "-"}
                     </td>
                   </tr>

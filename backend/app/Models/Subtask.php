@@ -12,7 +12,7 @@ class Subtask extends Model
 
     protected $fillable = ['task_id', 'title', 'is_completed', 'order'];
 
-    protected $casts = ['is_completed' => 'boolean'];
+    protected $casts = ['is_completed' => 'boolean', 'due_date' => 'datetime'];
 
     public function task(): BelongsTo
     {

@@ -31,6 +31,7 @@ class Form extends Model
     protected $casts = [
         'show_note' => 'boolean',
         'is_active' => 'boolean',
+        'due_date' => 'datetime'
     ];
 
     /*
