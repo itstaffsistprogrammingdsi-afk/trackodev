@@ -4,42 +4,64 @@
     <meta charset="utf-8">
     <title>Task Assigned</title>
 </head>
-<body style="font-family: Arial;">
+<body style="font-family: Arial, Helvetica, sans-serif; line-height:1.6; color:#333;">
 
-<h2>Halo {{ $assignedUser->name }}</h2>
+    <h2>Task Baru Ditugaskan Kepada Anda</h2>
 
-<p>Kamu mendapatkan task baru:</p>
+    <p>Halo <strong>{{ $assignedUser->name }}</strong>,</p>
 
-<table cellpadding="6">
-    <tr>
-        <td><b>Title</b></td>
-        <td>{{ $card->title }}</td>
-    </tr>
+    <p>
+        Anda mendapatkan task baru dari
+        <strong>{{ $assignedBy->name }}</strong>.
+    </p>
 
-    <tr>
-        <td><b>Board</b></td>
-        <td>{{ $card->board->name }}</td>
-    </tr>
+    <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;">
+        <tr>
+            <td><strong>Judul Task</strong></td>
+            <td>{{ $card->title }}</td>
+        </tr>
 
-    <tr>
-        <td><b>Campaign</b></td>
-        <td>{{ $card->board->campaign->name }}</td>
-    </tr>
+        <tr>
+            <td><strong>Board</strong></td>
+            <td>{{ $card->board?->name ?? '-' }}</td>
+        </tr>
 
-    <tr>
-        <td><b>Assigned By</b></td>
-        <td>{{ $assignedBy->name }}</td>
-    </tr>
+        <tr>
+            <td><strong>Campaign</strong></td>
+            <td>{{ $card->board?->campaign?->name ?? '-' }}</td>
+        </tr>
 
-    @if($card->due_date)
-    <tr>
-        <td><b>Due Date</b></td>
-        <td>{{ $card->due_date }}</td>
-    </tr>
+        <tr>
+            <td><strong>Priority</strong></td>
+            <td>{{ ucfirst($card->priority) }}</td>
+        </tr>
+
+        @if($card->due_date)
+        <tr>
+            <td><strong>Due Date</strong></td>
+            <td>{{ $card->due_date }}</td>
+        </tr>
+        @endif
+    </table>
+
+    @if($card->description)
+        <h4>Deskripsi</h4>
+
+        <p>
+            {{ $card->description }}
+        </p>
     @endif
-</table>
 
-<p>Silakan login ke sistem untuk detail task.</p>
+    <p>
+        Silakan login ke sistem Tracko untuk melihat detail task dan melakukan update progress.
+    </p>
+
+    <hr>
+
+    <p style="font-size:12px;color:#666;">
+        Email ini dikirim otomatis oleh sistem Tracko.
+        Mohon tidak membalas email ini.
+    </p>
 
 </body>
 </html>

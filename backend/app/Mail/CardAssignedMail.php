@@ -29,7 +29,13 @@ class CardAssignedMail extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->subject('New Task Assigned: ' . $this->card->title)
+        return $this->subject(
+                '[Tracko] Task Baru: ' . $this->card->title
+            )
+            ->replyTo(
+                config('mail.from.address'),
+                config('mail.from.name')
+            )
             ->view('emails.card-assigned');
     }
 }
