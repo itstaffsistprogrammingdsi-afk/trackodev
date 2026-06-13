@@ -139,8 +139,8 @@ public function store(Request $request, Board $board): JsonResponse
 
     $initialStatus = match ($board->type) {
         'done', 'finished', 'complete', 'selesai' => 'completed',
-        'progress', 'in_progress', 'doing'        => 'in_progress',
-        default                                    => 'todo',
+        'progress', 'in_progress', 'doing' => 'in_progress',
+        default => 'todo',
     };
 
     $assignees = $validated['assignees'] ?? [];
@@ -149,79 +149,108 @@ public function store(Request $request, Board $board): JsonResponse
 
     try {
 
-        // =========================
-        // CREATE CARD
-        // =========================
+        \Log::info('CARD STORE START');
+
         $card = $board->cards()->create([
-            'title'        => $validated['title'],
-            'description'  => $validated['description'] ?? null,
-            'priority'     => $validated['priority'] ?? 'medium',
-            'due_date'     => $validated['due_date'] ?? null,
-            'created_by'   => $user->id,
-            'order'        => $lastOrder + 1,
-            'status'       => $initialStatus,
+            'title'       => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'priority'    => $validated['priority'] ?? 'medium',
+            'due_date'    => $validated['due_date'] ?? null,
+            'created_by'  => $user->id,
+            'order'       => $lastOrder + 1,
+            'status'      => $initialStatus,
         ]);
 
-        // =========================
-        // ASSIGN USERS (RELATION)
-        // =========================
+        \Log::info('CARD CREATED', [
+            'card_id' => $card->id,
+        ]);
+
         if (!empty($assignees)) {
+
+            \Log::info('SYNC ASSIGNEES START', [
+                'assignees' => $assignees,
+            ]);
 
             $card->assignees()->syncWithoutDetaching($assignees);
 
-            // auto join campaign members
-            $board->campaign
-                ->members()
-                ->syncWithoutDetaching($assignees);
+            \Log::info('SYNC ASSIGNEES SUCCESS');
+
+            if ($board->campaign) {
+
+                \Log::info('SYNC CAMPAIGN MEMBERS START', [
+                    'campaign_id' => $board->campaign->id,
+                ]);
+
+                $board->campaign
+                    ->members()
+                    ->syncWithoutDetaching($assignees);
+
+                \Log::info('SYNC CAMPAIGN MEMBERS SUCCESS');
+            }
         }
 
         DB::commit();
 
+        \Log::info('CARD COMMIT SUCCESS');
+
     } catch (\Throwable $e) {
+
         DB::rollBack();
+
+        \Log::error('CARD STORE ERROR', [
+            'message' => $e->getMessage(),
+            'file'    => $e->getFile(),
+            'line'    => $e->getLine(),
+        ]);
+
         throw $e;
     }
 
-    // =========================
-    // LOAD RELATION (POST-COMMIT SAFE)
-    // =========================
     $card->load([
         'creator',
         'assignees',
         'board',
     ]);
 
-    // =========================
-    // EMAIL QUEUE (SCALABLE FIX)
-    // =========================
+    /**
+     * Email tidak boleh menggagalkan create card
+     */
     if (!empty($assignees)) {
 
-        $card->assignees->each(function ($assignee) use ($card, $user) {
+        foreach ($card->assignees as $assignee) {
 
-            // BEST PRACTICE: dispatch job, NOT mail directly
-            SendCardAssignedEmailJob::dispatch(
-                $card->id,
-                $assignee->id,
-                $user->id
-            );
-        });
+            try {
+
+                SendCardAssignedEmailJob::dispatch(
+                    $card->id,
+                    $assignee->id,
+                    $user->id
+                );
+
+            } catch (\Throwable $e) {
+
+                \Log::error('SEND EMAIL ERROR', [
+                    'message' => $e->getMessage(),
+                    'assignee_id' => $assignee->id,
+                ]);
+            }
+        }
     }
 
-    // =========================
-    // ACTIVITY LOG
-    // =========================
     ActivityLogService::log(
         $user,
         'card',
         (string) $card->id,
         'created',
         "Membuat card '{$card->title}' di board '{$board->name}'",
-        ['card_id' => $card->id]
+        [
+            'card_id' => $card->id,
+        ]
     );
 
     return response()->json([
         'message' => 'Card berhasil dibuat.',
-        'data'    => new CardResource($card),
+        'data' => new CardResource($card),
     ], 201);
 }
 

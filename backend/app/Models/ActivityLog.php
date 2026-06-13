@@ -23,6 +23,7 @@ class ActivityLog extends Model
 
     protected $casts = [
         'meta' => 'array',
+        'due_date' => 'datetime'
     ];
 
     public function user(): BelongsTo

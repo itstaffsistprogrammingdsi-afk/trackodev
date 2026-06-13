@@ -53,6 +53,8 @@ class Assignment extends Model
         'assigned_date' => 'date',
 
         'deadline' => 'date',
+
+        'due_date' => 'datetime'
     ];
 
     /*

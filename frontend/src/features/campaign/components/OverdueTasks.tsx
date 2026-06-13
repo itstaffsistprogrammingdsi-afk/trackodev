@@ -85,7 +85,7 @@ export default function OverdueTasks({ campaignId }: Props) {
                 {task.due_date && (
                   <div className="flex items-center gap-1 text-xs text-gray-400 mt-2">
                     <CalendarDays size={12} />
-                    due date: {new Date(task.due_date).toLocaleDateString()}
+                    due date: {new Date(task.due_date).toLocaleDateString("id-ID")}
                   </div>
                 )}
               </div>

@@ -29,6 +29,7 @@ class FormField extends Model
     protected $casts = [
         'is_required' => 'boolean',
         'options' => 'array',
+        'due_date' => 'datetime'
     ];
 
     /*
