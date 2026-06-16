@@ -119,140 +119,138 @@ class CardController extends Controller
         ]);
     }
 
-public function store(Request $request, Board $board): JsonResponse
-{
-    $this->authorizeBoard($board);
+    public function store(Request $request, Board $board): JsonResponse
+    {
+        $this->authorizeBoard($board);
 
-    $validated = $request->validate([
-        'title'       => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'priority'    => 'nullable|in:low,medium,high,urgent',
-        'due_date'    => 'nullable|date',
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'priority'    => 'nullable|in:low,medium,high,urgent',
+            'due_date'    => 'nullable|date',
 
-        'assignees'   => 'nullable|array',
-        'assignees.*' => 'uuid|exists:users,id',
-    ]);
-
-    $user = auth()->user();
-
-    $lastOrder = $board->cards()->max('order') ?? 0;
-
-    $initialStatus = match ($board->type) {
-        'done', 'finished', 'complete', 'selesai' => 'completed',
-        'progress', 'in_progress', 'doing' => 'in_progress',
-        default => 'todo',
-    };
-
-    $assignees = $validated['assignees'] ?? [];
-
-    DB::beginTransaction();
-
-    try {
-
-        \Log::info('CARD STORE START');
-
-        $card = $board->cards()->create([
-            'title'       => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'priority'    => $validated['priority'] ?? 'medium',
-            'due_date'    => $validated['due_date'] ?? null,
-            'created_by'  => $user->id,
-            'order'       => $lastOrder + 1,
-            'status'      => $initialStatus,
+            'assignees'   => 'nullable|array',
+            'assignees.*' => 'uuid|exists:users,id',
         ]);
 
-        \Log::info('CARD CREATED', [
-            'card_id' => $card->id,
-        ]);
+        $user = auth()->user();
 
-        if (!empty($assignees)) {
+        $lastOrder = $board->cards()->max('order') ?? 0;
 
-            \Log::info('SYNC ASSIGNEES START', [
-                'assignees' => $assignees,
+        $initialStatus = match ($board->type) {
+            'done', 'finished', 'complete', 'selesai' => 'completed',
+            'progress', 'in_progress', 'doing' => 'in_progress',
+            default => 'todo',
+        };
+
+        $assignees = $validated['assignees'] ?? [];
+
+        DB::beginTransaction();
+
+        try {
+
+            \Log::info('CARD STORE START');
+
+            $card = $board->cards()->create([
+                'title'       => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'priority'    => $validated['priority'] ?? 'medium',
+                'due_date'    => $validated['due_date'] ?? null,
+                'created_by'  => $user->id,
+                'order'       => $lastOrder + 1,
+                'status'      => $initialStatus,
             ]);
 
-            $card->assignees()->syncWithoutDetaching($assignees);
+            \Log::info('CARD CREATED', [
+                'card_id' => $card->id,
+            ]);
 
-            \Log::info('SYNC ASSIGNEES SUCCESS');
+            if (!empty($assignees)) {
 
-            if ($board->campaign) {
-
-                \Log::info('SYNC CAMPAIGN MEMBERS START', [
-                    'campaign_id' => $board->campaign->id,
+                \Log::info('SYNC ASSIGNEES START', [
+                    'assignees' => $assignees,
                 ]);
 
-                $board->campaign
-                    ->members()
-                    ->syncWithoutDetaching($assignees);
+                $card->assignees()->syncWithoutDetaching($assignees);
 
-                \Log::info('SYNC CAMPAIGN MEMBERS SUCCESS');
+                \Log::info('SYNC ASSIGNEES SUCCESS');
+
+                if ($board->campaign) {
+
+                    \Log::info('SYNC CAMPAIGN MEMBERS START', [
+                        'campaign_id' => $board->campaign->id,
+                    ]);
+
+                    $board->campaign
+                        ->members()
+                        ->syncWithoutDetaching($assignees);
+
+                    \Log::info('SYNC CAMPAIGN MEMBERS SUCCESS');
+                }
             }
+
+            DB::commit();
+
+            \Log::info('CARD COMMIT SUCCESS');
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            \Log::error('CARD STORE ERROR', [
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+            ]);
+
+            throw $e;
         }
 
-        DB::commit();
-
-        \Log::info('CARD COMMIT SUCCESS');
-
-    } catch (\Throwable $e) {
-
-        DB::rollBack();
-
-        \Log::error('CARD STORE ERROR', [
-            'message' => $e->getMessage(),
-            'file'    => $e->getFile(),
-            'line'    => $e->getLine(),
+        $card->load([
+            'creator',
+            'assignees',
+            'board',
         ]);
 
-        throw $e;
-    }
+        /**
+         * Email tidak boleh menggagalkan create card
+         */
+        if (!empty($assignees)) {
 
-    $card->load([
-        'creator',
-        'assignees',
-        'board',
-    ]);
+            foreach ($card->assignees as $assignee) {
 
-    /**
-     * Email tidak boleh menggagalkan create card
-     */
-    if (!empty($assignees)) {
+                try {
 
-        foreach ($card->assignees as $assignee) {
+                    SendCardAssignedEmailJob::dispatch(
+                        $card->id,
+                        $assignee->id,
+                        $user->id
+                    );
+                } catch (\Throwable $e) {
 
-            try {
-
-                SendCardAssignedEmailJob::dispatch(
-                    $card->id,
-                    $assignee->id,
-                    $user->id
-                );
-
-            } catch (\Throwable $e) {
-
-                \Log::error('SEND EMAIL ERROR', [
-                    'message' => $e->getMessage(),
-                    'assignee_id' => $assignee->id,
-                ]);
+                    \Log::error('SEND EMAIL ERROR', [
+                        'message' => $e->getMessage(),
+                        'assignee_id' => $assignee->id,
+                    ]);
+                }
             }
         }
+
+        ActivityLogService::log(
+            $user,
+            'card',
+            (string) $card->id,
+            'created',
+            "Membuat card '{$card->title}' di board '{$board->name}'",
+            [
+                'card_id' => $card->id,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Card berhasil dibuat.',
+            'data' => new CardResource($card),
+        ], 201);
     }
-
-    ActivityLogService::log(
-        $user,
-        'card',
-        (string) $card->id,
-        'created',
-        "Membuat card '{$card->title}' di board '{$board->name}'",
-        [
-            'card_id' => $card->id,
-        ]
-    );
-
-    return response()->json([
-        'message' => 'Card berhasil dibuat.',
-        'data' => new CardResource($card),
-    ], 201);
-}
 
     public function show(Card $card): JsonResponse
     {
@@ -286,14 +284,28 @@ public function store(Request $request, Board $board): JsonResponse
             'due_date'    => 'nullable|date',
         ]);
 
-        $card->update(
-            $request->only([
-                'title',
-                'description',
-                'priority',
-                'due_date',
-            ])
-        );
+        $oldDueDate = $card->due_date;
+
+        $data = $request->only([
+            'title',
+            'description',
+            'priority',
+            'due_date',
+        ]);
+
+        $card->update($data);
+
+        if (
+            $request->filled('due_date') &&
+            $oldDueDate?->format('Y-m-d H:i:s')
+            !== $card->due_date?->format('Y-m-d H:i:s')
+        ) {
+            $card->update([
+                'due_reminder_stage' => 'none',
+                'due_reminder_last_sent_at' => null,
+                'due_reminder_lock_until' => null,
+            ]);
+        }
 
         $card->load([
             'creator',
@@ -466,69 +478,72 @@ public function store(Request $request, Board $board): JsonResponse
             $attachment->file_name
         );
     }
-public function move(Request $request, Card $card): JsonResponse
-{
-    $request->validate([
-        'board_id' => 'required|uuid|exists:boards,id',
-        'order'    => 'nullable|integer|min:0',
-    ]);
+    public function move(Request $request, Card $card): JsonResponse
+    {
+        $request->validate([
+            'board_id' => 'required|uuid|exists:boards,id',
+            'order'    => 'nullable|integer|min:0',
+        ]);
 
-    $board = Board::findOrFail($request->input('board_id'));
+        $board = Board::findOrFail($request->input('board_id'));
 
-    $this->authorizeCard($card);
-    $this->authorizeBoard($board);
+        $this->authorizeCard($card);
+        $this->authorizeBoard($board);
 
-    $lastOrder = $board
-        ->cards()
-        ->where('id', '!=', $card->id)
-        ->max('order');
+        $lastOrder = $board
+            ->cards()
+            ->where('id', '!=', $card->id)
+            ->max('order');
 
-    // ========================================
-    // STATUS NORMALIZATION
-    // ========================================
-    $boardType = strtolower($board->type);
+        // ========================================
+        // STATUS NORMALIZATION
+        // ========================================
+        $boardType = strtolower($board->type);
 
-    $status = match (true) {
-        in_array($boardType, ['done', 'finished', 'complete', 'qc_done']) => 'completed',
-        in_array($boardType, ['progress', 'in_progress', 'doing'])        => 'in_progress',
-        in_array($boardType, ['request', 'backlog', 'todo', 'start'])     => 'todo',
-        default                                                           => 'in_progress',
-    };
+        $status = match (true) {
+            in_array($boardType, ['done', 'finished', 'complete', 'qc_done']) => 'completed',
+            in_array($boardType, ['progress', 'in_progress', 'doing'])        => 'in_progress',
+            in_array($boardType, ['request', 'backlog', 'todo', 'start'])     => 'todo',
+            default                                                           => 'in_progress',
+        };
 
-    // ========================================
-    // UPDATE DATA
-    // ========================================
-    $updateData = [
-        'board_id' => $board->id,
-        'order'    => $request->input('order', ($lastOrder ?? 0) + 1),
-        'status'   => $status,
-    ];
+        // ========================================
+        // UPDATE DATA
+        // ========================================
+        $updateData = [
+            'board_id' => $board->id,
+            'order'    => $request->input('order', ($lastOrder ?? 0) + 1),
+            'status'   => $status,
+        ];
 
-    // ========================================
-    // COMPLETED AT (HISTORI SELESAI)
-    // ========================================
-    if (
-        $status === 'completed' &&
-        is_null($card->completed_at)
-    ) {
-        $updateData['completed_at'] = now();
+        // ========================================
+        // COMPLETED AT (HISTORI SELESAI)
+        // ========================================
+        if ($status === 'completed') {
+
+            if (is_null($card->completed_at)) {
+                $updateData['completed_at'] = now();
+            }
+        } else {
+
+            $updateData['completed_at'] = null;
+        }
+
+        $card->update($updateData);
+
+        ActivityLogService::log(
+            auth()->user(),
+            'card',
+            (string) $card->id,
+            'moved',
+            "Memindahkan card '{$card->title}' ke board '{$board->name}'",
+            ['card_id' => $card->id]
+        );
+
+        return response()->json([
+            'message' => 'Card berhasil dipindahkan.',
+        ]);
     }
-
-    $card->update($updateData);
-
-    ActivityLogService::log(
-        auth()->user(),
-        'card',
-        (string) $card->id,
-        'moved',
-        "Memindahkan card '{$card->title}' ke board '{$board->name}'",
-        ['card_id' => $card->id]
-    );
-
-    return response()->json([
-        'message' => 'Card berhasil dipindahkan.',
-    ]);
-}
 
     public function reorder(Request $request): JsonResponse
     {
