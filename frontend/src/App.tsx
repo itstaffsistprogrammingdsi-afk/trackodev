@@ -44,6 +44,8 @@ import ChatPage from "./pages/Chats/ChatPage";
 import Report from "./pages/Reports/reportpage";
 import CampaignDetailPage from "./features/campaign/pages/CampaignDetailPage";
 
+import NotificationPage from "./pages/Notifications/NotificationPage";
+
 export default function App() {
   return (
     <Router>
@@ -126,6 +128,9 @@ export default function App() {
           <Route
             path="/basic-tables"
             element={<BasicTables />}
+          />
+
+          <Route path="/notifications" element={<NotificationPage />}
           />
 
           <Route path="/alerts" element={<Alerts />} />

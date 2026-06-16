@@ -13,11 +13,12 @@ use App\Models\CardAttachment;
 use App\Models\CardBriefAttachment;
 use App\Models\CardComment;
 use App\Models\User;
+use App\Models\Notification;
 use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+// use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class CardController extends Controller
@@ -225,13 +226,29 @@ class CardController extends Controller
                         $assignee->id,
                         $user->id
                     );
+
+                    // Simpan notifikasi
+            Notification::create([
+                'user_id' => $assignee->id,
+                'type'    => 'task_assigned',
+                'title'   => 'Task Assigned',
+                'body'    => "Task '{$card->title}' telah diassign kepada Anda",
+                'data'    => [
+                    'card_id'     => $card->id,
+                    'board_id'    => $board->id,
+                    'campaign_id' => $board->campaign?->id,
+                    'assigned_by' => $user->id,
+                ],
+                'is_read' => false,
+            ]);
                 } catch (\Throwable $e) {
 
-                    \Log::error('SEND EMAIL ERROR', [
+                    \Log::error('SEND EMAIL AND NOTIFICATION ERROR', [
                         'message' => $e->getMessage(),
                         'assignee_id' => $assignee->id,
                     ]);
                 }
+                
             }
         }
 
