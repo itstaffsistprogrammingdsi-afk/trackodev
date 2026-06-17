@@ -11,6 +11,7 @@
         "laravel/reverb": "^1.10",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.10.1",
+        "predis/predis": "*",
         "spatie/laravel-permission": "^7.4"
     },
     "require-dev": {

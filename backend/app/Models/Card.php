@@ -53,13 +53,23 @@ class Card extends Model
         'status',
 
         'completed_at',
+
+        'due_reminder_stage',
+
+        'due_reminder_last_sent_at',
+
+        'due_reminder_lock_until',
     ];
 
     protected $casts = [
 
-        'due_date'     => 'datetime',
-        'completed_at' => 'datetime',
-        'status'       => 'string',
+        'due_date'                  => 'datetime',
+        'completed_at'              => 'datetime',
+
+        'due_reminder_last_sent_at' => 'datetime',
+        'due_reminder_lock_until'   => 'datetime',
+
+        'status'                    => 'string',
     ];
 
     /*
@@ -150,24 +160,44 @@ class Card extends Model
         return $this->hasMany(
             CardComment::class
         )
-        ->whereNull('parent_id')
-        ->orderBy('created_at');
+            ->whereNull('parent_id')
+            ->orderBy('created_at');
     }
 
     public function briefAttachments()
+    {
+        return $this->hasMany(
+            CardBriefAttachment::class,
+            'card_id'
+        );
+    }
+
+    public function activities()
+    {
+        return $this->hasMany(
+            ActivityLog::class,
+            'entity_id',
+            'id'
+        )->where('entity_type', 'card');
+    }
+
+    public function isCompleted(): bool
 {
-    return $this->hasMany(
-        CardBriefAttachment::class, 'card_id'
-    );
+    return $this->status === 'completed'
+        || !is_null($this->completed_at);
 }
 
-public function activities()
+public function reminderLocked(): bool
 {
-    return $this->hasMany(
-        ActivityLog::class,
-        'entity_id',
-        'id'
-    )->where('entity_type', 'card');
+    return $this->due_reminder_lock_until
+        && $this->due_reminder_lock_until->isFuture();
 }
 
+public function scopeReminderCandidates($query)
+{
+    return $query
+        ->whereNotNull('due_date')
+        ->where('status', '!=', 'completed')
+        ->whereNull('completed_at');
+}
 }

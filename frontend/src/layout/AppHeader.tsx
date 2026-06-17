@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import NotificationBell from "../components/header/NotificationBell";
 
 /* -------------------------------------------------------------------------- */
 /*                                   ROUTES                                   */
@@ -272,6 +273,10 @@ const AppHeader: React.FC = () => {
           {currentPage}
         </h1>
       </div>
+
+          <div className="flex items-center gap-4">
+        <NotificationBell />
+    </div>
     </header>
   );
 };
