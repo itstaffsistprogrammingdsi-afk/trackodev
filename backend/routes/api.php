@@ -359,6 +359,8 @@ Route::get(
         [ActivityLogController::class, 'cardActivities']
     )->middleware('permission:task.view');
 
+    Route::get('/daily-todo', [\App\Http\Controllers\Api\DailyTodoController::class, 'index']);
+
     // ========================================
     // CARD ASSIGNMENT
     // ========================================

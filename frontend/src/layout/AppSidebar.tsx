@@ -24,6 +24,7 @@ import {
 } from "../icons";
 
 import { useSidebar } from "../context/SidebarContext";
+import DailyTodoSidebar from "@/features/daily/components/DailyTodoSidebar";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
