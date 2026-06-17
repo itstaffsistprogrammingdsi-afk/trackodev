@@ -26,7 +26,7 @@ export type CreateCampaignRequest = {
   type: CampaignType;
   due_date?: string;
   member_ids?: string[];
-  division_id: string;
+  division_id?: string;
 };
 
 export type Member = {

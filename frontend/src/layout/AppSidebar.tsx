@@ -51,73 +51,73 @@ type NavItem = {
 /*                                DARK MODE HOOK                              */
 /* -------------------------------------------------------------------------- */
 
-function useDarkMode() {
-  const [dark, setDark] =
-    useState(false);
+// function useDarkMode() {
+//   const [dark, setDark] =
+//     useState(false);
 
-  useEffect(() => {
-    if (
-      typeof window ===
-      "undefined"
-    )
-      return;
+//   useEffect(() => {
+//     if (
+//       typeof window ===
+//       "undefined"
+//     )
+//       return;
 
-    const storedTheme =
-      localStorage.getItem(
-        "theme"
-      );
+//     const storedTheme =
+//       localStorage.getItem(
+//         "theme"
+//       );
 
-    const initialDark =
-      storedTheme === "dark" ||
-      (!storedTheme &&
-        window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches);
+//     const initialDark =
+//       storedTheme === "dark" ||
+//       (!storedTheme &&
+//         window.matchMedia(
+//           "(prefers-color-scheme: dark)"
+//         ).matches);
 
-    setDark(initialDark);
-  }, []);
+//     setDark(initialDark);
+//   }, []);
 
-  useEffect(() => {
-    if (
-      typeof window ===
-      "undefined"
-    )
-      return;
+//   useEffect(() => {
+//     if (
+//       typeof window ===
+//       "undefined"
+//     )
+//       return;
 
-    const root =
-      document.documentElement;
+//     const root =
+//       document.documentElement;
 
-    if (dark) {
-      root.classList.add(
-        "dark"
-      );
+//     if (dark) {
+//       root.classList.add(
+//         "dark"
+//       );
 
-      localStorage.setItem(
-        "theme",
-        "dark"
-      );
-    } else {
-      root.classList.remove(
-        "dark"
-      );
+//       localStorage.setItem(
+//         "theme",
+//         "dark"
+//       );
+//     } else {
+//       root.classList.remove(
+//         "dark"
+//       );
 
-      localStorage.setItem(
-        "theme",
-        "light"
-      );
-    }
-  }, [dark]);
+//       localStorage.setItem(
+//         "theme",
+//         "light"
+//       );
+//     }
+//   }, [dark]);
 
-  const toggleDark =
-    useCallback(() => {
-      setDark((prev) => !prev);
-    }, []);
+//   const toggleDark =
+//     useCallback(() => {
+//       setDark((prev) => !prev);
+//     }, []);
 
-  return {
-    dark,
-    toggleDark,
-  };
-}
+//   return {
+//     dark,
+//     toggleDark,
+//   };
+// }
 
 /* -------------------------------------------------------------------------- */
 /*                                 UTILITIES                                  */
@@ -603,10 +603,10 @@ const AppSidebar: React.FC =
     const location =
       useLocation();
 
-    const {
-      dark,
-      toggleDark,
-    } = useDarkMode();
+    // const {
+    //   dark,
+    //   toggleDark,
+    // } = useDarkMode();
 
     const {
       divisionId,
@@ -904,7 +904,7 @@ const AppSidebar: React.FC =
 
             {/* DARK MODE */}
 
-            <button
+            {/* <button
               type="button"
               onClick={
                 toggleDark
@@ -928,7 +928,7 @@ const AppSidebar: React.FC =
                     : "Dark Mode"}
                 </span>
               )}
-            </button>
+            </button> */}
 
             <div className="border-t border-gray-100 dark:border-gray-800" />
 
