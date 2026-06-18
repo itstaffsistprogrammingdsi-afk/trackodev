@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Api\MyActivityController;
 use App\Mail\CardAssignedMail;
 use App\Models\Card;
 use App\Models\User;
@@ -349,6 +350,12 @@ Route::get(
         'cards/{card}',
         [CardController::class, 'destroy']
     )->middleware('permission:task.delete');
+    
+    Route::get('/daily-todo', [\App\Http\Controllers\Api\DailyTodoController::class, 'index']);
+        Route::get(
+        '/my-activities',
+        [MyActivityController::class, 'index']
+    );
 
     // ========================================
     // ACTIVITY LOGS

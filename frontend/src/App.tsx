@@ -46,6 +46,10 @@ import CampaignDetailPage from "./features/campaign/pages/CampaignDetailPage";
 
 import NotificationPage from "./pages/Notifications/NotificationPage";
 
+// import DailyTodoPage from "@/features/daily/components/DailyTodoSidebar";
+
+import MyWorkPage from "@/features/my-work/pages/MyWorkPage";
+
 export default function App() {
   return (
     <Router>
@@ -131,6 +135,12 @@ export default function App() {
           />
 
           <Route path="/notifications" element={<NotificationPage />}
+          />
+
+          {/* <Route path="/daily-todo" element={<DailyTodoPage />} */}
+          {/* /> */}
+
+          <Route path="/my-work" element={<MyWorkPage />}
           />
 
           <Route path="/alerts" element={<Alerts />} />
