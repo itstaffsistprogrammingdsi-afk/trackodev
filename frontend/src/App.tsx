@@ -41,7 +41,7 @@ import EditFormPage from "@/features/form/pages/EditFormPage";
 import PublicFormPage from "@/features/form/pages/PublicFormPage";
 
 import ChatPage from "./pages/Chats/ChatPage";
-import Report from "./pages/Reports/reportpage";
+// import Report from "./pages/Reports/reportpage";
 import CampaignDetailPage from "./features/campaign/pages/CampaignDetailPage";
 
 import NotificationPage from "./pages/Notifications/NotificationPage";
@@ -49,6 +49,8 @@ import NotificationPage from "./pages/Notifications/NotificationPage";
 // import DailyTodoPage from "@/features/daily/components/DailyTodoSidebar";
 
 import MyWorkPage from "@/features/my-work/pages/MyWorkPage";
+
+import PermissionRoute from "./components/auth/PermissionRoute";
 
 export default function App() {
   return (
@@ -78,7 +80,15 @@ export default function App() {
           <Route path="/" element={<Home />} />
 
           <Route path="/chats" element={<ChatPage />} />
-          <Route path="/report" element={<Report />} />
+
+          <Route
+  path="/profile"
+  element={
+    <PermissionRoute permission="profile.view">
+      <UserProfiles />
+    </PermissionRoute>
+  }
+/>
 
           <Route path="/test" element={<TestConnection />} />
           <Route path="/divisions" element={<DivisionPage />} />

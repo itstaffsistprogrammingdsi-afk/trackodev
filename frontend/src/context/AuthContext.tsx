@@ -120,7 +120,7 @@ export const AuthProvider = ({
   ): boolean => {
 
     return (
-      user?.role?.includes(role)
+      user?.roles?.includes(role)
       ?? false
     );
   };

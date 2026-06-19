@@ -17,13 +17,17 @@ export const getDailyTodo =
 
 export const getMyActivities =
   async (
-    range: ActivityRange = "today"
+    range: ActivityRange = "today",
+    page = 1,
+    perPage = 20,
   ): Promise<ActivityResponse> => {
 
     const res =
       await axios.get("/my-activities", {
         params: {
           range,
+          page,
+          per_page: perPage,
         },
       });
 

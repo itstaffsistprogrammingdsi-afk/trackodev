@@ -8,18 +8,20 @@ use Illuminate\Http\Request;
 
 class UserRoleController extends Controller
 {
-    public function updateRole(Request $request, $id)
-    {
-        $request->validate([
-            'role' => 'required|string'
-        ]);
+public function updateRole(Request $request, $id)
+{
+    $request->validate([
+        'role' => 'required|exists:roles,name'
+    ]);
 
-        $user = User::findOrFail($id);
+    $user = User::findOrFail($id);
 
-        // sementara simpan di column "role"
-        $user->role = $request->role;
-        $user->save();
+    $user->syncRoles([$request->role]);
 
-        return response()->json($user);
-    }
+    return response()->json([
+        'message' => 'Role updated successfully',
+        'data' => $user->load('roles')
+    ]);
+}
+
 }

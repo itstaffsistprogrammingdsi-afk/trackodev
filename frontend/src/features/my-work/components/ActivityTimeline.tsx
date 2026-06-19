@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ArrowRightLeft,
   Pencil,
@@ -6,96 +7,104 @@ import {
   Clock3,
 } from "lucide-react";
 
-import type {
-  ActivityItem,
-} from "../types";
+import type { ActivityItem } from "../types";
 
 type Props = {
   activities: ActivityItem[];
   total: number;
 };
 
-type ActivityRowProps = {
-  activity: ActivityItem;
-  isLast: boolean;
-};
-
 export default function ActivityTimeline({
-  activities,
+  activities = [],
   total,
 }: Props) {
+  const [expanded, setExpanded] = useState(false);
+
+  const MAX_VISIBLE = 5;
+
+  const visibleActivities = expanded
+    ? activities
+    : activities.slice(0, MAX_VISIBLE);
+
   return (
-    <div className="bg-white border border-gray-200 rounded-3xl shadow-sm">
+    <div className="w-full rounded-2xl border border-gray-200 bg-white">
 
       {/* HEADER */}
-      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-gray-900">
             Activity Feed
           </h2>
-
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs text-gray-500">
             Latest activity from your work
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Clock3 size={16} />
-          <span className="text-sm text-gray-500">
-            {total} activities
+        <div className="flex items-center gap-2 text-gray-500">
+          <Clock3 size={15} />
+          <span className="text-sm font-medium">
+            {total ?? activities.length}
           </span>
         </div>
       </div>
 
       {/* CONTENT */}
-      <div className="p-6">
+      <div className="p-5 space-y-3">
+
         {activities.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="space-y-6">
-            {activities.map(
-              (activity, index) => (
-                <ActivityRow
-                  key={activity.id}
-                  activity={activity}
-                  isLast={
-                    index ===
-                    activities.length - 1
-                  }
-                />
-              )
-            )}
-          </div>
-        )}
-      </div>
+          <>
+            {visibleActivities.map((activity, index) => (
+              <ActivityRow
+                key={activity.id}
+                activity={activity}
+                isLast={index === visibleActivities.length - 1}
+              />
+            ))}
 
+            {activities.length > MAX_VISIBLE && (
+              <div className="pt-2 text-center">
+                <button
+                  onClick={() => setExpanded(!expanded)}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                >
+                  {expanded
+                    ? "Show Less"
+                    : `Show More (${activities.length - MAX_VISIBLE})`}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+      </div>
     </div>
   );
 }
 
+/* =========================
+   ROW (FIXED BALANCE)
+========================= */
+
 function ActivityRow({
   activity,
   isLast,
-}: ActivityRowProps) {
-  const config = getActivityConfig(
-    activity.action
-  );
+}: {
+  activity: ActivityItem;
+  isLast: boolean;
+}) {
+  const config = getActivityConfig(activity.action);
+
+  const userName = activity.user?.name?.trim() || "System";
+  const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <div className="flex gap-4 group">
+    <div className="flex gap-3 min-h-[90px]">
 
-      {/* TIMELINE */}
-      <div className="flex flex-col items-center">
-
-        <div
-          className={`
-            w-10 h-10
-            rounded-xl
-            flex items-center justify-center
-            border
-            ${config.bg}
-          `}
-        >
+      {/* LEFT TIMELINE */}
+      <div className="flex w-8 flex-col items-center shrink-0">
+        <div className={`h-8 w-8 flex items-center justify-center rounded-lg border ${config.bg}`}>
           {config.icon}
         </div>
 
@@ -104,202 +113,105 @@ function ActivityRow({
         )}
       </div>
 
-      {/* CARD */}
-      <div className="flex-1">
+      {/* RIGHT CONTENT */}
+      <div className="flex-1 min-w-0 flex">
 
-        <div
-          className="
-            rounded-2xl
-            border
-            border-gray-100
-            p-4
-            transition-all
-            hover:shadow-md
-            hover:border-gray-200
-          "
-        >
+        <div className="w-full flex flex-col justify-center rounded-xl border border-gray-100 px-3 py-2">
 
-          <div className="flex justify-between gap-4">
+          {/* USER */}
+          <div className="flex items-center gap-2">
 
-            <div className="flex-1">
-
-              {/* USER */}
-              <div className="flex items-center gap-2 mb-2">
-
-                <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-semibold flex items-center justify-center">
-                  {(activity.user?.name ??
-                    "S")
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {activity.user?.name ??
-                      "System"}
-                  </p>
-
-                  <p className="text-xs text-gray-400">
-                    {activity.entity_type}
-                  </p>
-                </div>
-
-              </div>
-
-              {/* DESCRIPTION */}
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {activity.description}
-              </p>
-
-              {/* BADGES */}
-              <div className="flex flex-wrap gap-2 mt-3">
-
-                <span
-                  className={`
-                    text-xs
-                    px-2.5 py-1
-                    rounded-full
-                    font-medium
-                    ${config.badge}
-                  `}
-                >
-                  {activity.action}
-                </span>
-
-                <span
-                  className="
-                    text-xs
-                    px-2.5 py-1
-                    rounded-full
-                    bg-gray-100
-                    text-gray-600
-                  "
-                >
-                  {activity.entity_type}
-                </span>
-
-              </div>
-
+            <div className="h-6 w-6 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center">
+              {userInitial}
             </div>
 
-            {/* DATE */}
-            <div className="text-right min-w-[130px]">
-              <p className="text-xs text-gray-400">
-                {formatDate(
-                  activity.created_at
-                )}
-              </p>
-            </div>
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {userName}
+            </p>
+
+          </div>
+
+          {/* META */}
+          <p className="text-xs text-gray-400">
+            {activity.entity_type}
+          </p>
+
+          {/* DESCRIPTION */}
+          <p className="text-sm text-gray-700 line-clamp-2">
+            {activity.description || "-"}
+          </p>
+
+          {/* BADGES */}
+          <div className="flex flex-wrap gap-2 mt-2">
+
+            <span className={`text-xs px-2 py-0.5 rounded-full ${config.badge}`}>
+              {activity.action}
+            </span>
+
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+              {activity.entity_type}
+            </span>
 
           </div>
 
         </div>
 
       </div>
-
     </div>
   );
 }
+
+/* =========================
+   EMPTY
+========================= */
 
 function EmptyState() {
   return (
-    <div className="py-16 text-center">
-      <div className="text-4xl mb-3">
-        📭
-      </div>
-
-      <h3 className="font-medium text-gray-700">
-        No Activity Found
-      </h3>
-
-      <p className="text-sm text-gray-400 mt-1">
-        Your work activity will appear here.
-      </p>
+    <div className="py-10 text-center text-sm text-gray-400">
+      📭 No Activity Found
     </div>
   );
 }
 
-function getActivityConfig(
-  action: string
-) {
-  switch (action) {
+/* =========================
+   CONFIG
+========================= */
+
+function getActivityConfig(action: string) {
+  switch (action?.toLowerCase()) {
     case "created":
       return {
-        icon: (
-          <Plus
-            size={18}
-            className="text-green-600"
-          />
-        ),
+        icon: <Plus size={14} className="text-green-600" />,
         bg: "bg-green-50 border-green-100",
-        badge:
-          "bg-green-100 text-green-700",
+        badge: "bg-green-100 text-green-700",
       };
 
     case "updated":
       return {
-        icon: (
-          <Pencil
-            size={18}
-            className="text-blue-600"
-          />
-        ),
+        icon: <Pencil size={14} className="text-blue-600" />,
         bg: "bg-blue-50 border-blue-100",
-        badge:
-          "bg-blue-100 text-blue-700",
+        badge: "bg-blue-100 text-blue-700",
       };
 
     case "moved":
       return {
-        icon: (
-          <ArrowRightLeft
-            size={18}
-            className="text-orange-600"
-          />
-        ),
+        icon: <ArrowRightLeft size={14} className="text-orange-600" />,
         bg: "bg-orange-50 border-orange-100",
-        badge:
-          "bg-orange-100 text-orange-700",
+        badge: "bg-orange-100 text-orange-700",
       };
 
     case "deleted":
       return {
-        icon: (
-          <Trash2
-            size={18}
-            className="text-red-600"
-          />
-        ),
+        icon: <Trash2 size={14} className="text-red-600" />,
         bg: "bg-red-50 border-red-100",
-        badge:
-          "bg-red-100 text-red-700",
+        badge: "bg-red-100 text-red-700",
       };
 
     default:
       return {
-        icon: (
-          <Clock3
-            size={18}
-            className="text-gray-600"
-          />
-        ),
+        icon: <Clock3 size={14} className="text-gray-600" />,
         bg: "bg-gray-50 border-gray-100",
-        badge:
-          "bg-gray-100 text-gray-700",
+        badge: "bg-gray-100 text-gray-700",
       };
   }
-}
-
-function formatDate(
-  dateString: string
-) {
-  return new Date(
-    dateString
-  ).toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
