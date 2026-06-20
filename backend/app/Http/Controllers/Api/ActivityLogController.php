@@ -18,8 +18,15 @@ class ActivityLogController extends Controller
 public function cardActivities(Card $card): JsonResponse
 {
     $activities = ActivityLog::with('user')
-        ->where('entity_type', 'card')
-        ->where('entity_id', $card->id)
+        ->where(function ($query) use ($card) {
+
+            $query->where(function ($q) use ($card) {
+                $q->where('entity_type', 'card')
+                  ->where('entity_id', $card->id);
+            });
+
+            $query->orWhere('meta->card_id', (string) $card->id);
+        })
         ->latest()
         ->get();
 

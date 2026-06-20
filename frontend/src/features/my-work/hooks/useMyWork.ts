@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -9,48 +10,51 @@ import {
 } from "../api/myWork.api";
 
 import type {
+  ActivityRange,
   ActivityResponse,
   DailyTodoResponse,
 } from "../types";
 
 export const useMyWork = () => {
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [dailyTodo, setDailyTodo] =
-    useState<DailyTodoResponse | null>(null);
+  const [range, setRange] = useState<ActivityRange>("today");
 
-  const [activities, setActivities] =
-    useState<ActivityResponse | null>(null);
+  const [dailyTodo, setDailyTodo] = useState<DailyTodoResponse | null>(null);
+  const [activities, setActivities] = useState<ActivityResponse | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async (selectedRange: ActivityRange) => {
     try {
       setLoading(true);
+      setError(null);
 
-      const [
-        todoRes,
-        activityRes,
-      ] = await Promise.all([
+      const [todoRes, activityRes] = await Promise.all([
         getDailyTodo(),
-        getMyActivities("today"),
+        getMyActivities(selectedRange),
       ]);
 
       setDailyTodo(todoRes);
       setActivities(activityRes);
 
+    } catch {
+      setError("Failed to load My Work data");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    load(range);
+  }, [range, load]);
 
   return {
     loading,
+    error,
+    range,
+    setRange,
     dailyTodo,
     activities,
-    reload: load,
+    reload: () => load(range),
   };
 };

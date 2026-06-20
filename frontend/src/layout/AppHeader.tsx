@@ -10,57 +10,56 @@ type BreadcrumbRoute = {
   label: string;
 };
 
-const breadcrumbRoutes: BreadcrumbRoute[] = [
-  {
-    pattern: "/",
-    label: "Dashboard",
-  },
+type BreadcrumbItem = {
+  label: string;
+  href?: string;
+};
 
+/* -------------------------------------------------------------------------- */
+/*                                   ROUTES                                   */
+/* -------------------------------------------------------------------------- */
+
+const breadcrumbRoutes: BreadcrumbRoute[] = [
   {
     pattern: "/divisions",
     label: "Divisions",
   },
-
   {
     pattern: "/divisions/:id",
     label: "Workspace",
   },
-
   {
     pattern: "/workspaces/:workspaceId/campaigns",
     label: "Campaigns",
   },
-
   {
-    pattern: "/campaigns/:campaignId",
+    pattern: "/workspaces/:workspaceId/campaigns/:campaignId",
+    label: "Campaign Detail",
+  },
+  {
+    pattern: "/workspaces/:workspaceId/campaigns/:campaignId/boards",
     label: "Board",
   },
-
   {
     pattern: "/forms",
     label: "Forms",
   },
-
   {
     pattern: "/forms/create",
     label: "Create Form",
   },
-
   {
     pattern: "/forms/:id/responses",
     label: "Responses",
   },
-
   {
     pattern: "/chats",
     label: "Chats",
   },
-
   {
     pattern: "/report",
     label: "Report",
   },
-
   {
     pattern: "/profile",
     label: "Profile",
@@ -71,19 +70,12 @@ const breadcrumbRoutes: BreadcrumbRoute[] = [
 /*                              MATCH ROUTE HELPER                            */
 /* -------------------------------------------------------------------------- */
 
-function matchRoute(
-  pathname: string,
-  pattern: string
-) {
-  if (pattern === pathname) {
+function matchRoute(pathname: string, pattern: string): boolean {
+  if (pathname === pattern) {
     return true;
   }
 
-  const regex = new RegExp(
-    "^" +
-      pattern.replace(/:[^/]+/g, "[^/]+") +
-      "$"
-  );
+  const regex = new RegExp("^" + pattern.replace(/:[^/]+/g, "[^/]+") + "$");
 
   return regex.test(pathname);
 }
@@ -92,102 +84,136 @@ function matchRoute(
 /*                            BUILD BREADCRUMBS                               */
 /* -------------------------------------------------------------------------- */
 
-function buildBreadcrumbs(pathname: string) {
-  /*
-    DIVISIONS -> WORKSPACE
-  */
+function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
+  // /divisions
+  if (pathname === "/divisions") {
+    return [
+      {
+        href: "/divisions",
+        label: "Divisions",
+      },
+    ];
+  }
 
-  const divisionMatch = pathname.match(
-    /^\/divisions\/([^/]+)$/
-  );
+  // /divisions/:divisionId
+  const workspaceMatch = pathname.match(/^\/divisions\/([^/]+)$/);
 
-  if (divisionMatch) {
+  if (workspaceMatch) {
+    const divisionId = workspaceMatch[1];
+
     return [
       {
         href: "/divisions",
         label: "Divisions",
       },
       {
-        href: pathname,
+        href: `/divisions/${divisionId}`,
         label: "Workspace",
       },
     ];
   }
 
-  /*
-    WORKSPACE -> CAMPAIGNS
-  */
+  // /workspaces/:workspaceId/campaigns
+  const campaignListMatch = pathname.match(
+    /^\/workspaces\/([^/]+)\/campaigns$/,
+  );
 
-  const workspaceCampaignMatch =
-    pathname.match(
-      /^\/workspaces\/([^/]+)\/campaigns$/
-    );
-
-  if (workspaceCampaignMatch) {
-    const workspaceId =
-      workspaceCampaignMatch[1];
+  if (campaignListMatch) {
+    const workspaceId = campaignListMatch[1];
 
     return [
       {
-        href: `/divisions/${workspaceId}`,
+        href: "/divisions",
+        label: "Divisions",
+      },
+      {
         label: "Workspace",
       },
       {
-        href: pathname,
+        href: `/workspaces/${workspaceId}/campaigns`,
         label: "Campaigns",
       },
     ];
   }
 
-  /*
-    CAMPAIGN -> BOARD
-  */
+  // /campaigns/:campaignId
 
-  const campaignMatch = pathname.match(
-    /^\/campaigns\/([^/]+)$/
-  );
+  const campaignDetailMatch = pathname.match(
+  /^\/workspaces\/([^/]+)\/campaigns\/([^/]+)$/
+);
 
-  if (campaignMatch) {
-    return [
-      {
-        href: "/divisions",
-        label: "Divisions",
-      },
-      {
-        href: pathname,
-        label: "Board",
-      },
-    ];
-  }
+if (campaignDetailMatch) {
+  const workspaceId = campaignDetailMatch[1];
+  const campaignId = campaignDetailMatch[2];
 
-  /*
-    FORMS -> RESPONSES
-  */
+  return [
+    {
+      href: "/divisions",
+      label: "Divisions",
+    },
+    {
+      label: "Workspace",
+    },
+    {
+      href: `/workspaces/${workspaceId}/campaigns`,
+      label: "Campaigns",
+    },
+    {
+      href: `/workspaces/${workspaceId}/campaigns/${campaignId}`,
+      label: "Campaign Detail",
+    },
+  ];
+}
+  // /campaigns/:campaignId/boards
+const boardMatch = pathname.match(
+  /^\/workspaces\/([^/]+)\/campaigns\/([^/]+)\/boards$/
+);
 
-  const formResponsesMatch =
-    pathname.match(
-      /^\/forms\/([^/]+)\/responses$/
-    );
+if (boardMatch) {
+  const workspaceId = boardMatch[1];
+  const campaignId = boardMatch[2];
+
+  return [
+    {
+      href: "/divisions",
+      label: "Divisions",
+    },
+    {
+      label: "Workspace",
+    },
+    {
+      href: `/workspaces/${workspaceId}/campaigns`,
+      label: "Campaigns",
+    },
+    {
+      href: `/workspaces/${workspaceId}/campaigns/${campaignId}`,
+      label: "Campaign Detail",
+    },
+    {
+      label: "Board",
+    },
+  ];
+}
+
+  // /forms/:id/responses
+  const formResponsesMatch = pathname.match(/^\/forms\/([^/]+)\/responses$/);
 
   if (formResponsesMatch) {
-    const formId = formResponsesMatch[1];
-
     return [
       {
-        href: `/forms/${formId}/responses`,
+        href: "/forms",
+        label: "Forms",
+      },
+      {
         label: "Responses",
       },
     ];
   }
 
-  /*
-    STATIC ROUTES
-  */
-
-  const matchedRoute =
-    breadcrumbRoutes.find((route) =>
-      matchRoute(pathname, route.pattern)
-    );
+  // static routes
+const matchedRoute = breadcrumbRoutes
+  .filter((route) => matchRoute(pathname, route.pattern))
+  .sort((a, b) => b.pattern.length - a.pattern.length)[0];
 
   if (matchedRoute) {
     return [
@@ -208,14 +234,11 @@ function buildBreadcrumbs(pathname: string) {
 const AppHeader: React.FC = () => {
   const location = useLocation();
 
-  const breadcrumbs = buildBreadcrumbs(
-    location.pathname
-  );
+  const breadcrumbs = buildBreadcrumbs(location.pathname);
 
   const currentPage =
     breadcrumbs.length > 0
-      ? breadcrumbs[breadcrumbs.length - 1]
-          .label
+      ? breadcrumbs[breadcrumbs.length - 1].label
       : "Dashboard";
 
   return (
@@ -235,37 +258,31 @@ const AppHeader: React.FC = () => {
             Dashboard
           </Link>
 
-          {breadcrumbs.map(
-            (breadcrumb, index) => {
-              const isLast =
-                index ===
-                breadcrumbs.length - 1;
+          {breadcrumbs.map((breadcrumb, index) => {
+            const isLast = index === breadcrumbs.length - 1;
 
-              return (
-                <div
-                  key={`${breadcrumb.href}-${breadcrumb.label}`}
-                  className="flex items-center gap-1"
-                >
-                  <span className="text-gray-300 dark:text-gray-600">
-                    /
+            return (
+              <div
+                key={`${breadcrumb.href}-${breadcrumb.label}`}
+                className="flex items-center gap-1"
+              >
+                <span className="text-gray-300 dark:text-gray-600">/</span>
+
+                {isLast || !breadcrumb.href ? (
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {breadcrumb.label}
                   </span>
-
-                  {isLast ? (
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {breadcrumb.label}
-                    </span>
-                  ) : (
-                    <Link
-                      to={breadcrumb.href}
-                      className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-                    >
-                      {breadcrumb.label}
-                    </Link>
-                  )}
-                </div>
-              );
-            }
-          )}
+                ) : (
+                  <Link
+                    to={breadcrumb.href}
+                    className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                  >
+                    {breadcrumb.label}
+                  </Link>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Title */}
@@ -274,9 +291,9 @@ const AppHeader: React.FC = () => {
         </h1>
       </div>
 
-          <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4">
         <NotificationBell />
-    </div>
+      </div>
     </header>
   );
 };

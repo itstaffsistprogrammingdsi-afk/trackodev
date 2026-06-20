@@ -59,6 +59,21 @@ export default function BoardListView({
     `,
   };
 
+  const priorityColors: Record<string, string> = {
+  low: `
+    bg-green-50 text-green-600
+  `,
+  medium: `
+    bg-yellow-50 text-yellow-600
+  `,
+  high: `
+    bg-orange-50 text-orange-600
+  `,
+  urgent: `
+    bg-red-50 text-red-600
+  `,
+};
+
   return (
     <div
       className="
@@ -85,6 +100,10 @@ export default function BoardListView({
             <tr>
               <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Task
+              </th>
+
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Priority
               </th>
 
               <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -133,6 +152,28 @@ export default function BoardListView({
                         {card.title}
                       </button>
                     </td>
+
+                    <td className="px-5 py-4">
+  <span
+    className={`
+      inline-flex
+      rounded-sm
+      px-1.5
+      py-0.5
+      text-[10px]
+      font-semibold
+      uppercase
+      leading-none
+      ${
+        priorityColors[
+          card.priority?.toLowerCase() ?? ""
+        ] || "bg-gray-100 text-gray-600"
+      }
+    `}
+  >
+    {card.priority ?? "-"}
+  </span>
+</td>
 
                     {/* STATUS */}
                     <td className="px-5 py-4">

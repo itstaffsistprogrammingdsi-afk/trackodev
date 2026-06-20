@@ -51,6 +51,8 @@ export default function CardDetailModal({
 
   const [showLabels, setShowLabels] = useState(false);
 
+  const [showAllActivities, setShowAllActivities] = useState(false);
+
   // =========================================
   // DESCRIPTION
   // =========================================
@@ -422,7 +424,6 @@ export default function CardDetailModal({
 {/* ACTIVITY */}
 {/* ========================================= */}
 <section className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm">
-
   {/* HEADER */}
   <div className="flex items-center gap-3 mb-5">
     <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center">
@@ -448,7 +449,10 @@ export default function CardDetailModal({
     <>
       {/* LIST */}
       <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-        {activities.slice(0, 8).map((activity) => (
+        {(showAllActivities
+          ? activities
+          : activities.slice(0, 8)
+        ).map((activity) => (
           <div
             key={activity.id}
             className="
@@ -487,16 +491,35 @@ export default function CardDetailModal({
         ))}
       </div>
 
-      {/* FOOTER INFO */}
-      <div className="mt-3 flex items-center justify-between">
+      {/* FOOTER */}
+      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
         <span className="text-xs text-slate-400">
-          Showing {Math.min(8, activities.length)} of {activities.length}
+          Showing{" "}
+          {showAllActivities
+            ? activities.length
+            : Math.min(8, activities.length)}{" "}
+          of {activities.length}
         </span>
 
         {activities.length > 8 && (
-          <span className="text-xs text-blue-600 font-medium cursor-pointer hover:underline">
-            View full activity →
-          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setShowAllActivities((prev) => !prev)
+            }
+            className="
+              text-xs
+              font-medium
+              text-blue-600
+              hover:text-blue-700
+              hover:underline
+              transition
+            "
+          >
+            {showAllActivities
+              ? "Show less ←"
+              : "View full activity →"}
+          </button>
         )}
       </div>
     </>

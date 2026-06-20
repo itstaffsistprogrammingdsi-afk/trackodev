@@ -46,11 +46,11 @@ export interface ActivityItem {
 
   description: string;
 
-  entity_type: string;
+  entity_type: string | null;
 
-  entity_id: string;
+  entity_id: string | null;
 
-  meta?: Record<string, unknown>;
+  meta: Record<string, unknown> | null;
 
   created_at: string;
 
@@ -60,24 +60,70 @@ export interface ActivityItem {
   };
 }
 
+export interface AttachmentItem {
+  id: number;
+
+  card_id: number;
+
+  card_title: string | null;
+
+  file_name: string | null;
+
+  file_type: string | null;
+
+  file_size: number | null;
+
+  file_size_kb: number;
+
+  file_size_mb: number;
+
+  attachment_type: "file" | "link";
+
+  file_url: string | null;
+
+  link_url: string | null;
+
+  created_at: string;
+}
+
 export interface ActivityResponse {
+  success: boolean;
+
   filter: {
     range: ActivityRange;
   };
 
   summary: {
     total_activities: number;
+
     today: number;
+
     this_week: number;
+
     this_month: number;
+
+    uploaded_files: number;
+
+    uploaded_links: number;
+
+    total_attachments: number;
+
+    total_storage_used: number;
+
+    total_storage_used_mb: number;
   };
 
   activities: ActivityItem[];
 
+  recent_attachments: AttachmentItem[];
+
   pagination: {
     current_page: number;
+
     last_page: number;
+
     per_page: number;
+
     total: number;
   };
 }

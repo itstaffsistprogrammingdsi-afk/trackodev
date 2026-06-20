@@ -1,5 +1,6 @@
 import {
   memo,
+  use,
   useCallback,
   useEffect,
   useMemo,
@@ -24,6 +25,7 @@ import {
 } from "../icons";
 
 import { useSidebar } from "../context/SidebarContext";
+import { useAuth } from "@/context/AuthContext";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -630,7 +632,7 @@ const AppSidebar: React.FC =
     /* ---------------------------------------------------------------------- */
     /*                               DYNAMIC MENU                             */
     /* ---------------------------------------------------------------------- */
-
+    const { can } = useAuth();
     const navItems =
       useMemo<NavItem[]>(
         () => [
@@ -639,87 +641,78 @@ const AppSidebar: React.FC =
               <GridIcon />,
             name:
               "Dashboard",
-            path: "/",
+            path: "/my-work",
           },
+{
+  name: "Task Management",
+  icon: <BoxCubeIcon />,
+  subItems: [
+    {
+      name: "Task Manager",
+      path: "/divisions",
 
-          {
-            name:
-              "Task Management",
-            icon:
-              <BoxCubeIcon />,
-            subItems: [
-              {
-                name:
-                  "Task Manager",
+      children: [
+        {
+          name: "Divisions",
+          path: "/divisions",
+        },
 
-                path:
-                  "/divisions",
+        {
+          name: "Workspace",
+          path: divisionId
+            ? `/divisions/${divisionId}`
+            : "/divisions",
+        },
 
-                children: [
-                  {
-                    name:
-                      "Divisions List",
+        {
+          name: "Campaigns",
+          path: workspaceId
+            ? `/workspaces/${workspaceId}/campaigns`
+            : "/divisions",
+        },
 
-                    path:
-                      "/divisions",
-                  },
+{
+  name: "Campaign Detail",
+  path:
+    workspaceId && campaignId
+      ? `/workspaces/${workspaceId}/campaigns/${campaignId}`
+      : "/divisions",
+},
+          
+{
+  name: "Board",
+  path:
+    workspaceId && campaignId
+      ? `/workspaces/${workspaceId}/campaigns/${campaignId}/boards`
+      : "/divisions",
+},
+      ],
+    },
+  ],
+},
 
-                  {
-                    name:
-                      "Workspace",
+          ...(can("form.view")
+  ? [{
+      name: "Forms",
+      icon: <ListIcon />,
+      subItems: [
 
-                    path:
-                      divisionId
-                        ? `/divisions/${divisionId}`
-                        : "/divisions",
-                  },
+        ...(can("form.view")
+          ? [{
+              name: "All Forms",
+              path: "/forms",
+            }]
+          : []),
 
-                  {
-                    name:
-                      "Campaigns",
-
-                    path:
-                      workspaceId
-                        ? `/workspaces/${workspaceId}/campaigns`
-                        : "/divisions",
-                  },
-
-                  {
-                    name:
-                      "Board",
-
-                    path:
-                      campaignId
-                        ? `/campaigns/${campaignId}`
-                        : workspaceId
-                        ? `/workspaces/${workspaceId}/campaigns`
-                        : "/divisions",
-                  },
-                ],
-              },
-            ],
-          },
-
-          {
-            name: "Forms",
-            icon:
-              <ListIcon />,
-            subItems: [
-              {
-                name:
-                  "All Forms",
-                path:
-                  "/forms",
-              },
-
-              {
-                name:
-                  "Create Form",
-                path:
-                  "/forms/create",
-              },
-            ],
-          },
+        ...(can("form.create")
+          ? [{
+              name: "Create Form",
+              path: "/forms/create",
+            }]
+          : []),
+      ],
+    }]
+  : []),
 
           {
             name: "Chats",
@@ -728,25 +721,31 @@ const AppSidebar: React.FC =
             path: "/chats",
           },
 
-          {
-            name: "Report",
-            icon:
-              <ListIcon />,
-            path: "/report",
-          },
+          
+...(can("report.view")
+  ? [{
+      name: "Report",
+      icon: <ListIcon />,
+      path: "/report",
+    }]
+  : []),
 
-          {
-            icon:
-              <UserCircleIcon />,
-            name:
-              "User Management",
-            path: "/profile",
-          },
+...(can("profile.view")
+  ? [{
+      icon: <UserCircleIcon />,
+      name: "User Management",
+      path: "/profile",
+    }]
+  : []),
         ],
+        
         [
           divisionId,
           workspaceId,
           campaignId,
+          use,
+          can,
+          
         ]
       );
 

@@ -18,12 +18,16 @@ export default function SummaryCards({
   completionRate,
   totalActivities,
 }: Props) {
+  const safeRate = Number.isFinite(completionRate)
+    ? completionRate
+    : 0;
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
 
       <SummaryCard
         title="Total Tasks"
-        value={totalCards}
+        value={totalCards ?? 0}
         description="Assigned tasks"
         icon={
           <ClipboardList
@@ -36,7 +40,7 @@ export default function SummaryCards({
 
       <SummaryCard
         title="Completed"
-        value={completedCards}
+        value={completedCards ?? 0}
         description="Finished tasks"
         icon={
           <CheckCircle2
@@ -49,7 +53,7 @@ export default function SummaryCards({
 
       <SummaryCard
         title="Completion Rate"
-        value={`${completionRate}%`}
+        value={`${safeRate.toFixed(1)}%`}
         description="Productivity score"
         icon={
           <TrendingUp
@@ -62,7 +66,7 @@ export default function SummaryCards({
 
       <SummaryCard
         title="Activities"
-        value={totalActivities}
+        value={totalActivities ?? 0}
         description="Recent actions"
         icon={
           <Activity
@@ -115,7 +119,7 @@ function SummaryCard({
           </p>
 
           <h3 className="mt-3 text-3xl font-bold text-gray-900">
-            {value}
+            {value ?? 0}
           </h3>
 
           <p className="mt-1 text-xs text-gray-400">
@@ -124,11 +128,7 @@ function SummaryCard({
         </div>
 
         <div
-          className={`
-            flex h-12 w-12 items-center justify-center
-            rounded-2xl
-            ${bg}
-          `}
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl ${bg}`}
         >
           {icon}
         </div>
