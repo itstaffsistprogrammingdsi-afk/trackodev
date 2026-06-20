@@ -61,20 +61,16 @@ export default function BoardListView({
 
   const priorityColors: Record<string, string> = {
   low: `
-    bg-gray-100
-    text-gray-600
+    bg-green-50 text-green-600
   `,
   medium: `
-    bg-blue-100
-    text-blue-700
+    bg-yellow-50 text-yellow-600
   `,
   high: `
-    bg-orange-100
-    text-orange-700
+    bg-orange-50 text-orange-600
   `,
   urgent: `
-    bg-red-100
-    text-red-700
+    bg-red-50 text-red-600
   `,
 };
 
