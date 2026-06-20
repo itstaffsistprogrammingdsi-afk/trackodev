@@ -1,5 +1,5 @@
-import { Campaign, Member } from "../types";
-import { Link } from "react-router-dom";
+import { Campaign, Member,  } from "../types";
+import { Link, useParams } from "react-router-dom";
 import { useState, useMemo } from "react";
 import api from "../../../lib/axios";
 import { AxiosError } from "axios";
@@ -15,7 +15,9 @@ export default function CampaignCard({
 }: {
   campaign: Campaign;
   onChanged?: () => void;
-}) {
+}) {  const { workspaceId } = useParams<{
+    workspaceId: string;
+  }>();
   const queryClient = useQueryClient();
 
   const [showMembers, setShowMembers] = useState(false);
@@ -40,7 +42,7 @@ export default function CampaignCard({
   const { data: members = [] } = useQuery<Member[]>({
     queryKey: ["campaign-members", campaign.id],
     queryFn: async () => {
-      const res = await api.get(`/campaigns/${campaign.id}`);
+      const res = await api.get(`/workspaces/${workspaceId}/campaigns/${campaign.id}`);
       return res.data.data.members;
     },
     initialData: campaign.members ?? [],
@@ -70,7 +72,7 @@ export default function CampaignCard({
     try {
       setLoading(true);
 
-      await api.delete(`/campaigns/${campaign.id}`);
+      await api.delete(`/workspaces/${workspaceId}/campaigns/${campaign.id}`);
 
       await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
 
@@ -87,7 +89,7 @@ export default function CampaignCard({
     try {
       setLoading(true);
 
-      await api.put(`/campaigns/${campaign.id}`, {
+      await api.put(`/workspaces/${workspaceId}/campaigns/${campaign.id}`, {
         name,
         description,
         due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
@@ -123,7 +125,7 @@ export default function CampaignCard({
 
       await Promise.all(
         selectedUsers.map((user) =>
-          api.post(`/campaigns/${campaign.id}/members`, {
+          api.post(`/workspaces/${workspaceId}/campaigns/${campaign.id}/members`, {
             user_id: user.id,
           }),
         ),
@@ -148,7 +150,7 @@ export default function CampaignCard({
     try {
       setLoading(true);
 
-      await api.delete(`/campaigns/${campaign.id}/members/${id}`);
+      await api.delete(`/workspaces/${workspaceId}/campaigns/${campaign.id}/members/${id}`);
 
       await queryClient.invalidateQueries({
         queryKey: ["campaign-members", campaign.id],
@@ -165,7 +167,7 @@ export default function CampaignCard({
     <article className="p-4 rounded-2xl border bg-white dark:bg-gray-900 hover:shadow-lg transition flex flex-col gap-3">
       {/* HEADER */}
       <header className="space-y-1">
-        <Link to={`/campaigns/${campaign.id}/boards`}>
+        <Link to={`/workspaces/${workspaceId}/campaigns/${campaign.id}/boards`}>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {name}
           </h3>
@@ -201,7 +203,7 @@ export default function CampaignCard({
 
   {/* DETAIL */}
   {/* <Link
-    to={`/campaigns/${campaign.id}`}
+    to={`/workspaces/${workspaceId}/campaigns/${campaign.id}`}
     className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600"
     title="Detail Campaign"
   >
@@ -237,13 +239,13 @@ export default function CampaignCard({
   </button>
 
   <Link
-  to={`/campaigns/${campaign.id}`}
+  to={`/workspaces/${workspaceId}/campaigns/${campaign.id}`}
   className="ml-auto text-sm font-small text-gray-500 hover:text-gray-700"
 >
   View Details →
 </Link>
 
-{/* <Link to={`/campaigns/${campaign.id}/boards`}>
+{/* <Link to={`/workspaces/${workspaceId}/campaigns/${campaign.id}/boards`}>
   View Boards →
 </Link> */}
 </footer>

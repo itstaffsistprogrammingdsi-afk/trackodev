@@ -7,9 +7,11 @@ import type { Division }
 
 import ManageDivisionMembersModal
   from "../components/modals/ManageDivisionMembersModal";
+  import { useAuth } from '@/context/AuthContext';
 
 export default function DivisionPage() {
   const { data, isLoading } = useDivisions()
+  const { can } = useAuth();
   const [open, setOpen] = useState(false)
   const [selectedDivision, setSelectedDivision] = useState<Division | null>(null)
   const [
@@ -24,12 +26,14 @@ export default function DivisionPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold">Divisions</h1>
 
-        <button
-          onClick={() => setOpen(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg"
-        >
-          + Create Division
-        </button>
+{can("division.create") && (
+  <button
+    onClick={() => setOpen(true)}
+    className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+  >
+    + Create Division
+  </button>
+)}
       </div>
 
       <div className="grid grid-cols-3 gap-4">

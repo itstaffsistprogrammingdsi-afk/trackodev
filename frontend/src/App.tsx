@@ -53,127 +53,143 @@ import MyWorkPage from "@/features/my-work/pages/MyWorkPage";
 import PermissionRoute from "./components/auth/PermissionRoute";
 
 export default function App() {
-  return (
-    <Router>
-      <ScrollToTop />
+return (
+  <Router>
+    <ScrollToTop />
 
-      <Routes>
-        {/* ================= PUBLIC FORM ================= */}
+    <Routes>
+      {/* ================= PUBLIC ================= */}
+      <Route
+        path="/public/forms/:slug"
+        element={<PublicFormPage />}
+      />
+
+      {/* ================= AUTH ================= */}
+      <Route path="/signin" element={<SignIn />} />
+      <Route path="/signup" element={<SignUp />} />
+
+      {/* ================= PROTECTED ================= */}
+      <Route element={
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
+        {/* Dashboard */}
+        <Route index element={<Home />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/my-work" element={<MyWorkPage />} />
+
+        {/* Task Management */}
+        <Route path="/divisions" element={<DivisionPage />} />
+
         <Route
-          path="/public/forms/:slug"
-          element={<PublicFormPage />}
+          path="/divisions/:id"
+          element={<WorkspacePage />}
         />
 
-        {/* ================= AUTH ================= */}
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
-
-        {/* ================= PROTECTED ================= */}
         <Route
+          path="/workspaces/:workspaceId/campaigns"
+          element={<CampaignListPage />}
+        />
+
+        <Route
+          path="/workspaces/:workspaceId/campaigns/:campaignId"
+          element={<CampaignDetailPage />}
+        />
+
+        <Route
+          path="/workspaces/:workspaceId/campaigns/:campaignId/boards"
+          element={<BoardPage />}
+        />
+
+        {/* Communication */}
+        <Route path="/chats" element={<ChatPage />} />
+
+        <Route
+          path="/notifications"
+          element={<NotificationPage />}
+        />
+
+        {/* User Management */}
+        <Route
+          path="/profile"
           element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
+            <PermissionRoute permission="profile.view">
+              <UserProfiles />
+            </PermissionRoute>
           }
-        >
-          <Route index element={<Home />} />
-          <Route path="/" element={<Home />} />
+        />
 
-          <Route path="/chats" element={<ChatPage />} />
+        {/* Forms */}
+        <Route
+          path="/forms"
+          element={
+            <PermissionRoute permission="form.view">
+              <FormPage />
+            </PermissionRoute>
+          }
+        />
 
-          <Route
-  path="/profile"
-  element={
-    <PermissionRoute permission="profile.view">
-      <UserProfiles />
-    </PermissionRoute>
-  }
-/>
+        <Route
+          path="/forms/create"
+          element={<CreateFormPage />}
+        />
 
-          <Route path="/test" element={<TestConnection />} />
-          <Route path="/divisions" element={<DivisionPage />} />
-          <Route path="/divisions/:id" element={<WorkspacePage />} />
+        <Route
+          path="/forms/:id/builder"
+          element={<FormBuilderPage />}
+        />
 
-          <Route
-            path="/workspaces/:workspaceId/campaigns"
-            element={<CampaignListPage />}
-          />
+        <Route
+          path="/forms/:id/edit"
+          element={<EditFormPage />}
+        />
 
-          <Route
-            path="/campaigns/:campaignId"
-            element={<CampaignDetailPage />}
-          />
+        <Route
+          path="/forms/:id/responses"
+          element={<FormResponsesPage />}
+        />
 
-            <Route
-            path="/campaigns/:campaignId/boards"
-            element={<BoardPage />}
-          />
+        <Route
+          path="/form-elements"
+          element={<FormElements />}
+        />
 
-          <Route path="/profile" element={<UserProfiles />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/blank" element={<Blank />} />
-          <Route path="/forms" element={<FormPage />} />
+        {/* Utilities */}
+        <Route path="/calendar" element={<Calendar />} />
+        <Route path="/blank" element={<Blank />} />
+        <Route path="/test" element={<TestConnection />} />
 
-          <Route
-            path="/form-elements"
-            element={<FormElements />}
-          />
+        {/* Tables */}
+        <Route
+          path="/basic-tables"
+          element={<BasicTables />}
+        />
 
-          <Route
-            path="/forms/create"
-            element={<CreateFormPage />}
-          />
+        {/* UI Elements */}
+        <Route path="/alerts" element={<Alerts />} />
+        <Route path="/avatars" element={<Avatars />} />
+        <Route path="/badge" element={<Badges />} />
+        <Route path="/buttons" element={<Buttons />} />
+        <Route path="/images" element={<Images />} />
+        <Route path="/videos" element={<Videos />} />
 
-          <Route
-            path="/forms/:id/builder"
-            element={<FormBuilderPage />}
-          />
+        {/* Charts */}
+        <Route
+          path="/line-chart"
+          element={<LineChart />}
+        />
 
-          <Route
-            path="/forms/:id/edit"
-            element={<EditFormPage />}
-          />
+        <Route
+          path="/bar-chart"
+          element={<BarChart />}
+        />
+      </Route>
 
-          <Route
-            path="/forms/:id/responses"
-            element={<FormResponsesPage />}
-          />
-
-          <Route
-            path="/basic-tables"
-            element={<BasicTables />}
-          />
-
-          <Route path="/notifications" element={<NotificationPage />}
-          />
-
-          {/* <Route path="/daily-todo" element={<DailyTodoPage />} */}
-          {/* /> */}
-
-          <Route path="/my-work" element={<MyWorkPage />}
-          />
-
-          <Route path="/alerts" element={<Alerts />} />
-          <Route path="/avatars" element={<Avatars />} />
-          <Route path="/badge" element={<Badges />} />
-          <Route path="/buttons" element={<Buttons />} />
-          <Route path="/images" element={<Images />} />
-          <Route path="/videos" element={<Videos />} />
-
-          <Route
-            path="/line-chart"
-            element={<LineChart />}
-          />
-
-          <Route
-            path="/bar-chart"
-            element={<BarChart />}
-          />
-        </Route>
-
-        {/* ================= FALLBACK ================= */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
-  );
+      {/* ================= FALLBACK ================= */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </Router>
+);
 }

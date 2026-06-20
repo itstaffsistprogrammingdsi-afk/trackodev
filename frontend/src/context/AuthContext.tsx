@@ -66,42 +66,38 @@ export const AuthProvider = ({
 
   const loadUser = async () => {
 
-    const token = getToken();
+  const token = getToken();
 
-    // tidak login
-    if (!token) {
-      setUser(null);
-      return;
-    }
 
-    // cache local
-    const cached = getUser();
+  if (!token) {
+    setUser(null);
+    return;
+  }
 
-    if (cached) {
-      setUser(cached);
-    }
+  const cached = getUser();
 
-    // refresh dari backend
-    try {
 
-      const fresh =
-        await getMe();
+  if (cached) {
+    setUser(cached);
+  }
 
-      setUser(fresh);
+  try {
 
-    } catch {
+    const fresh = await getMe();
 
-      setUser(null);
 
-      localStorage.removeItem(
-        "token"
-      );
+    setUser(fresh);
 
-      localStorage.removeItem(
-        "user"
-      );
-    }
-  };
+  } catch (error) {
+
+    console.error("GET ME ERROR =", error);
+
+    setUser(null);
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  }
+};
 
   // ==========================================
   // INIT
@@ -129,16 +125,16 @@ export const AuthProvider = ({
   // PERMISSION CHECK
   // ==========================================
 
-  const can = (
-    permission: string
-  ): boolean => {
+const can = (
+  permission: string
+): boolean => {
 
-    return (
-      user?.permissions?.includes(
-        permission
-      ) ?? false
-    );
-  };
+
+  return (
+    user?.permissions?.includes(permission)
+    ?? false
+  );
+};
 
   // ==========================================
   // PROVIDER

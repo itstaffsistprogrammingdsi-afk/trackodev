@@ -55,9 +55,11 @@ class PermissionSeeder extends Seeder
             'task.update',
             'task.delete',
             'task.assign',
+
             'dashboard.view',
             'report.view',
             'profile.view',
+            'form.view',
         ];
 
         // ============================================
@@ -134,6 +136,7 @@ class PermissionSeeder extends Seeder
             'task.assign',
             'dashboard.view',
             'report.view',
+            'form.view',
         ]);
 
         // ============================================

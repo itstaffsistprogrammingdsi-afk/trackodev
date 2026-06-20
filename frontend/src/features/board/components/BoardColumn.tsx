@@ -189,9 +189,9 @@ export default function BoardColumn({
 
             <span
               className={`
-                mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium
-                ${priorityBadgeClass(priority)}
-              `}
+    mt-2 inline-flex rounded-sm px-1.5 py-[2px] text-[9px] font-semibold leading-none
+    ${priorityBadgeClass(priority)}
+  `}
             >
               {priority.toUpperCase()}
             </span>

@@ -3,6 +3,7 @@ import { Workspace } from '../types'
 
 export const getWorkspaces = async (divisionId: string) => {
   const res = await api.get(`/divisions/${divisionId}/workspaces`)
+  console.log("WORKSPACE RESPONSE", res.data)
   return res.data.data as Workspace[]
 }
 

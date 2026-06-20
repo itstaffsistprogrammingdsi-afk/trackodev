@@ -12,82 +12,47 @@ use App\Services\ActivityLogService;
 
 class WorkspaceController extends Controller
 {
-    public function index(
-        Request $request,
-        Division $division
-    ): JsonResponse {
+public function index(
+    Request $request,
+    Division $division
+): JsonResponse {
 
-        $user = $request->user();
+    $user = $request->user();
 
-        // ========================================
-        // SUPER ADMIN
-        // ========================================
+    // ========================================
+    // SUPER ADMIN
+    // ========================================
 
-        if ($user->isSuperAdmin()) {
-
-            $workspaces = $division
-                ->workspaces()
-                ->get();
-
-            return response()->json([
-                'data' => WorkspaceResource::collection(
-                    $workspaces
-                )
-            ]);
-        }
-
-        // ========================================
-        // ADMIN
-        // ========================================
-
-        if ($user->isAdmin()) {
-
-            $hasDivision = $user
-                ->divisions()
-                ->where('divisions.id', $division->id)
-                ->exists();
-
-            abort_unless(
-                $hasDivision,
-                403,
-                'Unauthorized'
-            );
-
-            $workspaces = $division
-                ->workspaces()
-                ->get();
-
-            return response()->json([
-                'data' => WorkspaceResource::collection(
-                    $workspaces
-                )
-            ]);
-        }
-
-        // ========================================
-        // USER
-        // ========================================
-
-        $workspaces = $division
-            ->workspaces()
-            ->whereHas(
-                'campaigns.members',
-                function ($q) use ($user) {
-
-                    $q->where(
-                        'users.id',
-                        $user->id
-                    );
-                }
-            )
-            ->get();
-
+    if ($user->isSuperAdmin()) {
         return response()->json([
             'data' => WorkspaceResource::collection(
-                $workspaces
+                $division->workspaces()->get()
             )
         ]);
     }
+
+    // ========================================
+    // ADMIN & USER
+    // Harus menjadi member division
+    // ========================================
+
+    $hasDivision = $user
+        ->divisions()
+        ->where('divisions.id', $division->id)
+        ->exists();
+
+    abort_unless(
+        $hasDivision,
+        403,
+        'Anda tidak memiliki akses ke division ini.'
+    );
+
+    return response()->json([
+        'data' => WorkspaceResource::collection(
+            $division->workspaces()->get()
+        )
+    ]);
+}
 
     public function store(Request $request, Division $division): JsonResponse
     {

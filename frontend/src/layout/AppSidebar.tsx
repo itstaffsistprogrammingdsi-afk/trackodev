@@ -1,5 +1,6 @@
 import {
   memo,
+  use,
   useCallback,
   useEffect,
   useMemo,
@@ -642,64 +643,53 @@ const AppSidebar: React.FC =
               "Dashboard",
             path: "/my-work",
           },
+{
+  name: "Task Management",
+  icon: <BoxCubeIcon />,
+  subItems: [
+    {
+      name: "Task Manager",
+      path: "/divisions",
 
-          {
-            name:
-              "Task Management",
-            icon:
-              <BoxCubeIcon />,
-            subItems: [
-              {
-                name:
-                  "Task Manager",
+      children: [
+        {
+          name: "Divisions",
+          path: "/divisions",
+        },
 
-                path:
-                  "/divisions",
+        {
+          name: "Workspace",
+          path: divisionId
+            ? `/divisions/${divisionId}`
+            : "/divisions",
+        },
 
-                children: [
-                  {
-                    name:
-                      "Divisions List",
+        {
+          name: "Campaigns",
+          path: workspaceId
+            ? `/workspaces/${workspaceId}/campaigns`
+            : "/divisions",
+        },
 
-                    path:
-                      "/divisions",
-                  },
-
-                  {
-                    name:
-                      "Workspace",
-
-                    path:
-                      divisionId
-                        ? `/divisions/${divisionId}`
-                        : "/divisions",
-                  },
-
-                  {
-                    name:
-                      "Campaigns",
-
-                    path:
-                      workspaceId
-                        ? `/workspaces/${workspaceId}/campaigns`
-                        : "/divisions",
-                  },
-
-                  {
-                    name:
-                      "Board",
-
-                    path:
-                      campaignId
-                        ? `/campaigns/${campaignId}`
-                        : workspaceId
-                        ? `/workspaces/${workspaceId}/campaigns`
-                        : "/divisions",
-                  },
-                ],
-              },
-            ],
-          },
+{
+  name: "Campaign Detail",
+  path:
+    workspaceId && campaignId
+      ? `/workspaces/${workspaceId}/campaigns/${campaignId}`
+      : "/divisions",
+},
+          
+{
+  name: "Board",
+  path:
+    workspaceId && campaignId
+      ? `/workspaces/${workspaceId}/campaigns/${campaignId}/boards`
+      : "/divisions",
+},
+      ],
+    },
+  ],
+},
 
           ...(can("form.view")
   ? [{
@@ -753,6 +743,9 @@ const AppSidebar: React.FC =
           divisionId,
           workspaceId,
           campaignId,
+          use,
+          can,
+          
         ]
       );
 
