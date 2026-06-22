@@ -25,7 +25,10 @@ class ReportController extends Controller
             $request->start_date,
             $request->end_date,
             $request->user_ids,
-            $request->division_ids
+            $request->division_ids,
+            $request->brand_ids,
+            $request->label_ids,
+            $request->search
         );
 
         return response()->json([
@@ -42,7 +45,10 @@ class ReportController extends Controller
             $request->start_date,
             $request->end_date,
             $request->user_ids,
-            $request->division_ids
+            $request->division_ids,
+            $request->brand_ids,
+            $request->label_ids,
+            $request->search
         );
 
         return $this->pdfService->generate(
@@ -61,7 +67,10 @@ class ReportController extends Controller
             $request->start_date,
             $request->end_date,
             $request->user_ids,
-            $request->division_ids
+            $request->division_ids,
+            $request->brand_ids,
+            $request->label_ids,
+            $request->search
         );
 
         return Excel::download(
@@ -79,7 +88,10 @@ class ReportController extends Controller
             $request->start_date,
             $request->end_date,
             $request->user_ids,
-            $request->division_ids
+            $request->division_ids,
+            $request->brand_ids,
+            $request->label_ids,
+            $request->search
         );
 
         return response()->json([

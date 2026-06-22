@@ -43,23 +43,6 @@ Route::post(
     [PublicFormController::class, 'submit']
 );
 
-Route::get('/mail-card-test', function () {
-
-    $card = Card::first();
-
-    $assignedUser = User::first();
-
-    Mail::to($assignedUser->email)
-        ->send(
-            new CardAssignedMail(
-                $card,
-                $assignedUser,
-                $assignedUser
-            )
-        );
-
-    return 'Email terkirim';
-});
 
 // ============================================
 // HEALTH CHECK
@@ -723,25 +706,29 @@ Route::get(
 
 Route::prefix('reports')->group(function () {
 
-    Route::get(
-            '/',
-            [ReportController::class, 'index']
-        );
+    /**
+     * SUMMARY REPORT
+     * GET /api/reports
+     */
+    Route::get('/', [ReportController::class, 'index']);
 
-        Route::post(
-            '/pdf',
-            [ReportController::class, 'pdf']
-        );
+    /**
+     * DETAIL REPORT
+     * GET /api/reports/detail
+     */
+    Route::get('/detail', [ReportController::class, 'detail']);
 
-        Route::post(
-            '/excel',
-            [ReportController::class, 'excel']
-        );
+    /**
+     * EXPORT PDF
+     * POST /api/reports/pdf
+     */
+    Route::get('/pdf', [ReportController::class, 'pdf']);
 
-        Route::get(
-    '/detail',
-    [ReportController::class, 'detail']
-);
+    /**
+     * EXPORT EXCEL
+     * POST /api/reports/excel
+     */
+    Route::get('/excel', [ReportController::class, 'excel']);
 
 });
 });
