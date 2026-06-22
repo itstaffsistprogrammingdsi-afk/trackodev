@@ -41,7 +41,7 @@ import EditFormPage from "@/features/form/pages/EditFormPage";
 import PublicFormPage from "@/features/form/pages/PublicFormPage";
 
 import ChatPage from "./pages/Chats/ChatPage";
-// import Report from "./pages/Reports/reportpage";
+import ReportPage from "./features/report/pages/ReportPage";
 import CampaignDetailPage from "./features/campaign/pages/CampaignDetailPage";
 
 import NotificationPage from "./pages/Notifications/NotificationPage";
@@ -155,6 +155,16 @@ return (
           path="/form-elements"
           element={<FormElements />}
         />
+
+        {/* ================= REPORT ================= */}
+<Route
+  path="/reports"
+  element={
+    <PermissionRoute permission="report.view">
+      <ReportPage />
+    </PermissionRoute>
+  }
+/>
 
         {/* Utilities */}
         <Route path="/calendar" element={<Calendar />} />

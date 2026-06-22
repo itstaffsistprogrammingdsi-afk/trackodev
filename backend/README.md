@@ -63,3 +63,6 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 php artisan app:sync-hris-users --full
 ✔ Incremental (default)
 php artisan app:sync-hris-users
+
+php artisan schedule:work
+php artisan queue:work

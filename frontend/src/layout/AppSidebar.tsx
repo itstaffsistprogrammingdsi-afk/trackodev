@@ -726,7 +726,7 @@ const AppSidebar: React.FC =
   ? [{
       name: "Report",
       icon: <ListIcon />,
-      path: "/report",
+      path: "/reports",
     }]
   : []),
 

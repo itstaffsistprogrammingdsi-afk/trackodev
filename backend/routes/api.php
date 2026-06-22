@@ -29,6 +29,20 @@ use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
+// ============================================
+// PUBLIC FORMS
+// ============================================
+
+Route::get(
+    '/public/forms/{slug}',
+    [PublicFormController::class, 'show']
+);
+
+Route::post(
+    '/public/forms/{slug}/submit',
+    [PublicFormController::class, 'submit']
+);
+
 Route::get('/mail-card-test', function () {
 
     $card = Card::first();
@@ -705,28 +719,32 @@ Route::get(
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/activities', [DashboardController::class, 'activities']);
 
+
+
 Route::prefix('reports')->group(function () {
 
-    Route::get('/tasks', [ReportController::class, 'tasks']);
-    Route::get('/members', [ReportController::class, 'members']);
-    Route::get('/divisions', [ReportController::class, 'divisions']);
-    Route::get('/productivity', [ReportController::class, 'productivity']);
-    Route::get('/forms', [ReportController::class, 'forms']);
+    Route::get(
+            '/',
+            [ReportController::class, 'index']
+        );
+
+        Route::post(
+            '/pdf',
+            [ReportController::class, 'pdf']
+        );
+
+        Route::post(
+            '/excel',
+            [ReportController::class, 'excel']
+        );
+
+        Route::get(
+    '/detail',
+    [ReportController::class, 'detail']
+);
 
 });
 });
 
 
-// ============================================
-// PUBLIC FORMS
-// ============================================
 
-Route::get(
-    '/public/forms/{slug}',
-    [PublicFormController::class, 'show']
-);
-
-Route::post(
-    '/public/forms/{slug}/submit',
-    [PublicFormController::class, 'submit']
-);

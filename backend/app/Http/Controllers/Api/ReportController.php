@@ -4,82 +4,86 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
-use App\Services\Reports\TaskReportService;
-use App\Services\Reports\MemberPerformanceReportService;
-use App\Services\Reports\DivisionPerformanceReportService;
-use App\Services\Reports\ProductivityReportService;
-use App\Services\Reports\FormReportService;
+use App\Services\ReportService;
+use App\Services\PdfReportService;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ReportExport;
 
 class ReportController extends Controller
 {
-    protected $taskReport;
-    protected $memberReport;
-    protected $divisionReport;
-    protected $productivityReport;
-    protected $formReport;
-
     public function __construct(
-        TaskReportService $taskReport,
-        MemberPerformanceReportService $memberReport,
-        DivisionPerformanceReportService $divisionReport,
-        ProductivityReportService $productivityReport,
-        FormReportService $formReport
-    ) {
-        $this->taskReport = $taskReport;
-        $this->memberReport = $memberReport;
-        $this->divisionReport = $divisionReport;
-        $this->productivityReport = $productivityReport;
-        $this->formReport = $formReport;
+        private ReportService $reportService,
+        private PdfReportService $pdfService
+    ) {}
+
+    /**
+     * SUMMARY REPORT
+     */
+    public function index(Request $request)
+    {
+        $data = $this->reportService->generate(
+            $request->start_date,
+            $request->end_date,
+            $request->user_ids,
+            $request->division_ids
+        );
+
+        return response()->json([
+            'data' => $data
+        ]);
     }
 
     /**
-     * TASK REPORT
+     * PDF EXPORT
      */
-    public function tasks(Request $request)
+    public function pdf(Request $request)
     {
-        return response()->json(
-            $this->taskReport->taskReport($request->all())
+        $data = $this->reportService->generate(
+            $request->start_date,
+            $request->end_date,
+            $request->user_ids,
+            $request->division_ids
+        );
+
+        return $this->pdfService->generate(
+            $data,
+            $request->start_date,
+            $request->end_date
         );
     }
 
     /**
-     * MEMBER REPORT
+     * EXCEL EXPORT
      */
-    public function members(Request $request)
+    public function excel(Request $request)
     {
-        return response()->json(
-            $this->memberReport->memberReport($request->all())
+        $data = $this->reportService->generate(
+            $request->start_date,
+            $request->end_date,
+            $request->user_ids,
+            $request->division_ids
+        );
+
+        return Excel::download(
+            new ReportExport($data),
+            'tracko-report.xlsx'
         );
     }
 
     /**
-     * DIVISION REPORT
+     * DETAIL REPORT (FOR PDF & EXCEL DETAIL SHEET)
      */
-    public function divisions(Request $request)
+    public function detail(Request $request)
     {
-        return response()->json(
-            $this->divisionReport->divisionReport($request->all())
+        $data = $this->reportService->generateDetail(
+            $request->start_date,
+            $request->end_date,
+            $request->user_ids,
+            $request->division_ids
         );
-    }
 
-    /**
-     * PRODUCTIVITY REPORT
-     */
-    public function productivity(Request $request)
-    {
-        return response()->json(
-            $this->productivityReport->productivityReport($request->all())
-        );
-    }
-
-    /**
-     * FORM REPORT
-     */
-    public function forms(Request $request)
-    {
-        return response()->json(
-            $this->formReport->formReport($request->all())
-        );
+        return response()->json([
+            'data' => $data
+        ]);
     }
 }
