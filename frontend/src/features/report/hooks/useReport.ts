@@ -1,59 +1,69 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { fetchReportDetail } from "../api/report.api";
 import type { UserReportDetail } from "../types";
 
 type Params = {
   start_date: string;
   end_date: string;
+
   user_ids?: string[];
   division_ids?: string[];
-  search?: string;
-  label_ids?: string[];
+
+  workspace_ids?: string[];
+  campaign_ids?: string[];
+
   brand_ids?: string[];
+  label_ids?: string[];
+
+  search?: string;
 };
 
 type ApiError = {
-  name?: string;
   message?: string;
 };
 
 export const useReport = () => {
   const [data, setData] = useState<UserReportDetail[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const abortRef = useRef<AbortController | null>(null);
+  const getReportDetail = useCallback(
+    async (params: Params): Promise<void> => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const getReportDetail = useCallback(async (params: Params) => {
-    try {
-      setLoading(true);
-      setError(null);
+        const res = await fetchReportDetail({
+          start_date: params.start_date,
+          end_date: params.end_date,
 
-      // cancel previous request
-      if (abortRef.current) {
-        abortRef.current.abort();
+          user_ids: params.user_ids,
+          division_ids: params.division_ids,
+
+          workspace_ids: params.workspace_ids,
+          campaign_ids: params.campaign_ids,
+
+          brand_ids: params.brand_ids,
+          label_ids: params.label_ids,
+
+          search: params.search,
+        });
+
+        setData(res.data ?? []);
+      } catch (err: unknown) {
+        const error = err as ApiError;
+
+        setError(
+          error.message ?? "Failed to load report"
+        );
+      } finally {
+        setLoading(false);
       }
+    },
+    []
+  );
 
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      const res = await fetchReportDetail(params);
-
-      setData(res.data ?? []);
-    } catch (err: unknown) {
-      const error = err as ApiError;
-
-      if (error?.name === "AbortError" || error?.name === "CanceledError") {
-        return;
-      }
-
-      setError(error?.message ?? "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const resetReport = useCallback(() => {
+  const resetReport = useCallback((): void => {
     setData([]);
     setError(null);
   }, []);

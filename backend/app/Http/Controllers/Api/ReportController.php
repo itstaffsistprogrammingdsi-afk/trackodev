@@ -22,13 +22,15 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         $data = $this->reportService->generate(
-            $request->start_date,
-            $request->end_date,
-            $request->user_ids,
-            $request->division_ids,
-            $request->brand_ids,
-            $request->label_ids,
-            $request->search
+    $request->start_date,
+    $request->end_date,
+    $request->user_ids,
+    $request->division_ids,
+    $request->workspace_ids,
+    $request->campaign_ids,
+    $request->brand_ids,
+    $request->label_ids,
+    $request->search
         );
 
         return response()->json([
@@ -64,14 +66,16 @@ class ReportController extends Controller
     public function excel(Request $request)
     {
         $data = $this->reportService->generate(
-            $request->start_date,
-            $request->end_date,
-            $request->user_ids,
-            $request->division_ids,
-            $request->brand_ids,
-            $request->label_ids,
-            $request->search
-        );
+    $request->start_date,
+    $request->end_date,
+    $request->user_ids,
+    $request->division_ids,
+    $request->workspace_ids,
+    $request->campaign_ids,
+    $request->brand_ids,
+    $request->label_ids,
+    $request->search
+);
 
         return Excel::download(
             new ReportExport($data),
@@ -85,14 +89,16 @@ class ReportController extends Controller
     public function detail(Request $request)
     {
         $data = $this->reportService->generateDetail(
-            $request->start_date,
-            $request->end_date,
-            $request->user_ids,
-            $request->division_ids,
-            $request->brand_ids,
-            $request->label_ids,
-            $request->search
-        );
+    $request->start_date,
+    $request->end_date,
+    $request->user_ids,
+    $request->division_ids,
+    $request->workspace_ids,
+    $request->campaign_ids,
+    $request->brand_ids,
+    $request->label_ids,
+    $request->search
+);
 
         return response()->json([
             'data' => $data

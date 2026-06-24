@@ -11,13 +11,55 @@ class ReportService
         string $endDate,
         ?array $userIds = null,
         ?array $divisionIds = null,
+        ?array $workspaceIds = null,
+        ?array $campaignIds = null,
         ?array $brandIds = null,
         ?array $labelIds = null,
         ?string $search = null
     ): array {
+
         $query = DB::table('card_user')
-            ->join('cards', 'cards.id', '=', 'card_user.card_id')
-            ->join('users', 'users.id', '=', 'card_user.user_id')
+
+            ->join(
+                'cards',
+                'cards.id',
+                '=',
+                'card_user.card_id'
+            )
+
+            ->join(
+                'users',
+                'users.id',
+                '=',
+                'card_user.user_id'
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | CARD -> BOARD -> CAMPAIGN -> WORKSPACE
+        |--------------------------------------------------------------------------
+        */
+
+            ->leftJoin(
+                'boards',
+                'boards.id',
+                '=',
+                'cards.board_id'
+            )
+
+            ->leftJoin(
+                'campaigns',
+                'campaigns.id',
+                '=',
+                'boards.campaign_id'
+            )
+
+            ->leftJoin(
+                'workspaces',
+                'workspaces.id',
+                '=',
+                'campaigns.workspace_id'
+            )
 
             ->leftJoinSub(
                 DB::table('division_user')
@@ -68,19 +110,35 @@ class ReportService
     */
 
         if (!empty($divisionIds)) {
-            $query->whereExists(
-                function ($sub) use ($divisionIds) {
-                    $sub->select(DB::raw(1))
-                        ->from('division_user')
-                        ->whereColumn(
-                            'division_user.user_id',
-                            'users.id'
-                        )
-                        ->whereIn(
-                            'division_user.division_id',
-                            $divisionIds
-                        );
-                }
+            $query->whereIn(
+                'workspaces.division_id',
+                $divisionIds
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | WORKSPACE FILTER
+    |--------------------------------------------------------------------------
+    */
+
+        if (!empty($workspaceIds)) {
+            $query->whereIn(
+                'workspaces.id',
+                $workspaceIds
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | CAMPAIGN FILTER
+    |--------------------------------------------------------------------------
+    */
+
+        if (!empty($campaignIds)) {
+            $query->whereIn(
+                'campaigns.id',
+                $campaignIds
             );
         }
 
@@ -91,20 +149,19 @@ class ReportService
     */
 
         if (!empty($brandIds)) {
-            $query->whereExists(
-                function ($sub) use ($brandIds) {
-                    $sub->select(DB::raw(1))
-                        ->from('brand_card')
-                        ->whereColumn(
-                            'brand_card.card_id',
-                            'cards.id'
-                        )
-                        ->whereIn(
-                            'brand_card.brand_id',
-                            $brandIds
-                        );
-                }
-            );
+            $query->whereExists(function ($sub) use ($brandIds) {
+
+                $sub->select(DB::raw(1))
+                    ->from('brand_card')
+                    ->whereColumn(
+                        'brand_card.card_id',
+                        'cards.id'
+                    )
+                    ->whereIn(
+                        'brand_card.brand_id',
+                        $brandIds
+                    );
+            });
         }
 
         /*
@@ -114,20 +171,19 @@ class ReportService
     */
 
         if (!empty($labelIds)) {
-            $query->whereExists(
-                function ($sub) use ($labelIds) {
-                    $sub->select(DB::raw(1))
-                        ->from('card_label')
-                        ->whereColumn(
-                            'card_label.card_id',
-                            'cards.id'
-                        )
-                        ->whereIn(
-                            'card_label.label_id',
-                            $labelIds
-                        );
-                }
-            );
+            $query->whereExists(function ($sub) use ($labelIds) {
+
+                $sub->select(DB::raw(1))
+                    ->from('card_label')
+                    ->whereColumn(
+                        'card_label.card_id',
+                        'cards.id'
+                    )
+                    ->whereIn(
+                        'card_label.label_id',
+                        $labelIds
+                    );
+            });
         }
 
         /*
@@ -137,20 +193,33 @@ class ReportService
     */
 
         if (!empty($search)) {
-            $query->where(
-                function ($q) use ($search) {
-                    $q->where(
-                        'users.name',
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'users.name',
+                    'like',
+                    "%{$search}%"
+                )
+
+                    ->orWhere(
+                        'cards.title',
                         'like',
-                        '%' . $search . '%'
+                        "%{$search}%"
                     )
-                        ->orWhere(
-                            'cards.title',
-                            'like',
-                            '%' . $search . '%'
-                        );
-                }
-            );
+
+                    ->orWhere(
+                        'campaigns.name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'workspaces.name',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
         }
 
         $query->groupBy(
@@ -162,11 +231,21 @@ class ReportService
         $query->select([
 
             'card_user.user_id',
+
             'users.name as user_name',
+
             'user_divisions.division_name',
 
             DB::raw(
                 'COUNT(DISTINCT cards.id) as total_tasks'
+            ),
+
+            DB::raw(
+                'COUNT(DISTINCT campaigns.id) as total_campaigns'
+            ),
+
+            DB::raw(
+                'COUNT(DISTINCT workspaces.id) as total_workspaces'
             ),
 
             DB::raw("
@@ -228,57 +307,50 @@ class ReportService
                     WHERE cu.user_id = card_user.user_id
                 )
             ) as total_links
-        "),
+        ")
         ]);
 
         $data = $query->get();
 
-        return $data->map(
-            function ($row) {
+        return $data->map(function ($row) {
 
-                return [
-                    'user_id' => $row->user_id,
-                    'name' => $row->user_name,
-                    'division' => $row->division_name,
+            return [
+                'user_id' => $row->user_id,
+                'name' => $row->user_name,
+                'division' => $row->division_name,
 
-                    'total_tasks' =>
-                    (int) $row->total_tasks,
+                'total_workspaces' => (int) $row->total_workspaces,
+                'total_campaigns'  => (int) $row->total_campaigns,
+                'total_tasks'      => (int) $row->total_tasks,
 
-                    'completed_tasks' =>
-                    (int) $row->completed_tasks,
+                'completed_tasks'  => (int) $row->completed_tasks,
+                'pending_tasks'    => (int) $row->pending_tasks,
+                'overdue_tasks'    => (int) $row->overdue_tasks,
 
-                    'pending_tasks' =>
-                    (int) $row->pending_tasks,
-
-                    'overdue_tasks' =>
-                    (int) $row->overdue_tasks,
-
-                    'total_files' =>
-                    (int) $row->total_files,
-
-                    'total_links' =>
-                    (int) $row->total_links,
-                ];
-            }
-        )->toArray();
+                'total_files'      => (int) $row->total_files,
+                'total_links'      => (int) $row->total_links,
+            ];
+        })->toArray();
     }
 
     public function generateDetail(
-    string $startDate,
-    string $endDate,
-    ?array $userIds = null,
-    ?array $divisionIds = null,
-    ?array $brandIds = null,
-    ?array $labelIds = null,
-    ?string $search = null
-): array {
+        string $startDate,
+        string $endDate,
+        ?array $userIds = null,
+        ?array $divisionIds = null,
+        ?array $workspaceIds = null,
+        ?array $campaignIds = null,
+        ?array $brandIds = null,
+        ?array $labelIds = null,
+        ?string $search = null
+    ): array {
 
-    $query = DB::table('users')
-        ->select([
-            'users.id',
-            'users.name',
+        $query = DB::table('users')
+            ->select([
+                'users.id',
+                'users.name',
 
-            DB::raw("
+                DB::raw("
                 (
                     SELECT GROUP_CONCAT(DISTINCT divisions.name)
                     FROM divisions
@@ -287,160 +359,373 @@ class ReportService
                     WHERE division_user.user_id = users.id
                 ) as divisions
             "),
-        ]);
-
-    /*
-    |-------------------------
-    | USER FILTER
-    |-------------------------
-    */
-    if (!empty($userIds)) {
-        $query->whereIn('users.id', $userIds);
-    }
-
-    /*
-    |-------------------------
-    | DIVISION FILTER
-    |-------------------------
-    */
-    if (!empty($divisionIds)) {
-        $query->whereExists(function ($q) use ($divisionIds) {
-            $q->select(DB::raw(1))
-                ->from('division_user')
-                ->whereColumn('division_user.user_id', 'users.id')
-                ->whereIn('division_user.division_id', $divisionIds);
-        });
-    }
-
-    /*
-    |-------------------------
-    | SEARCH USER
-    |-------------------------
-    */
-    if (!empty($search)) {
-        $query->where('users.name', 'like', '%' . $search . '%');
-    }
-
-    $users = $query->get();
-
-    return $users->map(function ($user) use (
-        $startDate,
-        $endDate,
-        $brandIds,
-        $labelIds,
-        $search
-    ) {
-
-        $cards = DB::table('cards')
-            ->join('card_user', 'cards.id', '=', 'card_user.card_id')
-            ->where('card_user.user_id', $user->id)
-            ->whereBetween('cards.created_at', [
-                $startDate . ' 00:00:00',
-                $endDate . ' 23:59:59',
             ]);
 
         /*
-        |-------------------------
-        | BRAND FILTER
-        |-------------------------
-        */
-        if (!empty($brandIds)) {
-            $cards->whereExists(function ($q) use ($brandIds) {
-                $q->select(DB::raw(1))
-                    ->from('brand_card')
-                    ->whereColumn('brand_card.card_id', 'cards.id')
-                    ->whereIn('brand_card.brand_id', $brandIds);
+    |--------------------------------------------------------------------------
+    | USER FILTER
+    |--------------------------------------------------------------------------
+    */
+
+        if (!empty($userIds)) {
+            $query->whereIn(
+                'users.id',
+                $userIds
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | DIVISION FILTER
+    |--------------------------------------------------------------------------
+    */
+
+        if (!empty($divisionIds)) {
+
+            $query->whereExists(function ($sub) use ($divisionIds) {
+
+                $sub->select(DB::raw(1))
+                    ->from('card_user')
+
+                    ->join(
+                        'cards',
+                        'cards.id',
+                        '=',
+                        'card_user.card_id'
+                    )
+
+                    ->join(
+                        'boards',
+                        'boards.id',
+                        '=',
+                        'cards.board_id'
+                    )
+
+                    ->join(
+                        'campaigns',
+                        'campaigns.id',
+                        '=',
+                        'boards.campaign_id'
+                    )
+
+                    ->join(
+                        'workspaces',
+                        'workspaces.id',
+                        '=',
+                        'campaigns.workspace_id'
+                    )
+
+                    ->whereColumn(
+                        'card_user.user_id',
+                        'users.id'
+                    )
+
+                    ->whereIn(
+                        'workspaces.division_id',
+                        $divisionIds
+                    );
             });
         }
 
         /*
-        |-------------------------
-        | LABEL FILTER
-        |-------------------------
-        */
-        if (!empty($labelIds)) {
-            $cards->whereExists(function ($q) use ($labelIds) {
-                $q->select(DB::raw(1))
-                    ->from('card_label')
-                    ->whereColumn('card_label.card_id', 'cards.id')
-                    ->whereIn('card_label.label_id', $labelIds);
-            });
-        }
+    |--------------------------------------------------------------------------
+    | SEARCH USER
+    |--------------------------------------------------------------------------
+    */
 
-        /*
-        |-------------------------
-        | SEARCH CARD
-        |-------------------------
-        */
         if (!empty($search)) {
-            $cards->where('cards.title', 'like', '%' . $search . '%');
+            $query->where(
+                'users.name',
+                'like',
+                "%{$search}%"
+            );
         }
 
-        $cards = $cards
-            ->select('cards.*')
-            ->orderByDesc('cards.created_at')
-            ->get();
+        $users = $query->get();
 
-        return [
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'divisions' => $user->divisions,
+        return $users->map(function ($user) use (
+            $startDate,
+            $endDate,
+            $workspaceIds,
+            $campaignIds,
+            $brandIds,
+            $labelIds,
+            $search
+        ) {
 
-            'tasks' => $cards->map(function ($card) {
+            $cards = DB::table('cards')
 
-                $attachments = DB::table('card_attachments')
-                    ->where('card_id', $card->id)
-                    ->get();
+                ->join(
+                    'card_user',
+                    'cards.id',
+                    '=',
+                    'card_user.card_id'
+                )
 
-                return [
-                    'card_id' => $card->id,
-                    'title' => $card->title,
-                    'status' => $card->status,
-                    'priority' => $card->priority,
-                    'due_date' => $card->due_date,
-                    'completed_at' => $card->completed_at,
+                ->leftJoin(
+                    'boards',
+                    'boards.id',
+                    '=',
+                    'cards.board_id'
+                )
 
-                    /*
-                    |-------------------------
-                    | BRANDS
-                    |-------------------------
-                    */
-                    'brands' => DB::table('brand_card')
-                        ->join('brands', 'brands.id', '=', 'brand_card.brand_id')
-                        ->where('brand_card.card_id', $card->id)
-                        ->select('brands.id', 'brands.name', 'brands.color')
-                        ->get(),
+                ->leftJoin(
+                    'campaigns',
+                    'campaigns.id',
+                    '=',
+                    'boards.campaign_id'
+                )
 
-                    /*
-                    |-------------------------
-                    | LABELS
-                    |-------------------------
-                    */
-                    'labels' => DB::table('card_label')
-                        ->join('labels', 'labels.id', '=', 'card_label.label_id')
-                        ->where('card_label.card_id', $card->id)
-                        ->select('labels.id', 'labels.name', 'labels.color')
-                        ->get(),
+                ->leftJoin(
+                    'workspaces',
+                    'workspaces.id',
+                    '=',
+                    'campaigns.workspace_id'
+                )
+                ->where(
+                    'card_user.user_id',
+                    $user->id
+                )
 
-                    /*
-                    |-------------------------
-                    | ATTACHMENTS
-                    |-------------------------
-                    */
-                    'attachments' => $attachments->map(function ($a) {
-                        return [
-                            'id' => $a->id,
-                            'type' => $a->attachment_type,
-                            'file_name' => $a->file_name,
-                            'file_url' => $a->file_path
-                                ? asset('storage/' . $a->file_path)
-                                : null,
-                            'link_url' => $a->link_url,
-                        ];
-                    })->toArray(),
-                ];
-            })->toArray(),
-        ];
-    })->toArray();
-}
+                ->whereBetween(
+                    'cards.created_at',
+                    [
+                        $startDate . ' 00:00:00',
+                        $endDate . ' 23:59:59',
+                    ]
+                );
+
+            /*
+        |--------------------------------------------------------------------------
+        | WORKSPACE FILTER
+        |--------------------------------------------------------------------------
+        */
+
+            if (!empty($workspaceIds)) {
+
+                $cards->whereIn(
+                    'workspaces.id',
+                    $workspaceIds
+                );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | CAMPAIGN FILTER
+        |--------------------------------------------------------------------------
+        */
+
+            if (!empty($campaignIds)) {
+
+                $cards->whereIn(
+                    'campaigns.id',
+                    $campaignIds
+                );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | BRAND FILTER
+        |--------------------------------------------------------------------------
+        */
+
+            if (!empty($brandIds)) {
+
+                $cards->whereExists(
+                    function ($sub) use ($brandIds) {
+
+                        $sub->select(DB::raw(1))
+                            ->from('brand_card')
+                            ->whereColumn(
+                                'brand_card.card_id',
+                                'cards.id'
+                            )
+                            ->whereIn(
+                                'brand_card.brand_id',
+                                $brandIds
+                            );
+                    }
+                );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | LABEL FILTER
+        |--------------------------------------------------------------------------
+        */
+
+            if (!empty($labelIds)) {
+
+                $cards->whereExists(
+                    function ($sub) use ($labelIds) {
+
+                        $sub->select(DB::raw(1))
+                            ->from('card_label')
+                            ->whereColumn(
+                                'card_label.card_id',
+                                'cards.id'
+                            )
+                            ->whereIn(
+                                'card_label.label_id',
+                                $labelIds
+                            );
+                    }
+                );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | SEARCH
+        |--------------------------------------------------------------------------
+        */
+
+            if (!empty($search)) {
+
+                $cards->where(function ($q) use ($search) {
+
+                    $q->where(
+                        'cards.title',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                        ->orWhere(
+                            'campaigns.name',
+                            'like',
+                            "%{$search}%"
+                        )
+
+                        ->orWhere(
+                            'workspaces.name',
+                            'like',
+                            "%{$search}%"
+                        );
+                });
+            }
+
+            $cards = $cards
+                ->select([
+
+                    'cards.id',
+                    'cards.title',
+                    'cards.status',
+                    'cards.priority',
+                    'cards.due_date',
+                    'cards.completed_at',
+
+                    'boards.id as board_id',
+                    'boards.name as board_name',
+
+                    'campaigns.id as campaign_id',
+                    'campaigns.name as campaign_name',
+
+                    'workspaces.id as workspace_id',
+                    'workspaces.name as workspace_name',
+                ])
+                ->orderByDesc('cards.created_at')
+                ->get();
+
+            return [
+
+                'user_id' => $user->id,
+
+                'name' => $user->name,
+
+                'divisions' => $user->divisions,
+
+                'tasks' => $cards->map(function ($card) {
+
+                    $attachments = DB::table('card_attachments')
+                        ->where(
+                            'card_id',
+                            $card->id
+                        )
+                        ->get();
+
+                    return [
+
+                        'card_id' => $card->id,
+
+                        'title' => $card->title,
+
+                        'status' => $card->status,
+
+                        'priority' => $card->priority,
+
+                        'due_date' => $card->due_date,
+
+                        'completed_at' => $card->completed_at,
+
+                        'board_id' => $card->board_id,
+                        'board_name' => $card->board_name,
+
+                        'campaign_id' => $card->campaign_id,
+                        'campaign_name' => $card->campaign_name,
+
+                        'workspace_id' => $card->workspace_id,
+                        'workspace_name' => $card->workspace_name,
+
+                        'brands' => DB::table('brand_card')
+                            ->join(
+                                'brands',
+                                'brands.id',
+                                '=',
+                                'brand_card.brand_id'
+                            )
+                            ->where(
+                                'brand_card.card_id',
+                                $card->id
+                            )
+                            ->select(
+                                'brands.id',
+                                'brands.name',
+                                'brands.color'
+                            )
+                            ->get(),
+
+                        'labels' => DB::table('card_label')
+                            ->join(
+                                'labels',
+                                'labels.id',
+                                '=',
+                                'card_label.label_id'
+                            )
+                            ->where(
+                                'card_label.card_id',
+                                $card->id
+                            )
+                            ->select(
+                                'labels.id',
+                                'labels.name',
+                                'labels.color'
+                            )
+                            ->get(),
+
+                        'attachments' => $attachments
+                            ->map(function ($a) {
+
+                                return [
+
+                                    'id' => $a->id,
+
+                                    'type' => $a->attachment_type,
+
+                                    'file_name' => $a->file_name,
+
+                                    'file_url' => $a->file_path
+                                        ? asset(
+                                            'storage/' .
+                                                $a->file_path
+                                        )
+                                        : null,
+
+                                    'link_url' => $a->link_url,
+                                ];
+                            })
+                            ->toArray(),
+                    ];
+                })->toArray(),
+            ];
+        })->toArray();
+    }
 }

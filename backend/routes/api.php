@@ -706,30 +706,45 @@ Route::get(
 
 Route::prefix('reports')->group(function () {
 
-    /**
-     * SUMMARY REPORT
-     * GET /api/reports
-     */
-    Route::get('/', [ReportController::class, 'index']);
+    /*
+    |--------------------------------------------------------------------------
+    | SUMMARY REPORT
+    |--------------------------------------------------------------------------
+    */
+    Route::get(
+        '/',
+        [ReportController::class, 'index']
+    );
 
-    /**
-     * DETAIL REPORT
-     * GET /api/reports/detail
-     */
-    Route::get('/detail', [ReportController::class, 'detail']);
+    /*
+    |--------------------------------------------------------------------------
+    | DETAIL REPORT
+    |--------------------------------------------------------------------------
+    */
+    Route::get(
+        '/detail',
+        [ReportController::class, 'detail']
+    );
 
-    /**
-     * EXPORT PDF
-     * POST /api/reports/pdf
-     */
-    Route::get('/pdf', [ReportController::class, 'pdf']);
+    /*
+    |--------------------------------------------------------------------------
+    | EXPORT PDF
+    |--------------------------------------------------------------------------
+    */
+    Route::post(
+        '/pdf',
+        [ReportController::class, 'pdf']
+    );
 
-    /**
-     * EXPORT EXCEL
-     * POST /api/reports/excel
-     */
-    Route::get('/excel', [ReportController::class, 'excel']);
-
+    /*
+    |--------------------------------------------------------------------------
+    | EXPORT EXCEL
+    |--------------------------------------------------------------------------
+    */
+    Route::post(
+        '/excel',
+        [ReportController::class, 'excel']
+    );
 });
 });
 
