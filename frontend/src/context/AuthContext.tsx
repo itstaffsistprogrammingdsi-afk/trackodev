@@ -23,6 +23,8 @@ import {
 type AuthContextType = {
   user: User | null;
 
+  loading: boolean;
+
   setUser: (
     user: User | null
   ) => void;
@@ -57,45 +59,54 @@ export const AuthProvider = ({
   children: ReactNode;
 }) => {
 
-  const [user, setUser] =
-    useState<User | null>(null);
+const [user, setUser] =
+  useState<User | null>(null);
+
+const [loading, setLoading] =
+  useState(true);
 
   // ==========================================
   // LOAD USER
   // ==========================================
 
-  const loadUser = async () => {
+const loadUser = async (): Promise<void> => {
+  setLoading(true);
 
   const token = getToken();
 
-
   if (!token) {
     setUser(null);
+    setLoading(false);
     return;
   }
 
   const cached = getUser();
-
 
   if (cached) {
     setUser(cached);
   }
 
   try {
-
     const fresh = await getMe();
 
-
     setUser(fresh);
-
   } catch (error) {
-
-    console.error("GET ME ERROR =", error);
+    console.error(
+      "GET ME ERROR =",
+      error
+    );
 
     setUser(null);
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem(
+      "token"
+    );
+
+    localStorage.removeItem(
+      "user"
+    );
+  } finally {
+    setLoading(false);
   }
 };
 
@@ -144,6 +155,7 @@ const can = (
     <AuthContext.Provider
       value={{
         user,
+        loading,
         setUser,
         loadUser,
         hasRole,

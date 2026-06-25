@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -99,4 +100,44 @@ class AuthController extends Controller
             'message' => 'Password berhasil diupdate.',
         ]);
     }
+
+    public function bypass(User $user, Request $request): JsonResponse
+{
+    $admin = $request->user();
+
+    if (!$admin->hasPermissionTo('user.bypass')) {
+        return response()->json([
+            'message' => 'Unauthorized'
+        ], 403);
+    }
+
+    if ($admin->id === $user->id) {
+        return response()->json([
+            'message' => 'Tidak bisa bypass ke akun sendiri.'
+        ], 422);
+    }
+
+    DB::table('impersonation_logs')->insert([
+        'admin_id' => $admin->id,
+        'target_user_id' => $user->id,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $token = $user
+        ->createToken(
+            'bypass-'.$admin->id
+        )
+        ->plainTextToken;
+
+    return response()->json([
+        'message' => 'Bypass berhasil.',
+        'token' => $token,
+        'user' => new UserResource($user),
+        'impersonated_by' => [
+            'id' => $admin->id,
+            'name' => $admin->name,
+        ],
+    ]);
+}
 }

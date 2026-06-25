@@ -12,6 +12,9 @@ import {
   fetchLabels,
   fetchBrands,
   fetchDivisions,
+  fetchWorkspacesByDivision,
+  fetchCampaignsByWorkspace,
+  bypassUser,
 } from "../api/report.api";
 
 /*
@@ -54,11 +57,11 @@ export default function ReportPage() {
     OptionItem[]
   >([]);
 
-  const [workspaces, setWorkspaces] = useState<
+  const [workspaces, setWorkspacesByDivision] = useState<
     OptionItem[]
   >([]);
 
-  const [campaigns, setCampaigns] = useState<
+  const [campaigns, setCampaignsByWorkspace] = useState<
     OptionItem[]
   >([]);
 
@@ -89,37 +92,176 @@ export default function ReportPage() {
   | LOAD FILTER OPTIONS
   |--------------------------------------------------------------------------
   */
-  useEffect(() => {
-    const load = async (): Promise<void> => {
+useEffect(() => {
+  const load = async (): Promise<void> => {
+    try {
+      const [
+        labelRes,
+        brandRes,
+        divisionRes,
+      ] = await Promise.all([
+        fetchLabels(),
+        fetchBrands(),
+        fetchDivisions(),
+      ]);
+
+
+setLabels(Array.isArray(labelRes) ? labelRes : []);
+setBrands(Array.isArray(brandRes) ? brandRes : []);
+      setDivisions(divisionRes.data ?? []
+      );
+
+      setWorkspacesByDivision([]);
+      setCampaignsByWorkspace([]);
+    } catch (error: unknown) {
+      console.error(
+        "Failed load report filters",
+        error
+      );
+    }
+  };
+
+  void load();
+}, []);
+
+useEffect(() => {
+  const loadWorkspaces =
+    async (): Promise<void> => {
       try {
-        const [
-          labelRes,
-          brandRes,
-          divisionRes,
-        ] = await Promise.all([
-          fetchLabels(),
-          fetchBrands(),
-          fetchDivisions(),
-        ]);
+        if (
+          filter.division_ids.length === 0
+        ) {
+          setWorkspacesByDivision([]);
 
-        setLabels(labelRes?.data ?? []);
-        setBrands(brandRes?.data ?? []);
-        setDivisions(
-          divisionRes?.data ?? []
+          setCampaignsByWorkspace([]);
+
+          setFilter((prev) => ({
+            ...prev,
+            workspace_ids: [],
+            campaign_ids: [],
+          }));
+
+          return;
+        }
+
+        const responses =
+          await Promise.all(
+            filter.division_ids.map(
+              (divisionId: string) =>
+                fetchWorkspacesByDivision(
+                  divisionId
+                )
+            )
+          );
+
+        const workspaceData =
+          responses.flatMap(
+            (response) =>
+              response.data ?? []
+          );
+
+        setWorkspacesByDivision(
+          workspaceData
         );
-
-        setWorkspaces([]);
-        setCampaigns([]);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(
-          "Failed load report filters",
+          "Failed load workspaces",
           error
         );
       }
     };
 
-    void load();
-  }, []);
+  void loadWorkspaces();
+}, [filter.division_ids]);
+
+useEffect(() => {
+  const loadCampaigns =
+    async (): Promise<void> => {
+      try {
+        if (
+          filter.workspace_ids.length === 0
+        ) {
+          setCampaignsByWorkspace([]);
+
+          setFilter((prev) => ({
+            ...prev,
+            campaign_ids: [],
+          }));
+
+          return;
+        }
+
+        const responses =
+          await Promise.all(
+            filter.workspace_ids.map(
+              (workspaceId: string) =>
+                fetchCampaignsByWorkspace(
+                  workspaceId
+                )
+            )
+          );
+
+        const campaignData =
+          responses.flatMap(
+            (response) =>
+              response.data ?? []
+          );
+
+        setCampaignsByWorkspace(
+          campaignData
+        );
+      } catch (error: unknown) {
+        console.error(
+          "Failed load campaigns",
+          error
+        );
+      }
+    };
+
+  void loadCampaigns();
+}, [filter.workspace_ids]);
+
+const handleBypassUser = async (
+  userId: string
+): Promise<void> => {
+  try {
+    console.log("Bypass User:", userId);
+
+const response =
+  await bypassUser(userId);
+
+const currentToken =
+  localStorage.getItem("token");
+
+if (currentToken) {
+  localStorage.setItem(
+    "admin_token",
+    currentToken
+  );
+}
+
+localStorage.setItem(
+  "token",
+  response.token
+);
+
+localStorage.setItem(
+  "user",
+  JSON.stringify(response.user)
+);
+
+localStorage.setItem(
+  "impersonated_by",
+  JSON.stringify(
+    response.impersonated_by
+  )
+);
+
+window.location.href = "/";
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   /*
   |--------------------------------------------------------------------------
@@ -172,6 +314,22 @@ export default function ReportPage() {
     [filter, getReportDetail]
   );
 
+
+  const handlePreviewUser = (
+  userId: string
+): void => {
+  console.log(
+    "preview user:",
+    userId
+  );
+
+  // nanti bisa diarahkan ke halaman detail report
+  // navigate(`/reports/${userId}`);
+
+
+
+  // nanti panggil endpoint impersonate
+};
   /*
   |--------------------------------------------------------------------------
   | TABLE DATA
@@ -370,16 +528,22 @@ export default function ReportPage() {
         brands={brands}
       />
 
-      <ReportTable
-        data={tableData}
-        loading={loading}
-        onDownloadUserPDF={
-          handleDownloadUserPDF
-        }
-        onPrintUser={
-          handlePrintUser
-        }
-      />
+<ReportTable
+  data={tableData}
+  loading={loading}
+  onDownloadUserPDF={
+    handleDownloadUserPDF
+  }
+  onPrintUser={
+    handlePrintUser
+  }
+  onPreviewUser={
+    handlePreviewUser
+  }
+  onBypassUser={
+    handleBypassUser
+  }
+/>
     </div>
   );
 }

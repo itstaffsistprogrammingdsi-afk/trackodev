@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import NotificationBell from "../components/header/NotificationBell";
+import { useMemo } from "react";
 
 /* -------------------------------------------------------------------------- */
 /*                                   ROUTES                                   */
@@ -14,6 +15,7 @@ type BreadcrumbItem = {
   label: string;
   href?: string;
 };
+
 
 /* -------------------------------------------------------------------------- */
 /*                                   ROUTES                                   */
@@ -232,7 +234,22 @@ const matchedRoute = breadcrumbRoutes
 /* -------------------------------------------------------------------------- */
 
 const AppHeader: React.FC = () => {
-  const location = useLocation();
+const location = useLocation();
+const impersonatedBy = useMemo(() => {
+  const raw = localStorage.getItem(
+    "impersonated_by"
+  );
+
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}, []);
 
   const breadcrumbs = buildBreadcrumbs(location.pathname);
 
@@ -240,6 +257,36 @@ const AppHeader: React.FC = () => {
     breadcrumbs.length > 0
       ? breadcrumbs[breadcrumbs.length - 1].label
       : "Dashboard";
+
+      const handleBackToAdmin = (): void => {
+  const adminToken =
+    localStorage.getItem(
+      "admin_token"
+    );
+
+  if (!adminToken) {
+    alert(
+      "Admin token tidak ditemukan"
+    );
+
+    return;
+  }
+
+  localStorage.setItem(
+    "token",
+    adminToken
+  );
+
+  localStorage.removeItem(
+    "admin_token"
+  );
+
+  localStorage.removeItem(
+    "impersonated_by"
+  );
+
+  window.location.href = "/";
+};
 
   return (
     <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800">
@@ -291,9 +338,37 @@ const AppHeader: React.FC = () => {
         </h1>
       </div>
 
-      <div className="flex items-center gap-4">
-        <NotificationBell />
-      </div>
+<div className="flex items-center gap-3">
+  {impersonatedBy && (
+    <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5">
+      <span className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+
+      <span className="text-xs font-medium text-orange-700">
+        Login as Visitor
+      </span>
+
+      <button
+        type="button"
+        onClick={handleBackToAdmin}
+        className="
+          rounded-full
+          bg-red-500
+          px-3
+          py-1
+          text-xs
+          font-medium
+          text-white
+          hover:bg-red-700
+          transition
+        "
+      >
+        Kembali
+      </button>
+    </div>
+  )}
+
+  <NotificationBell />
+</div>
     </header>
   );
 };

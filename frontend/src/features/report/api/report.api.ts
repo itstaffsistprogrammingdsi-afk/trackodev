@@ -86,17 +86,37 @@ export const fetchLabels = async () => {
   return data;
 };
 
-export const fetchWorkspaces = async () => {
-  const { data } = await axios.get("/workspaces");
+export const fetchWorkspacesByDivision = async (
+  divisionId: string
+) => {
+  const { data } = await axios.get(
+    `/divisions/${divisionId}/workspaces`
+  );
+
   return data;
 };
 
-export const fetchCampaigns = async () => {
-  const { data } = await axios.get("/campaigns");
+export const fetchCampaignsByWorkspace = async (
+  workspaceId: string
+) => {
+  const { data } = await axios.get(
+    `/workspaces/${workspaceId}/campaigns`
+  );
+
   return data;
 };
 
 export const fetchDivisions = async () => {
   const { data } = await axios.get("/divisions");
   return data;
+};
+
+export const bypassUser = async (
+  userId: string
+) => {
+  const response = await axios.post(
+    `/auth/bypass/${userId}`
+  );
+
+  return response.data;
 };

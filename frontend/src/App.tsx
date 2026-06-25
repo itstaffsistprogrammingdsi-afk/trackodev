@@ -159,11 +159,7 @@ return (
         {/* ================= REPORT ================= */}
 <Route
   path="/reports"
-  element={
-    <PermissionRoute permission="report.view">
-      <ReportPage />
-    </PermissionRoute>
-  }
+  element={<ReportPage />}
 />
 
         {/* Utilities */}

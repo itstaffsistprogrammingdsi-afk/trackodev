@@ -134,6 +134,10 @@ Route::middleware([
         [UserController::class, 'stats']
     )->middleware('permission:user.view');
 
+    Route::post(
+    '/auth/bypass/{user}',
+    [AuthController::class, 'bypass']
+)->middleware('permission:user.bypass');
     // ========================================
     // DIVISIONS
     // ========================================
