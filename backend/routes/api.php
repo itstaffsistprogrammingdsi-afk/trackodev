@@ -23,27 +23,28 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Api\MyActivityController;
-use App\Mail\CardAssignedMail;
-use App\Models\Card;
-use App\Models\User;
-use Illuminate\Support\Facades\Mail;
+// use App\Mail\CardAssignedMail;
+// use App\Models\Card;
+// use App\Models\User;
+// use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
 // PUBLIC FORMS
 // ============================================
 
-Route::get(
-    '/public/forms/{slug}',
-    [PublicFormController::class, 'show']
-);
+Route::get('/public/forms/{slug}',[PublicFormController::class, 'show']);
 
-Route::post(
-    '/public/forms/{slug}/submit',
-    [PublicFormController::class, 'submit']
-);
+Route::get("/public/forms", [PublicFormController::class, "index"]);
+
+Route::post("/public/forms/{slug}/submit", [PublicFormController::class, "submit"]);
+
+// Route::get('/public/form-center',[PublicFormController::class, 'formCenter']);
 
 
+Route::get('/form-center', [FormController::class, 'formCenter']);
+
+Route::get('/form-center/{slug}', [FormController::class, 'publicShow']);
 // ============================================
 // HEALTH CHECK
 // ============================================
@@ -631,6 +632,12 @@ Route::get(
         [FormController::class, 'index']
     );
 
+    Route::patch(
+    'forms/{form}/publish',
+    [FormController::class, 'publish']
+);
+
+
     Route::post(
         'forms',
         [FormController::class, 'store']
@@ -670,6 +677,7 @@ Route::get(
         [FormFieldController::class, 'destroy']
     );
 
+
     // ========================================
     // FORM SUBMISSIONS
     // ========================================
@@ -693,6 +701,7 @@ Route::get(
         'form-submissions/{submission}/forward',
         [FormSubmissionController::class, 'forwardToCard']
     );
+
 
     // ========================================
     // ASSIGNMENT

@@ -26,14 +26,24 @@ class Form extends Model
         'note_content',
         'created_by',
         'is_active',
+        'is_published',
+        'publish_order',
+        'publish_category',
+        'publish_icon',
+        'publish_description',
     ];
 
-    protected $casts = [
-        'show_note' => 'boolean',
-        'is_active' => 'boolean',
-        'due_date' => 'datetime'
-    ];
+protected $casts = [
 
+    'show_note'=>'boolean',
+
+    'is_active'=>'boolean',
+
+    'is_published'=>'boolean',
+
+    'due_date'=>'datetime'
+
+];
     /*
     |--------------------------------------------------------------------------
     | RELATIONS
@@ -56,8 +66,8 @@ class Form extends Model
         return $this->hasMany(FormSubmission::class, 'form_id');
     }
 
-public function workspace()
-{
-    return $this->belongsTo(Workspace::class, 'workspace_id');
-}
+    public function workspace()
+    {
+        return $this->belongsTo(Workspace::class, 'workspace_id');
+    }
 }

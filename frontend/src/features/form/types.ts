@@ -52,6 +52,17 @@ export interface Form {
   // STATUS
   is_active: boolean;
 
+  // PUBLISH
+  is_published: boolean;
+
+  publish_order?: number;
+
+  publish_category?: string;
+
+  publish_icon?: string;
+
+  publish_description?: string;
+
   // RELATION
   created_by?: string;
 

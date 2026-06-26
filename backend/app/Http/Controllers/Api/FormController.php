@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Services\ActivityLogService;
 
+
 class FormController extends Controller
 {
     public function index()
@@ -19,6 +20,25 @@ class FormController extends Controller
 
         return response()->json($forms);
     }
+
+    public function publicShow($slug)
+{
+    $form = Form::with([
+            'fields' => function ($q) {
+                $q->orderBy('order');
+            }
+        ])
+        ->where('slug', $slug)
+        ->where('is_active', true)
+        ->where('is_published', true)
+        ->firstOrFail();
+
+    if ($form->header_image) {
+        $form->header_image = asset('storage/' . $form->header_image);
+    }
+
+    return response()->json($form);
+}
 
     public function store(Request $request)
     {
@@ -128,4 +148,56 @@ class FormController extends Controller
             'message' => 'Form deleted successfully'
         ]);
     }
+
+public function publish(Request $request, Form $form)
+{
+    $request->validate([
+        'is_published' => 'required|boolean',
+        'publish_order' => 'nullable|integer|min:0',
+        'publish_category' => 'nullable|string|max:100',
+        'publish_icon' => 'nullable|string|max:100',
+        'publish_description' => 'nullable|string|max:1000',
+    ]);
+
+    $form->update([
+        'is_published' => $request->is_published,
+        'publish_order' => $request->publish_order ?? 0,
+        'publish_category' => $request->publish_category,
+        'publish_icon' => $request->publish_icon,
+        'publish_description' => $request->publish_description,
+    ]);
+
+    return response()->json([
+        'message' => 'Publish updated',
+        'data' => $form,
+    ]);
+}
+
+public function formCenter()
+{
+    $forms = Form::select([
+            'id',
+            'name',
+            'slug',
+            'header_image',
+            'publish_category',
+            'publish_icon',
+            'publish_description',
+            'publish_order',
+        ])
+        ->where('is_active', true)
+        ->where('is_published', true)
+        ->orderBy('publish_order')
+        ->get()
+        ->map(function ($form) {
+
+            $form->header_image = $form->header_image
+                ? asset('storage/' . $form->header_image)
+                : null;
+
+            return $form;
+        });
+
+    return response()->json($forms);
+}
 }

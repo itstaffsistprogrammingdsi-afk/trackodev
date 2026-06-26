@@ -157,3 +157,18 @@ export async function searchDesigners(
 
   return res.data.data;
 }
+
+export async function publishForm(
+  id: string,
+  payload: {
+    is_published: boolean;
+    publish_order: number;
+    publish_category: string;
+    publish_icon: string;
+    publish_description: string;
+  }
+) {
+  const { data } = await api.patch(`/forms/${id}/publish`, payload);
+
+  return data;
+}

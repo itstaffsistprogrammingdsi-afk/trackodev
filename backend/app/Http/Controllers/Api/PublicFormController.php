@@ -10,38 +10,76 @@ use Illuminate\Support\Facades\Log;
 
 class PublicFormController extends Controller
 {
+
+
+    public function index()
+{
+    $forms = Form::query()
+        ->where('is_active', true)
+        ->where('is_published', true)
+        ->orderBy('publish_order')
+        ->get([
+            'id',
+            'name',
+            'slug',
+            'header_image',
+            'publish_category',
+            'publish_icon',
+            'publish_description',
+            'publish_order',
+        ])
+        ->map(function ($form) {
+
+            $form->header_image = $form->header_image
+                ? asset('storage/'.$form->header_image)
+                : null;
+
+            return $form;
+        });
+
+    return response()->json($forms);
+}
     // =========================
     // SHOW PUBLIC FORM
     // =========================
-    public function show($slug)
-    {
-        try {
-            $form = Form::with('fields')
-                ->where('slug', $slug)
-                ->where('is_active', true)
-                ->first();
+public function show($slug)
+{
+    try {
 
-            if (!$form) {
-                return response()->json([
-                    'message' => 'Form not found',
-                    'slug' => $slug
-                ], 404);
-            }
+        $form = Form::with([
+                'fields' => function ($q) {
+                    $q->orderBy('order');
+                }
+            ])
+            ->where('slug', $slug)
+            ->where('is_active', true)
+            ->where('is_published', true)
+            ->first();
 
-            return response()->json($form);
-
-        } catch (\Throwable $e) {
-
-            Log::error('Public form show error', [
-                'slug' => $slug,
-                'error' => $e->getMessage()
-            ]);
-
+        if (!$form) {
             return response()->json([
-                'message' => 'Server error'
-            ], 500);
+                'message' => 'Form not found'
+            ], 404);
         }
+
+        $form->header_image = $form->header_image
+            ? asset('storage/'.$form->header_image)
+            : null;
+
+        return response()->json($form);
+
+    } catch (\Throwable $e) {
+
+        Log::error('Public form show error', [
+            'slug' => $slug,
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'message' => 'Server error'
+        ], 500);
     }
+}
 
     // =========================
     // SUBMIT PUBLIC FORM
@@ -49,10 +87,11 @@ class PublicFormController extends Controller
     public function submit(Request $request, $slug)
     {
         try {
-            $form = Form::with('fields')
-                ->where('slug', $slug)
-                ->where('is_active', true)
-                ->first();
+$form = Form::with('fields')
+    ->where('slug', $slug)
+    ->where('is_active', true)
+    ->where('is_published', true)
+    ->first();
 
             if (!$form) {
                 return response()->json([
@@ -120,4 +159,32 @@ class PublicFormController extends Controller
             ], 500);
         }
     }
+
+//     public function formCenter()
+// {
+//     $forms = Form::select([
+//             'id',
+//             'name',
+//             'slug',
+//             'header_image',
+//             'publish_category',
+//             'publish_icon',
+//             'publish_description',
+//             'publish_order',
+//         ])
+//         ->where('is_active', true)
+//         ->where('is_published', true)
+//         ->orderBy('publish_order')
+//         ->get()
+//         ->map(function ($form) {
+
+//             $form->header_image = $form->header_image
+//                 ? asset('storage/' . $form->header_image)
+//                 : null;
+
+//             return $form;
+//         });
+
+//     return response()->json($forms);
+// }
 }
