@@ -1,4 +1,9 @@
-import { Link } from "react-router-dom";
+import {
+  Infinity as InfinityIcon,
+  ShieldCheck,
+  Workflow,
+  Users,
+} from "lucide-react";
 
 export default function Hero() {
   return (
@@ -11,22 +16,6 @@ export default function Hero() {
       <div className="mx-auto flex min-h-[90vh] max-w-7xl flex-col items-center justify-between gap-16 px-6 py-20 lg:flex-row">
         {/* LEFT */}
         <div className="max-w-xl animate-fade-up">
-
-          <h1 className="text-5xl font-black leading-tight text-gray-900 lg:text-7xl">
-            One Platform.
-            <br />
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Endless Possibilities.
-            </span>
-          </h1>
-
-          {/* <p className="mt-8 text-lg leading-8 text-gray-600">
-            TrackoDev membantu perusahaan mengelola pekerjaan,
-            form digital, campaign, report, approval, dan
-            kolaborasi tim dalam satu platform yang cepat,
-            modern, dan mudah digunakan.
-          </p> */}
-
 
           {/* Feature */}
           <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -43,9 +32,7 @@ export default function Hero() {
             <div className="rounded-xl bg-white p-4 shadow-md transition hover:-translate-y-1 hover:shadow-xl">
               <div className="mb-2 text-3xl">🔒</div>
 
-              <h4 className="font-semibold">
-                Secure Platform
-              </h4>
+              <h4 className="font-semibold">Secure Platform</h4>
 
               <p className="mt-2 text-sm text-gray-500">
                 Hak akses berdasarkan role.
@@ -55,9 +42,7 @@ export default function Hero() {
             <div className="rounded-xl bg-white p-4 shadow-md transition hover:-translate-y-1 hover:shadow-xl">
               <div className="mb-2 text-3xl">👥</div>
 
-              <h4 className="font-semibold">
-                Team Collaboration
-              </h4>
+              <h4 className="font-semibold">Team Collaboration</h4>
 
               <p className="mt-2 text-sm text-gray-500">
                 Kolaborasi tanpa hambatan.
@@ -72,44 +57,35 @@ export default function Hero() {
           <div className="rounded-3xl border border-white/50 bg-white/90 p-6 shadow-2xl backdrop-blur">
             {/* Top */}
             <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold">
-                  TrackoDev Dashboard
-                </h3>
-
-                <p className="text-sm text-gray-500">
-                  Workflow Monitoring
-                </p>
-              </div>
-
               <div className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-600">
                 Online
               </div>
             </div>
 
             {/* Stats */}
+
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatCard
-                title="Requests"
-                value="1,248"
+              <FeatureCard
+                icon={<Workflow size={30} />}
+                title="Workflow"
                 color="text-blue-600"
               />
 
-              <StatCard
-                title="In Progress"
-                value="320"
-                color="text-orange-500"
-              />
-
-              <StatCard
-                title="Completed"
-                value="928"
+              <FeatureCard
+                icon={<ShieldCheck size={30} />}
+                title="Secure"
                 color="text-green-600"
               />
 
-              <StatCard
-                title="Response"
-                value="2.4h"
+              <FeatureCard
+                icon={<Users size={30} />}
+                title="Collaboration"
+                color="text-orange-500"
+              />
+
+              <FeatureCard
+                icon={<InfinityIcon size={30} />}
+                title="Unlimited"
                 color="text-indigo-600"
               />
             </div>
@@ -117,44 +93,28 @@ export default function Hero() {
             {/* Fake Chart */}
             <div className="mt-8 rounded-2xl bg-gray-50 p-6">
               <div className="mb-5 flex justify-between">
-                <h4 className="font-semibold">
-                  Productivity
-                </h4>
+                <h4 className="font-semibold">Productivity</h4>
 
-                <span className="text-sm text-gray-400">
-                  This Week
-                </span>
+                <span className="text-sm text-gray-400">This Week</span>
               </div>
 
               <div className="flex h-40 items-end gap-3">
-                {[40, 60, 35, 90, 55, 120, 95].map(
-                  (height, index) => (
-                    <div
-                      key={index}
-                      className="flex-1 rounded-t-xl bg-gradient-to-t from-blue-600 to-cyan-400 transition duration-500 hover:scale-105"
-                      style={{
-                        height: `${height}px`,
-                      }}
-                    />
-                  )
-                )}
+                {[40, 60, 35, 90, 55, 120, 95].map((height, index) => (
+                  <div
+                    key={index}
+                    className="flex-1 rounded-t-xl bg-gradient-to-t from-blue-600 to-cyan-400 transition duration-500 hover:scale-105"
+                    style={{
+                      height: `${height}px`,
+                    }}
+                  />
+                ))}
               </div>
             </div>
           </div>
 
           {/* Floating Cards */}
-          <div className="absolute -left-10 top-10 animate-bounce rounded-2xl bg-white p-4 shadow-xl">
+          <div className="absolute -right-10 top-10 animate-bounce rounded-2xl bg-white p-4 shadow-xl">
             ⚡ Fast
-          </div>
-
-          <div
-            className="absolute -right-8 bottom-12 rounded-2xl bg-white p-4 shadow-xl"
-            style={{
-              animation:
-                "float 5s ease-in-out infinite",
-            }}
-          >
-            ✅ Approved
           </div>
 
           <div className="absolute right-24 -top-8 h-16 w-16 animate-pulse rounded-full bg-blue-500/20"></div>
@@ -164,26 +124,22 @@ export default function Hero() {
   );
 }
 
-type StatCardProps = {
+type FeatureCardProps = {
+  icon: React.ReactNode;
   title: string;
-  value: string;
   color: string;
 };
 
-function StatCard({
-  title,
-  value,
-  color,
-}: StatCardProps) {
+function FeatureCard({ icon, title, color }: FeatureCardProps) {
   return (
-    <div className="rounded-2xl bg-gray-50 p-5 transition hover:-translate-y-1 hover:bg-white hover:shadow-lg">
-      <p className="text-sm text-gray-500">
-        {title}
-      </p>
+    <div className="group rounded-2xl bg-gray-50 p-5 transition duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-xl">
+      <div
+        className={`mb-4 inline-flex rounded-xl bg-white p-3 shadow ${color}`}
+      >
+        {icon}
+      </div>
 
-      <h3 className={`mt-2 text-3xl font-bold ${color}`}>
-        {value}
-      </h3>
+      <h3 className="font-semibold text-gray-800">{title}</h3>
     </div>
   );
 }
