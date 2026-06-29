@@ -81,7 +81,6 @@ return (
         }
       >
         {/* Dashboard */}
-        <Route index element={<Home />} />
         <Route path="/dashboard" element={<Home />} />
         <Route path="/my-work" element={<MyWorkPage />} />
 
