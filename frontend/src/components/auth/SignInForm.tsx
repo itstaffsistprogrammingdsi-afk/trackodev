@@ -62,7 +62,7 @@ export default function SignInForm() {
 
       // REDIRECT
 
-      window.location.href = "/";
+      window.location.href = "/dashboard";
 
     } catch (err: unknown) {
       console.error(
