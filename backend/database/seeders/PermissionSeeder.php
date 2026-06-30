@@ -30,6 +30,7 @@ class PermissionSeeder extends Seeder
             'user.create',
             'user.update',
             'user.delete',
+            'user.bypass',
 
             // DIVISION
             'division.view',
@@ -112,6 +113,7 @@ class PermissionSeeder extends Seeder
             'user.create',
             'user.update',
             'user.delete',
+            'user.bypass',
 
             //DIVISION
             'division.view',

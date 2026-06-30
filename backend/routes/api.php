@@ -43,23 +43,6 @@ Route::post(
     [PublicFormController::class, 'submit']
 );
 
-Route::get('/mail-card-test', function () {
-
-    $card = Card::first();
-
-    $assignedUser = User::first();
-
-    Mail::to($assignedUser->email)
-        ->send(
-            new CardAssignedMail(
-                $card,
-                $assignedUser,
-                $assignedUser
-            )
-        );
-
-    return 'Email terkirim';
-});
 
 // ============================================
 // HEALTH CHECK
@@ -151,6 +134,10 @@ Route::middleware([
         [UserController::class, 'stats']
     )->middleware('permission:user.view');
 
+    Route::post(
+    '/auth/bypass/{user}',
+    [AuthController::class, 'bypass']
+)->middleware('permission:user.bypass');
     // ========================================
     // DIVISIONS
     // ========================================
@@ -723,26 +710,45 @@ Route::get(
 
 Route::prefix('reports')->group(function () {
 
+    /*
+    |--------------------------------------------------------------------------
+    | SUMMARY REPORT
+    |--------------------------------------------------------------------------
+    */
     Route::get(
-            '/',
-            [ReportController::class, 'index']
-        );
+        '/',
+        [ReportController::class, 'index']
+    );
 
-        Route::post(
-            '/pdf',
-            [ReportController::class, 'pdf']
-        );
+    /*
+    |--------------------------------------------------------------------------
+    | DETAIL REPORT
+    |--------------------------------------------------------------------------
+    */
+    Route::get(
+        '/detail',
+        [ReportController::class, 'detail']
+    );
 
-        Route::post(
-            '/excel',
-            [ReportController::class, 'excel']
-        );
+    /*
+    |--------------------------------------------------------------------------
+    | EXPORT PDF
+    |--------------------------------------------------------------------------
+    */
+    Route::post(
+        '/pdf',
+        [ReportController::class, 'pdf']
+    );
 
-        Route::get(
-    '/detail',
-    [ReportController::class, 'detail']
-);
-
+    /*
+    |--------------------------------------------------------------------------
+    | EXPORT EXCEL
+    |--------------------------------------------------------------------------
+    */
+    Route::post(
+        '/excel',
+        [ReportController::class, 'excel']
+    );
 });
 });
 

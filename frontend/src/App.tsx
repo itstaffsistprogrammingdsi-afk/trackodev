@@ -52,6 +52,8 @@ import MyWorkPage from "@/features/my-work/pages/MyWorkPage";
 
 import PermissionRoute from "./components/auth/PermissionRoute";
 
+import LandingPage from "@/features/landing/pages/LandingPage";
+
 export default function App() {
 return (
   <Router>
@@ -59,6 +61,9 @@ return (
 
     <Routes>
       {/* ================= PUBLIC ================= */}
+
+      <Route path="/" element={<LandingPage />} />
+
       <Route
         path="/public/forms/:slug"
         element={<PublicFormPage />}
@@ -76,8 +81,7 @@ return (
         }
       >
         {/* Dashboard */}
-        <Route index element={<Home />} />
-        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Home />} />
         <Route path="/my-work" element={<MyWorkPage />} />
 
         {/* Task Management */}
@@ -159,11 +163,7 @@ return (
         {/* ================= REPORT ================= */}
 <Route
   path="/reports"
-  element={
-    <PermissionRoute permission="report.view">
-      <ReportPage />
-    </PermissionRoute>
-  }
+  element={<ReportPage />}
 />
 
         {/* Utilities */}

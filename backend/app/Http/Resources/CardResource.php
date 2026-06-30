@@ -15,21 +15,20 @@ class CardResource extends JsonResource
             'title'    => $this->title,
             'completed_at' => $this->completed_at?->toDateTimeString(),
             'is_completed' => $this->completed_at !== null,
-            
+
 
             /*
             |------------------------------------------------
             | BRANDS
             |------------------------------------------------
             */
-            'brands' => $this->relationLoaded
-            ('brands')
-                ? $this->brands->map(fn ($brand) => [
+            'brands' => $this->whenLoaded('brands', function () {
+                return $this->brands->map(fn($brand) => [
                     'id'    => $brand->id,
                     'name'  => $brand->name,
                     'color' => $brand->color,
-                ])->values()
-                : [],
+                ])->values();
+            }),
 
             'description' => $this->description,
             'priority'    => $this->priority,
@@ -77,13 +76,13 @@ class CardResource extends JsonResource
             | LABELS
             |------------------------------------------------
             */
-            'labels' => $this->relationLoaded('labels')
-                ? $this->labels->map(fn ($l) => [
+            'labels' => $this->whenLoaded('labels', function () {
+                return $this->labels->map(fn($l) => [
                     'id'    => $l->id,
                     'name'  => $l->name,
                     'color' => $l->color,
-                ])->values()
-                : [],
+                ])->values();
+            }),
 
             /*
             |------------------------------------------------
@@ -92,10 +91,12 @@ class CardResource extends JsonResource
             */
             'created_at' => $this->created_at?->toDateTimeString(),
 
-            'brief_attachments' => $this->whenLoaded( 'briefAttachments',fn () => $this->briefAttachments
+            'brief_attachments' => $this->whenLoaded(
+                'briefAttachments',
+                fn() => $this->briefAttachments
 
 
-    ),
+            ),
         ];
     }
 }

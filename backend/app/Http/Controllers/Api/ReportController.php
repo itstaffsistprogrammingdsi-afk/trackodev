@@ -22,10 +22,15 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         $data = $this->reportService->generate(
-            $request->start_date,
-            $request->end_date,
-            $request->user_ids,
-            $request->division_ids
+    $request->start_date,
+    $request->end_date,
+    $request->user_ids,
+    $request->division_ids,
+    $request->workspace_ids,
+    $request->campaign_ids,
+    $request->brand_ids,
+    $request->label_ids,
+    $request->search
         );
 
         return response()->json([
@@ -42,7 +47,10 @@ class ReportController extends Controller
             $request->start_date,
             $request->end_date,
             $request->user_ids,
-            $request->division_ids
+            $request->division_ids,
+            $request->brand_ids,
+            $request->label_ids,
+            $request->search
         );
 
         return $this->pdfService->generate(
@@ -58,11 +66,16 @@ class ReportController extends Controller
     public function excel(Request $request)
     {
         $data = $this->reportService->generate(
-            $request->start_date,
-            $request->end_date,
-            $request->user_ids,
-            $request->division_ids
-        );
+    $request->start_date,
+    $request->end_date,
+    $request->user_ids,
+    $request->division_ids,
+    $request->workspace_ids,
+    $request->campaign_ids,
+    $request->brand_ids,
+    $request->label_ids,
+    $request->search
+);
 
         return Excel::download(
             new ReportExport($data),
@@ -73,17 +86,46 @@ class ReportController extends Controller
     /**
      * DETAIL REPORT (FOR PDF & EXCEL DETAIL SHEET)
      */
-    public function detail(Request $request)
-    {
-        $data = $this->reportService->generateDetail(
-            $request->start_date,
-            $request->end_date,
-            $request->user_ids,
-            $request->division_ids
-        );
+public function detail(Request $request)
+{
+    $userIds = $request->filled('user_ids')
+        ? explode(',', $request->user_ids)
+        : null;
 
-        return response()->json([
-            'data' => $data
-        ]);
-    }
+    $divisionIds = $request->filled('division_ids')
+        ? explode(',', $request->division_ids)
+        : null;
+
+    $workspaceIds = $request->filled('workspace_ids')
+        ? explode(',', $request->workspace_ids)
+        : null;
+
+    $campaignIds = $request->filled('campaign_ids')
+        ? explode(',', $request->campaign_ids)
+        : null;
+
+    $brandIds = $request->filled('brand_ids')
+        ? explode(',', $request->brand_ids)
+        : null;
+
+    $labelIds = $request->filled('label_ids')
+        ? explode(',', $request->label_ids)
+        : null;
+
+    $data = $this->reportService->generateDetail(
+        $request->start_date,
+        $request->end_date,
+        $userIds,
+        $divisionIds,
+        $workspaceIds,
+        $campaignIds,
+        $brandIds,
+        $labelIds,
+        $request->search
+    );
+
+    return response()->json([
+        'data' => $data,
+    ]);
+}
 }
