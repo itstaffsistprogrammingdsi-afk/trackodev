@@ -54,7 +54,6 @@ import PermissionRoute from "./components/auth/PermissionRoute";
 
 import LandingPage from "@/features/landing/pages/LandingPage";
 
-import FluxerChatWidget from "./components/FluxerChatWidget";
 
 export default function App() {
   return (
@@ -205,7 +204,6 @@ export default function App() {
       {/* WIDGET CHAT GLOBAL 
           Diletakkan di luar <Routes> agar tidak ikut unmount ketika ganti halaman 
       */}
-      <FluxerChatWidget />
     </Router>
   );
 }
