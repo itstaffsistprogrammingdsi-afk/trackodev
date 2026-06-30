@@ -23,15 +23,20 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Api\MyActivityController;
-use App\Mail\CardAssignedMail;
-use App\Models\Card;
-use App\Models\User;
+// use App\Mail\CardAssignedMail;
+// use App\Models\Card;
+// use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
 // PUBLIC FORMS
 // ============================================
+
+Route::get(
+    '/public/forms',
+    [PublicFormController::class, 'index'] // Buat method 'index' di controller untuk return form yang aktif
+);
 
 Route::get(
     '/public/forms/{slug}',

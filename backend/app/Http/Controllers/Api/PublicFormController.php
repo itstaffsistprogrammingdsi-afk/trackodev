@@ -10,6 +10,31 @@ use Illuminate\Support\Facades\Log;
 
 class PublicFormController extends Controller
 {
+
+// =========================
+    // LIST PUBLIC FORMS
+    // =========================
+    public function index()
+    {
+        try {
+            // Mengambil form yang aktif saja untuk kebutuhan publik
+            $forms = Form::where('is_active', true)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json($forms);
+
+        } catch (\Throwable $e) {
+            Log::error('Public form index error', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Server error'
+            ], 500);
+        }
+    }
+    
     // =========================
     // SHOW PUBLIC FORM
     // =========================

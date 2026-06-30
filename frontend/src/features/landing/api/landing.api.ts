@@ -3,7 +3,7 @@ import { FormItem } from '../types';
 
 // Fungsi sebelumnya (get all forms)
 export const getAvailableForms = async (): Promise<FormItem[]> => {
-  const response = await api.get('/forms');
+  const response = await api.get('/public/forms'); // <-- Sesuaikan dengan url rute publik di backend kamu
   return response.data;
 };
 
