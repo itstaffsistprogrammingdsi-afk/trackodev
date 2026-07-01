@@ -1,14 +1,10 @@
 import React from "react";
-
 import { Navigate } from "react-router-dom";
-
 import { useAuth } from "@/context/AuthContext";
 
 interface Props {
   children: React.ReactNode;
-
   permission?: string;
-
   role?: string;
 }
 
@@ -17,7 +13,17 @@ export default function PermissionRoute({
   permission,
   role,
 }: Props) {
-  const { user, can, hasRole } = useAuth();
+  const {
+    user,
+    loading,
+    can,
+    hasRole,
+  } = useAuth();
+
+  // tunggu proses getMe selesai
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   // belum login
   if (!user) {
@@ -30,10 +36,7 @@ export default function PermissionRoute({
   }
 
   // cek role
-  if (
-    role &&
-    !hasRole(role)
-  ) {
+  if (role && !hasRole(role)) {
     return (
       <Navigate
         to="/"
