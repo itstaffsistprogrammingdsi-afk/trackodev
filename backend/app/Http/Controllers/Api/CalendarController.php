@@ -8,6 +8,8 @@ use App\Models\Card;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+
 
 class CalendarController extends Controller
 {
@@ -22,30 +24,15 @@ class CalendarController extends Controller
 
         $user = $request->user();
 
-        $month = $request->input(
-            'month',
-            now()->format('Y-m')
-        );
+        // Menggunakan Carbon untuk fallback tanggal yang lebih aman
+        $monthParam = $request->input('month', now()->format('Y-m'));
+        $date = Carbon::createFromFormat('Y-m', $monthParam)->startOfMonth();
 
-        [$year, $monthNumber] = explode('-', $month);
-
-        $query = Card::query()
-            ->select([
-                'id',
-                'board_id',
-                'campaign_id',
-                'title',
-                'status',
-                'due_date',
-            ])
-            ->with([
-                'campaign:id,name',
-                'board:id,name',
-                'assignees:id,name,avatar',
-            ])
+        // Menggunakan base query agar tidak duplikasi code
+        $query = $this->getBaseCardQuery()
             ->whereNotNull('due_date')
-            ->whereYear('due_date', $year)
-            ->whereMonth('due_date', $monthNumber);
+            ->whereYear('due_date', $date->year)
+            ->whereMonth('due_date', $date->month);
 
         $this->applyPermission($query, $user);
 
@@ -54,36 +41,26 @@ class CalendarController extends Controller
             ->orderBy('title')
             ->get();
 
-        $calendar = $cards
-            ->groupBy(fn (Card $card) => $card->due_date->format('Y-m-d'))
-            ->map(function ($dayCards) use ($request) {
-
-                return [
-
-                    'total' => $dayCards->count(),
-
-                    'tasks' => CalendarResource::collection(
-                        $dayCards->take(3)
-                    )->resolve($request),
-
-                ];
-
-            });
+        // Grouping data berbasis tanggal (format Y-m-d)
+$calendar = $cards
+    ->groupBy(function ($card) {
+        // Memastikan output murni tanggal tanpa embel-embel jam/menit/detik
+        return \Illuminate\Support\Carbon::parse($card->due_date)->format('Y-m-d');
+    })
+    ->map(function ($dayCards) use ($request) {
+        return [
+            'total' => $dayCards->count(),
+            'tasks' => CalendarResource::collection($dayCards->take(3))->resolve($request),
+        ];
+    });
 
         return response()->json([
-
-            'month' => $month,
-
+            'month'   => $monthParam,
             'summary' => [
-
                 'total_tasks' => $cards->count(),
-
                 'active_days' => $calendar->count(),
-
             ],
-
-            'days' => $calendar,
-
+            'days'    => $calendar,
         ]);
     }
 
@@ -92,17 +69,32 @@ class CalendarController extends Controller
      */
     public function show(Request $request, string $date): JsonResponse
     {
-        $request->merge([
-            'date' => $date,
-        ]);
-
+        $request->merge(['date' => $date]);
         $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
         ]);
 
         $user = $request->user();
 
-        $query = Card::query()
+        $query = $this->getBaseCardQuery()->whereDate('due_date', $date);
+
+        $this->applyPermission($query, $user);
+
+        $cards = $query->orderBy('title')->get();
+
+        return response()->json([
+            'date'  => $date,
+            'total' => $cards->count(),
+            'tasks' => CalendarResource::collection($cards)->resolve($request),
+        ]);
+    }
+
+    /**
+     * Base Query Builder untuk menghindari duplikasi select & dengan relasi
+     */
+    private function getBaseCardQuery(): Builder
+    {
+        return Card::query()
             ->select([
                 'id',
                 'board_id',
@@ -110,87 +102,40 @@ class CalendarController extends Controller
                 'title',
                 'status',
                 'due_date',
+                'created_at',
             ])
             ->with([
                 'campaign:id,name',
                 'board:id,name',
                 'assignees:id,name,avatar',
-            ])
-            ->whereDate('due_date', $date);
-
-        $this->applyPermission($query, $user);
-
-        $cards = $query
-            ->orderBy('title')
-            ->get();
-
-        return response()->json([
-
-            'date' => $date,
-
-            'total' => $cards->count(),
-
-            'tasks' => CalendarResource::collection(
-                $cards
-            )->resolve($request),
-
-        ]);
+            ]);
     }
 
     /**
      * Apply Access Control
      */
-    private function applyPermission(
-        $query,
-        $user
-    ): void {
-
-        /**
-         * SUPER ADMIN
-         */
+    private function applyPermission(Builder $query, $user): void
+    {
         if ($user->isSuperAdmin()) {
             return;
         }
 
-        /**
-         * ADMIN
-         */
+        $divisionIds = $user->divisions()->pluck('divisions.id')->toArray();
+
         if ($user->isAdmin()) {
-
-            $divisionIds = $user->divisions()
-                ->pluck('divisions.id');
-
-            $query->whereHas(
-                'campaign.workspace',
-                function (Builder $q) use ($divisionIds) {
-
-                    $q->whereIn(
-                        'division_id',
-                        $divisionIds
-                    );
-
-                }
-            );
-
+            $query->whereHas('campaign.workspace', function (Builder $q) use ($divisionIds) {
+                $q->whereIn('division_id', $divisionIds);
+            });
             return;
         }
 
-        /**
-         * USER
-         */
-        $divisionIds = $user->divisions()
-            ->pluck('divisions.id');
-
-        $query->whereHas(
-            'assignees.divisions',
-            function (Builder $q) use ($divisionIds) {
-
-                $q->whereIn(
-                    'divisions.id',
-                    $divisionIds
-                );
-
-            }
-        );
+        // Untuk User Biasa
+        $query->whereHas('assignees.divisions', function (Builder $q) use ($divisionIds) {
+            $q->whereIn('divisions.id', $divisionIds);
+        });
     }
+
+
+
+
 }

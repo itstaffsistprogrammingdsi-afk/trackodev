@@ -32,12 +32,23 @@ class CalendarResource extends JsonResource
                     ->format('Y-m-d H:i')
                 : null,
 
+            'created_at' => $this->created_at
+                ? $this->created_at
+                    ->timezone(config('app.timezone'))
+                    ->format('Y-m-d H:i')
+                : null,
+
             /*
             |--------------------------------------------------------------------------
             | CAMPAIGN
             |--------------------------------------------------------------------------
             */
-
+// 🔥 PASTIKAN BAGIAN INI ADA AGAR NAMA CAMPAIGN KELUAR KE FRONTEND
+            'campaign' => $this->relationLoaded('campaign') && $this->campaign ? [
+                'id' => $this->campaign->id,
+                'name' => $this->campaign->name,
+            ] : null,
+            
             'campaign' => $this->whenLoaded('campaign', function () {
 
                 if (!$this->campaign) {
