@@ -691,6 +691,13 @@ const AppSidebar: React.FC =
   ],
 },
 
+          {
+            name: "Calendar",
+            icon:
+              <ListIcon />,
+            path: "/calendar",
+          },
+
           ...(can("form.view")
   ? [{
       name: "Forms",

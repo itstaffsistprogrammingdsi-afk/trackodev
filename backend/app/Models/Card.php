@@ -65,6 +65,7 @@ class Card extends Model
 
         'due_date'                  => 'datetime',
         'completed_at'              => 'datetime',
+        'created_at'                => 'datetime',
 
         'due_reminder_last_sent_at' => 'datetime',
         'due_reminder_lock_until'   => 'datetime',

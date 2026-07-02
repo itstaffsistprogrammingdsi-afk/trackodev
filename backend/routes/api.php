@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\MyActivityController;
 // use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\CalendarController;
 
 // ============================================
 // PUBLIC FORMS
@@ -602,6 +603,14 @@ Route::get(
         'chat/rooms/{chatRoom}/read',
         [ChatController::class, 'markRead']
     );
+
+    Route::get('/calendar', [CalendarController::class, 'index']);
+
+    Route::get('/calendar/{date}', [CalendarController::class, 'show']);
+
+
+
+
 
     // ========================================
     // NOTIFICATIONS
