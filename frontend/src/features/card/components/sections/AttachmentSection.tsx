@@ -54,12 +54,15 @@ export default function AttachmentSection({
   const [uploading, setUploading] = useState(false);
 
   const [linkUrl, setLinkUrl] = useState("");
+  const [quantity, setQuantity] = useState(0);
+  const [resultDescription, setResultDescription] = useState("");
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
   // PREVIEW MODAL
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const [previewFile, setPreviewFile] = useState<Attachment | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // =========================================
   // FETCH
@@ -104,29 +107,27 @@ export default function AttachmentSection({
     return `${import.meta.env.VITE_API_URL}/storage/${path}`;
   };
 
-const isImage = (fileName?: string, fileType?: string) => {
-  const value = (fileType || fileName || "").toLowerCase();
+  const isImage = (fileName?: string, fileType?: string) => {
+    const value = (fileType || fileName || "").toLowerCase();
 
-  return (
-    value.startsWith("image/") ||
-    value.endsWith(".jpg") ||
-    value.endsWith(".jpeg") ||
-    value.endsWith(".png") ||
-    value.endsWith(".gif") ||
-    value.endsWith(".webp") ||
-    ["jpg", "jpeg", "png", "gif", "webp"].includes(value)
-  );
-};
+    return (
+      value.startsWith("image/") ||
+      value.endsWith(".jpg") ||
+      value.endsWith(".jpeg") ||
+      value.endsWith(".png") ||
+      value.endsWith(".gif") ||
+      value.endsWith(".webp") ||
+      ["jpg", "jpeg", "png", "gif", "webp"].includes(value)
+    );
+  };
 
-const isPdf = (fileName?: string, fileType?: string) => {
-  const value = (fileType || fileName || "").toLowerCase();
+  const isPdf = (fileName?: string, fileType?: string) => {
+    const value = (fileType || fileName || "").toLowerCase();
 
-  return (
-    value === "pdf" ||
-    value === "application/pdf" ||
-    value.endsWith(".pdf")
-  );
-};
+    return (
+      value === "pdf" || value === "application/pdf" || value.endsWith(".pdf")
+    );
+  };
 
   // =========================================
   // OPEN PREVIEW
@@ -173,59 +174,69 @@ const isPdf = (fileName?: string, fileType?: string) => {
   // =========================================
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
-
-    if (!uploadEndpoint) return; // ✅ IMPORTANT GUARD
-
     if (file.size > MAX_FILE_SIZE) {
       alert("Ukuran file maksimal 10MB");
       e.target.value = "";
       return;
     }
-
-    const formData = new FormData();
-
-    formData.append("type", "file");
-    formData.append("file", file);
-
-    try {
-      setUploading(true);
-
-      await api.post(uploadEndpoint, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      await fetchAttachments?.(); // ✅ optional safe call
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
+    setSelectedFile(file);
   };
 
   // =========================================
   // ADD LINK
   // =========================================
-  const handleAddLink = async () => {
-    if (!linkUrl.trim()) return;
+  const handleSubmit = async () => {
+    if (!uploadEndpoint) return;
 
-    if (!uploadEndpoint) return; // ✅ IMPORTANT GUARD
+    if (!quantity || quantity <= 0) {
+      alert("Quantity wajib diisi");
+      return;
+    }
+
+    if (!resultDescription.trim()) {
+      alert("Result Description wajib diisi");
+      return;
+    }
 
     try {
       setUploading(true);
 
-      await api.post(uploadEndpoint, {
-        type: "link",
-        link_url: linkUrl,
-      });
+      // FILE
+      if (selectedFile) {
+        const formData = new FormData();
 
+        formData.append("type", "file");
+        formData.append("file", selectedFile);
+        formData.append("quantity", String(quantity));
+        formData.append("result_description", resultDescription);
+
+        await api.post(uploadEndpoint, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+
+      // LINK
+      else if (linkUrl.trim()) {
+        await api.post(uploadEndpoint, {
+          type: "link",
+          link_url: linkUrl,
+          quantity,
+          result_description: resultDescription,
+        });
+      } else {
+        alert("Pilih file atau isi link");
+        return;
+      }
+
+      setSelectedFile(null);
       setLinkUrl("");
+      setQuantity(0);
+      setResultDescription("");
 
-      await fetchAttachments?.(); // ✅ safe call
+      await fetchAttachments();
     } catch (err) {
       console.error(err);
     } finally {
@@ -345,39 +356,60 @@ const isPdf = (fileName?: string, fileType?: string) => {
             "
                   />
                 </div>
-
-                <button
-                  onClick={handleAddLink}
-                  disabled={uploading || !linkUrl.trim()}
-                  className="
-            flex
-            h-11
-            min-w-[100px]
-            items-center
-            justify-center
-            rounded-xl
-            bg-blue-600
-            px-4
-            text-sm
-            font-medium
-            text-white
-            transition
-            hover:bg-blue-700
-            disabled:cursor-not-allowed
-            disabled:opacity-50
-          "
-                >
-                  {uploading ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    "Add Link"
-                  )}
-                </button>
               </div>
+
               <p className="text-xs text-red-400">
                 File yang diunggah harus berukuran maksimal 10MB
               </p>
             </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input
+                type="number"
+                min="0"
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                placeholder="Quantity"
+                className="
+      h-11
+      rounded-xl
+      border
+      border-gray-200
+      px-4
+      text-sm
+      focus:outline-none
+      focus:ring-2
+      focus:ring-blue-500
+    "
+              />
+
+              <input
+                type="text"
+                value={resultDescription}
+                onChange={(e) => setResultDescription(e.target.value)}
+                placeholder="Result Description"
+                className="
+      h-11
+      rounded-xl
+      border
+      border-gray-200
+      px-4
+      text-sm
+      focus:outline-none
+      focus:ring-2
+      focus:ring-blue-500
+    "
+              />
+            </div>
+            {selectedFile && (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={uploading}
+                className="h-11 px-4 rounded-xl bg-green-600 text-white text-sm"
+              >
+                {uploading ? "Uploading..." : "Submit Upload"}
+              </button>
+            )}
           </div>
         )}
 
@@ -441,7 +473,6 @@ const isPdf = (fileName?: string, fileType?: string) => {
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           />
                         )}
-                        
 
                       {/* PDF */}
                       {item.attachment_type === "file" &&
@@ -534,6 +565,20 @@ const isPdf = (fileName?: string, fileType?: string) => {
                         >
                           {item.attachment_type}
                         </span>
+                        {item.quantity !== undefined && (
+                          <div className="mt-2 text-xs text-gray-600">
+                            Quantity:{" "}
+                            <span className="font-semibold">
+                              {item.quantity}
+                            </span>
+                          </div>
+                        )}
+
+                        {item.result_description && (
+                          <div className="mt-1 text-sm text-gray-700">
+                            {item.result_description}
+                          </div>
+                        )}
                       </div>
                     </div>
 

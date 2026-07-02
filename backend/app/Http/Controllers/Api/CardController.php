@@ -228,19 +228,19 @@ class CardController extends Controller
                     );
 
                     // Simpan notifikasi
-            Notification::create([
-                'user_id' => $assignee->id,
-                'type'    => 'task_assigned',
-                'title'   => 'Task Assigned',
-                'body'    => "Task '{$card->title}' telah diassign kepada Anda",
-                'data'    => [
-                    'card_id'     => $card->id,
-                    'board_id'    => $board->id,
-                    'campaign_id' => $board->campaign?->id,
-                    'assigned_by' => $user->id,
-                ],
-                'is_read' => false,
-            ]);
+                    Notification::create([
+                        'user_id' => $assignee->id,
+                        'type'    => 'task_assigned',
+                        'title'   => 'Task Assigned',
+                        'body'    => "Task '{$card->title}' telah diassign kepada Anda",
+                        'data'    => [
+                            'card_id'     => $card->id,
+                            'board_id'    => $board->id,
+                            'campaign_id' => $board->campaign?->id,
+                            'assigned_by' => $user->id,
+                        ],
+                        'is_read' => false,
+                    ]);
                 } catch (\Throwable $e) {
 
                     \Log::error('SEND EMAIL AND NOTIFICATION ERROR', [
@@ -248,7 +248,6 @@ class CardController extends Controller
                         'assignee_id' => $assignee->id,
                     ]);
                 }
-                
             }
         }
 
@@ -291,123 +290,123 @@ class CardController extends Controller
         ]);
     }
 
-public function update(Request $request, Card $card): JsonResponse
-{
-    $this->authorizeCard($card);
+    public function update(Request $request, Card $card): JsonResponse
+    {
+        $this->authorizeCard($card);
 
-    $request->validate([
-        'title'       => 'sometimes|string|max:255',
-        'description' => 'nullable|string',
-        'priority'    => 'nullable|in:low,medium,high,urgent',
-        'due_date'    => 'nullable|date',
-    ]);
+        $request->validate([
+            'title'       => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
+            'priority'    => 'nullable|in:low,medium,high,urgent',
+            'due_date'    => 'nullable|date',
+        ]);
 
-    // Simpan nilai lama
-    $oldTitle = $card->title;
-    $oldDescription = $card->description;
-    $oldPriority = $card->priority;
-    $oldDueDate = $card->due_date;
+        // Simpan nilai lama
+        $oldTitle = $card->title;
+        $oldDescription = $card->description;
+        $oldPriority = $card->priority;
+        $oldDueDate = $card->due_date;
 
-    $data = $request->only([
-        'title',
-        'description',
-        'priority',
-        'due_date',
-    ]);
+        $data = $request->only([
+            'title',
+            'description',
+            'priority',
+            'due_date',
+        ]);
 
-    $card->update($data);
+        $card->update($data);
 
-    if (
-        $request->filled('due_date') &&
-        $oldDueDate?->format('Y-m-d H:i:s')
+        if (
+            $request->filled('due_date') &&
+            $oldDueDate?->format('Y-m-d H:i:s')
             !== $card->due_date?->format('Y-m-d H:i:s')
-    ) {
-        $card->update([
-            'due_reminder_stage' => 'none',
-            'due_reminder_last_sent_at' => null,
-            'due_reminder_lock_until' => null,
+        ) {
+            $card->update([
+                'due_reminder_stage' => 'none',
+                'due_reminder_last_sent_at' => null,
+                'due_reminder_lock_until' => null,
+            ]);
+        }
+
+        $card->load([
+            'creator',
+            'assignees',
+            'tasks.subtasks',
+            'labels',
+            'brands',
+            'board',
+            'attachments',
+            'briefAttachments',
+        ]);
+
+        // Activity detail perubahan title
+        if (
+            $request->has('title') &&
+            $oldTitle !== $card->title
+        ) {
+            ActivityLogService::log(
+                $request->user(),
+                'card',
+                (string) $card->id,
+                'title_updated',
+                "Mengubah judul card dari '{$oldTitle}' menjadi '{$card->title}'",
+                ['card_id' => $card->id]
+            );
+        }
+
+        // Activity detail perubahan description
+        if (
+            $request->has('description') &&
+            $oldDescription !== $card->description
+        ) {
+            ActivityLogService::log(
+                $request->user(),
+                'card',
+                (string) $card->id,
+                'description_updated',
+                "Mengubah deskripsi card",
+                ['card_id' => $card->id]
+            );
+        }
+
+        // Activity detail perubahan priority
+        if (
+            $request->has('priority') &&
+            $oldPriority !== $card->priority
+        ) {
+            ActivityLogService::log(
+                $request->user(),
+                'card',
+                (string) $card->id,
+                'priority_updated',
+                "Mengubah prioritas dari '{$oldPriority}' menjadi '{$card->priority}'",
+                ['card_id' => $card->id]
+            );
+        }
+
+        // Activity detail perubahan due date
+        if (
+            $request->has('due_date') &&
+            $oldDueDate?->format('Y-m-d H:i:s')
+            !== $card->due_date?->format('Y-m-d H:i:s')
+        ) {
+            ActivityLogService::log(
+                $request->user(),
+                'card',
+                (string) $card->id,
+                'due_date_updated',
+                "Mengubah due date menjadi " .
+                    optional($card->due_date)->format('d M Y H:i'),
+                ['card_id' => $card->id]
+            );
+        }
+
+
+        return response()->json([
+            'message' => 'Card berhasil diupdate.',
+            'data'    => new CardResource($card),
         ]);
     }
-
-    $card->load([
-        'creator',
-        'assignees',
-        'tasks.subtasks',
-        'labels',
-        'brands',
-        'board',
-        'attachments',
-        'briefAttachments',
-    ]);
-
-    // Activity detail perubahan title
-    if (
-        $request->has('title') &&
-        $oldTitle !== $card->title
-    ) {
-        ActivityLogService::log(
-            $request->user(),
-            'card',
-            (string) $card->id,
-            'title_updated',
-            "Mengubah judul card dari '{$oldTitle}' menjadi '{$card->title}'",
-            ['card_id' => $card->id]
-        );
-    }
-
-    // Activity detail perubahan description
-    if (
-        $request->has('description') &&
-        $oldDescription !== $card->description
-    ) {
-        ActivityLogService::log(
-            $request->user(),
-            'card',
-            (string) $card->id,
-            'description_updated',
-            "Mengubah deskripsi card",
-            ['card_id' => $card->id]
-        );
-    }
-
-    // Activity detail perubahan priority
-    if (
-        $request->has('priority') &&
-        $oldPriority !== $card->priority
-    ) {
-        ActivityLogService::log(
-            $request->user(),
-            'card',
-            (string) $card->id,
-            'priority_updated',
-            "Mengubah prioritas dari '{$oldPriority}' menjadi '{$card->priority}'",
-            ['card_id' => $card->id]
-        );
-    }
-
-    // Activity detail perubahan due date
-    if (
-        $request->has('due_date') &&
-        $oldDueDate?->format('Y-m-d H:i:s')
-            !== $card->due_date?->format('Y-m-d H:i:s')
-    ) {
-        ActivityLogService::log(
-            $request->user(),
-            'card',
-            (string) $card->id,
-            'due_date_updated',
-            "Mengubah due date menjadi " .
-            optional($card->due_date)->format('d M Y H:i'),
-            ['card_id' => $card->id]
-        );
-    }
-
-
-    return response()->json([
-        'message' => 'Card berhasil diupdate.',
-        'data'    => new CardResource($card),
-    ]);
-}
 
     public function briefAttachments(Card $card): JsonResponse
     {
@@ -476,20 +475,20 @@ public function update(Request $request, Card $card): JsonResponse
         $attachment =
             CardBriefAttachment::create($data);
 
-$attachmentName = $attachment->file_name
-    ?: $attachment->link_url;
+        $attachmentName = $attachment->file_name
+            ?: $attachment->link_url;
 
-ActivityLogService::log(
-    $request->user(),
-    'card_brief_attachment',
-    (string) $attachment->id,
-    'created',
-    "Menambahkan brief attachment '{$attachmentName}' di card '{$card->title}' di board '{$card->board->name}'",
-    [
-        'card_id' => $card->id,
-        'attachment_id' => $attachment->id,
-    ]
-);
+        ActivityLogService::log(
+            $request->user(),
+            'card_brief_attachment',
+            (string) $attachment->id,
+            'created',
+            "Menambahkan brief attachment '{$attachmentName}' di card '{$card->title}' di board '{$card->board->name}'",
+            [
+                'card_id' => $card->id,
+                'attachment_id' => $attachment->id,
+            ]
+        );
 
         return response()->json([
             'message' => 'Brief attachment berhasil ditambahkan.',
@@ -520,20 +519,20 @@ ActivityLogService::log(
 
         $attachment->delete();
 
-$attachmentName = $attachment->file_name
-    ?: $attachment->link_url;
+        $attachmentName = $attachment->file_name
+            ?: $attachment->link_url;
 
-ActivityLogService::log(
-    auth()->user(),
-    'card_brief_attachment',
-    (string) $attachment->id,
-    'deleted',
-    "Menghapus brief attachment '{$attachmentName}' di card '{$card->title}' di board '{$card->board->name}'",
-    [
-        'card_id' => $card->id,
-        'attachment_id' => $attachment->id,
-    ]
-);
+        ActivityLogService::log(
+            auth()->user(),
+            'card_brief_attachment',
+            (string) $attachment->id,
+            'deleted',
+            "Menghapus brief attachment '{$attachmentName}' di card '{$card->title}' di board '{$card->board->name}'",
+            [
+                'card_id' => $card->id,
+                'attachment_id' => $attachment->id,
+            ]
+        );
 
         return response()->json([
             'message' => 'Brief attachment berhasil dihapus.'
@@ -714,249 +713,247 @@ ActivityLogService::log(
     |--------------------------------------------------------------------------
     */
 
-public function assign(Request $request, Card $card): JsonResponse
-{
-    $this->authorizeCard($card);
+    public function assign(Request $request, Card $card): JsonResponse
+    {
+        $this->authorizeCard($card);
 
-    $validated = $request->validate([
-        'user_id' => 'required|uuid|exists:users,id',
-    ]);
-
-    $userId = $validated['user_id'];
-
-    // ========================================
-    // CEK SUDAH ASSIGNED?
-    // ========================================
-
-    $alreadyAssigned = $card->assignees()
-        ->where('users.id', $userId)
-        ->exists();
-
-    if ($alreadyAssigned) {
-
-        $card->load('assignees');
-
-        return response()->json([
-            'message' => 'Member sudah menjadi assignee.',
-            'data'    => $card->assignees,
+        $validated = $request->validate([
+            'user_id' => 'required|uuid|exists:users,id',
         ]);
-    }
 
-    DB::beginTransaction();
-
-    try {
+        $userId = $validated['user_id'];
 
         // ========================================
-        // ASSIGN TO CARD
+        // CEK SUDAH ASSIGNED?
         // ========================================
 
-        $card->assignees()
-            ->syncWithoutDetaching([
-                $userId,
+        $alreadyAssigned = $card->assignees()
+            ->where('users.id', $userId)
+            ->exists();
+
+        if ($alreadyAssigned) {
+
+            $card->load('assignees');
+
+            return response()->json([
+                'message' => 'Member sudah menjadi assignee.',
+                'data'    => $card->assignees,
             ]);
+        }
 
-        // ========================================
-        // AUTO JOIN CAMPAIGN
-        // ========================================
+        DB::beginTransaction();
 
-        $campaign = $card->board->campaign;
+        try {
 
-        if ($campaign) {
+            // ========================================
+            // ASSIGN TO CARD
+            // ========================================
 
-            $campaign->members()
+            $card->assignees()
                 ->syncWithoutDetaching([
                     $userId,
                 ]);
+
+            // ========================================
+            // AUTO JOIN CAMPAIGN
+            // ========================================
+
+            $campaign = $card->board->campaign;
+
+            if ($campaign) {
+
+                $campaign->members()
+                    ->syncWithoutDetaching([
+                        $userId,
+                    ]);
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            \Log::error('CARD ASSIGN ERROR', [
+                'card_id' => $card->id,
+                'user_id' => $userId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Gagal melakukan assignment member.',
+            ], 500);
         }
 
-        DB::commit();
-    } catch (\Throwable $e) {
+        // ========================================
+        // RELOAD
+        // ========================================
 
-        DB::rollBack();
-
-        \Log::error('CARD ASSIGN ERROR', [
-            'card_id' => $card->id,
-            'user_id' => $userId,
-            'message' => $e->getMessage(),
+        $card->load([
+            'assignees',
+            'board.campaign',
         ]);
 
-        return response()->json([
-            'message' => 'Gagal melakukan assignment member.',
-        ], 500);
-    }
+        $assignedUser = User::findOrFail($userId);
 
-    // ========================================
-    // RELOAD
-    // ========================================
+        // ========================================
+        // EMAIL + NOTIFICATION
+        // TIDAK BOLEH MENGGAGALKAN ASSIGNMENT
+        // ========================================
 
-    $card->load([
-        'assignees',
-        'board.campaign',
-    ]);
+        try {
 
-    $assignedUser = User::findOrFail($userId);
+            SendCardAssignedEmailJob::dispatch(
+                $card->id,
+                $assignedUser->id,
+                $request->user()->id
+            );
 
-    // ========================================
-    // EMAIL + NOTIFICATION
-    // TIDAK BOLEH MENGGAGALKAN ASSIGNMENT
-    // ========================================
+            Notification::create([
+                'user_id' => $assignedUser->id,
+                'type'    => 'task_assigned',
+                'title'   => 'Task Assigned',
+                'body'    => "Task '{$card->title}' telah diassign kepada Anda",
+                'data'    => [
+                    'card_id'     => $card->id,
+                    'board_id'    => $card->board_id,
+                    'campaign_id' => $card->board->campaign?->id,
+                    'assigned_by' => $request->user()->id,
+                ],
+                'is_read' => false,
+            ]);
+        } catch (\Throwable $e) {
 
-    try {
+            \Log::error('ASSIGN EMAIL/NOTIFICATION ERROR', [
+                'card_id' => $card->id,
+                'user_id' => $assignedUser->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
-        SendCardAssignedEmailJob::dispatch(
-            $card->id,
-            $assignedUser->id,
-            $request->user()->id
+        // ========================================
+        // ACTIVITY LOG
+        // ========================================
+
+        ActivityLogService::log(
+            $request->user(),
+            'card',
+            (string) $card->id,
+            'assigned',
+            "Menambahkan member '{$assignedUser->name}' ke card '{$card->title}' di board '{$card->board->name}'",
+            [
+                'card_id' => $card->id,
+                'assigned_user_id' => $assignedUser->id,
+            ]
         );
 
-        Notification::create([
-            'user_id' => $assignedUser->id,
-            'type'    => 'task_assigned',
-            'title'   => 'Task Assigned',
-            'body'    => "Task '{$card->title}' telah diassign kepada Anda",
-            'data'    => [
-                'card_id'     => $card->id,
-                'board_id'    => $card->board_id,
-                'campaign_id' => $card->board->campaign?->id,
-                'assigned_by' => $request->user()->id,
-            ],
-            'is_read' => false,
-        ]);
-    } catch (\Throwable $e) {
-
-        \Log::error('ASSIGN EMAIL/NOTIFICATION ERROR', [
-            'card_id' => $card->id,
-            'user_id' => $assignedUser->id,
-            'message' => $e->getMessage(),
-        ]);
-    }
-
-    // ========================================
-    // ACTIVITY LOG
-    // ========================================
-
-    ActivityLogService::log(
-        $request->user(),
-        'card',
-        (string) $card->id,
-        'assigned',
-        "Menambahkan member '{$assignedUser->name}' ke card '{$card->title}' di board '{$card->board->name}'",
-        [
-            'card_id' => $card->id,
-            'assigned_user_id' => $assignedUser->id,
-        ]
-    );
-
-    return response()->json([
-        'message' => 'Member berhasil di-assign.',
-        'data'    => $card->assignees,
-    ]);
-}
-
-public function unassign(
-    Card $card,
-    User $user
-): JsonResponse {
-
-    $this->authorizeCard($card);
-
-    // ========================================
-    // CEK MEMBER MEMANG ASSIGNEE
-    // ========================================
-
-    $isAssigned = $card->assignees()
-        ->where('users.id', $user->id)
-        ->exists();
-
-    if (!$isAssigned) {
-
-        $card->load('assignees');
-
         return response()->json([
-            'message' => 'User bukan assignee pada card ini.',
+            'message' => 'Member berhasil di-assign.',
             'data'    => $card->assignees,
         ]);
     }
 
-    DB::beginTransaction();
+    public function unassign(
+        Card $card,
+        User $user
+    ): JsonResponse {
 
-    try {
+        $this->authorizeCard($card);
 
         // ========================================
-        // REMOVE ASSIGNEE
+        // CEK MEMBER MEMANG ASSIGNEE
         // ========================================
 
-        $card->assignees()
-            ->detach($user->id);
+        $isAssigned = $card->assignees()
+            ->where('users.id', $user->id)
+            ->exists();
 
-        DB::commit();
+        if (!$isAssigned) {
 
-    } catch (\Throwable $e) {
+            $card->load('assignees');
 
-        DB::rollBack();
+            return response()->json([
+                'message' => 'User bukan assignee pada card ini.',
+                'data'    => $card->assignees,
+            ]);
+        }
 
-        \Log::error('CARD UNASSIGN ERROR', [
-            'card_id' => $card->id,
-            'user_id' => $user->id,
-            'message' => $e->getMessage(),
+        DB::beginTransaction();
+
+        try {
+
+            // ========================================
+            // REMOVE ASSIGNEE
+            // ========================================
+
+            $card->assignees()
+                ->detach($user->id);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            \Log::error('CARD UNASSIGN ERROR', [
+                'card_id' => $card->id,
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Gagal menghapus assignee.',
+            ], 500);
+        }
+
+        // ========================================
+        // OPTIONAL
+        // HAPUS NOTIFIKASI ASSIGNMENT
+        // ========================================
+
+        try {
+
+            Notification::query()
+                ->where('user_id', $user->id)
+                ->where('type', 'task_assigned')
+                ->where('data->card_id', $card->id)
+                ->delete();
+        } catch (\Throwable $e) {
+
+            \Log::warning('DELETE ASSIGN NOTIFICATION ERROR', [
+                'card_id' => $card->id,
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        // ========================================
+        // RELOAD
+        // ========================================
+
+        $card->load([
+            'assignees',
         ]);
+
+        // ========================================
+        // ACTIVITY LOG
+        // ========================================
+
+        ActivityLogService::log(
+            auth()->user(),
+            'card',
+            (string) $card->id,
+            'unassigned',
+            "Menghapus member '{$user->name}' dari card '{$card->title}' di board '{$card->board->name}'",
+            [
+                'card_id' => $card->id,
+                'unassigned_user_id' => $user->id,
+            ]
+        );
 
         return response()->json([
-            'message' => 'Gagal menghapus assignee.',
-        ], 500);
-    }
-
-    // ========================================
-    // OPTIONAL
-    // HAPUS NOTIFIKASI ASSIGNMENT
-    // ========================================
-
-    try {
-
-        Notification::query()
-            ->where('user_id', $user->id)
-            ->where('type', 'task_assigned')
-            ->where('data->card_id', $card->id)
-            ->delete();
-
-    } catch (\Throwable $e) {
-
-        \Log::warning('DELETE ASSIGN NOTIFICATION ERROR', [
-            'card_id' => $card->id,
-            'user_id' => $user->id,
-            'message' => $e->getMessage(),
+            'message' => 'Member berhasil di-unassign.',
+            'data'    => $card->assignees,
         ]);
     }
-
-    // ========================================
-    // RELOAD
-    // ========================================
-
-    $card->load([
-        'assignees',
-    ]);
-
-    // ========================================
-    // ACTIVITY LOG
-    // ========================================
-
-    ActivityLogService::log(
-        auth()->user(),
-        'card',
-        (string) $card->id,
-        'unassigned',
-        "Menghapus member '{$user->name}' dari card '{$card->title}' di board '{$card->board->name}'",
-        [
-            'card_id' => $card->id,
-            'unassigned_user_id' => $user->id,
-        ]
-    );
-
-    return response()->json([
-        'message' => 'Member berhasil di-unassign.',
-        'data'    => $card->assignees,
-    ]);
-}
 
     /*
     |--------------------------------------------------------------------------
@@ -989,6 +986,10 @@ public function unassign(
         $request->validate([
             'type' => 'required|in:file,link',
 
+            'quantity' => 'nullable|integer|min:0',
+
+            'result_description' => 'nullable|string|max:255',
+
             'link_url' => [
                 'required_if:type,link',
                 'nullable',
@@ -1008,6 +1009,8 @@ public function unassign(
             'card_id'         => $card->id,
             'uploaded_by'     => auth()->id(),
             'attachment_type' => $request->input('type'),
+            'quantity'        => $request->quantity,
+            'result_description'     => $request->result_description,
         ];
 
         if ($request->input('type') === 'file') {
@@ -1035,17 +1038,17 @@ public function unassign(
         $attachment = CardAttachment::create($data);
 
 
-ActivityLogService::log(
-    $request->user(),
-    'card_attachment',
-    (string) $attachment->id,
-    'created',
-    "Menambahkan attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
-    [
-        'card_id' => $card->id,
-        'attachment_id' => $attachment->id,
-    ]
-);
+        ActivityLogService::log(
+            $request->user(),
+            'card_attachment',
+            (string) $attachment->id,
+            'created',
+            "Menambahkan attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
+            [
+                'card_id' => $card->id,
+                'attachment_id' => $attachment->id,
+            ]
+        );
 
         return response()->json([
             'message' => 'Attachment berhasil ditambahkan.',
@@ -1072,17 +1075,17 @@ ActivityLogService::log(
 
         $attachment->delete();
 
-ActivityLogService::log(
-    $request->user(),
-    'card_attachment',
-    (string) $attachment->id,
-    'created',
-    "Menambahkan attachment '{$fileName}' di card '{$card->title}' di board '{$card->board->name}'",
-    [
-        'card_id' => $card->id,
-        'attachment_id' => $attachment->id,
-    ]
-);
+        ActivityLogService::log(
+            $request->user(),
+            'card_attachment',
+            (string) $attachment->id,
+            'created',
+            "Menambahkan attachment '{$fileName}' di card '{$card->title}' di board '{$card->board->name}'",
+            [
+                'card_id' => $card->id,
+                'attachment_id' => $attachment->id,
+            ]
+        );
         return response()->json([
             'message' => 'Attachment berhasil dihapus.',
         ]);

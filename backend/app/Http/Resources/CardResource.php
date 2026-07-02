@@ -15,6 +15,8 @@ class CardResource extends JsonResource
             'title'    => $this->title,
             'completed_at' => $this->completed_at?->toDateTimeString(),
             'is_completed' => $this->completed_at !== null,
+            'quantity' => $this->quantity,
+            'description' => $this->description,
 
 
             /*
@@ -30,6 +32,7 @@ class CardResource extends JsonResource
                 ])->values();
             }),
 
+            // 'quantity' => $this->quantity,
             'description' => $this->description,
             'priority'    => $this->priority,
             'due_date'    => $this->due_date?->toDateTimeString(),

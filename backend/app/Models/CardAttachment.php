@@ -14,9 +14,14 @@ class CardAttachment extends Model
     protected $fillable = [
         'card_id', 'uploaded_by', 'file_name',
         'file_path', 'file_type', 'file_size',
-        'link_url', 'attachment_type'
+        'link_url', 'attachment_type', 'quantity', 'result_description'
     ];
 
+    protected $casts = [
+    'quantity' => 'integer',
+    'result_description' => 'string',
+    ];
+    
     protected $appends = [
         'file_url'
     ];
