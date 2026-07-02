@@ -42,17 +42,18 @@ class CalendarController extends Controller
             ->get();
 
         // Grouping data berbasis tanggal (format Y-m-d)
-$calendar = $cards
-    ->groupBy(function ($card) {
-        // Memastikan output murni tanggal tanpa embel-embel jam/menit/detik
-        return \Illuminate\Support\Carbon::parse($card->due_date)->format('Y-m-d');
-    })
-    ->map(function ($dayCards) use ($request) {
-        return [
-            'total' => $dayCards->count(),
-            'tasks' => CalendarResource::collection($dayCards->take(3))->resolve($request),
-        ];
-    });
+// Grouping data berbasis tanggal (format Y-m-d)
+        $calendar = $cards
+            ->groupBy(function ($card) {
+                return \Illuminate\Support\Carbon::parse($card->due_date)->format('Y-m-d');
+            })
+            ->map(function ($dayCards) use ($request) {
+                return [
+                    'total' => $dayCards->count(),
+                    // 🚨 PERBAIKAN: Hapus ->take(3) agar semua task terkirim ke frontend
+                    'tasks' => CalendarResource::collection($dayCards)->resolve($request), 
+                ];
+            });
 
         return response()->json([
             'month'   => $monthParam,
@@ -97,16 +98,18 @@ $calendar = $cards
         return Card::query()
             ->select([
                 'id',
-                'board_id',
-                'campaign_id',
+                'board_id', // Tetap butuh ini sebagai foreign key ke tabel boards
                 'title',
                 'status',
                 'due_date',
                 'created_at',
             ])
             ->with([
-                'campaign:id,name',
-                'board:id,name',
+                // 🚀 Eager loading board beserta campaign yang ada di dalam board tersebut
+                'board' => function ($query) {
+                    $query->select('id', 'name', 'campaign_id');
+                },
+                'board.campaign:id,name', // 🏷️ Mengambil murni id dan name dari tabel campaigns
                 'assignees:id,name,avatar',
             ]);
     }
@@ -134,8 +137,4 @@ $calendar = $cards
             $q->whereIn('divisions.id', $divisionIds);
         });
     }
-
-
-
-
 }

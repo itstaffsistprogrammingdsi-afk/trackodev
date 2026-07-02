@@ -1,13 +1,46 @@
 import React, { useState } from 'react';
 import { useCalendar } from '../hooks/useCalendar';
 
+// --- STRICT TYPE DEFINITIONS ---
+interface Assignee {
+  id: string | number;
+  name: string;
+}
+
+interface Campaign {
+  id: string | number;
+  name: string;
+}
+
+interface Task {
+  id: string | number;
+  title: string;
+  status: string;
+  created_at?: string;
+  due_date?: string;
+  campaign?: Campaign;
+  assignees?: Assignee[];
+}
+
+interface LocalDayData {
+  date?: string; 
+  total: number;
+  tasks: Task[];
+}
+
+interface GridDayCell {
+  dateString: string;
+  dayNumber: number;
+  isCurrentMonth: boolean;
+}
+
 const WEEK_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export const CalendarView: React.FC = () => {
   const { currentMonth, data, loading, prevMonth, nextMonth, gridDays } = useCalendar();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // Helper konversi nama bulan di header
+  // --- FORMATTERS ---
   const formatHeaderMonth = (monthStr: string) => {
     if (!monthStr || !monthStr.includes('-')) return monthStr;
     const [year, month] = monthStr.split('-');
@@ -18,55 +51,88 @@ export const CalendarView: React.FC = () => {
     return `${monthNames[parseInt(month, 10) - 1]} ${year}`;
   };
 
-  // Helper formatting label tanggal aman dari error Invalid Date
   const formatDateLabel = (dateStr: string | null) => {
     if (!dateStr) return '-';
     const safeDateStr = dateStr.replace(' ', 'T'); 
     const date = new Date(safeDateStr);
     if (isNaN(date.getTime())) return 'Format Salah';
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   };
 
+  // --- DATA HANDLER ---
+  const getDayData = (dateStr: string): LocalDayData | null => {
+    if (!data || !data.days) return null;
+    if (Array.isArray(data.days)) {
+      return data.days.find((d: LocalDayData) => d.date === dateStr) || null;
+    }
+    return (data.days as Record<string, LocalDayData>)[dateStr] || null;
+  };
+
+  const selectedDayData = selectedDate ? getDayData(selectedDate) : null;
+  const totalTasks = (data as any)?.summary?.total_tasks || 0;
+
   return (
-    <div className="w-full text-gray-800 font-sans select-none relative">
+    <div className="w-full text-slate-800 font-sans select-none relative max-w-7xl mx-auto">
       
-      {/* NAVIGASI HEADER KALENDER */}
-      <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+      {/* --- HEADER NAVBAR (PRO STYLE) --- */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
             {formatHeaderMonth(currentMonth)}
           </h2>
           {loading ? (
-            <span className="text-xs text-blue-600 animate-pulse font-medium">Menyelaraskan data...</span>
-          ) : (
-            <div className="bg-gray-100 text-xs px-2.5 py-1 rounded-full text-gray-600 font-semibold">
-              {data?.summary?.total_tasks || 0} Cards Terdaftar
+            <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-ping" />
+              <span className="text-xs font-medium text-slate-600">Sinkronisasi...</span>
             </div>
+          ) : (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200">
+              {totalTasks} Tasks
+            </span>
           )}
         </div>
         
-        <div className="flex items-center space-x-1 bg-gray-100 p-1 rounded-lg border border-gray-200">
-          <button onClick={prevMonth} className="px-3 py-1.5 rounded-md hover:bg-white hover:shadow-sm transition-all text-sm font-medium text-gray-700">Prev</button>
-          <button onClick={nextMonth} className="px-3 py-1.5 rounded-md hover:bg-white hover:shadow-sm transition-all text-sm font-medium text-gray-700">Next</button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-white ring-1 ring-slate-200 rounded-md shadow-sm overflow-hidden">
+            <button 
+              onClick={prevMonth} 
+              className="p-2 hover:bg-slate-50 text-slate-600 transition-colors focus:outline-none"
+              title="Bulan Sebelumnya"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="w-px h-5 bg-slate-200" />
+            <button 
+              onClick={nextMonth} 
+              className="p-2 hover:bg-slate-50 text-slate-600 transition-colors focus:outline-none"
+              title="Bulan Berikutnya"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* STRUKTUR GRID UTAMA (WHITE THEME) */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      {/* --- CALENDAR GRID (PRO STYLE) --- */}
+      <div className="bg-white rounded-xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
         
-        {/* BARIS NAMA HARI */}
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/70">
+        {/* Header Hari */}
+        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
           {WEEK_DAYS.map((day) => (
-            <div key={day} className="text-center py-3 text-xs font-bold uppercase tracking-wider text-gray-500">
+            <div key={day} className="text-right py-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               {day}
             </div>
           ))}
         </div>
 
-        {/* MATRIKS KOTAK HARI */}
-        <div className="grid grid-cols-7 auto-rows-[170px] bg-gray-200 gap-[1px]">
-          {gridDays.map((cell, idx) => {
-            const dayData = data && data.days ? data.days[cell.dateString] : null;
+        {/* Matriks Kotak */}
+        <div className="grid grid-cols-7 auto-rows-[160px] bg-slate-200 gap-px">
+          {gridDays.map((cell: GridDayCell, idx: number) => {
+            const dayData = getDayData(cell.dateString);
             const tasks = dayData && Array.isArray(dayData.tasks) ? dayData.tasks : [];
             const totalTasksOnDay = dayData ? dayData.total : 0;
             const isToday = cell.dateString === new Date().toISOString().split('T')[0];
@@ -75,123 +141,60 @@ export const CalendarView: React.FC = () => {
               <div 
                 key={`${cell.dateString}-${idx}`} 
                 onClick={() => totalTasksOnDay > 0 && setSelectedDate(cell.dateString)}
-                className={`p-2 transition-all flex flex-col justify-between h-[170px] max-h-[170px] ${
-                  cell.isCurrentMonth ? (isToday ? 'bg-blue-50/40' : 'bg-white') : 'bg-gray-50 text-gray-400 opacity-60'
-                } hover:bg-gray-50/80 cursor-pointer overflow-hidden relative group`}
+                className={`flex flex-col p-2.5 transition-colors h-[160px] ${
+                  cell.isCurrentMonth 
+                    ? (isToday ? 'bg-indigo-50/30 hover:bg-indigo-50/60' : 'bg-white hover:bg-slate-50') 
+                    : 'bg-slate-50/50 text-slate-400 hover:bg-slate-100/50'
+                } ${totalTasksOnDay > 0 ? 'cursor-pointer' : 'cursor-default'} group`}
               >
-                {/* Atas: Angka Tanggal */}
-                <div className="flex justify-between items-center mb-1.5 flex-shrink-0">
-                  <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
-                    isToday ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-700'
-                  }`}>
+                {/* Tanggal */}
+                <div className="flex justify-between items-center mb-3">
+                  <span className="flex-1" /> {/* Spacer */}
+                  <span className={`text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+                    isToday ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 group-hover:bg-slate-200'
+                  } ${!cell.isCurrentMonth && !isToday && 'text-slate-400'}`}>
                     {cell.dayNumber}
                   </span>
-                  {totalTasksOnDay > 0 && (
-                    <span className="text-[10px] text-gray-500 bg-gray-100 group-hover:bg-gray-200 px-1.5 py-0.5 rounded font-medium transition-colors">
-                      {totalTasksOnDay} Card
-                    </span>
-                  )}
                 </div>
 
-{/* 🚀 GANTI SELURUH ISI KONTAINER LIST TASK (tasks.map) DENGAN KODE ESTETIK INI */}
-<div className="flex-1 overflow-y-auto space-y-1 my-1 pr-0.5 max-h-[110px] scrollbar-none overflow-x-hidden">
-  {tasks.map((task: any) => {
-    
-    // 🗓️ Ekstrak murni tanggal (YYYY-MM-DD)
-    const startDateStr = task.created_at ? task.created_at.split(' ')[0] : null;
-    const endDateStr = task.due_date ? task.due_date.split(' ')[0] : null;
-    const currentCellDate = cell.dateString;
+                {/* List Tasks (Linear Style) */}
+<div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-none">
+                  {/* 🚨 PERBAIKAN: Batasi render di kotak kalender maksimal 3 saja */}
+                  {tasks.slice(0, 3).map((task: Task) => {
+                    const isCompleted = task.status === 'completed' || task.status === 'done';
 
-    // Evaluasi posisi cell terhadap rentang tanggal
-    const isStart = currentCellDate === startDateStr;
-    const isEnd = currentCellDate === endDateStr;
-    const isBetween = startDateStr && endDateStr && currentCellDate > startDateStr && currentCellDate < endDateStr;
-    const isRange = isStart || isEnd || isBetween;
+                    return (
+                      <div 
+                        key={task.id}
+                        className={`group/task flex items-center gap-2 px-2 py-1.5 rounded-md transition-all border ${
+                          isCompleted 
+                            ? 'border-transparent opacity-60 hover:opacity-100' 
+                            : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'
+                        }`}
+                        title={task.title}
+                      >
+                        {/* Status Icon */}
+                        <div className={`flex-shrink-0 w-2.5 h-2.5 rounded-[3px] border ${
+                          isCompleted 
+                            ? 'bg-emerald-500 border-emerald-600' 
+                            : 'bg-amber-400 border-amber-500'
+                        }`} />
+                        
+                        {/* Judul */}
+                        <span className={`truncate text-xs font-medium ${
+                          isCompleted ? 'text-slate-500 line-through' : 'text-slate-700'
+                        }`}>
+                          {task.title}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
 
-    // 🎨 Palet warna pastel Trello Modern (Lebih soft di mata, tidak bikin pusing)
-    const colorThemes = [
-      'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200',
-      'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200',
-      'bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200',
-      'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200',
-      'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200',
-    ];
-    const chosenColor = colorThemes[(task.campaign_id || task.id) % colorThemes.length];
-
-    return (
-      <div 
-        key={task.id}
-        className={`text-[11px] px-2 py-1 transition-all flex items-center justify-between relative group select-none h-6 min-h-[24px]
-          ${isRange ? chosenColor : 'bg-gray-50 border border-gray-200 text-gray-700 rounded-md'}
-          ${isRange && isStart ? 'rounded-l-md ml-0.5 border-l border-y border-r-0 font-medium' : ''}
-          ${isRange && isEnd ? 'rounded-r-md mr-0.5 border-r border-y border-l-0 font-medium' : ''}
-          ${isRange && isBetween ? 'rounded-none mx-0 border-y border-x-0 opacity-95' : ''}
-        `}
-        title={`${task.title} (${startDateStr} s/d ${endDateStr})`}
-      >
-{/* Kontainer Judul + Icon Status Bulat Menyala */}
-<div className="flex items-center space-x-1.5 truncate w-full pr-1">
-  
-  {/* Indikator Bulat Menyala untuk Start Date (Biru/Indigo) */}
-  {isStart && (
-    <span className="relative flex h-2 w-2 flex-shrink-0" title="Start Date">
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-    </span>
-  )}
-
-  {/* Indikator Bulat Menyala untuk Due Date (Hijau jika Selesai, Merah jika Overdue/Pending) */}
-  {isEnd && (
-    <span className="relative flex h-2 w-2 flex-shrink-0" title="Due Date">
-      {/* Efek radar gelombang di latar belakang */}
-      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75
-        ${task.status === 'completed' || task.status === 'done' ? 'bg-emerald-400' : 'bg-rose-400'}
-      `}></span>
-      
-      {/* Bulatan inti di bagian depan */}
-      <span className={`relative inline-flex rounded-full h-2 w-2
-        ${task.status === 'completed' || task.status === 'done' ? 'bg-emerald-500' : 'bg-rose-500'}
-      `}></span>
-    </span>
-  )}
-
-  {/* Kontainer Nama Campaign + Judul Task */}
-  <div className="flex items-center space-x-1 truncate text-[11px] w-full">
-    {/* 🏷️ Nama Campaign (Hanya dirender jika data campaign tersedia) */}
-    {isStart && task.campaign?.name && (
-      <span className="font-semibold uppercase tracking-wider text-[9px] opacity-75 bg-black/5 px-1 py-0.5 rounded flex-shrink-0 text-gray-600">
-        {task.campaign.name}
-      </span>
-    )}
-    
-    {/* 📝 Teks Judul Task Utama */}
-    <span className="truncate font-bold tracking-tight text-gray-700 group-hover:text-gray-900 transition-colors">
-      {task.title}
-    </span>
-  </div>
-
-</div>
-        
-        {/* 👤 Avatar Handler Kecil di Ujung Kanan (Hanya muncul di tanggal akhir/single card agar rapi) */}
-        {!isBetween && !isStart && task.assignees && task.assignees.length > 0 && (
-          <div className="flex-shrink-0 ml-1">
-            <div 
-              className="w-3.5 h-3.5 rounded-full bg-white text-gray-700 border border-current flex items-center justify-center font-bold text-[7px]"
-              title={`Pekerja: ${task.assignees[0].name}`}
-            >
-              {task.assignees[0].name.charAt(0).toUpperCase()}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  })}
-</div>
-
-                {/* Bawah: Tombol indikator jika card melimpah */}
+                {/* Indikator Overflow */}
                 {totalTasksOnDay > 3 && (
-                  <div className="text-[10px] text-blue-600 font-bold text-left pt-1 mt-auto bg-white border-t border-gray-100 hover:text-blue-700">
-                    + {totalTasksOnDay - 3} lainnya...
+                  <div className="mt-1 text-[10px] font-semibold text-slate-400 text-center pt-1 border-t border-slate-100">
+                    +{totalTasksOnDay - 3} lainnya
                   </div>
                 )}
               </div>
@@ -200,48 +203,112 @@ export const CalendarView: React.FC = () => {
         </div>
       </div>
 
-      {/* POP-OVER LIGHTBOX MODAL DETAIL */}
-      {selectedDate && data?.days[selectedDate] && (
-        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-xl border border-gray-200 flex flex-col max-h-[80vh] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+      {/* --- PRO MODAL DIALOG --- */}
+      {selectedDate && selectedDayData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+          {/* Backdrop Click Handler */}
+          <div className="absolute inset-0" onClick={() => setSelectedDate(null)} />
+          
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between bg-white">
               <div>
-                <h3 className="text-base font-bold text-gray-900">Agenda Hari {formatDateLabel(selectedDate)}</h3>
-                <p className="text-xs text-gray-500">Memuat {data.days[selectedDate].total} aktivitas tim</p>
+                <h3 className="text-xl font-bold text-slate-900">{formatDateLabel(selectedDate)}</h3>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="flex items-center justify-center bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-0.5 rounded">
+                    {selectedDayData.total}
+                  </span>
+                  <span className="text-sm font-medium text-slate-500">Tasks dijadwalkan</span>
+                </div>
               </div>
-              <button onClick={() => setSelectedDate(null)} className="text-gray-500 hover:text-gray-700 bg-gray-200/60 p-1.5 rounded-lg text-xs font-semibold px-3">
-                Tutup
+              <button 
+                onClick={() => setSelectedDate(null)} 
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors focus:outline-none"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-3 flex-1 bg-white">
-              {data.days[selectedDate].tasks.map((task: any) => (
-                <div key={task.id} className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-col gap-2">
-                  <div className="font-bold text-sm text-gray-900">{task.title}</div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <div className="flex gap-2">
-                      <span className="text-gray-500">📅 Dibuat: <span className="text-gray-700 font-medium">{new Date(task.created_at.replace(' ', 'T')).toLocaleDateString('id-ID')}</span></span>
-                      <span className="bg-blue-50 text-blue-700 px-1.5 rounded">
-                        ⏳ Batas: {new Date(task.due_date.replace(' ', 'T')).toLocaleDateString('id-ID')}
-                      </span>
+            {/* Modal Body (Task List) */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50 space-y-3">
+              {selectedDayData.tasks.map((task: Task) => (
+                <div 
+                  key={task.id} 
+                  className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-xl ring-1 ring-slate-200 hover:ring-indigo-300 hover:shadow-md transition-all"
+                >
+                  {/* Bagian Kiri: Status & Info */}
+                  <div className="flex items-start gap-3 overflow-hidden">
+                    <div className="pt-1">
+                       <div className={`w-3.5 h-3.5 rounded-[4px] border-2 ${
+                        task.status === 'completed' || task.status === 'done'
+                          ? 'bg-emerald-500 border-emerald-600' 
+                          : 'bg-white border-slate-300'
+                      }`} />
                     </div>
-                    
-                    <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
-                      <span className="text-[10px] text-gray-400">Pekerja:</span>
-                      {task.assignees && task.assignees.length > 0 ? (
-                        task.assignees.map((user: any) => (
-                          <span key={user.id} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">
-                            {user.name}
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <h4 className="text-sm font-semibold text-slate-900 truncate pr-4">
+                        {task.title}
+                      </h4>
+                      {task.campaign?.name && (
+                        <div className="flex items-center">
+                          <span className="text-[10px] font-bold tracking-wide uppercase text-slate-500 flex items-center gap-1">
+                            <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            {task.campaign.name}
                           </span>
-                        ))
-                      ) : (
-                        <span className="text-[10px] text-gray-400 italic">Belum ada</span>
+                        </div>
                       )}
                     </div>
                   </div>
+
+                  {/* Bagian Kanan: Meta Data (Assignee & Date) */}
+                  <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full pt-3 sm:pt-0 border-t sm:border-0 border-slate-100">
+                    
+                    {/* Due Date Indicator */}
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {task.due_date ? new Date(task.due_date.replace(' ', 'T')).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }) : '-'}
+                    </div>
+
+                    {/* Assignees (Overlapping Avatars) */}
+                    <div className="flex items-center">
+                      {task.assignees && task.assignees.length > 0 ? (
+                        <div className="flex -space-x-2">
+                          {task.assignees.slice(0, 3).map((user: Assignee) => (
+                            <div 
+                              key={user.id} 
+                              className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 ring-2 ring-white flex items-center justify-center text-[10px] font-bold"
+                              title={user.name}
+                            >
+                              {user.name.substring(0, 2).toUpperCase()}
+                            </div>
+                          ))}
+                          {task.assignees.length > 3 && (
+                            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 ring-2 ring-white flex items-center justify-center text-[10px] font-bold">
+                              +{task.assignees.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-slate-50 ring-2 ring-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400" title="Unassigned">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               ))}
             </div>
+
           </div>
         </div>
       )}

@@ -10,105 +10,33 @@ class CalendarResource extends JsonResource
     /**
      * Transform the resource into an array.
      */
-    public function toArray(Request $request): array
-    {
-        return [
+public function toArray(Request $request): array
+{
+    return [
+        'id'          => $this->id,
+        'title'       => $this->title,
+        'status'      => $this->status,
+        'due_date'    => $this->due_date,
+        'created_at'  => $this->created_at,
+        
+        // 🚀 Mengambil data dari tabel campaigns melalui perantara board
+        'campaign'    => $this->relationLoaded('board') && $this->board && $this->board->campaign ? [
+            'id'   => $this->board->campaign->id,
+            'name' => $this->board->campaign->name,
+        ] : null,
 
-            /*
-            |--------------------------------------------------------------------------
-            | CARD
-            |--------------------------------------------------------------------------
-            */
+        'board'       => $this->relationLoaded('board') && $this->board ? [
+            'id'   => $this->board->id,
+            'name' => $this->board->name,
+        ] : null,
 
-            'id' => $this->id,
-
-            'title' => $this->title,
-
-            'status' => $this->status,
-
-            'due_date' => $this->due_date
-                ? $this->due_date
-                    ->timezone(config('app.timezone'))
-                    ->format('Y-m-d H:i')
-                : null,
-
-            'created_at' => $this->created_at
-                ? $this->created_at
-                    ->timezone(config('app.timezone'))
-                    ->format('Y-m-d H:i')
-                : null,
-
-            /*
-            |--------------------------------------------------------------------------
-            | CAMPAIGN
-            |--------------------------------------------------------------------------
-            */
-// 🔥 PASTIKAN BAGIAN INI ADA AGAR NAMA CAMPAIGN KELUAR KE FRONTEND
-            'campaign' => $this->relationLoaded('campaign') && $this->campaign ? [
-                'id' => $this->campaign->id,
-                'name' => $this->campaign->name,
-            ] : null,
-            
-            'campaign' => $this->whenLoaded('campaign', function () {
-
-                if (!$this->campaign) {
-                    return null;
-                }
-
-                return [
-                    'id'   => $this->campaign->id,
-                    'name' => $this->campaign->name,
-                ];
-            }),
-
-            /*
-            |--------------------------------------------------------------------------
-            | BOARD
-            |--------------------------------------------------------------------------
-            */
-
-            'board' => $this->whenLoaded('board', function () {
-
-                if (!$this->board) {
-                    return null;
-                }
-
-                return [
-                    'id'   => $this->board->id,
-                    'name' => $this->board->name,
-                ];
-            }),
-
-            /*
-            |--------------------------------------------------------------------------
-            | ASSIGNEES
-            |--------------------------------------------------------------------------
-            */
-
-            'assignees' => $this->whenLoaded(
-                'assignees',
-                function () {
-
-                    return $this->assignees
-                        ->map(function ($user) {
-
-                            return [
-
-                                'id'     => $user->id,
-
-                                'name'   => $user->name,
-
-                                'avatar' => $user->avatar,
-
-                            ];
-
-                        })
-                        ->values();
-
-                },
-                []
-            ),
-
-        ];
-    }
+        'assignees'   => $this->relationLoaded('assignees') ? $this->assignees->map(function($user) {
+            return [
+                'id'     => $user->id,
+                'name'   => $user->name,
+                'avatar' => $user->avatar,
+            ];
+        }) : [],
+    ];
+}
 }
