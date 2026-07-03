@@ -77,6 +77,10 @@ export interface Attachment {
   link_url?: string;
 
   attachment_type: "file" | "link";
+
+  quantity?: number;
+
+  result_description?: string;
 }
 
 export type Card = {

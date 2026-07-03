@@ -733,36 +733,22 @@ Route::prefix('reports')->group(function () {
         '/',
         [ReportController::class, 'index']
     );
-
     /*
     |--------------------------------------------------------------------------
     | DETAIL REPORT
     |--------------------------------------------------------------------------
     */
-    Route::get(
-        '/detail',
-        [ReportController::class, 'detail']
-    );
+    Route::get('/summary', [ReportController::class, 'summary']);
+    Route::get('/charts', [ReportController::class, 'charts']);
+    Route::get('/tasks', [ReportController::class, 'tasks']);
+    Route::get('/responses', [ReportController::class, 'responses']);
+    Route::get('/member-performance', [ReportController::class, 'memberPerformance']);
+    Route::get('/division-performance', [ReportController::class, 'divisionPerformance']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT PDF
-    |--------------------------------------------------------------------------
-    */
-    Route::post(
-        '/pdf',
-        [ReportController::class, 'pdf']
-    );
+    Route::get('/tasks/export', [ReportController::class, 'exportTasks']);
+    Route::get('/export-pdf', [ReportController::class, 'exportPdf']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT EXCEL
-    |--------------------------------------------------------------------------
-    */
-    Route::post(
-        '/excel',
-        [ReportController::class, 'excel']
-    );
+    Route::patch('/attachments/{attachment}/qc',[CardController::class, 'qc']);
 });
 });
 

@@ -1,122 +1,138 @@
-import axios from "@/lib/axios";
-import type { ReportDetailResponse } from "../types";
+import api from "@/lib/axios";
 
-type Params = {
-  start_date: string;
-  end_date: string;
+import type {
+  ReportFilter,
+  ReportSummary,
+  ReportCharts,
+  TaskReport,
+  ResponseReport,
+  MemberPerformance,
+  DivisionPerformance,
+  PaginatedResponse,
+} from "../types";
 
-  user_ids?: string[];
-  division_ids?: string[];
 
-  workspace_ids?: string[];
-  campaign_ids?: string[];
 
-  brand_ids?: string[];
-  label_ids?: string[];
+const buildParams = (filters?: ReportFilter) => {
+  if (!filters) return {};
 
-  search?: string;
+  return {
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+
+    memberIds: filters.memberIds,
+    divisionIds: filters.divisionIds,
+    campaignIds: filters.campaignIds,
+    workspaceIds: filters.workspaceIds,
+    labelIds: filters.labelIds,
+    brandIds: filters.brandIds,
+  };
 };
 
-export const fetchReportDetail = async (
-  params: Params
-): Promise<ReportDetailResponse> => {
-const {
-  start_date,
-  end_date,
+export const reportApi = {
+  async getSummary(filters?: ReportFilter) {
+    const { data } = await api.get<ReportSummary>(
+      "/reports/summary",
+      {
+        params: buildParams(filters),
+      }
+    );
 
-  user_ids,
-  division_ids,
+    return data;
+  },
 
-  workspace_ids,
-  campaign_ids,
+  async getCharts(filters?: ReportFilter) {
+    const { data } = await api.get<ReportCharts>(
+      "/reports/charts",
+      {
+        params: buildParams(filters),
+      }
+    );
 
-  search,
+    return data;
+  },
 
-  label_ids,
-  brand_ids,
-} = params;
+  async getTasks(
+    filters?: ReportFilter,
+    page = 1,
+    limit = 20
+  ) {
+    const { data } = await api.get<
+      PaginatedResponse<TaskReport>
+    >("/reports/tasks", {
+      params: {
+        ...buildParams(filters),
+        page,
+        limit,
+      },
+    });
 
-const queryParams: Record<string, string> = {
-  start_date,
-  end_date,
-};
+    return data;
+  },
 
-if (user_ids?.length) {
-  queryParams.user_ids = user_ids.join(",");
-}
+  async getResponses(
+    filters?: ReportFilter,
+    page = 1,
+    limit = 20
+  ) {
+    const { data } = await api.get<
+      PaginatedResponse<ResponseReport>
+    >("/reports/responses", {
+      params: {
+        ...buildParams(filters),
+        page,
+        limit,
+      },
+    });
 
-if (division_ids?.length) {
-  queryParams.division_ids = division_ids.join(",");
-}
+    return data;
+  },
 
-if (workspace_ids?.length) {
-  queryParams.workspace_ids = workspace_ids.join(",");
-}
+  async getMemberPerformance(
+    filters?: ReportFilter
+  ) {
+    const { data } = await api.get<
+      MemberPerformance[]
+    >("/reports/member-performance", {
+      params: buildParams(filters),
+    });
 
-if (campaign_ids?.length) {
-  queryParams.campaign_ids = campaign_ids.join(",");
-}
+    return data;
+  },
 
-if (brand_ids?.length) {
-  queryParams.brand_ids = brand_ids.join(",");
-}
+  async getDivisionPerformance(
+    filters?: ReportFilter
+  ) {
+    const { data } = await api.get<
+      DivisionPerformance[]
+    >("/reports/division-performance", {
+      params: buildParams(filters),
+    });
 
-if (label_ids?.length) {
-  queryParams.label_ids = label_ids.join(",");
-}
+    return data;
+  },
 
-if (search?.trim()) {
-  queryParams.search = search.trim();
-}
-
-  const { data } = await axios.get("/reports/detail", {
-    params: queryParams,
-  });
-
-  return data;
-};
-
-export const fetchBrands = async () => {
-  const { data } = await axios.get("/brands");
-  return data;
-};
-
-export const fetchLabels = async () => {
-  const { data } = await axios.get("/labels");
-  return data;
-};
-
-export const fetchWorkspacesByDivision = async (
-  divisionId: string
-) => {
-  const { data } = await axios.get(
-    `/divisions/${divisionId}/workspaces`
-  );
-
-  return data;
-};
-
-export const fetchCampaignsByWorkspace = async (
-  workspaceId: string
-) => {
-  const { data } = await axios.get(
-    `/workspaces/${workspaceId}/campaigns`
-  );
-
-  return data;
-};
-
-export const fetchDivisions = async () => {
-  const { data } = await axios.get("/divisions");
-  return data;
-};
-
-export const bypassUser = async (
-  userId: string
-) => {
-  const response = await axios.post(
-    `/auth/bypass/${userId}`
+  async exportTasks(filters?: ReportFilter) {
+  const response = await api.get(
+    "/reports/tasks/export",
+    {
+      params: buildParams(filters),
+      responseType: "blob",
+    }
   );
 
   return response.data;
+},
+
+async exportPdf(filters?: ReportFilter) {
+  const response = await api.get(
+    "/reports/export-pdf",
+    {
+      params: buildParams(filters),
+      responseType: "blob",
+    }
+  );
+
+  return response.data;
+}
 };
