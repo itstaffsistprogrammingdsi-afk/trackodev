@@ -1,78 +1,199 @@
-import { useCallback, useState } from "react";
-import { fetchReportDetail } from "../api/report.api";
-import type { UserReportDetail } from "../types";
+import { useQuery } from "@tanstack/react-query";
 
-type Params = {
-  start_date: string;
-  end_date: string;
+import { reportApi } from "../api/report.api";
+import type { ReportFilter } from "../types";
 
-  user_ids?: string[];
-  division_ids?: string[];
+export const reportKeys = {
+  all: ["reports"] as const,
 
-  workspace_ids?: string[];
-  campaign_ids?: string[];
+  summary: (filters?: ReportFilter) =>
+    [...reportKeys.all, "summary", filters] as const,
 
-  brand_ids?: string[];
-  label_ids?: string[];
+  charts: (filters?: ReportFilter) =>
+    [...reportKeys.all, "charts", filters] as const,
 
-  search?: string;
+  tasks: (
+    filters?: ReportFilter,
+    page = 1,
+    limit = 20
+  ) =>
+    [
+      ...reportKeys.all,
+      "tasks",
+      filters,
+      page,
+      limit,
+    ] as const,
+
+  responses: (
+    filters?: ReportFilter,
+    page = 1,
+    limit = 20
+  ) =>
+    [
+      ...reportKeys.all,
+      "responses",
+      filters,
+      page,
+      limit,
+    ] as const,
+
+  memberPerformance: (filters?: ReportFilter) =>
+    [
+      ...reportKeys.all,
+      "member-performance",
+      filters,
+    ] as const,
+
+  divisionPerformance: (filters?: ReportFilter) =>
+    [
+      ...reportKeys.all,
+      "division-performance",
+      filters,
+    ] as const,
+
+  exports: ["reports", "exports"] as const,
 };
 
-type ApiError = {
-  message?: string;
-};
+export function useReportSummary(
+  filters?: ReportFilter
+) {
+  return useQuery({
+    queryKey: reportKeys.summary(filters),
 
-export const useReport = () => {
-  const [data, setData] = useState<UserReportDetail[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+    queryFn: () =>
+      reportApi.getSummary(filters),
 
-  const getReportDetail = useCallback(
-    async (params: Params): Promise<void> => {
-      try {
-        setLoading(true);
-        setError(null);
+    staleTime: 1000 * 60 * 5,
+  });
+}
 
-        const res = await fetchReportDetail({
-          start_date: params.start_date,
-          end_date: params.end_date,
+export function useReportCharts(
+  filters?: ReportFilter
+) {
+  return useQuery({
+    queryKey: reportKeys.charts(filters),
 
-          user_ids: params.user_ids,
-          division_ids: params.division_ids,
+    queryFn: () =>
+      reportApi.getCharts(filters),
 
-          workspace_ids: params.workspace_ids,
-          campaign_ids: params.campaign_ids,
+    staleTime: 1000 * 60 * 5,
+  });
+}
 
-          brand_ids: params.brand_ids,
-          label_ids: params.label_ids,
+export function useReportTasks(
+  filters?: ReportFilter,
+  page = 1,
+  limit = 20
+) {
+  return useQuery({
+    queryKey: reportKeys.tasks(
+      filters,
+      page,
+      limit
+    ),
 
-          search: params.search,
-        });
+    queryFn: () =>
+      reportApi.getTasks(
+        filters,
+        page,
+        limit
+      ),
 
-        setData(res.data ?? []);
-      } catch (err: unknown) {
-        const error = err as ApiError;
+    staleTime: 1000 * 60 * 2,
 
-        setError(
-          error.message ?? "Failed to load report"
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+    placeholderData: (
+      previousData
+    ) => previousData,
+  });
+}
 
-  const resetReport = useCallback((): void => {
-    setData([]);
-    setError(null);
-  }, []);
+export function useReportResponses(
+  filters?: ReportFilter,
+  page = 1,
+  limit = 20
+) {
+  return useQuery({
+    queryKey: reportKeys.responses(
+      filters,
+      page,
+      limit
+    ),
+
+    queryFn: () =>
+      reportApi.getResponses(
+        filters,
+        page,
+        limit
+      ),
+
+    staleTime: 1000 * 60 * 2,
+
+    placeholderData: (
+      previousData
+    ) => previousData,
+  });
+}
+
+export function useMemberPerformance(
+  filters?: ReportFilter
+) {
+  return useQuery({
+    queryKey:
+      reportKeys.memberPerformance(
+        filters
+      ),
+
+    queryFn: () =>
+      reportApi.getMemberPerformance(
+        filters
+      ),
+
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useDivisionPerformance(
+  filters?: ReportFilter
+) {
+  return useQuery({
+    queryKey:
+      reportKeys.divisionPerformance(
+        filters
+      ),
+
+    queryFn: () =>
+      reportApi.getDivisionPerformance(
+        filters
+      ),
+
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * Dashboard helper
+ * Untuk halaman utama report.
+ */
+export function useReportDashboard(
+  filters?: ReportFilter
+) {
+  const summary =
+    useReportSummary(filters);
+
+  const charts =
+    useReportCharts(filters);
 
   return {
-    data,
-    loading,
-    error,
-    getReportDetail,
-    resetReport,
+    summary,
+    charts,
+
+    isLoading:
+      summary.isLoading ||
+      charts.isLoading,
+
+    isFetching:
+      summary.isFetching ||
+      charts.isFetching,
   };
-};
+}

@@ -4,6 +4,8 @@
 
 import { useEffect, useState } from "react";
 
+import CreatableSelect from "react-select/creatable";
+
 import api from "@/lib/axios";
 
 import {
@@ -19,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { Attachment } from "../../types";
+import { StylesConfig } from "node_modules/react-select/dist/declarations/src/styles";
 
 interface Props {
   attachments: Attachment[];
@@ -56,7 +59,62 @@ export default function AttachmentSection({
   const [linkUrl, setLinkUrl] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [resultDescription, setResultDescription] = useState("");
+  const [descriptionOptions, setDescriptionOptions] = useState([
+    { value: "Foto", label: "Foto" },
+    { value: "Video", label: "Video" },
+    { value: "Halaman", label: "Halaman" },
+  ]);
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  type DescriptionOption = {
+  value: string;
+  label: string;
+};
+
+  const selectStyles: StylesConfig<DescriptionOption, false> = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: "44px",
+    borderRadius: "12px",
+    borderColor: state.isFocused ? "#3b82f6" : "#e5e7eb",
+    boxShadow: "none",
+    transition: "all 150ms ease",
+
+    "&:hover": {
+      borderColor: "#3b82f6",
+    },
+  }),
+
+  valueContainer: (base) => ({
+    ...base,
+    padding: "0 8px",
+  }),
+
+  placeholder: (base) => ({
+    ...base,
+    color: "#9ca3af",
+    fontSize: "14px",
+  }),
+
+  menu: (base) => ({
+    ...base,
+    borderRadius: "12px",
+    overflow: "hidden",
+    zIndex: 50,
+  }),
+
+  option: (base, state) => ({
+    ...base,
+    fontSize: "14px",
+    backgroundColor: state.isFocused
+      ? "#eff6ff"
+      : "#fff",
+  }),
+
+  indicatorSeparator: () => ({
+    display: "none",
+  }),
+};
 
   // PREVIEW MODAL
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -268,7 +326,18 @@ export default function AttachmentSection({
 
         {/* UPLOADER */}
         {showUploader && (
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
+          <div
+            className="
+bg-white
+border
+border-slate-200
+rounded-3xl
+p-6
+shadow-sm
+space-y-6
+"
+          >
+            {" "}
             {/* HEADER */}
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
@@ -277,49 +346,109 @@ export default function AttachmentSection({
                 Upload file atau tambahkan link external
               </p>
             </div>
-
             <div className="space-y-3">
               {/* FILE UPLOAD */}
               <label
                 className="
-          group
-          flex
-          h-12
-          w-full
-          cursor-pointer
-          items-center
-          justify-center
-          gap-2
-          rounded-xl
-          border
-          border-dashed
-          border-gray-300
-          bg-white
-          text-sm
-          font-medium
-          text-gray-700
-          transition
-          hover:border-blue-400
-          hover:bg-blue-50
-        "
+  group
+  flex
+  flex-col
+  items-center
+  justify-center
+  gap-3
+  rounded-2xl
+  border-2
+  border-dashed
+  border-slate-300
+  bg-slate-50
+  px-6
+  py-8
+  cursor-pointer
+  transition-all
+  hover:border-blue-500
+  hover:bg-blue-50
+"
               >
-                {uploading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload
-                      size={16}
-                      className="transition group-hover:scale-110"
-                    />
-                    Upload File
-                  </>
-                )}
+                <div
+                  className="
+    flex
+    h-12
+    w-12
+    items-center
+    justify-center
+    rounded-2xl
+    bg-white
+    shadow-sm
+  "
+                >
+                  <Upload size={22} />
+                </div>
 
-                <input type="file" onChange={handleUpload} className="hidden" />
+                <div className="text-center">
+                  <p className="font-medium text-slate-800">
+                    Upload Attachment
+                  </p>
+
+                  <p className="text-xs text-slate-500 mt-1">
+                    PNG, JPG, PDF, DOCX hingga 10MB
+                  </p>
+                </div>
+
+                <input type="file" className="hidden" onChange={handleUpload} />
               </label>
+              {/* SELECTED FILE PREVIEW */}
+              {selectedFile && (
+                <div
+                  className="
+    flex
+    items-center
+    justify-between
+    rounded-2xl
+    border
+    border-emerald-200
+    bg-emerald-50
+    p-4
+  "
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="
+        h-10
+        w-10
+        rounded-xl
+        bg-white
+        flex
+        items-center
+        justify-center
+      "
+                    >
+                      <File size={18} />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium">{selectedFile.name}</p>
+
+                      <p className="text-xs text-slate-500">
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFile(null)}
+                    className="
+      h-8
+      w-8
+      rounded-lg
+      hover:bg-red-100
+      text-red-500
+      "
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
 
               {/* LINK INPUT */}
               <div className="flex items-center gap-2">
@@ -382,34 +511,67 @@ export default function AttachmentSection({
     "
               />
 
-              <input
-                type="text"
-                value={resultDescription}
-                onChange={(e) => setResultDescription(e.target.value)}
-                placeholder="Result Description"
-                className="
-      h-11
-      rounded-xl
-      border
-      border-gray-200
-      px-4
-      text-sm
-      focus:outline-none
-      focus:ring-2
-      focus:ring-blue-500
-    "
-              />
+<CreatableSelect
+  isClearable
+  styles={selectStyles}
+  placeholder="Pilih / tambah"
+  options={descriptionOptions}
+  value={
+    resultDescription
+      ? {
+          value: resultDescription,
+          label: resultDescription,
+        }
+      : null
+  }
+  onChange={(newValue) =>
+    setResultDescription(newValue?.value || "")
+  }
+  onCreateOption={(inputValue) => {
+    const newOption = {
+      value: inputValue,
+      label: inputValue,
+    };
+
+    setDescriptionOptions((prev) => [
+      ...prev,
+      newOption,
+    ]);
+
+    setResultDescription(inputValue);
+  }}
+  className="text-sm"
+/>
             </div>
-            {selectedFile && (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={uploading}
-                className="h-11 px-4 rounded-xl bg-green-600 text-white text-sm"
-              >
-                {uploading ? "Uploading..." : "Submit Upload"}
-              </button>
-            )}
+{(selectedFile || linkUrl.trim()) && (
+  <button
+    type="button"
+    onClick={handleSubmit}
+    disabled={uploading || (!selectedFile && !linkUrl.trim())}
+    className="
+      h-11
+      w-full
+      rounded-xl
+      bg-slate-900
+      text-white
+      text-sm
+      font-medium
+      transition
+      hover:bg-slate-800
+      disabled:opacity-50
+      disabled:cursor-not-allowed
+    "
+  >
+    {uploading ? (
+      <span className="flex items-center justify-center gap-2">
+        <Loader2 size={16} className="animate-spin" />
+        Uploading...
+      </span>
+    ) : (
+      "Upload Attachment"
+    )}
+  </button>
+)}
           </div>
         )}
 

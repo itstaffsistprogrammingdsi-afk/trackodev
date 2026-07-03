@@ -16,8 +16,17 @@ class CardResource extends JsonResource
             'completed_at' => $this->completed_at?->toDateTimeString(),
             'is_completed' => $this->completed_at !== null,
             'quantity' => $this->quantity,
-            'description' => $this->description,
+            
+            'qc_quantity' => $this->qc_quantity,
 
+            'final_quantity' => $this->qc_quantity
+                ?? $this->quantity,
+
+            'qc_note' => $this->qc_note,
+
+            'qc_at' => $this->qc_at,
+
+            'qc_by' => $this->qcBy?->name,
 
             /*
             |------------------------------------------------

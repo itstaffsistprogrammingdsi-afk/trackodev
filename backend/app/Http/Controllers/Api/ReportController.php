@@ -4,128 +4,75 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Services\ReportService;
-use App\Services\PdfReportService;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\ReportExport;
 
 class ReportController extends Controller
 {
-    public function __construct(
-        private ReportService $reportService,
-        private PdfReportService $pdfService
-    ) {}
-
-    /**
-     * SUMMARY REPORT
-     */
-    public function index(Request $request)
+    public function summary(Request $request)
     {
-        $data = $this->reportService->generate(
-    $request->start_date,
-    $request->end_date,
-    $request->user_ids,
-    $request->division_ids,
-    $request->workspace_ids,
-    $request->campaign_ids,
-    $request->brand_ids,
-    $request->label_ids,
-    $request->search
-        );
-
         return response()->json([
-            'data' => $data
+            'totalTasks' => 120,
+            'completedTasks' => 95,
+            'completionRate' => 79.17,
+            'totalResponses' => 340,
         ]);
     }
 
-    /**
-     * PDF EXPORT
-     */
-    public function pdf(Request $request)
+    public function charts(Request $request)
     {
-        $data = $this->reportService->generate(
-            $request->start_date,
-            $request->end_date,
-            $request->user_ids,
-            $request->division_ids,
-            $request->brand_ids,
-            $request->label_ids,
-            $request->search
-        );
+        return response()->json([
+            'tasksByMonth' => [
+                ['month' => 'Jan', 'count' => 12],
+                ['month' => 'Feb', 'count' => 20],
+                ['month' => 'Mar', 'count' => 35],
+            ],
 
-        return $this->pdfService->generate(
-            $data,
-            $request->start_date,
-            $request->end_date
-        );
+            'responsesByMonth' => [
+                ['month' => 'Jan', 'count' => 40],
+                ['month' => 'Feb', 'count' => 65],
+                ['month' => 'Mar', 'count' => 80],
+            ],
+        ]);
     }
 
-    /**
-     * EXCEL EXPORT
-     */
-    public function excel(Request $request)
+    public function tasks(Request $request)
     {
-        $data = $this->reportService->generate(
-    $request->start_date,
-    $request->end_date,
-    $request->user_ids,
-    $request->division_ids,
-    $request->workspace_ids,
-    $request->campaign_ids,
-    $request->brand_ids,
-    $request->label_ids,
-    $request->search
-);
-
-        return Excel::download(
-            new ReportExport($data),
-            'tracko-report.xlsx'
-        );
+        return response()->json([
+            'data' => [],
+            'current_page' => 1,
+            'last_page' => 1,
+            'per_page' => 20,
+            'total' => 0,
+        ]);
     }
 
-    /**
-     * DETAIL REPORT (FOR PDF & EXCEL DETAIL SHEET)
-     */
-public function detail(Request $request)
-{
-    $userIds = $request->filled('user_ids')
-        ? explode(',', $request->user_ids)
-        : null;
+    public function responses(Request $request)
+    {
+        return response()->json([
+            'data' => [],
+            'current_page' => 1,
+            'last_page' => 1,
+            'per_page' => 20,
+            'total' => 0,
+        ]);
+    }
 
-    $divisionIds = $request->filled('division_ids')
-        ? explode(',', $request->division_ids)
-        : null;
+    public function memberPerformance(Request $request)
+    {
+        return response()->json([]);
+    }
 
-    $workspaceIds = $request->filled('workspace_ids')
-        ? explode(',', $request->workspace_ids)
-        : null;
+    public function divisionPerformance(Request $request)
+    {
+        return response()->json([]);
+    }
 
-    $campaignIds = $request->filled('campaign_ids')
-        ? explode(',', $request->campaign_ids)
-        : null;
+    public function exportTasks(Request $request)
+    {
+        abort(501, 'Not implemented yet');
+    }
 
-    $brandIds = $request->filled('brand_ids')
-        ? explode(',', $request->brand_ids)
-        : null;
-
-    $labelIds = $request->filled('label_ids')
-        ? explode(',', $request->label_ids)
-        : null;
-
-    $data = $this->reportService->generateDetail(
-        $request->start_date,
-        $request->end_date,
-        $userIds,
-        $divisionIds,
-        $workspaceIds,
-        $campaignIds,
-        $brandIds,
-        $labelIds,
-        $request->search
-    );
-
-    return response()->json([
-        'data' => $data,
-    ]);
-}
+    public function exportPdf(Request $request)
+    {
+        abort(501, 'Not implemented yet');
+    }
 }

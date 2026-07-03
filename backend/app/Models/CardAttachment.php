@@ -14,12 +14,17 @@ class CardAttachment extends Model
     protected $fillable = [
         'card_id', 'uploaded_by', 'file_name',
         'file_path', 'file_type', 'file_size',
-        'link_url', 'attachment_type', 'quantity', 'result_description'
+        'link_url', 'attachment_type', 'quantity',
+        'result_description', 'qc_quantity', 'qc_note',
+        'qc_by', 'qc_at',
+
     ];
 
     protected $casts = [
     'quantity' => 'integer',
     'result_description' => 'string',
+    'qc_quantity' => 'integer',
+    'qc_at' => 'datetime',
     ];
     
     protected $appends = [
@@ -44,4 +49,9 @@ class CardAttachment extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
+
+    public function qcBy()
+{
+    return $this->belongsTo(User::class, 'qc_by');
+}
 }

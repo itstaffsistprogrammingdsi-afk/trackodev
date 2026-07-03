@@ -1240,4 +1240,41 @@ class CardController extends Controller
             'message' => 'Komentar berhasil dihapus.',
         ]);
     }
+
+    public function qc(Request $request, CardAttachment $attachment): JsonResponse
+    {
+        $card = Card::findOrFail($attachment->card_id);
+        $this->authorizeCard($card);
+
+        $validated = $request->validate([
+            'qc_quantity' => 'nullable|integer|min:0',
+            'qc_note'     => 'nullable|string|max:255',
+        ]);
+
+        $attachment->update([
+            'qc_quantity' => $validated['qc_quantity'] ?? null,
+            'qc_note'     => $validated['qc_note'] ?? null,
+            'qc_by'       => auth()->id(),
+            'qc_at'       => now(),
+        ]);
+
+        ActivityLogService::log(
+            auth()->user(),
+            'card_attachment',
+            (string) $attachment->id,
+            'qc_updated',
+            "Melakukan QC pada attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
+            [
+                'card_id' => $card->id,
+                'attachment_id' => $attachment->id,
+                'qc_quantity' => $attachment->qc_quantity,
+                'qc_note' => $attachment->qc_note,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'QC berhasil diperbarui.',
+            'data'    => $attachment,
+        ]);
+    }
 }
