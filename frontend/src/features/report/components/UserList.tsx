@@ -9,8 +9,8 @@ interface UserListProps {
   onFilterChange: (filters: Partial<FilterParams>) => void;
   pagination: { current_page: number; last_page: number; total: number };
   loading: boolean;
-  
-  // Tambahkan master data dari luar agar dropdown filter bisa dinamis
+  onExport?: (type: 'excel' | 'pdf', userId?: string | number) => void;
+
   masterData?: {
     divisions: { id: number; name: string }[];
     workspaces: { id: number; name: string }[];
@@ -22,126 +22,130 @@ interface UserListProps {
 
 export const UserList: React.FC<UserListProps> = ({
   users,
-  selectedUser,
-  onSelectUser,
   filters,
   onFilterChange,
   pagination,
   loading,
-  masterData = { divisions: [], workspaces: [], campaigns: [], labels: [], brands: [] }
+  onExport,
+  masterData = { divisions: [], workspaces: [], campaigns: [], labels: [], brands: [] },
+  onSelectUser,
 }) => {
   return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200 w-80 lg:w-96">
-      {/* Header & Section Filter Lengkap */}
-      <div className="p-4 border-b border-gray-200 bg-gray-50 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800">Filter Laporan</h2>
+    <div className="space-y-6">
+      
+      {/* HEADER & FILTER BAR (SaaS Style) */}
+      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Laporan & QC</h1>
+            <p className="text-sm text-gray-500 mt-1">Tinjau hasil pekerjaan dan lakukan verifikasi kualitas.</p>
+          </div>
           {(filters.search || filters.division_id || filters.start_date || filters.end_date || filters.campaign_id || filters.workspace_id || filters.label_id || filters.brand_id) && (
             <button 
               onClick={() => onFilterChange({
                 search: '', division_id: '', start_date: '', end_date: '',
                 campaign_id: '', workspace_id: '', label_id: '', brand_id: '', page: 1
               })}
-              className="text-xs text-red-500 hover:underline font-medium"
+              className="text-sm px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-medium transition-colors"
             >
               Reset Filter
             </button>
           )}
         </div>
 
-        {/* Input Cari Nama */}
-        <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Cari Anggota</label>
+        {/* Filter Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          {/* CARI NAMA */}
           <input
             type="text"
-            placeholder="Ketik nama user..."
+            placeholder="Cari nama anggota..."
             value={filters.search || ''}
             onChange={(e) => onFilterChange({ search: e.target.value })}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm"
           />
-        </div>
-        
-        {/* Filter Date Range */}
-        <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Rentang Tanggal</label>
-          <div className="grid grid-cols-2 gap-2">
+
+          {/* SAAS DATEPICKER: TANGGAL MULAI */}
+          <div className="relative flex items-center group">
+            <div className="absolute left-3.5 pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors z-10">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
             <input
               type="date"
               value={filters.start_date || ''}
+              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               onChange={(e) => onFilterChange({ start_date: e.target.value })}
-              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none bg-white"
+              data-placeholder=""
+              className={`w-full pl-10 pr-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm cursor-pointer [color-scheme:light] relative
+                ${!filters.start_date ? "before:content-[attr(data-placeholder)] before:text-gray-400 before:absolute before:left-10" : ""}`}
             />
+          </div>
+
+          {/* SAAS DATEPICKER: TANGGAL SELESAI */}
+          <div className="relative flex items-center group">
+            <div className="absolute left-3.5 pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors z-10">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
             <input
               type="date"
+              min={filters.start_date || undefined}
               value={filters.end_date || ''}
+              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               onChange={(e) => onFilterChange({ end_date: e.target.value })}
-              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none bg-white"
+              data-placeholder=""
+              className={`w-full pl-10 pr-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm cursor-pointer [color-scheme:light] relative
+                ${!filters.end_date ? "before:content-[attr(data-placeholder)] before:text-gray-400 before:absolute before:left-10" : ""}`}
             />
           </div>
-        </div>
 
-        {/* Grid Dropdown Filter Utama */}
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          {/* Filter Divisi */}
-          <div>
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Divisi</label>
-            <select
-              value={filters.division_id || ''}
-              onChange={(e) => onFilterChange({ division_id: e.target.value })}
-              className="w-full p-1 text-xs border border-gray-300 rounded bg-white focus:outline-none"
-            >
-              <option value="">Semua Divisi</option>
-              {masterData.divisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </div>
+          {/* DIVISI */}
+          <select
+            value={filters.division_id || ''}
+            onChange={(e) => onFilterChange({ division_id: e.target.value })}
+            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm bg-white cursor-pointer"
+          >
+            <option value="">Semua Divisi</option>
+            {masterData.divisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
 
-          {/* Filter Workspace */}
-          <div>
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Workspace</label>
-            <select
-              value={filters.workspace_id || ''}
-              onChange={(e) => onFilterChange({ workspace_id: e.target.value })}
-              className="w-full p-1 text-xs border border-gray-300 rounded bg-white focus:outline-none"
-            >
-              <option value="">Semua Ruang</option>
-              {masterData.workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          </div>
+          {/* WORKSPACE */}
+          <select
+            value={filters.workspace_id || ''}
+            onChange={(e) => onFilterChange({ workspace_id: e.target.value })}
+            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm bg-white cursor-pointer"
+          >
+            <option value="">Semua Workspace</option>
+            {masterData.workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </select>
 
-          {/* Filter Campaign */}
-          <div>
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Campaign</label>
-            <select
-              value={filters.campaign_id || ''}
-              onChange={(e) => onFilterChange({ campaign_id: e.target.value })}
-              className="w-full p-1 text-xs border border-gray-300 rounded bg-white focus:outline-none"
-            >
-              <option value="">Semua Klien</option>
-              {masterData.campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
+          {/* CAMPAIGN */}
+          <select
+            value={filters.campaign_id || ''}
+            onChange={(e) => onFilterChange({ campaign_id: e.target.value })}
+            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm bg-white cursor-pointer"
+          >
+            <option value="">Semua Campaign</option>
+            {masterData.campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
 
-          {/* Filter Brand */}
-          <div>
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Brand</label>
-            <select
-              value={filters.brand_id || ''}
-              onChange={(e) => onFilterChange({ brand_id: e.target.value })}
-              className="w-full p-1 text-xs border border-gray-300 rounded bg-white focus:outline-none"
-            >
-              <option value="">Semua Brand</option>
-              {masterData.brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-        </div>
+          {/* BRAND */}
+          <select
+            value={filters.brand_id || ''}
+            onChange={(e) => onFilterChange({ brand_id: e.target.value })}
+            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm bg-white cursor-pointer"
+          >
+            <option value="">Semua Brand</option>
+            {masterData.brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
 
-        {/* Filter Tambahan: Label */}
-        <div>
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Label Kategori</label>
+          {/* LABEL */}
           <select
             value={filters.label_id || ''}
             onChange={(e) => onFilterChange({ label_id: e.target.value })}
-            className="w-full p-1 text-xs border border-gray-300 rounded bg-white focus:outline-none"
+            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm bg-white cursor-pointer"
           >
             <option value="">Semua Label</option>
             {masterData.labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -149,57 +153,123 @@ export const UserList: React.FC<UserListProps> = ({
         </div>
       </div>
 
-      {/* List Users */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-gray-50/50">
+      {/* Export Buttons */}
+      <div className="flex gap-2">
+        <button 
+          onClick={() => onExport?.('pdf')}
+          className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+        >
+          PDF
+        </button>
+        <button 
+          onClick={() => onExport?.('excel')}
+          className="px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+        >
+          Excel
+        </button>
+      </div>
+
+      {/* USER TABLE (SaaS Modern Style) */}
+      <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="text-center py-8 text-gray-400 text-xs">Memuat data tim...</div>
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
         ) : users.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 text-xs">Tidak ada data yang cocok.</div>
+          <div className="text-center py-20 bg-gray-50/50">
+            <p className="text-gray-500 font-medium">Tidak ada anggota yang ditemukan berdasarkan filter.</p>
+          </div>
         ) : (
-          users.map((user) => (
-            <button
-              key={user.id}
-              onClick={() => onSelectUser(user)}
-              className={`w-full text-left p-2.5 rounded-lg transition-all flex flex-col ${
-                selectedUser?.id === user.id
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'hover:bg-gray-100 bg-white border border-gray-200/60'
-              }`}
-            >
-              <span className={`font-semibold text-xs ${selectedUser?.id === user.id ? 'text-white' : 'text-gray-900'}`}>
-                {user.name}
-              </span>
-              <span className={`text-[10px] mt-0.5 ${selectedUser?.id === user.id ? 'text-blue-100' : 'text-gray-500'}`}>
-                {user.divisions?.map((d) => d.name).join(', ') || 'Umum / Tanpa Divisi'}
-              </span>
-            </button>
-          ))
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left whitespace-nowrap">
+              <thead className="bg-gray-50/80 text-gray-500 font-semibold uppercase tracking-wider text-[11px] border-b border-gray-200/60">
+                <tr>
+                  <th scope="col" className="px-6 py-4 rounded-tl-2xl">Anggota Tim</th>
+                  <th scope="col" className="px-6 py-4">Divisi</th>
+                  <th scope="col" className="px-6 py-4 text-right rounded-tr-2xl">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {users.map((user) => (
+                  <tr 
+                    key={user.id}
+                    onClick={() => onSelectUser(user)}
+                    className="hover:bg-blue-50/30 cursor-pointer transition-colors group bg-white"
+                  >
+                    {/* Avatar & Name */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {user.name}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">Lihat Laporan Pekerjaan</p>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    {/* Divisions Badge */}
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1.5">
+                        {user.divisions && user.divisions.length > 0 ? (
+                          user.divisions.map((d) => (
+                            <span 
+                              key={d.id} 
+                              className="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-600 text-[11px] font-semibold rounded-md border border-gray-200/60"
+                            >
+                              {d.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">Tanpa Divisi</span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Action */}
+                    <td className="px-6 py-4 text-right">
+                      <div className="inline-flex items-center text-sm text-blue-600 font-medium group-hover:underline">
+                        Buka Detail
+                        <svg className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Pagination Controls */}
-      <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-xs text-gray-600">
-        <span>Total: <strong className="text-gray-900">{pagination.total}</strong></span>
-        <div className="flex gap-1">
+      {/* PAGINATION */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-200/60 shadow-sm">
+        <span className="text-sm text-gray-600 font-medium">Total: {pagination.total} Anggota</span>
+        <div className="flex gap-2">
           <button
             disabled={pagination.current_page <= 1}
             onClick={() => onFilterChange({ page: pagination.current_page - 1 })}
-            className="px-2 py-1 bg-white border border-gray-300 rounded disabled:opacity-50 text-[11px]"
+            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg disabled:opacity-50 text-sm font-medium transition-colors"
           >
-            Prev
+            Sebelumnya
           </button>
-          <span className="px-2 py-1 text-[11px]">
+          <span className="px-4 py-2 text-sm font-semibold bg-blue-50 text-blue-700 rounded-lg">
             {pagination.current_page} / {pagination.last_page}
           </span>
           <button
             disabled={pagination.current_page >= pagination.last_page}
             onClick={() => onFilterChange({ page: pagination.current_page + 1 })}
-            className="px-2 py-1 bg-white border border-gray-300 rounded disabled:opacity-50 text-[11px]"
+            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg disabled:opacity-50 text-sm font-medium transition-colors"
           >
-            Next
+            Selanjutnya
           </button>
         </div>
       </div>
+
     </div>
   );
 };

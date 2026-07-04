@@ -28,7 +28,8 @@ class DatabaseSeeder extends Seeder
                 SuperAdminSeeder::class,
                 PermissionSeeder::class,
                 AdminSeeder::class,
-                ProjectManagementSeeder::class,
+                // ProjectManagementSeeder::class,
+                // MasterReportSeeder::class,
 
             ]);
         }

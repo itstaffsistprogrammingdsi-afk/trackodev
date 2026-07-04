@@ -78,6 +78,7 @@ export interface FilterParams {
   label_id?: string;
   brand_id?: string;
   page?: number;
+  user_id?: string | number; // <--- Tambahkan ini
 }
 
 export interface PaginatedResponse<T> {

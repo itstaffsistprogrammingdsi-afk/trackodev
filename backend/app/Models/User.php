@@ -239,7 +239,8 @@ public function accessibleCampaigns()
                 'workspace.division',
                 'members',
                 'cards',
-                'cards.members',
+                // 'cards.members',
+
             ]);
     }
 
@@ -259,6 +260,7 @@ public function accessibleCampaigns()
                 'members',
                 'cards',
                 'cards.members',
+                'cards.assignees',
             ])
             ->whereHas(
                 'workspace',
@@ -306,5 +308,18 @@ public function workspaces(): BelongsToMany
     )->withTimestamps();
 }
 
+// ============================================
+    // CARDS
+    // ============================================
+
+    public function cards(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Card::class, 
+            'card_user', 
+            'user_id', 
+            'card_id'
+        )->withTimestamps();
+    }
 
 }

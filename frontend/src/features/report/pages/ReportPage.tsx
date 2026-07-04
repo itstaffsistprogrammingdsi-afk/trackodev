@@ -11,34 +11,44 @@ export const ReportPage: React.FC = () => {
     setSelectedUser,
     cards,
     filters,
-    masterData, // Mengambil data riil dari database
+    masterData,
     loadingUsers,
     loadingCards,
     updateFilter,
     handleQcSubmit,
+    handleExport,
   } = useReport();
 
   return (
-    <div className="flex w-full h-screen bg-gray-100 overflow-hidden">
-      {/* PANEL KIRI: Mengirim data filter database secara langsung */}
-      <UserList
-        users={users}
-        selectedUser={selectedUser}
-        onSelectUser={setSelectedUser}
-        filters={filters}
-        onFilterChange={updateFilter}
-        pagination={pagination}
-        loading={loadingUsers}
-        masterData={masterData} 
-      />
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-6 lg:p-8 font-sans">
+      <div className="max-w-[1600px] mx-auto">
+        
+        {/* Halaman Utama: Menampilkan Filter & Grid User */}
+        <UserList
+          users={users}
+          selectedUser={selectedUser}
+          onSelectUser={setSelectedUser}
+          filters={filters}
+          onFilterChange={updateFilter}
+          pagination={pagination}
+          loading={loadingUsers}
+          masterData={masterData} 
+          onExport={handleExport}
+        />
 
-      {/* PANEL KANAN: Workspace Detail & Evaluasi Tindakan QC */}
-      <CardDetail
-        selectedUser={selectedUser}
-        cards={cards}
-        loading={loadingCards}
-        onQcSubmit={handleQcSubmit}
-      />
+        {/* Modal / Slide-over Drawer: Muncul jika ada user yang diklik */}
+        {selectedUser && (
+          <CardDetail
+            selectedUser={selectedUser}
+            cards={cards}
+            loading={loadingCards}
+            onQcSubmit={handleQcSubmit}
+            onClose={() => setSelectedUser(null)}
+            onExport={handleExport}
+          />
+        )}
+        
+      </div>
     </div>
   );
 };

@@ -141,9 +141,9 @@ Route::middleware([
     )->middleware('permission:user.view');
 
     Route::post(
-    '/auth/bypass/{user}',
-    [AuthController::class, 'bypass']
-)->middleware('permission:user.bypass');
+        '/auth/bypass/{user}',
+        [AuthController::class, 'bypass']
+    )->middleware('permission:user.bypass');
     // ========================================
     // DIVISIONS
     // ========================================
@@ -267,28 +267,28 @@ Route::middleware([
     )->middleware('permission:campaign.update');
 
     Route::get(
-    'campaigns/{campaign}/gantt',
-    [CampaignController::class, 'gantt']
-)->middleware('permission:campaign.view');
+        'campaigns/{campaign}/gantt',
+        [CampaignController::class, 'gantt']
+    )->middleware('permission:campaign.view');
 
-Route::get(
-    'campaigns/{campaign}/board-progress',
-    [CampaignController::class, 'boardProgress']
-)->middleware('permission:campaign.view');
+    Route::get(
+        'campaigns/{campaign}/board-progress',
+        [CampaignController::class, 'boardProgress']
+    )->middleware('permission:campaign.view');
 
-Route::get(
-    '/campaigns/{campaign}/stats',
-    [CampaignController::class, 'stats']
-);
+    Route::get(
+        '/campaigns/{campaign}/stats',
+        [CampaignController::class, 'stats']
+    );
 
-Route::get(
-    '/campaigns/{campaign}/overdue-tasks',
-    [CampaignController::class, 'overdueTasks']
-);
-Route::get(
-    '/campaigns/{campaign}/health',
-    [CampaignController::class, 'health']
-);
+    Route::get(
+        '/campaigns/{campaign}/overdue-tasks',
+        [CampaignController::class, 'overdueTasks']
+    );
+    Route::get(
+        '/campaigns/{campaign}/health',
+        [CampaignController::class, 'health']
+    );
 
     // ========================================
     // BOARDS
@@ -357,9 +357,9 @@ Route::get(
         'cards/{card}',
         [CardController::class, 'destroy']
     )->middleware('permission:task.delete');
-    
+
     Route::get('/daily-todo', [\App\Http\Controllers\Api\DailyTodoController::class, 'index']);
-        Route::get(
+    Route::get(
         '/my-activities',
         [MyActivityController::class, 'index']
     );
@@ -722,25 +722,25 @@ Route::get(
 
 
 
-// ========================================
+    // ========================================
     // REPORTS & QC MANAGEMENT
     // ========================================
     Route::prefix('reports')->group(function () {
-        
+
         // Menyuplai data riil untuk dropdown filter di frontend
         Route::get('/filters-options', [ReportController::class, 'getFilterOptions']);
-        
+
         // LEFT PANEL: Mengambil list user dengan pagination + filter
         Route::get('/users', [ReportController::class, 'index']);
-        
+
         // RIGHT PANEL: Mengambil list card dan attachments spesifik milik satu user
         Route::get('/users/{user}/cards', [ReportController::class, 'showUserCards']);
-        
+
         // ACTION QC: Melakukan submit verifikasi QC per file attachment
         Route::post('/attachments/{attachment}/qc', [ReportController::class, 'submitAttachmentQc']);
+
+        // Rute Export
+        Route::get('/export/excel', [ReportController::class, 'exportExcel']);
+        Route::get('/export/pdf', [ReportController::class, 'exportPdf']);
     });
-
 }); // Ini adalah kurung penutup dari block besar Route::middleware(['auth:sanctum'])->group(function () ...
-
-
-

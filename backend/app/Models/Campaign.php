@@ -92,4 +92,9 @@ public function canBeAccessedBy(
         ->exists();
 }
 
+public function cards(): HasMany
+    {
+        return $this->hasMany(Card::class);
+    }
+
 }

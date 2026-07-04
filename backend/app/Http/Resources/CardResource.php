@@ -4,6 +4,9 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+// 👇 TAMBAHKAN DUA BARIS INI
+use App\Http\Resources\UserResource;
+use App\Http\Resources\TaskResource;
 
 class CardResource extends JsonResource
 {
@@ -83,7 +86,7 @@ class CardResource extends JsonResource
 
             /*
             |------------------------------------------------
-            | ATTACHMENTS (Terintegrasi Fitur QC Anda)
+            | ATTACHMENTS (Terintegrasi Fitur QC)
             |------------------------------------------------
             */
             'attachments' => $this->relationLoaded('attachments')
@@ -120,7 +123,7 @@ class CardResource extends JsonResource
 
             /*
             |------------------------------------------------
-            | TASKS & BRIEF ATTACHMENTS (Bawaan Sebelumnya)
+            | TASKS & BRIEF ATTACHMENTS
             |------------------------------------------------
             */
             'tasks' => $this->relationLoaded('tasks')

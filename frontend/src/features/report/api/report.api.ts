@@ -24,5 +24,22 @@ export const reportApi = {
   submitQc: async (attachmentId: string, data: { qc_quantity: number; qc_note?: string }) => {
     const response = await api.post(`/reports/attachments/${attachmentId}/qc`, data);
     return response.data;
+  },
+
+  // Tambahkan di dalam object reportApi
+exportExcel: async (params: any) => {
+    const response = await api.get('/reports/export/excel', {
+      params: params,
+      responseType: 'blob', // 👈 WAJIB ADA UNTUK DOWNLOAD FILE
+    });
+    return response.data;
+  },
+  
+  exportPdf: async (params: any) => {
+    const response = await api.get('/reports/export/pdf', {
+      params: params,
+      responseType: 'blob', // 👈 WAJIB ADA UNTUK DOWNLOAD FILE
+    });
+    return response.data;
   }
 };

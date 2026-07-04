@@ -99,6 +99,36 @@ export const useReport = () => {
     }
   };
 
+  // Tambahkan di dalam useReport hook
+const handleExport = async (type: 'excel' | 'pdf', userId?: string | number) => {
+    try {
+      // Jika userId ada, kita export mode Individual dengan filter yg sedang aktif
+      // Jika tidak ada, export mode Batch
+      const exportParams: FilterParams = userId 
+        ? { ...filters, user_id: userId } 
+        : filters;
+
+      const data = type === 'excel' 
+        ? await reportApi.exportExcel(exportParams) 
+        : await reportApi.exportPdf(exportParams);
+      
+      const url = window.URL.createObjectURL(new Blob([data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const prefix = userId ? `Report_User_${userId}` : `Report_Batch`;
+      const extension = type === 'excel' ? 'xlsx' : 'pdf';
+      link.setAttribute('download', `${prefix}_${new Date().toISOString().slice(0,10)}.${extension}`);
+      
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Gagal export data', error);
+      alert('Gagal mengunduh file laporan.');
+    }
+  };
+
   return {
     users,
     pagination,
@@ -111,5 +141,6 @@ export const useReport = () => {
     loadingCards,
     updateFilter,
     handleQcSubmit,
+    handleExport, // diexport agar bisa dipanggil page komponen
   };
 };
