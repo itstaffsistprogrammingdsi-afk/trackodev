@@ -1,169 +1,99 @@
-export interface ReportFilter {
-startDate?: string;
-endDate?: string;
-
-memberIds?: string[];
-divisionIds?: string[];
-campaignIds?: string[];
-workspaceIds?: string[];
-labelIds?: string[];
-brandIds?: string[];
+export interface Division {
+  id: number;
+  name: string;
 }
 
-export interface SelectOption {
-id: string;
-name: string;
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  divisions?: Division[];
 }
 
-export interface ReportSummary {
-totalTasks: number;
-completedTasks: number;
-overdueTasks: number;
-inProgressTasks: number;
-pendingTasks: number;
-
-totalResponses: number;
-
-completionRate: number;
+export interface Campaign {
+  id: number;
+  name: string;
 }
 
-export interface TaskReport {
-id: string;
-
-taskNumber?: string;
-title: string;
-description?: string;
-
-workspaceId?: string;
-workspaceName?: string;
-
-campaignId?: string;
-campaignName?: string;
-
-brandId?: string;
-brandName?: string;
-
-assigneeId?: string;
-assigneeName?: string;
-
-divisionId?: string;
-divisionName?: string;
-
-labels?: {
-id: string;
-name: string;
-}[];
-
-priority?: string;
-
-status: string;
-
-startDate?: string;
-dueDate?: string;
-completedAt?: string;
-
-createdAt: string;
-updatedAt: string;
+export interface Board {
+  id: number;
+  name: string;
 }
 
-export interface ResponseReport {
-id: string;
-
-formId: string;
-formName: string;
-
-submittedById: string;
-submittedByName: string;
-
-divisionId?: string;
-divisionName?: string;
-
-campaignId?: string;
-campaignName?: string;
-
-workspaceId?: string;
-workspaceName?: string;
-
-submittedAt: string;
+export interface Brand {
+  id: number;
+  name: string;
+  color?: string;
 }
 
-export interface MemberPerformance {
-memberId: string;
-memberName: string;
-
-divisionId?: string;
-divisionName?: string;
-
-assignedTasks: number;
-completedTasks: number;
-overdueTasks: number;
-inProgressTasks: number;
-
-completionRate: number;
-
-averageCompletionHours?: number;
+export interface Label {
+  id: number;
+  name: string;
+  color?: string;
 }
 
-export interface DivisionPerformance {
-divisionId: string;
-divisionName: string;
-
-totalMembers: number;
-
-assignedTasks: number;
-completedTasks: number;
-overdueTasks: number;
-inProgressTasks: number;
-
-completionRate: number;
-
-averageCompletionHours?: number;
+export interface Attachment {
+  id: string;
+  file_name: string;
+  file_url: string | null;
+  file_type: string;
+  attachment_type: string;
+  quantity: number;
+  result_description: string | null;
+  qc_quantity: number | null;
+  qc_note: string | null;
+  qc_by: number | null;
+  qc_user: { id: number; name: string } | null;
+  qc_at: string | null;
+  uploader: { id: number; name: string } | null;
 }
 
-export interface TaskTrend {
-date: string;
-
-created: number;
-completed: number;
+export interface Card {
+  id: string;
+  board_id: number;
+  campaign_id: number;
+  title: string;
+  description: string | null;
+  priority: string;
+  status: string;
+  due_date: string | null;
+  completed_at: string | null;
+  is_completed: boolean;
+  created_at: string;
+  campaign: Campaign | null;
+  board: Board | null;
+  brands: Brand[];
+  labels: Label[];
+  assignees: User[];
+  attachments: Attachment[];
 }
 
-export interface DivisionChart {
-divisionId: string;
-divisionName: string;
-
-totalTasks: number;
-}
-
-export interface TopMemberChart {
-memberId: string;
-memberName: string;
-
-completedTasks: number;
-}
-
-export interface ReportCharts {
-taskTrend: TaskTrend[];
-divisionChart: DivisionChart[];
-topMembers: TopMemberChart[];
-}
-
-export interface ReportResponse {
-summary: ReportSummary;
-
-tasks: TaskReport[];
-responses: ResponseReport[];
-
-memberPerformance: MemberPerformance[];
-divisionPerformance: DivisionPerformance[];
-
-charts: ReportCharts;
+export interface FilterParams {
+  search?: string;
+  division_id?: string;
+  start_date?: string;
+  end_date?: string;
+  campaign_id?: string;
+  workspace_id?: string;
+  label_id?: string;
+  brand_id?: string;
+  page?: number;
 }
 
 export interface PaginatedResponse<T> {
-data: T[];
+  data: T[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    total: number;
+  };
+}
 
-total: number;
-page: number;
-limit: number;
-totalPages: number;
+// Tambahkan interface ini di bagian paling bawah file src/features/report/types.ts
+export interface MasterFilterOptions {
+  divisions: { id: number; name: string }[];
+  workspaces: { id: number; name: string }[];
+  campaigns: { id: number; name: string }[];
+  labels: { id: number; name: string; color?: string }[];
+  brands: { id: number; name: string; color?: string }[];
 }
