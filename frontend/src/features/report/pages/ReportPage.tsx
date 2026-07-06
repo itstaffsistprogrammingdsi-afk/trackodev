@@ -1,360 +1,99 @@
-import { useState } from "react";
+import React, { useState } from 'react';
+import { useReport } from '../hooks/useReport';
+import { UserList } from '../components/UserList';
+import { CardDetail } from '../components/CardDetail';
+import { ReportPreviewModal } from '../components/ReportPreviewModal';
 
-import {
-  useDivisionPerformance,
-  useMemberPerformance,
-  useReportCharts,
-  useReportResponses,
-  useReportSummary,
-  useReportTasks,
-} from "../hooks/useReport";
+export const ReportPage: React.FC = () => {
+  const {
+    users,
+    pagination,
+    selectedUser,
+    setSelectedUser,
+    cards,
+    filters,
+    masterData,
+    loadingUsers,
+    loadingCards,
+    loadingPreview,
+    exporting,
+    previewData,
+    updateFilter,
+    handleQcSubmit,
+    handleExport,
+    handlePreview,
+    clearPreview,
+  } = useReport();
 
-import type { ReportFilter } from "../types";
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-export default function ReportPage() {
-  const [filters, setFilters] =
-    useState<ReportFilter>({});
+  const handlePreviewClick = async (userId?: string | number) => {
+    const result = await handlePreview(userId);
+    if (result) {
+      setIsPreviewOpen(true);
+    }
+  };
 
-  const [taskPage, setTaskPage] =
-    useState(1);
+  const handleDownloadFromPreview = () => {
+    if (previewData) {
+      handleExport('pdf', selectedUser?.id);
+    }
+  };
 
-  const [responsePage, setResponsePage] =
-    useState(1);
-
-  const summary =
-    useReportSummary(filters);
-
-  const charts =
-    useReportCharts(filters);
-
-  const tasks =
-    useReportTasks(
-      filters,
-      taskPage,
-      20
-    );
-
-  const responses =
-    useReportResponses(
-      filters,
-      responsePage,
-      20
-    );
-
-  const memberPerformance =
-    useMemberPerformance(filters);
-
-  const divisionPerformance =
-    useDivisionPerformance(filters);
-
-  const isLoading =
-    summary.isLoading ||
-    charts.isLoading ||
-    tasks.isLoading ||
-    responses.isLoading;
-
-  if (isLoading) {
-    return (
-      <div
-        className="
-          flex
-          min-h-screen
-          items-center
-          justify-center
-          bg-[#f5f7fb]
-        "
-      >
-        <div
-          className="
-            text-sm
-            text-gray-500
-          "
-        >
-          Loading report...
-        </div>
-      </div>
-    );
-  }
+  const handleExportExcelFromPreview = () => {
+    handleExport('excel', selectedUser?.id);
+  };
 
   return (
-    <div
-      className="
-        min-h-screen
-        bg-[#f5f7fb]
-        p-4
-        text-gray-800
-      "
-    >
-      {/* HEADER */}
-      <div
-        className="
-          mb-6
-          flex
-          items-center
-          justify-between
-        "
-      >
-        <div>
-          <h1
-            className="
-              text-2xl
-              font-bold
-            "
-          >
-            Reports
-          </h1>
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-6 lg:p-8 font-sans">
+      <div className="max-w-[1600px] mx-auto">
+        
+        <UserList
+          users={users}
+          selectedUser={selectedUser}
+          onSelectUser={setSelectedUser}
+          filters={filters}
+          onFilterChange={updateFilter}
+          pagination={pagination}
+          loading={loadingUsers}
+          masterData={masterData}
+          onExport={handleExport}
+          onPreview={handlePreviewClick}
+          previewLoading={loadingPreview}
+          exporting={exporting}
+        />
 
-          <p
-            className="
-              mt-1
-              text-sm
-              text-gray-500
-            "
-          >
-            Performance and activity overview
-          </p>
-        </div>
-      </div>
+        {/* Preview Modal */}
+        <ReportPreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => {
+            setIsPreviewOpen(false);
+            clearPreview();
+          }}
+          onDownload={handleDownloadFromPreview}
+          onExportExcel={handleExportExcelFromPreview}
+          previewData={previewData}
+          loading={loadingPreview}
+          title={selectedUser ? `Preview Laporan - ${selectedUser.name}` : 'Preview Laporan Batch'}
+        />
 
-      {/* FILTER */}
-      <div
-        className="
-          mb-6
-          rounded-2xl
-          border
-          border-gray-200
-          bg-white
-          p-4
-        "
-      >
-        Report Filter Component
-      </div>
-
-      {/* SUMMARY */}
-      <div
-        className="
-          mb-6
-          grid
-          grid-cols-1
-          gap-4
-          md:grid-cols-2
-          xl:grid-cols-4
-        "
-      >
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">
-            Total Tasks
-          </div>
-
-          <div className="mt-2 text-3xl font-bold">
-            {summary.data?.totalTasks ?? 0}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">
-            Completed Tasks
-          </div>
-
-          <div className="mt-2 text-3xl font-bold">
-            {summary.data?.completedTasks ?? 0}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">
-            Total Responses
-          </div>
-
-          <div className="mt-2 text-3xl font-bold">
-            {summary.data?.totalResponses ?? 0}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">
-            Completion Rate
-          </div>
-
-          <div className="mt-2 text-3xl font-bold">
-            {summary.data?.completionRate ?? 0}%
-          </div>
-        </div>
-      </div>
-
-      {/* CHARTS */}
-      <div
-        className="
-          mb-6
-          rounded-2xl
-          border
-          border-gray-200
-          bg-white
-          p-5
-        "
-      >
-        <h2
-          className="
-            mb-4
-            text-lg
-            font-semibold
-          "
-        >
-          Charts
-        </h2>
-
-        <pre
-          className="
-            overflow-auto
-            text-xs
-          "
-        >
-          {JSON.stringify(
-            charts.data,
-            null,
-            2
-          )}
-        </pre>
-      </div>
-
-      {/* TASKS */}
-      <div
-        className="
-          mb-6
-          rounded-2xl
-          border
-          border-gray-200
-          bg-white
-          p-5
-        "
-      >
-        <h2
-          className="
-            mb-4
-            text-lg
-            font-semibold
-          "
-        >
-          Tasks
-        </h2>
-
-        <pre
-          className="
-            overflow-auto
-            text-xs
-          "
-        >
-          {JSON.stringify(
-            tasks.data,
-            null,
-            2
-          )}
-        </pre>
-      </div>
-
-      {/* RESPONSES */}
-      <div
-        className="
-          mb-6
-          rounded-2xl
-          border
-          border-gray-200
-          bg-white
-          p-5
-        "
-      >
-        <h2
-          className="
-            mb-4
-            text-lg
-            font-semibold
-          "
-        >
-          Responses
-        </h2>
-
-        <pre
-          className="
-            overflow-auto
-            text-xs
-          "
-        >
-          {JSON.stringify(
-            responses.data,
-            null,
-            2
-          )}
-        </pre>
-      </div>
-
-      {/* MEMBER PERFORMANCE */}
-      <div
-        className="
-          mb-6
-          rounded-2xl
-          border
-          border-gray-200
-          bg-white
-          p-5
-        "
-      >
-        <h2
-          className="
-            mb-4
-            text-lg
-            font-semibold
-          "
-        >
-          Member Performance
-        </h2>
-
-        <pre
-          className="
-            overflow-auto
-            text-xs
-          "
-        >
-          {JSON.stringify(
-            memberPerformance.data,
-            null,
-            2
-          )}
-        </pre>
-      </div>
-
-      {/* DIVISION PERFORMANCE */}
-      <div
-        className="
-          rounded-2xl
-          border
-          border-gray-200
-          bg-white
-          p-5
-        "
-      >
-        <h2
-          className="
-            mb-4
-            text-lg
-            font-semibold
-          "
-        >
-          Division Performance
-        </h2>
-
-        <pre
-          className="
-            overflow-auto
-            text-xs
-          "
-        >
-          {JSON.stringify(
-            divisionPerformance.data,
-            null,
-            2
-          )}
-        </pre>
+        {/* Card Detail Modal */}
+        {selectedUser && (
+          <CardDetail
+            selectedUser={selectedUser}
+            cards={cards}
+            loading={loadingCards}
+            onQcSubmit={handleQcSubmit}
+            onClose={() => setSelectedUser(null)}
+            onExport={handleExport}
+            onPreview={handlePreviewClick}
+            exporting={exporting}
+          />
+        )}
+        
       </div>
     </div>
   );
-}
+};
+
+export default ReportPage;
