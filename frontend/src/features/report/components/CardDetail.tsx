@@ -40,7 +40,6 @@ export const CardDetail: React.FC<CardDetailProps> = ({
     try {
       const success = await onQcSubmit(attachmentId, quantity, note);
       if (success) {
-        // Clear input setelah berhasil
         setQcValues((prev) => ({ ...prev, [attachmentId]: '' }));
         setQcNotes((prev) => ({ ...prev, [attachmentId]: '' }));
       }
@@ -172,7 +171,6 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                                 }`}
                               >
                                 <div className="flex flex-col gap-3">
-                                  {/* File Info */}
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
@@ -223,7 +221,6 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                                         value={qcValues[attachment.id] ?? ''}
                                         onChange={(e) => {
                                           const val = e.target.value;
-                                          // Biarkan string kosong atau angka >= 0
                                           if (val === '' || (!isNaN(Number(val)) && Number(val) >= 0)) {
                                             setQcValues((prev) => ({
                                               ...prev,

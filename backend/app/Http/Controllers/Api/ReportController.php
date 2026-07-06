@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-// use App\Exports\ReportExport;
 use App\Exports\ReportExportArray;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CardResource;
 use App\Http\Resources\UserResource;
-use App\Models\ActivityLog;
 use App\Models\Brand;
 use App\Models\Campaign;
 use App\Models\Card;
@@ -27,19 +25,16 @@ class ReportController extends Controller
 {
     /**
      * LEFT PANEL: Menampilkan list data user beserta divisi berdasarkan filter.
-     * Endpoint: GET /api/reports/users
      */
     public function index(Request $request): JsonResponse
     {
         try {
             $query = User::with('divisions');
 
-            // 1. Filter Pencarian Nama User
             if ($request->filled('search')) {
                 $query->where('users.name', 'like', "%{$request->search}%");
             }
 
-            // 2. FILTER KEANGGOTAAN USER
             if ($request->filled('division_id')) {
                 $query->whereHas('divisions', function ($q) use ($request) {
                     $q->where('divisions.id', $request->division_id);
@@ -53,12 +48,11 @@ class ReportController extends Controller
             }
 
             if ($request->filled('campaign_id')) {
-                $query->whereHas('campaigns', function ($q) use ($request) {
-                    $q->where('campaigns.id', $request->campaign_id);
+                $query->whereHas('cards.board', function ($q) use ($request) {
+                    $q->where('boards.campaign_id', $request->campaign_id);
                 });
             }
 
-            // 3. FILTER SPESIFIK CARD
             if ($this->hasCardFilters($request)) {
                 $query->whereHas('cards', function ($q) use ($request) {
                     $this->applyCardFilters($q, $request);
@@ -91,6 +85,7 @@ class ReportController extends Controller
                 $q->where('users.id', $user->id);
             })->with([
                 'campaign',
+                'board.campaign', // 🔥 Load campaign dari board
                 'board',
                 'labels',
                 'brands',
@@ -189,11 +184,13 @@ class ReportController extends Controller
         }
 
         if ($request->filled('campaign_id')) {
-            $query->where('cards.campaign_id', $request->campaign_id);
+            $query->whereHas('board', function ($q) use ($request) {
+                $q->where('boards.campaign_id', $request->campaign_id);
+            });
         }
 
         if ($request->filled('workspace_id')) {
-            $query->whereHas('campaign', function ($q) use ($request) {
+            $query->whereHas('board.campaign', function ($q) use ($request) {
                 $q->where('campaigns.workspace_id', $request->workspace_id);
             });
         }
@@ -222,9 +219,6 @@ class ReportController extends Controller
         }
     }
 
-    /**
-     * HELPER: Cek apakah ada filter berbasis card
-     */
     private function hasCardFilters(Request $request): bool
     {
         return $request->filled('start_date') ||
@@ -235,9 +229,7 @@ class ReportController extends Controller
     }
 
     /**
-     * ========================================================
      * PREVIEW PDF
-     * ========================================================
      */
     public function previewPdf(Request $request): JsonResponse
     {
@@ -270,9 +262,7 @@ class ReportController extends Controller
                     'html' => $html,
                     'pdf_base64' => $base64Pdf,
                     'users_count' => $users->count(),
-                    'total_cards' => $users->sum(function ($user) {
-                        return $user->cards->count();
-                    }),
+                    'total_cards' => $users->sum(fn($user) => $user->cards->count()),
                 ]
             ]);
         } catch (\Exception $e) {
@@ -284,75 +274,16 @@ class ReportController extends Controller
         }
     }
 
-
-
-
     /**
-     * ========================================================
-     * PREVIEW PDF
-     * ========================================================
-     */
-    // public function previewPdf(Request $request): JsonResponse
-    // {
-    //     try {
-    //         $users = $this->getExportData($request);
-
-    //         if ($users->isEmpty()) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Tidak ada data untuk dipreview'
-    //             ], 404);
-    //         }
-
-    //         $html = view('exports.report_pdf', compact('users'))->render();
-
-    //         $pdf = Pdf::loadView('exports.report_pdf', compact('users'))
-    //             ->setPaper('a4', 'landscape')
-    //             ->setOptions([
-    //                 'defaultFont' => 'DejaVu Sans',
-    //                 'isHtml5ParserEnabled' => true,
-    //                 'isRemoteEnabled' => false,
-    //             ]);
-
-    //         $pdfContent = $pdf->output();
-    //         $base64Pdf = base64_encode($pdfContent);
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'data' => [
-    //                 'html' => $html,
-    //                 'pdf_base64' => $base64Pdf,
-    //                 'users_count' => $users->count(),
-    //                 'total_cards' => $users->sum(function ($user) {
-    //                     return $user->cards->count();
-    //                 }),
-    //             ]
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         Log::error('Error preview PDF: ' . $e->getMessage());
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Gagal generate preview: ' . $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
-
-    /**
-     * ========================================================
      * EXPORT PDF
-     * ========================================================
      */
     public function exportPdf(Request $request)
     {
         try {
-            Log::info('Export PDF requested', $request->all());
-
             $users = $this->getExportData($request);
 
             if ($users->isEmpty()) {
-                return response()->json([
-                    'message' => 'Tidak ada data untuk diexport'
-                ], 404);
+                return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
             $pdf = Pdf::loadView('exports.report_pdf', compact('users'))
@@ -368,52 +299,37 @@ class ReportController extends Controller
             $fileName = $prefix . '_' . date('Ymd_His') . '.pdf';
 
             return $pdf->download($fileName);
-
         } catch (\Exception $e) {
             Log::error('Export PDF error: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Gagal export PDF: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['message' => 'Gagal export PDF: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * EXPORT EXCEL - PERBAIKAN DENGAN MENGGUNAKAN COLLECTION DAN MENGHINDARI VIEW COMPLEX
+     * EXPORT EXCEL
      */
-public function exportExcel(Request $request)
+    public function exportExcel(Request $request)
     {
         try {
-            Log::info('Export Excel requested', $request->all());
-
             $users = $this->getExportData($request);
 
-            Log::info('Users count for export: ' . $users->count());
-
             if ($users->isEmpty()) {
-                return response()->json([
-                    'message' => 'Tidak ada data untuk diexport'
-                ], 404);
+                return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
             $prefix = $request->filled('user_id') ? 'Report_User_' . $request->user_id : 'Report_Kinerja_Batch';
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.xlsx';
 
-            // 🔥 Gunakan ReportExportArray
             return Excel::download(new ReportExportArray($users), $fileName);
-
         } catch (\Exception $e) {
             Log::error('Export Excel error: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-
-            return response()->json([
-                'message' => 'Gagal export Excel: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['message' => 'Gagal export Excel: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * GET EXPORT DATA - PERBAIKAN UNTUK UUID DAN RELASI
+     * GET EXPORT DATA
      */
     private function getExportData(Request $request)
     {
@@ -423,6 +339,7 @@ public function exportExcel(Request $request)
                 'cards' => function ($q) use ($request) {
                     $q->with([
                         'campaign',
+                        'board.campaign', // 🔥 Load campaign dari board
                         'board',
                         'labels',
                         'brands',
@@ -435,38 +352,32 @@ public function exportExcel(Request $request)
                 }
             ]);
 
-            // Filter user_id (UUID)
             if ($request->filled('user_id')) {
                 $query->where('users.id', $request->user_id);
             }
 
-            // Filter pencarian nama user
             if ($request->filled('search')) {
                 $query->where('users.name', 'like', "%{$request->search}%");
             }
 
-            // Filter divisi (UUID)
             if ($request->filled('division_id')) {
                 $query->whereHas('divisions', function ($q) use ($request) {
                     $q->where('divisions.id', $request->division_id);
                 });
             }
 
-            // Filter workspace (UUID)
             if ($request->filled('workspace_id')) {
                 $query->whereHas('workspaces', function ($q) use ($request) {
                     $q->where('workspaces.id', $request->workspace_id);
                 });
             }
 
-            // Filter campaign (UUID)
             if ($request->filled('campaign_id')) {
-                $query->whereHas('campaigns', function ($q) use ($request) {
-                    $q->where('campaigns.id', $request->campaign_id);
+                $query->whereHas('cards.board', function ($q) use ($request) {
+                    $q->where('boards.campaign_id', $request->campaign_id);
                 });
             }
 
-            // Filter berbasis card
             if ($this->hasCardFilters($request)) {
                 $query->whereHas('cards', function ($q) use ($request) {
                     $this->applyCardFilters($q, $request);
@@ -474,53 +385,9 @@ public function exportExcel(Request $request)
             }
 
             return $query->get();
-
         } catch (\Exception $e) {
             Log::error('Error getting export data: ' . $e->getMessage());
             throw $e;
         }
     }
-
-    public function getUserActivityLogs(Request $request, User $user): JsonResponse
-{
-    try {
-        $logs = ActivityLog::where('user_id', $user->id)
-            ->orWhere(function ($q) use ($user) {
-                $q->where('entity_type', 'report')
-                  ->where('entity_id', $user->id);
-            })
-            ->orWhere(function ($q) use ($user) {
-                $q->where('entity_type', 'card_attachment')
-                  ->whereHasMorph('entity', [CardAttachment::class], function ($q) use ($user) {
-                      $q->whereHas('card', function ($q) use ($user) {
-                          $q->whereHas('assignees', function ($q) use ($user) {
-                              $q->where('users.id', $user->id);
-                          });
-                      });
-                  });
-            })
-            ->with('user')
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get();
-
-        return response()->json([
-            'data' => $logs->map(fn($log) => [
-                'id' => $log->id,
-                'action' => $log->action,
-                'description' => $log->description,
-                'meta' => $log->meta,
-                'user' => $log->user ? [
-                    'id' => $log->user->id,
-                    'name' => $log->user->name,
-                ] : null,
-                'created_at' => $log->created_at->toDateTimeString(),
-                'created_at_human' => $log->created_at->diffForHumans(),
-            ]),
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Error fetching activity logs: ' . $e->getMessage());
-        return response()->json(['message' => 'Gagal memuat log aktivitas'], 500);
-    }
-}
 }

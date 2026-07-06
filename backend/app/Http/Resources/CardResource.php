@@ -4,7 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-// 👇 TAMBAHKAN DUA BARIS INI
 use App\Http\Resources\UserResource;
 use App\Http\Resources\TaskResource;
 
@@ -28,19 +27,14 @@ class CardResource extends JsonResource
 
             /*
             |------------------------------------------------
-            | CAMPAIGN CONTEXT (Untuk Judul Card di UI Report)
+            | CAMPAIGN CONTEXT - Ambil dari card atau board
             |------------------------------------------------
             */
-            'campaign' => $this->relationLoaded('campaign') && $this->campaign
-                ? [
-                    'id'   => $this->campaign->id,
-                    'name' => $this->campaign->name,
-                  ]
-                : null,
+            'campaign' => $this->getCampaignData(),
 
             /*
             |------------------------------------------------
-            | BOARD
+            | BOARD - Tetap seperti semula
             |------------------------------------------------
             */
             'board' => $this->relationLoaded('board') ? $this->board : null,
@@ -94,12 +88,12 @@ class CardResource extends JsonResource
                     'id'                 => $att->id,
                     'file_name'          => $att->file_name,
                     'file_url'           => $att->file_url,
+                    'link_url'           => $att->link_url,
                     'file_type'          => $att->file_type,
                     'attachment_type'    => $att->attachment_type,
                     'quantity'           => $att->quantity,
                     'result_description' => $att->result_description,
                     
-                    // Informasi QC per File
                     'qc_quantity'        => $att->qc_quantity,
                     'qc_note'            => $att->qc_note,
                     'qc_by'              => $att->qc_by,
@@ -111,7 +105,6 @@ class CardResource extends JsonResource
                                             : null,
                     'qc_at'              => $att->qc_at ? $att->qc_at->toDateTimeString() : null,
                     
-                    // Informasi Uploader
                     'uploader'           => $att->relationLoaded('uploader') && $att->uploader 
                                             ? [
                                                 'id'   => $att->uploader->id,
@@ -132,5 +125,34 @@ class CardResource extends JsonResource
 
             'brief_attachments' => $this->whenLoaded('briefAttachments', fn() => $this->briefAttachments),
         ];
+    }
+
+    /**
+     * Ambil campaign dari card atau board
+     * 
+     * Karena campaign_id di card sering null, kita fallback ke board
+     */
+    protected function getCampaignData()
+    {
+        // 1. Coba dari card langsung
+        if ($this->relationLoaded('campaign') && $this->campaign) {
+            return [
+                'id'   => $this->campaign->id,
+                'name' => $this->campaign->name,
+            ];
+        }
+
+        // 2. Coba dari board
+        if ($this->relationLoaded('board') && $this->board) {
+            // Cek apakah relasi campaign di board sudah di-load
+            if ($this->board->relationLoaded('campaign') && $this->board->campaign) {
+                return [
+                    'id'   => $this->board->campaign->id,
+                    'name' => $this->board->campaign->name,
+                ];
+            }
+        }
+
+        return null;
     }
 }

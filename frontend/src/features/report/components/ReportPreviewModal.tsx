@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Download, FileText, Printer, Eye, FileSpreadsheet } from 'lucide-react';
+import { X, Download, FileText, Eye, FileSpreadsheet } from 'lucide-react';
 
 interface ReportPreviewModalProps {
   isOpen: boolean;
@@ -158,13 +158,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
             <div className="text-sm text-gray-500">
               <span className="font-medium">Tip:</span> Gunakan tombol PDF/HTML untuk beralih tampilan
             </div>
-            <button
-              onClick={() => window.print()}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Printer className="w-4 h-4" />
-              Print
-            </button>
+
           </div>
         </div>
       </div>
