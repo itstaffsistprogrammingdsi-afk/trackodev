@@ -1,5 +1,8 @@
 import React from 'react';
 import { User, FilterParams } from '../types';
+import { Eye, 
+  // FileText,
+   Download, FileSpreadsheet } from 'lucide-react';
 
 interface UserListProps {
   users: User[];
@@ -10,6 +13,9 @@ interface UserListProps {
   pagination: { current_page: number; last_page: number; total: number };
   loading: boolean;
   onExport?: (type: 'excel' | 'pdf', userId?: string | number) => void;
+  onPreview?: (userId?: string | number) => void;
+  previewLoading?: boolean;
+  exporting?: boolean;
 
   masterData?: {
     divisions: { id: number; name: string }[];
@@ -27,35 +33,39 @@ export const UserList: React.FC<UserListProps> = ({
   pagination,
   loading,
   onExport,
+  onPreview,
+  previewLoading = false,
+  exporting = false,
   masterData = { divisions: [], workspaces: [], campaigns: [], labels: [], brands: [] },
   onSelectUser,
 }) => {
   return (
     <div className="space-y-6">
-      
-      {/* HEADER & FILTER BAR (SaaS Style) */}
+      {/* HEADER & FILTER BAR */}
       <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Laporan & QC</h1>
             <p className="text-sm text-gray-500 mt-1">Tinjau hasil pekerjaan dan lakukan verifikasi kualitas.</p>
           </div>
-          {(filters.search || filters.division_id || filters.start_date || filters.end_date || filters.campaign_id || filters.workspace_id || filters.label_id || filters.brand_id) && (
-            <button 
-              onClick={() => onFilterChange({
-                search: '', division_id: '', start_date: '', end_date: '',
-                campaign_id: '', workspace_id: '', label_id: '', brand_id: '', page: 1
-              })}
-              className="text-sm px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-medium transition-colors"
-            >
-              Reset Filter
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {(filters.search || filters.division_id || filters.start_date || filters.end_date || 
+              filters.campaign_id || filters.workspace_id || filters.label_id || filters.brand_id) && (
+              <button 
+                onClick={() => onFilterChange({
+                  search: '', division_id: '', start_date: '', end_date: '',
+                  campaign_id: '', workspace_id: '', label_id: '', brand_id: '', page: 1
+                })}
+                className="text-sm px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-medium transition-colors"
+              >
+                Reset Filter
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filter Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          {/* CARI NAMA */}
           <input
             type="text"
             placeholder="Cari nama anggota..."
@@ -64,7 +74,6 @@ export const UserList: React.FC<UserListProps> = ({
             className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm"
           />
 
-          {/* SAAS DATEPICKER: TANGGAL MULAI */}
           <div className="relative flex items-center group">
             <div className="absolute left-3.5 pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors z-10">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -76,13 +85,10 @@ export const UserList: React.FC<UserListProps> = ({
               value={filters.start_date || ''}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               onChange={(e) => onFilterChange({ start_date: e.target.value })}
-              data-placeholder=""
-              className={`w-full pl-10 pr-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm cursor-pointer [color-scheme:light] relative
-                ${!filters.start_date ? "before:content-[attr(data-placeholder)] before:text-gray-400 before:absolute before:left-10" : ""}`}
+              className="w-full pl-10 pr-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm cursor-pointer"
             />
           </div>
 
-          {/* SAAS DATEPICKER: TANGGAL SELESAI */}
           <div className="relative flex items-center group">
             <div className="absolute left-3.5 pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors z-10">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -95,13 +101,10 @@ export const UserList: React.FC<UserListProps> = ({
               value={filters.end_date || ''}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               onChange={(e) => onFilterChange({ end_date: e.target.value })}
-              data-placeholder=""
-              className={`w-full pl-10 pr-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm cursor-pointer [color-scheme:light] relative
-                ${!filters.end_date ? "before:content-[attr(data-placeholder)] before:text-gray-400 before:absolute before:left-10" : ""}`}
+              className="w-full pl-10 pr-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm cursor-pointer"
             />
           </div>
 
-          {/* DIVISI */}
           <select
             value={filters.division_id || ''}
             onChange={(e) => onFilterChange({ division_id: e.target.value })}
@@ -111,7 +114,6 @@ export const UserList: React.FC<UserListProps> = ({
             {masterData.divisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
 
-          {/* WORKSPACE */}
           <select
             value={filters.workspace_id || ''}
             onChange={(e) => onFilterChange({ workspace_id: e.target.value })}
@@ -121,7 +123,6 @@ export const UserList: React.FC<UserListProps> = ({
             {masterData.workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
 
-          {/* CAMPAIGN */}
           <select
             value={filters.campaign_id || ''}
             onChange={(e) => onFilterChange({ campaign_id: e.target.value })}
@@ -131,7 +132,6 @@ export const UserList: React.FC<UserListProps> = ({
             {masterData.campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
 
-          {/* BRAND */}
           <select
             value={filters.brand_id || ''}
             onChange={(e) => onFilterChange({ brand_id: e.target.value })}
@@ -141,7 +141,6 @@ export const UserList: React.FC<UserListProps> = ({
             {masterData.brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
 
-          {/* LABEL */}
           <select
             value={filters.label_id || ''}
             onChange={(e) => onFilterChange({ label_id: e.target.value })}
@@ -153,23 +152,35 @@ export const UserList: React.FC<UserListProps> = ({
         </div>
       </div>
 
-      {/* Export Buttons */}
-      <div className="flex gap-2">
+      {/* Export Buttons Batch */}
+      <div className="flex gap-2 flex-wrap">
+        <button 
+          onClick={() => onPreview?.()}
+          disabled={previewLoading}
+          className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Eye className="w-4 h-4" />
+          {previewLoading ? 'Memuat...' : 'Preview PDF'}
+        </button>
         <button 
           onClick={() => onExport?.('pdf')}
-          className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+          disabled={exporting}
+          className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          PDF
+          <Download className="w-4 h-4" />
+          {exporting ? 'Mengunduh...' : 'PDF'}
         </button>
         <button 
           onClick={() => onExport?.('excel')}
-          className="px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+          disabled={exporting}
+          className="px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Excel
+          <FileSpreadsheet className="w-4 h-4" />
+          {exporting ? 'Mengunduh...' : 'Excel'}
         </button>
       </div>
 
-      {/* USER TABLE (SaaS Modern Style) */}
+      {/* USER TABLE */}
       <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center py-20">
@@ -193,10 +204,8 @@ export const UserList: React.FC<UserListProps> = ({
                 {users.map((user) => (
                   <tr 
                     key={user.id}
-                    onClick={() => onSelectUser(user)}
-                    className="hover:bg-blue-50/30 cursor-pointer transition-colors group bg-white"
+                    className="hover:bg-blue-50/30 transition-colors group bg-white"
                   >
-                    {/* Avatar & Name */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -211,7 +220,6 @@ export const UserList: React.FC<UserListProps> = ({
                       </div>
                     </td>
                     
-                    {/* Divisions Badge */}
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1.5">
                         {user.divisions && user.divisions.length > 0 ? (
@@ -229,13 +237,56 @@ export const UserList: React.FC<UserListProps> = ({
                       </div>
                     </td>
 
-                    {/* Action */}
                     <td className="px-6 py-4 text-right">
-                      <div className="inline-flex items-center text-sm text-blue-600 font-medium group-hover:underline">
-                        Buka Detail
-                        <svg className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                        </svg>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPreview?.(user.id);
+                          }}
+                          disabled={previewLoading}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Preview
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onExport?.('pdf', user.id);
+                          }}
+                          disabled={exporting}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          PDF
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onExport?.('excel', user.id);
+                          }}
+                          disabled={exporting}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          Excel
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectUser(user);
+                          }}
+                          className="inline-flex items-center text-sm text-blue-600 font-medium group-hover:underline px-3 py-1.5 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          Buka Detail
+                          <svg className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -269,7 +320,6 @@ export const UserList: React.FC<UserListProps> = ({
           </button>
         </div>
       </div>
-
     </div>
   );
 };

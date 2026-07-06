@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useReport } from '../hooks/useReport';
 import { UserList } from '../components/UserList';
 import { CardDetail } from '../components/CardDetail';
+import { ReportPreviewModal } from '../components/ReportPreviewModal';
 
 export const ReportPage: React.FC = () => {
   const {
@@ -14,16 +15,39 @@ export const ReportPage: React.FC = () => {
     masterData,
     loadingUsers,
     loadingCards,
+    loadingPreview,
+    exporting,
+    previewData,
     updateFilter,
     handleQcSubmit,
     handleExport,
+    handlePreview,
+    clearPreview,
   } = useReport();
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const handlePreviewClick = async (userId?: string | number) => {
+    const result = await handlePreview(userId);
+    if (result) {
+      setIsPreviewOpen(true);
+    }
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (previewData) {
+      handleExport('pdf', selectedUser?.id);
+    }
+  };
+
+  const handleExportExcelFromPreview = () => {
+    handleExport('excel', selectedUser?.id);
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-6 lg:p-8 font-sans">
       <div className="max-w-[1600px] mx-auto">
         
-        {/* Halaman Utama: Menampilkan Filter & Grid User */}
         <UserList
           users={users}
           selectedUser={selectedUser}
@@ -32,11 +56,28 @@ export const ReportPage: React.FC = () => {
           onFilterChange={updateFilter}
           pagination={pagination}
           loading={loadingUsers}
-          masterData={masterData} 
+          masterData={masterData}
           onExport={handleExport}
+          onPreview={handlePreviewClick}
+          previewLoading={loadingPreview}
+          exporting={exporting}
         />
 
-        {/* Modal / Slide-over Drawer: Muncul jika ada user yang diklik */}
+        {/* Preview Modal */}
+        <ReportPreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => {
+            setIsPreviewOpen(false);
+            clearPreview();
+          }}
+          onDownload={handleDownloadFromPreview}
+          onExportExcel={handleExportExcelFromPreview}
+          previewData={previewData}
+          loading={loadingPreview}
+          title={selectedUser ? `Preview Laporan - ${selectedUser.name}` : 'Preview Laporan Batch'}
+        />
+
+        {/* Card Detail Modal */}
         {selectedUser && (
           <CardDetail
             selectedUser={selectedUser}
@@ -45,6 +86,8 @@ export const ReportPage: React.FC = () => {
             onQcSubmit={handleQcSubmit}
             onClose={() => setSelectedUser(null)}
             onExport={handleExport}
+            onPreview={handlePreviewClick}
+            exporting={exporting}
           />
         )}
         

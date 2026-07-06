@@ -6,17 +6,18 @@
     <style>
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 11px; /* Font kecil agar muat banyak kolom di PDF Landscape */
+            font-size: 10px;
             color: #333;
         }
         h2 {
             text-align: center;
             margin-bottom: 5px;
+            font-size: 16px;
         }
         .subtitle {
             text-align: center;
             margin-bottom: 20px;
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
         }
         table {
@@ -25,13 +26,14 @@
         }
         th, td {
             border: 1px solid #999;
-            padding: 6px;
+            padding: 5px 6px;
             vertical-align: top;
         }
         th {
             background-color: #e4e4e4;
             font-weight: bold;
             text-align: left;
+            font-size: 10px;
         }
         .text-center {
             text-align: center;
@@ -41,87 +43,165 @@
             padding: 2px 4px;
             margin-bottom: 2px;
             border-radius: 3px;
-            font-size: 9px;
+            font-size: 8px;
             background-color: #eee;
             border: 1px solid #ccc;
+        }
+        .attachment-item {
+            margin-bottom: 4px;
+            border-bottom: 1px dotted #ddd;
+            padding-bottom: 4px;
+        }
+        .attachment-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .text-muted {
+            color: #999;
+            font-style: italic;
+        }
+        .qc-approved {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .qc-pending {
+            color: #ffc107;
+        }
+        .divisi-list {
+            font-size: 9px;
         }
     </style>
 </head>
 <body>
 
-    <h2>Laporan Kinerja & Quality Control (QC)</h2>
-    <div class="subtitle">Tanggal Export: {{ now()->format('d M Y H:i') }}</div>
+    <h2>Laporan Kinerja &amp; Quality Control (QC)</h2>
+    <div class="subtitle">
+        Tanggal Export: {{ now()->format('d M Y H:i') }} | 
+        Total User: {{ $users->count() }}
+    </div>
 
     <table>
         <thead>
             <tr>
                 <th width="3%" class="text-center">No</th>
-                <th width="15%">Nama User</th>
+                <th width="14%">Nama User</th>
                 <th width="12%">Divisi</th>
-                <th width="20%">Judul Card / Task</th>
-                <th width="15%">Campaign & Board</th>
-                <th width="15%">Label & Brand</th>
-                <th width="20%">Status Attachment & QC</th>
+                <th width="18%">Judul Card</th>
+                <th width="15%">Campaign</th>
+                <th width="10%">Board</th>
+                <th width="13%">Label &amp; Brand</th>
+                <th width="15%">Attachment &amp; QC</th>
             </tr>
         </thead>
         <tbody>
             @forelse($users as $index => $user)
                 
                 @php 
-                    $cardCount = $user->cards->count(); 
+                    $cards = $user->cards ?? collect();
+                    $cardCount = $cards->count(); 
                 @endphp
 
                 @if($cardCount > 0)
-                    {{-- Loop jika user memiliki satu atau lebih Card --}}
-                    @foreach($user->cards as $cardIndex => $card)
+                    @foreach($cards as $cardIndex => $card)
                         <tr>
-                            {{-- Tampilkan Kolom User & Divisi hanya di baris pertama Card milik user tersebut --}}
                             @if($cardIndex === 0)
                                 <td class="text-center" rowspan="{{ $cardCount }}">{{ $index + 1 }}</td>
-                                <td rowspan="{{ $cardCount }}"><strong>{{ $user->name }}</strong></td>
-                                <td rowspan="{{ $cardCount }}">{{ $user->divisions->pluck('name')->implode(', ') ?: '-' }}</td>
+                                <td rowspan="{{ $cardCount }}">
+                                    <strong>{{ $user->name }}</strong>
+                                </td>
+                                <td rowspan="{{ $cardCount }}">
+                                    @if($user->divisions && $user->divisions->count() > 0)
+                                        <span class="divisi-list">
+                                            {{ $user->divisions->pluck('name')->implode(', ') }}
+                                        </span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
                             @endif
 
                             {{-- Data Card --}}
-                            <td>{{ $card->title ?? '-' }}</td>
-                            
                             <td>
-                                <strong>Campaign:</strong> {{ optional($card->campaign)->name ?? '-' }}<br>
-                                <strong>Board:</strong> {{ optional($card->board)->name ?? '-' }}
+                                <strong>{{ $card->title ?? '-' }}</strong>
+                                @if($card->description)
+                                    <br><span style="font-size: 9px; color: #666;">{{ Str::limit($card->description, 50) }}</span>
+                                @endif
                             </td>
                             
                             <td>
-                                @if($card->labels->count() > 0)
+                                {{ optional($card->campaign)->name ?? '-' }}
+                            </td>
+                            
+                            <td>
+                                {{ optional($card->board)->name ?? '-' }}
+                            </td>
+                            
+                            <td>
+                                @if($card->labels && $card->labels->count() > 0)
                                     <div><strong>Label:</strong> {{ $card->labels->pluck('name')->implode(', ') }}</div>
                                 @endif
-                                @if($card->brands->count() > 0)
-                                    <div style="margin-top: 4px;"><strong>Brand:</strong> {{ $card->brands->pluck('name')->implode(', ') }}</div>
+                                @if($card->brands && $card->brands->count() > 0)
+                                    <div style="margin-top: 2px;"><strong>Brand:</strong> {{ $card->brands->pluck('name')->implode(', ') }}</div>
+                                @endif
+                                @if($card->labels->count() == 0 && $card->brands->count() == 0)
+                                    <span class="text-muted">-</span>
                                 @endif
                             </td>
 
                             {{-- Data Attachment & QC --}}
                             <td>
-                                @forelse($card->attachments as $attachment)
-                                    <div style="margin-bottom: 6px; border-bottom: 1px dotted #ccc; padding-bottom: 4px;">
-                                        File: <em>{{ $attachment->file_name ?? 'Attachment' }}</em><br>
-                                        QC: <strong>{{ $attachment->qc_quantity ?? 0 }}</strong> / {{ $attachment->quantity ?? 0 }} ACC
-                                        @if($attachment->qcBy)
-                                            <br><span style="font-size: 9px; color: #666;">(by: {{ $attachment->qcBy->name }})</span>
-                                        @endif
-                                    </div>
-                                @empty
-                                    <span style="color: #999; font-style: italic;">Tidak ada file</span>
-                                @endforelse
+                                @php
+                                    $attachments = $card->attachments ?? collect();
+                                @endphp
+                                
+                                @if($attachments->count() > 0)
+                                    @foreach($attachments as $attachment)
+                                        <div class="attachment-item">
+                                            <div>
+                                                <span style="font-size: 9px;">
+                                                    {{ Str::limit($attachment->file_name ?? 'Attachment', 20) }}
+                                                </span>
+                                            </div>
+                                            <div style="font-size: 9px;">
+                                                QC: 
+                                                @if($attachment->qc_quantity !== null)
+                                                    <span class="qc-approved">
+                                                        {{ $attachment->qc_quantity }} / {{ $attachment->quantity ?? 0 }} ACC
+                                                    </span>
+                                                    @if($attachment->qcBy)
+                                                        <br><span style="font-size: 8px; color: #666;">
+                                                            by: {{ $attachment->qcBy->name }}
+                                                        </span>
+                                                    @endif
+                                                @else
+                                                    <span class="qc-pending">Belum QC</span>
+                                                    <span style="font-size: 8px; color: #666;">
+                                                        ({{ $attachment->quantity ?? 0 }} file)
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <span class="text-muted">Tidak ada file</span>
+                                @endif
                             </td>
                         </tr>
                     @endforeach
                 @else
-                    {{-- Render jika User sama sekali tidak memiliki Card --}}
+                    {{-- User tanpa Card --}}
                     <tr>
                         <td class="text-center">{{ $index + 1 }}</td>
                         <td><strong>{{ $user->name }}</strong></td>
-                        <td>{{ $user->divisions->pluck('name')->implode(', ') ?: '-' }}</td>
-                        <td colspan="4" class="text-center" style="color: #999; font-style: italic;">
+                        <td>
+                            @if($user->divisions && $user->divisions->count() > 0)
+                                {{ $user->divisions->pluck('name')->implode(', ') }}
+                            @else
+                                <span class="text-muted">-</span>
+                            @endif
+                        </td>
+                        <td colspan="5" class="text-center text-muted">
                             Tidak ada data task/card yang sesuai filter
                         </td>
                     </tr>
@@ -129,13 +209,17 @@
 
             @empty
                 <tr>
-                    <td colspan="7" class="text-center" style="padding: 20px;">
+                    <td colspan="8" class="text-center" style="padding: 20px;">
                         <strong>Tidak ada data user yang ditemukan.</strong>
                     </td>
                 </tr>
             @endforelse
         </tbody>
     </table>
+
+    <div style="margin-top: 20px; font-size: 9px; color: #999; text-align: center;">
+        Laporan ini dihasilkan secara otomatis oleh sistem {{ now()->format('d/m/Y H:i:s') }}
+    </div>
 
 </body>
 </html>

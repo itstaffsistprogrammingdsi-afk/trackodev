@@ -79,6 +79,7 @@ export interface FilterParams {
   brand_id?: string;
   page?: number;
   user_id?: string | number; // <--- Tambahkan ini
+  search_card?: string; // <--- Tambahkan ini
 }
 
 export interface PaginatedResponse<T> {
@@ -98,3 +99,4 @@ export interface MasterFilterOptions {
   labels: { id: number; name: string; color?: string }[];
   brands: { id: number; name: string; color?: string }[];
 }
+

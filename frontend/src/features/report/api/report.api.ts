@@ -1,4 +1,4 @@
-import api from '@/lib/axios'; 
+import api from '@/lib/axios';
 import { User, Card, PaginatedResponse, FilterParams, MasterFilterOptions } from '../types';
 
 export const reportApi = {
@@ -26,20 +26,31 @@ export const reportApi = {
     return response.data;
   },
 
-  // Tambahkan di dalam object reportApi
-exportExcel: async (params: any) => {
-    const response = await api.get('/reports/export/excel', {
+  // Preview PDF
+  previewPdf: async (params: FilterParams) => {
+    const response = await api.get('/reports/preview/pdf', {
       params: params,
-      responseType: 'blob', // 👈 WAJIB ADA UNTUK DOWNLOAD FILE
     });
     return response.data;
   },
-  
-  exportPdf: async (params: any) => {
+
+  // Export PDF
+  exportPdf: async (params: FilterParams) => {
     const response = await api.get('/reports/export/pdf', {
       params: params,
-      responseType: 'blob', // 👈 WAJIB ADA UNTUK DOWNLOAD FILE
+      responseType: 'blob',
     });
     return response.data;
-  }
+  },
+
+  // Export Excel
+  exportExcel: async (params: FilterParams) => {
+    const response = await api.get('/reports/export/excel', {
+      params: params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  
 };

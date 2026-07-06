@@ -742,5 +742,7 @@ Route::middleware([
         // Rute Export
         Route::get('/export/excel', [ReportController::class, 'exportExcel']);
         Route::get('/export/pdf', [ReportController::class, 'exportPdf']);
+        Route::get('/preview/pdf', [ReportController::class, 'previewPdf']);
+        Route::get('/users/{user}/activity-logs', [ReportController::class, 'getUserActivityLogs']);
     });
 }); // Ini adalah kurung penutup dari block besar Route::middleware(['auth:sanctum'])->group(function () ...

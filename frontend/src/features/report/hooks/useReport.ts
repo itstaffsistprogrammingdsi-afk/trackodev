@@ -7,16 +7,15 @@ export const useReport = () => {
   const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
-  
-  // State baru untuk menampung data riil opsi filter dari database
+
   const [masterData, setMasterData] = useState<MasterFilterOptions>({
     divisions: [],
     workspaces: [],
     campaigns: [],
     labels: [],
-    brands: []
+    brands: [],
   });
-  
+
   const [filters, setFilters] = useState<FilterParams>({
     search: '',
     division_id: '',
@@ -27,12 +26,21 @@ export const useReport = () => {
     label_id: '',
     brand_id: '',
     page: 1,
+    search_card: '',
   });
 
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingCards, setLoadingCards] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    html: string;
+    pdf_base64: string;
+    users_count: number;
+    total_cards: number;
+  } | null>(null);
 
-  // 1. Fetch Master Data Opsi Filter (Hanya berjalan 1 kali saat komponen di-load)
+  // 1. Fetch Master Data
   useEffect(() => {
     const fetchOptions = async () => {
       try {
@@ -45,7 +53,7 @@ export const useReport = () => {
     fetchOptions();
   }, []);
 
-  // 2. Fetch Data Users (Panel Kiri) jika filter berubah
+  // 2. Fetch Users
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
@@ -59,18 +67,21 @@ export const useReport = () => {
     }
   }, [filters]);
 
-  // 3. Fetch Data Cards & Attachments (Panel Kanan)
-  const fetchUserCards = useCallback(async (userId: number) => {
-    setLoadingCards(true);
-    try {
-      const response = await reportApi.getUserCards(userId, filters);
-      setCards(response.data);
-    } catch (error) {
-      console.error('Failed to fetch user cards', error);
-    } finally {
-      setLoadingCards(false);
-    }
-  }, [filters]);
+  // 3. Fetch Cards
+  const fetchUserCards = useCallback(
+    async (userId: number) => {
+      setLoadingCards(true);
+      try {
+        const response = await reportApi.getUserCards(userId, filters);
+        setCards(response.data);
+      } catch (error) {
+        console.error('Failed to fetch user cards', error);
+      } finally {
+        setLoadingCards(false);
+      }
+    },
+    [filters]
+  );
 
   useEffect(() => {
     fetchUsers();
@@ -88,7 +99,11 @@ export const useReport = () => {
     setFilters((prev) => ({ ...prev, ...newFilters, page: newFilters.page ?? 1 }));
   };
 
-  const handleQcSubmit = async (attachmentId: string, qcQuantity: number, qcNote: string) => {
+  const handleQcSubmit = async (
+    attachmentId: string,
+    qcQuantity: number,
+    qcNote: string
+  ) => {
     try {
       await reportApi.submitQc(attachmentId, { qc_quantity: qcQuantity, qc_note: qcNote });
       if (selectedUser) fetchUserCards(selectedUser.id);
@@ -99,34 +114,95 @@ export const useReport = () => {
     }
   };
 
-  // Tambahkan di dalam useReport hook
-const handleExport = async (type: 'excel' | 'pdf', userId?: string | number) => {
+  // Preview PDF
+  const handlePreview = async (userId?: string | number) => {
+    setLoadingPreview(true);
     try {
-      // Jika userId ada, kita export mode Individual dengan filter yg sedang aktif
-      // Jika tidak ada, export mode Batch
-      const exportParams: FilterParams = userId 
-        ? { ...filters, user_id: userId } 
-        : filters;
+      const exportParams: FilterParams = { ...filters };
+      delete exportParams.page;
 
-      const data = type === 'excel' 
-        ? await reportApi.exportExcel(exportParams) 
-        : await reportApi.exportPdf(exportParams);
-      
-      const url = window.URL.createObjectURL(new Blob([data]));
+      if (userId) {
+        exportParams.user_id = userId;
+      }
+
+      const response = await reportApi.previewPdf(exportParams);
+
+      if (response.success) {
+        setPreviewData(response.data);
+        return response.data;
+      } else {
+        alert(response.message || 'Gagal generate preview');
+        return null;
+      }
+    } catch (error) {
+      console.error('Gagal preview data', error);
+      alert('Gagal generate preview. Silakan coba lagi.');
+      return null;
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  // Export PDF/Excel
+  const handleExport = async (type: 'excel' | 'pdf', userId?: string | number) => {
+    setExporting(true);
+    try {
+      const exportParams: FilterParams = { ...filters };
+      delete exportParams.page;
+
+      if (userId) {
+        exportParams.user_id = userId;
+      }
+
+      const data =
+        type === 'excel'
+          ? await reportApi.exportExcel(exportParams)
+          : await reportApi.exportPdf(exportParams);
+
+      // Cek jika response berupa JSON error
+      if (data instanceof Blob && data.type === 'application/json') {
+        const text = await data.text();
+        try {
+          const error = JSON.parse(text);
+          alert(error.message || 'Terjadi kesalahan saat export');
+          return;
+        } catch {
+          // Bukan JSON, lanjutkan
+        }
+      }
+
+      const blob = new Blob([data]);
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      
-      const prefix = userId ? `Report_User_${userId}` : `Report_Batch`;
+
+      const prefix = userId ? `Report_User_${userId}` : `Report_Kinerja_Batch`;
       const extension = type === 'excel' ? 'xlsx' : 'pdf';
-      link.setAttribute('download', `${prefix}_${new Date().toISOString().slice(0,10)}.${extension}`);
-      
+      const userName = userId ? users.find((u) => u.id === Number(userId))?.name : '';
+      const fileName = userName
+        ? `Laporan_${userName.replace(/\s+/g, '_')}_${new Date()
+            .toISOString()
+            .slice(0, 10)}.${extension}`
+        : `${prefix}_${new Date().toISOString().slice(0, 10)}.${extension}`;
+
+      link.setAttribute('download', fileName);
+
       document.body.appendChild(link);
       link.click();
-      link.remove();
-    } catch (error) {
-      console.error('Gagal export data', error);
-      alert('Gagal mengunduh file laporan.');
+      document.body.removeChild(link);
+
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+    } catch (error: unknown) {
+      console.error('Gagal export data:', error);
+      const message = (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (error as { message?: string }).message || 'Gagal mengunduh file laporan';
+      alert(message);
+    } finally {
+      setExporting(false);
     }
+  };
+
+  const clearPreview = () => {
+    setPreviewData(null);
   };
 
   return {
@@ -136,11 +212,16 @@ const handleExport = async (type: 'excel' | 'pdf', userId?: string | number) => 
     setSelectedUser,
     cards,
     filters,
-    masterData, // diexport agar bisa dibaca page komponen
+    masterData,
     loadingUsers,
     loadingCards,
+    loadingPreview,
+    exporting,
+    previewData,
     updateFilter,
     handleQcSubmit,
-    handleExport, // diexport agar bisa dipanggil page komponen
+    handleExport,
+    handlePreview,
+    clearPreview,
   };
 };
