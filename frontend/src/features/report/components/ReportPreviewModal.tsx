@@ -80,17 +80,6 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
                   <Eye className="w-4 h-4" />
                   PDF
                 </button>
-                <button
-                  onClick={() => setViewMode('html')}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-1 ${
-                    viewMode === 'html'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" />
-                  HTML
-                </button>
               </div>
 
               {/* Action Buttons */}

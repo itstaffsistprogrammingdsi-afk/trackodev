@@ -160,7 +160,7 @@ export const UserList: React.FC<UserListProps> = ({
           className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Eye className="w-4 h-4" />
-          {previewLoading ? 'Memuat...' : 'Preview PDF'}
+          {previewLoading ? 'Memuat...' : 'All Preview '}
         </button>
         <button 
           onClick={() => onExport?.('pdf')}
@@ -168,7 +168,7 @@ export const UserList: React.FC<UserListProps> = ({
           className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
-          {exporting ? 'Mengunduh...' : 'PDF'}
+          {exporting ? 'Mengunduh...' : 'All PDF '}
         </button>
         <button 
           onClick={() => onExport?.('excel')}
@@ -176,7 +176,7 @@ export const UserList: React.FC<UserListProps> = ({
           className="px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FileSpreadsheet className="w-4 h-4" />
-          {exporting ? 'Mengunduh...' : 'Excel'}
+          {exporting ? 'Mengunduh...' : 'All Excel '}
         </button>
       </div>
 
