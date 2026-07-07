@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useCalendar } from '../hooks/useCalendar';
 
-// --- STRICT TYPE DEFINITIONS ---
+// --- TYPE DEFINITIONS ---
 interface Assignee {
   id: string | number;
   name: string;
@@ -23,7 +23,7 @@ interface Task {
 }
 
 interface LocalDayData {
-  date?: string; 
+  date?: string;
   total: number;
   tasks: Task[];
 }
@@ -34,11 +34,23 @@ interface GridDayCell {
   isCurrentMonth: boolean;
 }
 
+// Data yang dikembalikan oleh useCalendar
+interface CalendarData {
+  days: LocalDayData[] | Record<string, LocalDayData>;
+  summary?: {
+    total_tasks: number;
+  };
+}
+
+// --- CONSTANTS ---
 const WEEK_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export const CalendarView: React.FC = () => {
   const { currentMonth, data, loading, prevMonth, nextMonth, gridDays } = useCalendar();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // State untuk tooltip
+  const [hoveredTask, setHoveredTask] = useState<{ task: Task; rect: DOMRect } | null>(null);
 
   // --- FORMATTERS ---
   const formatHeaderMonth = (monthStr: string) => {
@@ -53,10 +65,21 @@ export const CalendarView: React.FC = () => {
 
   const formatDateLabel = (dateStr: string | null) => {
     if (!dateStr) return '-';
-    const safeDateStr = dateStr.replace(' ', 'T'); 
+    const safeDateStr = dateStr.replace(' ', 'T');
     const date = new Date(safeDateStr);
     if (isNaN(date.getTime())) return 'Format Salah';
     return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const formatShortDate = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr.replace(' ', 'T'));
+      if (isNaN(d.getTime())) return '-';
+      return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return '-';
+    }
   };
 
   // --- DATA HANDLER ---
@@ -69,12 +92,13 @@ export const CalendarView: React.FC = () => {
   };
 
   const selectedDayData = selectedDate ? getDayData(selectedDate) : null;
-  const totalTasks = (data as any)?.summary?.total_tasks || 0;
+  const calendarData = data as CalendarData | null;
+  const totalTasks = calendarData?.summary?.total_tasks || 0;
 
   return (
     <div className="w-full text-slate-800 font-sans select-none relative max-w-7xl mx-auto">
       
-      {/* --- HEADER NAVBAR (PRO STYLE) --- */}
+      {/* --- HEADER NAVBAR --- */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div className="flex items-center gap-4">
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -117,7 +141,7 @@ export const CalendarView: React.FC = () => {
         </div>
       </div>
 
-      {/* --- CALENDAR GRID (PRO STYLE) --- */}
+      {/* --- CALENDAR GRID --- */}
       <div className="bg-white rounded-xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
         
         {/* Header Hari */}
@@ -130,7 +154,7 @@ export const CalendarView: React.FC = () => {
         </div>
 
         {/* Matriks Kotak */}
-        <div className="grid grid-cols-7 auto-rows-[160px] bg-slate-200 gap-px">
+        <div className="grid grid-cols-7 auto-rows-[160px] bg-slate-50 gap-px">
           {gridDays.map((cell: GridDayCell, idx: number) => {
             const dayData = getDayData(cell.dateString);
             const tasks = dayData && Array.isArray(dayData.tasks) ? dayData.tasks : [];
@@ -149,17 +173,16 @@ export const CalendarView: React.FC = () => {
               >
                 {/* Tanggal */}
                 <div className="flex justify-between items-center mb-3">
-                  <span className="flex-1" /> {/* Spacer */}
+                  <span className="flex-1" />
                   <span className={`text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
-                    isToday ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 group-hover:bg-slate-200'
+                    isToday ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-700 group-hover:bg-slate-200'
                   } ${!cell.isCurrentMonth && !isToday && 'text-slate-400'}`}>
                     {cell.dayNumber}
                   </span>
                 </div>
 
-                {/* List Tasks (Linear Style) */}
-<div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-none">
-                  {/* 🚨 PERBAIKAN: Batasi render di kotak kalender maksimal 3 saja */}
+                {/* List Tasks (maksimal 3) */}
+                <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-none">
                   {tasks.slice(0, 3).map((task: Task) => {
                     const isCompleted = task.status === 'completed' || task.status === 'done';
 
@@ -172,6 +195,11 @@ export const CalendarView: React.FC = () => {
                             : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'
                         }`}
                         title={task.title}
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoveredTask({ task, rect });
+                        }}
+                        onMouseLeave={() => setHoveredTask(null)}
                       >
                         {/* Status Icon */}
                         <div className={`flex-shrink-0 w-2.5 h-2.5 rounded-[3px] border ${
@@ -203,15 +231,13 @@ export const CalendarView: React.FC = () => {
         </div>
       </div>
 
-      {/* --- PRO MODAL DIALOG --- */}
+      {/* --- MODAL DIALOG (tetap) --- */}
       {selectedDate && selectedDayData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/40 backdrop-blur-sm transition-opacity">
-          {/* Backdrop Click Handler */}
           <div className="absolute inset-0" onClick={() => setSelectedDate(null)} />
           
           <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
             
-            {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between bg-white">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">{formatDateLabel(selectedDate)}</h3>
@@ -232,17 +258,15 @@ export const CalendarView: React.FC = () => {
               </button>
             </div>
 
-            {/* Modal Body (Task List) */}
             <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50 space-y-3">
               {selectedDayData.tasks.map((task: Task) => (
                 <div 
                   key={task.id} 
                   className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-xl ring-1 ring-slate-200 hover:ring-indigo-300 hover:shadow-md transition-all"
                 >
-                  {/* Bagian Kiri: Status & Info */}
                   <div className="flex items-start gap-3 overflow-hidden">
                     <div className="pt-1">
-                       <div className={`w-3.5 h-3.5 rounded-[4px] border-2 ${
+                      <div className={`w-3.5 h-3.5 rounded-[4px] border-2 ${
                         task.status === 'completed' || task.status === 'done'
                           ? 'bg-emerald-500 border-emerald-600' 
                           : 'bg-white border-slate-300'
@@ -265,10 +289,8 @@ export const CalendarView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Bagian Kanan: Meta Data (Assignee & Date) */}
                   <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full pt-3 sm:pt-0 border-t sm:border-0 border-slate-100">
                     
-                    {/* Due Date Indicator */}
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
                       <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -276,7 +298,6 @@ export const CalendarView: React.FC = () => {
                       {task.due_date ? new Date(task.due_date.replace(' ', 'T')).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }) : '-'}
                     </div>
 
-                    {/* Assignees (Overlapping Avatars) */}
                     <div className="flex items-center">
                       {task.assignees && task.assignees.length > 0 ? (
                         <div className="flex -space-x-2">
@@ -310,6 +331,38 @@ export const CalendarView: React.FC = () => {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* --- TOOLTIP --- */}
+      {hoveredTask && (
+        <div
+          className="fixed z-[100] bg-slate-300 text-gray-700 text-xs rounded-lg shadow-xl p-3 max-w-xs pointer-events-none transition-opacity duration-150"
+          style={{
+            left: hoveredTask.rect.left + hoveredTask.rect.width / 2,
+            top: hoveredTask.rect.top - 10,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          <div className="flex flex-col gap-1.5">
+            <div className="font-semibold text-gray-700 border-b border-slate-600 pb-1 mb-0.5">
+              {hoveredTask.task.title}
+            </div>
+            <div>
+              <span className="font-medium text-gray-700"></span>{' '}
+              {formatShortDate(hoveredTask.task.created_at)}{' '} -
+              <span className="font-medium text-gray-700"></span>{' '}
+              {formatShortDate(hoveredTask.task.due_date)}
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Campaign / Project:</span>{' '}
+              {hoveredTask.task.campaign?.name || '-'}
+            </div>
+          </div>
+          {/* Segitiga penunjuk */}
+          <div
+            className="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-full border-8 border-transparent border-t-slate-800"
+          />
         </div>
       )}
 

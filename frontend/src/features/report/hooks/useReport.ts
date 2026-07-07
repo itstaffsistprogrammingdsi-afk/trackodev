@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { reportApi } from '../api/report.api';
 import { User, Card, FilterParams, MasterFilterOptions } from '../types';
+import api from '@/lib/axios';
 
 export const useReport = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -159,7 +160,6 @@ export const useReport = () => {
           ? await reportApi.exportExcel(exportParams)
           : await reportApi.exportPdf(exportParams);
 
-      // Cek jika response berupa JSON error
       if (data instanceof Blob && data.type === 'application/json') {
         const text = await data.text();
         try {
@@ -167,7 +167,7 @@ export const useReport = () => {
           alert(error.message || 'Terjadi kesalahan saat export');
           return;
         } catch {
-          // Bukan JSON, lanjutkan
+          // Bukan JSON
         }
       }
 
@@ -205,6 +205,76 @@ export const useReport = () => {
     setPreviewData(null);
   };
 
+  // Fungsi Bypass
+// Tambahkan fungsi ini di dalam useReport atau custom hook auth Anda
+
+// useReport.ts
+
+// 1. FUNGSI UNTUK MASUK (BYPASS)
+const handleBypassUser = async (userId: number) => {
+  const confirmBypass = window.confirm("Apakah Anda yakin ingin masuk sebagai user ini?");
+  if (!confirmBypass) return;
+
+  try {
+    // Memanggil endpoint bypass
+    const response = await api.post(`/auth/bypass/${userId}`);
+    const data = response.data;
+
+    // Pastikan respons memiliki token baru
+    if (!data.token) {
+      throw new Error("Token tidak diterima dari server.");
+    }
+
+    // Backup token admin saat ini JIKA belum ada backup
+    const currentToken = localStorage.getItem('token');
+    if (currentToken && !localStorage.getItem('admin_token')) {
+      localStorage.setItem('admin_token', currentToken);
+    }
+
+    // Timpa token utama dengan token target
+    localStorage.setItem('token', data.token);
+    
+    if (data.impersonated_by) {
+      localStorage.setItem('impersonated_by', JSON.stringify(data.impersonated_by));
+    }
+
+    // Hapus header authorization Axios yang lama (opsional tapi disarankan)
+    api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+
+    // Force redirect menggunakan replace agar state AuthProvider membaca token baru
+    // Sesuaikan '/' dengan route dashboard/home Anda
+    window.location.replace('/'); 
+    
+  } catch (error: any) {
+    console.error('Gagal bypass:', error);
+    const msg = error.response?.data?.message || error.message || 'Gagal melakukan login sebagai user target.';
+    alert(msg);
+  }
+};
+
+// 2. FUNGSI UNTUK KEMBALI KE AKUN ASAL (LEAVE IMPERSONATION)
+const handleLeaveImpersonation = () => {
+  const adminToken = localStorage.getItem('admin_token');
+  
+  if (!adminToken) {
+    alert("Tidak ada sesi admin yang ditemukan.");
+    return;
+  }
+
+  // Kembalikan token asli ke 'token' utama
+  localStorage.setItem('token', adminToken);
+  
+  // Bersihkan sisa backup data impersonate
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('impersonated_by');
+
+  // Hapus header authorization Axios agar di-set ulang saat reload
+  delete api.defaults.headers.common['Authorization'];
+
+  // Balikkan halaman ke root/dashboard
+  window.location.replace('/');
+};
+
   return {
     users,
     pagination,
@@ -223,5 +293,7 @@ export const useReport = () => {
     handleExport,
     handlePreview,
     clearPreview,
+    handleBypassUser, // Diekstrak dan direturn dari hook ini
+    handleLeaveImpersonation, // Diekstrak dan direturn dari hook ini
   };
 };

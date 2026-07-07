@@ -101,43 +101,31 @@ class AuthController extends Controller
         ]);
     }
 
-    public function bypass(User $user, Request $request): JsonResponse
+public function bypass(User $user, Request $request)
 {
-    $admin = $request->user();
+    // 1. Dapatkan user admin yang sedang login
+    $adminUser = $request->user();
 
-    if (!$admin->hasPermissionTo('user.bypass')) {
-        return response()->json([
-            'message' => 'Unauthorized'
-        ], 403);
+    // 2. (Opsional) Validasi ekstra keamanan: pastikan admin tidak bypass ke dirinya sendiri atau ke sesama admin
+    if ($adminUser->id === $user->id) {
+        return response()->json(['message' => 'Tidak bisa bypass ke akun sendiri.'], 400);
     }
 
-    if ($admin->id === $user->id) {
-        return response()->json([
-            'message' => 'Tidak bisa bypass ke akun sendiri.'
-        ], 422);
-    }
+    // 3. Generate token Sanctum baru untuk user target
+    // Hapus token lama jika ingin membatasi 1 device, atau biarkan jika multi-device
+    // $user->tokens()->delete(); 
+    
+    $newToken = $user->createToken('bypass-token-from-admin')->plainTextToken;
 
-    DB::table('impersonation_logs')->insert([
-        'admin_id' => $admin->id,
-        'target_user_id' => $user->id,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    $token = $user
-        ->createToken(
-            'bypass-'.$admin->id
-        )
-        ->plainTextToken;
-
+    // 4. Return token baru beserta flag impersonated
     return response()->json([
-        'message' => 'Bypass berhasil.',
-        'token' => $token,
-        'user' => new UserResource($user),
+        'message' => 'Bypass berhasil',
+        'token' => $newToken,
         'impersonated_by' => [
-            'id' => $admin->id,
-            'name' => $admin->name,
+            'id' => $adminUser->id,
+            'name' => $adminUser->name,
         ],
+        'user' => $user
     ]);
 }
 }
