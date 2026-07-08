@@ -163,7 +163,11 @@ export default function App() {
           {/* ================= REPORT ================= */}
           <Route
             path="/reports"
-            element={<ReportPage />}
+            element={
+              <PermissionRoute permission="report.view">
+                <ReportPage />
+              </PermissionRoute>
+            }
           />
 
           {/* Utilities */}

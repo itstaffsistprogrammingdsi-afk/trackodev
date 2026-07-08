@@ -231,7 +231,7 @@ class ReportController extends Controller
     /**
      * PREVIEW PDF
      */
-    public function previewPdf(Request $request): JsonResponse
+public function previewPdf(Request $request): JsonResponse
     {
         try {
             $users = $this->getExportData($request);
@@ -242,8 +242,6 @@ class ReportController extends Controller
                     'message' => 'Tidak ada data untuk dipreview'
                 ], 404);
             }
-
-            $html = view('exports.report_pdf', compact('users'))->render();
 
             $pdf = Pdf::loadView('exports.report_pdf', compact('users'))
                 ->setPaper('a4', 'landscape')
@@ -259,10 +257,9 @@ class ReportController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'html' => $html,
-                    'pdf_base64' => $base64Pdf,
-                    'users_count' => $users->count(),
-                    'total_cards' => $users->sum(fn($user) => $user->cards->count()),
+                    'pdf_base64'   => $base64Pdf,
+                    'users_count'  => $users->count(),
+                    'total_cards'  => $users->sum(fn($user) => $user->cards->count()),
                 ]
             ]);
         } catch (\Exception $e) {

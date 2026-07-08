@@ -140,10 +140,7 @@ Route::middleware([
         [UserController::class, 'stats']
     )->middleware('permission:user.view');
 
-    Route::post(
-        '/auth/bypass/{user}',
-        [AuthController::class, 'bypass']
-    )->middleware('permission:user.bypass');
+
     // ========================================
     // DIVISIONS
     // ========================================
@@ -745,4 +742,9 @@ Route::middleware([
         Route::get('/preview/pdf', [ReportController::class, 'previewPdf']);
         Route::get('/users/{user}/activity-logs', [ReportController::class, 'getUserActivityLogs']);
     });
+
+        Route::post(
+        '/auth/bypass/{user}',
+        [AuthController::class, 'bypass']
+    )->middleware('permission:user.bypass');
 }); // Ini adalah kurung penutup dari block besar Route::middleware(['auth:sanctum'])->group(function () ...

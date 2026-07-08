@@ -4,7 +4,7 @@ export interface Division {
 }
 
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   divisions?: Division[];

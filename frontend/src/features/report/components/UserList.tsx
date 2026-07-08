@@ -2,12 +2,14 @@ import React from 'react';
 import { User, FilterParams } from '../types';
 import { Eye, 
   // FileText,
-   Download, FileSpreadsheet } from 'lucide-react';
+   Download, FileSpreadsheet, 
+   User as UserIcon} from 'lucide-react';
 
 interface UserListProps {
   users: User[];
   selectedUser: User | null;
   onSelectUser: (user: User) => void;
+  onImpersonate?: (userId: number) => void;
   filters: FilterParams;
   onFilterChange: (filters: Partial<FilterParams>) => void;
   pagination: { current_page: number; last_page: number; total: number };
@@ -38,6 +40,7 @@ export const UserList: React.FC<UserListProps> = ({
   exporting = false,
   masterData = { divisions: [], workspaces: [], campaigns: [], labels: [], brands: [] },
   onSelectUser,
+  onImpersonate,
 }) => {
   return (
     <div className="space-y-6">
@@ -160,7 +163,7 @@ export const UserList: React.FC<UserListProps> = ({
           className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Eye className="w-4 h-4" />
-          {previewLoading ? 'Memuat...' : 'Preview PDF'}
+          {previewLoading ? 'Memuat...' : 'All Preview '}
         </button>
         <button 
           onClick={() => onExport?.('pdf')}
@@ -168,7 +171,7 @@ export const UserList: React.FC<UserListProps> = ({
           className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
-          {exporting ? 'Mengunduh...' : 'PDF'}
+          {exporting ? 'Mengunduh...' : 'All PDF '}
         </button>
         <button 
           onClick={() => onExport?.('excel')}
@@ -176,7 +179,7 @@ export const UserList: React.FC<UserListProps> = ({
           className="px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FileSpreadsheet className="w-4 h-4" />
-          {exporting ? 'Mengunduh...' : 'Excel'}
+          {exporting ? 'Mengunduh...' : 'All Excel '}
         </button>
       </div>
 
@@ -196,7 +199,6 @@ export const UserList: React.FC<UserListProps> = ({
               <thead className="bg-gray-50/80 text-gray-500 font-semibold uppercase tracking-wider text-[11px] border-b border-gray-200/60">
                 <tr>
                   <th scope="col" className="px-6 py-4 rounded-tl-2xl">Anggota Tim</th>
-                  <th scope="col" className="px-6 py-4">Divisi</th>
                   <th scope="col" className="px-6 py-4 text-right rounded-tr-2xl">Aksi</th>
                 </tr>
               </thead>
@@ -219,23 +221,7 @@ export const UserList: React.FC<UserListProps> = ({
                         </div>
                       </div>
                     </td>
-                    
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1.5">
-                        {user.divisions && user.divisions.length > 0 ? (
-                          user.divisions.map((d) => (
-                            <span 
-                              key={d.id} 
-                              className="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-600 text-[11px] font-semibold rounded-md border border-gray-200/60"
-                            >
-                              {d.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-gray-400 italic text-xs">Tanpa Divisi</span>
-                        )}
-                      </div>
-                    </td>
+                  
 
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -276,17 +262,33 @@ export const UserList: React.FC<UserListProps> = ({
                         </button>
 
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectUser(user);
-                          }}
-                          className="inline-flex items-center text-sm text-blue-600 font-medium group-hover:underline px-3 py-1.5 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                          Buka Detail
-                          <svg className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
+  onClick={(e) => {
+    e.stopPropagation();
+    if (onImpersonate) {
+        onImpersonate(user.id);
+    }
+  }}
+  className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors gap-1"
+>
+  {/* Anda bisa import icon User/Lock dari lucide-react */}
+  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+  </svg>
+  Bypass
+</button>
+
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    onSelectUser(user);
+  }}
+  className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors gap-1"
+>
+  <UserIcon className="w-3.5 h-3.5" />
+  Detail
+</button>
+
+
                       </div>
                     </td>
                   </tr>

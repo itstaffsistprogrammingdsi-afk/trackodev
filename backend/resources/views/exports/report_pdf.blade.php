@@ -66,58 +66,24 @@
             border: 1px solid #999;
             vertical-align: top;
             font-size: 7.5px;
+            word-wrap: break-word;
         }
 
-        .col-no {
-            width: 3%;
-            text-align: center;
-        }
-        .col-user {
-            width: 9%;
-        }
-        .col-divisi {
-            width: 8%;
-        }
-        .col-card {
-            width: 13%;
-        }
-        .col-campaign {
-            width: 9%;
-        }
-        .col-board {
-            width: 7%;
-        }
-        .col-labels {
-            width: 10%;
-        }
-        .col-attachment {
-            width: 15%;
-        }
-        .col-qc-qty {
-            width: 8%;
-            text-align: center;
-        }
-        .col-qc-note {
-            width: 18%;
-        }
+        /* Lebar kolom tetap */
+        .col-no { width: 3%; text-align: center; }
+        .col-user { width: 9%; }
+        .col-divisi { width: 8%; }
+        .col-card { width: 13%; }
+        .col-campaign { width: 9%; }
+        .col-board { width: 7%; }
+        .col-labels { width: 10%; }
+        .col-attachment { width: 15%; }
+        .col-qc-qty { width: 8%; text-align: center; }
+        .col-qc-note { width: 18%; }
 
-        .text-center {
-            text-align: center;
-        }
-        .text-muted {
-            color: #999;
-            font-style: italic;
-        }
-        .text-success {
-            color: #2e7d32;
-            font-weight: bold;
-        }
-        .text-warning {
-            color: #f57f17;
-        }
-        .font-bold {
-            font-weight: bold;
-        }
+        .text-center { text-align: center; }
+        .text-muted { color: #999; font-style: italic; }
+        .font-bold { font-weight: bold; }
 
         .user-name {
             font-weight: bold;
@@ -219,6 +185,7 @@
             color: #999;
             font-style: italic;
             font-size: 7px;
+            padding: 5px;
         }
 
         .footer {
@@ -235,26 +202,6 @@
         }
         .row-odd {
             background-color: #ffffff;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 1px 5px;
-            border-radius: 3px;
-            font-size: 6px;
-            font-weight: bold;
-            background: #e0e0e0;
-            border: 1px solid #bdbdbd;
-        }
-        .badge-success {
-            background: #c8e6c9;
-            border-color: #81c784;
-            color: #1b5e20;
-        }
-        .badge-warning {
-            background: #fff3e0;
-            border-color: #ffcc80;
-            color: #e65100;
         }
 
         @media print {
@@ -305,29 +252,12 @@
 
                 @if ($cardCount > 0)
                     @foreach ($cards as $cardIndex => $card)
-                        @php
-                            // Campaign dari card atau board
-                            $campaignName = null;
-                            if ($card->campaign) {
-                                $campaignName = $card->campaign->name;
-                            } elseif ($card->board && $card->board->campaign) {
-                                $campaignName = $card->board->campaign->name;
-                            }
-
-                            $attachments = $card->attachments ?? collect();
-                            $totalQcQuantity = $attachments->sum('qc_quantity');
-                            $totalQuantity = $attachments->sum('quantity');
-                            $qcNotes = $attachments->pluck('qc_note')->filter()->implode('; ');
-
-                            $createdAt = $card->created_at ? \Carbon\Carbon::parse($card->created_at)->format('d/m/Y') : '-';
-                            $dueDate = $card->due_date ? \Carbon\Carbon::parse($card->due_date)->format('d/m/Y') : '-';
-                        @endphp
-
                         <tr class="{{ $rowClass }}">
+                            {{-- Kolom No, Nama User, Divisi menggunakan rowspan hanya jika ada lebih dari 1 card --}}
                             @if ($cardIndex === 0)
                                 <td class="col-no text-center" rowspan="{{ $cardCount }}">{{ $index + 1 }}</td>
                                 <td class="col-user" rowspan="{{ $cardCount }}">
-                                    <span class="user-name">{{ $user->name }}</span>
+                                    <span class="user-name">{{ $user->name ?? '-' }}</span>
                                 </td>
                                 <td class="col-divisi" rowspan="{{ $cardCount }}">
                                     @if ($user->divisions && $user->divisions->count() > 0)
@@ -338,17 +268,27 @@
                                 </td>
                             @endif
 
-                            {{-- Judul Card dengan tanggal --}}
+                            {{-- Kolom Card --}}
                             <td class="col-card">
                                 <span class="card-title">{{ $card->title ?? '-' }}</span>
-                                @if ($card->description)
+                                @if (!empty($card->description))
                                     <span class="card-desc">{{ Str::limit($card->description, 50) }}</span>
                                 @endif
-                                <span class="card-date">Created: {{ $createdAt }} | Due: {{ $dueDate }}</span>
+                                <span class="card-date">
+                                    Created: {{ $card->created_at ? \Carbon\Carbon::parse($card->created_at)->format('d/m/Y') : '-' }} 
+                                    | Due: {{ $card->due_date ? \Carbon\Carbon::parse($card->due_date)->format('d/m/Y') : '-' }}
+                                </span>
                             </td>
 
-                            <td class="col-campaign">{{ $campaignName ?? '-' }}</td>
-                            <td class="col-board">{{ optional($card->board)->name ?? '-' }}</td>
+                            {{-- Campaign --}}
+                            <td class="col-campaign">
+                                {{ $card->campaign->name ?? ($card->board->campaign->name ?? '-') }}
+                            </td>
+
+                            {{-- Board --}}
+                            <td class="col-board">
+                                {{ $card->board->name ?? '-' }}
+                            </td>
 
                             {{-- Label & Brand --}}
                             <td class="col-labels">
@@ -372,25 +312,25 @@
                                         @endforeach
                                     </div>
                                 @endif
-                                @if (($card->labels && $card->labels->count() == 0) && ($card->brands && $card->brands->count() == 0))
+                                @if (($card->labels->count() ?? 0) == 0 && ($card->brands->count() ?? 0) == 0)
                                     <span class="text-muted">-</span>
                                 @endif
                             </td>
 
-                            {{-- Attachment & QC dengan tanggal QC --}}
+                            {{-- Attachment & QC --}}
                             <td class="col-attachment">
+                                @php
+                                    $attachments = $card->attachments ?? collect();
+                                @endphp
                                 @if ($attachments->count() > 0)
                                     @foreach ($attachments as $attachment)
                                         <div class="attachment-item">
                                             <div class="attachment-name">
                                                 @php
-                                                    // Tentukan display name
-                                                    $displayName = $attachment->file_name
-                                                        ?? ($attachment->link_url
+                                                    $displayName = $attachment->file_name 
+                                                        ?? ($attachment->link_url 
                                                         ?? ($attachment->result_description ?? 'Attachment'));
                                                     $displayName = Str::limit($displayName, 30);
-
-                                                    // Cek apakah ada URL (link atau file)
                                                     $hasUrl = false;
                                                     $url = null;
                                                     if ($attachment->attachment_type === 'link' && $attachment->link_url) {
@@ -437,8 +377,11 @@
 
                             {{-- Jumlah Akhir QC --}}
                             <td class="col-qc-qty text-center">
-                                @if ($attachments->count() > 0)
-                                    <span class="font-bold">{{ $totalQcQuantity }}</span>
+                                @php
+                                    $totalQc = $attachments->sum('qc_quantity');
+                                @endphp
+                                @if ($attachments->count() > 0 && $totalQc > 0)
+                                    <span class="font-bold">{{ $totalQc }}</span>
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
@@ -446,8 +389,11 @@
 
                             {{-- Catatan QC --}}
                             <td class="col-qc-note">
-                                @if ($qcNotes)
-                                    {{ Str::limit($qcNotes, 80) }}
+                                @php
+                                    $notes = $attachments->pluck('qc_note')->filter()->implode('; ');
+                                @endphp
+                                @if ($notes)
+                                    {{ Str::limit($notes, 80) }}
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
@@ -455,9 +401,10 @@
                         </tr>
                     @endforeach
                 @else
+                    {{-- User tanpa card --}}
                     <tr class="{{ $rowClass }}">
                         <td class="col-no text-center">{{ $index + 1 }}</td>
-                        <td class="col-user"><span class="user-name">{{ $user->name }}</span></td>
+                        <td class="col-user"><span class="user-name">{{ $user->name ?? '-' }}</span></td>
                         <td class="col-divisi">
                             @if ($user->divisions && $user->divisions->count() > 0)
                                 <span class="divisi-list">{{ $user->divisions->pluck('name')->implode(', ') }}</span>

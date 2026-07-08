@@ -13,138 +13,141 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    /**
-     * MAIN DASHBOARD ENTRY
-     */
     public function index(Request $request)
     {
-        $scope = $request->query('scope', 'global'); // global | me
-        $range = $request->query('range', 'all');    // all | today | week | month
+        $scope = $request->query('scope', 'global');
+        $range = $request->query('range', 'all');
 
         $user = $request->user();
 
         return response()->json([
-            'scope' => $scope,
-            'range' => $range,
-            'stats' => $this->stats($user, $scope),
+            'stats'   => $this->stats($user, $scope),
             'activities' => $this->activities($user, $scope, $range),
+            // tambahan untuk chart (opsional)
+            'trend'   => $this->trend($user, $scope, $range),
         ]);
     }
 
     /**
-     * =========================
-     * STATS (SAAS SAFE)
-     * =========================
+     * STATISTIK (SAFE UNTUK SUPER ADMIN & USER)
      */
     private function stats($user, string $scope): array
     {
-        $isSuperAdmin =
-            method_exists($user, 'isSuperAdmin') &&
-            $user->isSuperAdmin();
+        $isSuperAdmin = $user->isSuperAdmin();
 
-        /**
-         * GLOBAL MODE (ADMIN)
-         */
+        // ============================================
+        // GLOBAL (Super Admin)
+        // ============================================
         if ($scope === 'global' && $isSuperAdmin) {
             return [
-                'users' => User::count(),
-                'divisions' => Division::count(),
+                'users'      => User::count(),
+                'divisions'  => Division::count(),
                 'workspaces' => Workspace::count(),
-                'campaigns' => Campaign::count(),
-                'boards' => Board::count(),
-                'cards' => Card::count(),
+                'campaigns'  => Campaign::count(),
+                'boards'     => Board::count(),
+                'cards'      => Card::count(),
                 'activities' => ActivityLog::count(),
             ];
         }
 
-        /**
-         * PERSONAL / USER MODE
-         * (IMPORTANT: KEEP SAME KEY STRUCTURE)
-         */
+        // ============================================
+        // PERSONAL (User sendiri atau "me")
+        // ============================================
         return [
-            'users' => 1, // self reference (biar UI tetap aman)
-            'divisions' => 0,
-
-            'workspaces' => Workspace::where('user_id', $user->id)->count(),
-
-            'campaigns' => method_exists($user, 'campaigns')
-                ? $user->campaigns()->count()
-                : Campaign::where('user_id', $user->id)->count(),
-
-            'boards' => Board::where('user_id', $user->id)->count(),
-
-            'cards' => method_exists($user, 'cards')
-                ? $user->cards()->count()
-                : Card::where('created_by', $user->id)->count(),
-
+            'users'      => 1, // self reference
+            'divisions'  => 0,
+            'workspaces' => $user->workspaces()->count(),
+            'campaigns'  => $user->campaigns()->count(),
+            'boards'     => Board::whereHas('campaign', function($q) use ($user) {
+                $q->whereIn('campaigns.id', $user->campaigns()->pluck('id'));
+            })->count(),
+            'cards'      => Card::whereIn('campaign_id', $user->campaigns()->pluck('id'))->count(),
             'activities' => ActivityLog::where('user_id', $user->id)->count(),
         ];
     }
 
     /**
-     * =========================
-     * ACTIVITIES (PAGINATED)
-     * =========================
+     * AKTIVITAS TERBARU (PAGINATED)
      */
     private function activities($user, string $scope, string $range)
     {
         $query = ActivityLog::with('user')->latest();
 
-        /**
-         * SCOPE FILTER
-         */
         if ($scope === 'me') {
             $query->where('user_id', $user->id);
         }
 
-        /**
-         * RANGE FILTER
-         */
+        // Filter rentang waktu
         switch ($range) {
             case 'today':
                 $query->whereDate('created_at', now()->toDateString());
                 break;
-
             case 'week':
-                $query->whereBetween('created_at', [
-                    now()->startOfWeek(),
-                    now()->endOfWeek(),
-                ]);
+                $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
                 break;
-
             case 'month':
                 $query->whereMonth('created_at', now()->month);
                 break;
-
-            case 'all':
             default:
-                // no filter
+                // all
                 break;
         }
 
-        /**
-         * PAGINATION (4 ITEMS PER PAGE)
-         */
         $logs = $query->paginate(4);
 
         return [
             'data' => $logs->getCollection()->map(function ($log) {
                 return [
-                    'id' => $log->id,
-                    'user' => $log->user?->name ?? 'System',
-                    'action' => $log->action,
+                    'id'          => $log->id,
+                    'user'        => $log->user?->name ?? 'System',
+                    'action'      => $log->action,
                     'description' => $log->description,
                     'entity_type' => $log->entity_type,
-                    'created_at' => $log->created_at?->toISOString(),
+                    'created_at'  => $log->created_at?->toISOString(),
                 ];
             })->values(),
-
             'meta' => [
                 'current_page' => $logs->currentPage(),
-                'last_page' => $logs->lastPage(),
-                'per_page' => $logs->perPage(),
-                'total' => $logs->total(),
+                'last_page'    => $logs->lastPage(),
+                'per_page'     => $logs->perPage(),
+                'total'        => $logs->total(),
             ],
         ];
+    }
+
+    /**
+     * TREN AKTIVITAS (untuk chart)
+     */
+    private function trend($user, string $scope, string $range)
+    {
+        $query = ActivityLog::query();
+
+        if ($scope === 'me') {
+            $query->where('user_id', $user->id);
+        }
+
+        // Ambil data 7 hari terakhir
+        $start = now()->subDays(6)->startOfDay();
+        $end   = now()->endOfDay();
+
+        $query->whereBetween('created_at', [$start, $end]);
+
+        $trend = $query->selectRaw('DATE(created_at) as date, count(*) as total')
+                       ->groupBy('date')
+                       ->orderBy('date')
+                       ->get();
+
+        // Isi tanggal yang kosong dengan 0
+        $dates = collect();
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->toDateString();
+            $found = $trend->firstWhere('date', $date);
+            $dates->push([
+                'date'  => $date,
+                'total' => $found ? $found->total : 0,
+            ]);
+        }
+
+        return $dates;
     }
 }

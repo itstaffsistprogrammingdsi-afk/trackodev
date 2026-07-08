@@ -23,6 +23,7 @@ export const ReportPage: React.FC = () => {
     handleExport,
     handlePreview,
     clearPreview,
+    handleBypassUser, // Ekstrak fungsi bypass dari useReport
   } = useReport();
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -61,6 +62,7 @@ export const ReportPage: React.FC = () => {
           onPreview={handlePreviewClick}
           previewLoading={loadingPreview}
           exporting={exporting}
+          onImpersonate={handleBypassUser} // Kirim props onImpersonate ke UserList
         />
 
         {/* Preview Modal */}
