@@ -9,7 +9,7 @@ interface UserListProps {
   users: User[];
   selectedUser: User | null;
   onSelectUser: (user: User) => void;
-  onImpersonate?: (userId: number) => void;
+  onImpersonate?: (userId: string) => void;
   filters: FilterParams;
   onFilterChange: (filters: Partial<FilterParams>) => void;
   pagination: { current_page: number; last_page: number; total: number };
@@ -20,11 +20,11 @@ interface UserListProps {
   exporting?: boolean;
 
   masterData?: {
-    divisions: { id: number; name: string }[];
-    workspaces: { id: number; name: string }[];
-    campaigns: { id: number; name: string }[];
-    labels: { id: number; name: string }[];
-    brands: { id: number; name: string }[];
+    divisions: { id: string; name: string }[];
+    workspaces: { id: string; name: string }[];
+    campaigns: { id: string; name: string }[];
+    labels: { id: string; name: string }[];
+    brands: { id: string; name: string }[];
   };
 }
 
