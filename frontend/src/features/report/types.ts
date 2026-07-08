@@ -1,5 +1,5 @@
 export interface Division {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -11,23 +11,23 @@ export interface User {
 }
 
 export interface Campaign {
-  id: number;
+  id: string;
   name: string;
 }
 
 export interface Board {
-  id: number;
+  id: string;
   name: string;
 }
 
 export interface Brand {
-  id: number;
+  id: string;
   name: string;
   color?: string;
 }
 
 export interface Label {
-  id: number;
+  id: string;
   name: string;
   color?: string;
 }
@@ -42,16 +42,16 @@ export interface Attachment {
   result_description: string | null;
   qc_quantity: number | null;
   qc_note: string | null;
-  qc_by: number | null;
-  qc_user: { id: number; name: string } | null;
+  qc_by: string | null;
+  qc_user: { id: string; name: string } | null;
   qc_at: string | null;
-  uploader: { id: number; name: string } | null;
+  uploader: { id: string; name: string } | null;
 }
 
 export interface Card {
   id: string;
-  board_id: number;
-  campaign_id: number;
+  board_id: string;
+  campaign_id: string;
   title: string;
   description: string | null;
   priority: string;
@@ -93,10 +93,10 @@ export interface PaginatedResponse<T> {
 
 // Tambahkan interface ini di bagian paling bawah file src/features/report/types.ts
 export interface MasterFilterOptions {
-  divisions: { id: number; name: string }[];
-  workspaces: { id: number; name: string }[];
-  campaigns: { id: number; name: string }[];
-  labels: { id: number; name: string; color?: string }[];
-  brands: { id: number; name: string; color?: string }[];
+  divisions: { id: string; name: string }[];
+  workspaces: { id: string; name: string }[];
+  campaigns: { id: string; name: string }[];
+  labels: { id: string; name: string; color?: string }[];
+  brands: { id: string; name: string; color?: string }[];
 }
 
