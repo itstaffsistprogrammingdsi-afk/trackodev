@@ -72,39 +72,38 @@ const [loading, setLoading] =
 const loadUser = async (): Promise<void> => {
   setLoading(true);
 
-  const token = getToken();
-
-  if (!token) {
-    setUser(null);
-    setLoading(false);
-    return;
-  }
-
-  const cached = getUser();
-
-  if (cached) {
-    setUser(cached);
-  }
-
   try {
+    const token = getToken();
+
+    if (!token) {
+      setUser(null);
+      return;
+    }
+
+    const cached = getUser();
+
+    if (cached) {
+      setUser(cached);
+    }
+
     const fresh = await getMe();
 
-    setUser(fresh);
+    if (fresh) {
+      setUser(fresh);
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(fresh)
+      );
+    }
   } catch (error) {
-    console.error(
-      "GET ME ERROR =",
-      error
-    );
+    console.error(error);
+
+    /**
+     * JANGAN hapus token di sini
+     */
 
     setUser(null);
-
-    localStorage.removeItem(
-      "token"
-    );
-
-    localStorage.removeItem(
-      "user"
-    );
   } finally {
     setLoading(false);
   }

@@ -15,7 +15,7 @@ export const reportApi = {
   },
 
   // RIGHT PANEL: Ambil detail card & attachment milik spesifik user
-  getUserCards: async (userId: number, params: FilterParams) => {
+  getUserCards: async (userId: string, params: FilterParams) => {
     const response = await api.get<{ data: Card[] }>(`/reports/users/${userId}/cards`, { params });
     return response.data;
   },
