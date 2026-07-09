@@ -24,12 +24,21 @@ use Maatwebsite\Excel\Facades\Excel;
 class ReportController extends Controller
 {
     /**
+     * Nama role yang dianggap "Super Admin" — harus persis sama dengan
+     * kolom `name` di tabel roles milik Spatie Permission.
+     */
+    private const SUPER_ADMIN_ROLE = 'super_admin';
+
+    /**
      * LEFT PANEL: Menampilkan list data user beserta divisi berdasarkan filter.
      */
     public function index(Request $request): JsonResponse
     {
         try {
             $query = User::with('divisions');
+
+            // Admin biasa tidak boleh melihat data milik Super Admin.
+            $this->restrictSuperAdminVisibility($query, $request);
 
             if ($request->filled('search')) {
                 $query->where('users.name', 'like', "%{$request->search}%");
@@ -81,6 +90,13 @@ class ReportController extends Controller
     public function showUserCards(Request $request, User $user): JsonResponse
     {
         try {
+            // Admin biasa tidak boleh mengakses report milik Super Admin.
+            if ($user->hasRole(self::SUPER_ADMIN_ROLE) && ! $this->isSuperAdmin($request)) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki akses untuk melihat report user ini.'
+                ], 403);
+            }
+
             $query = Card::whereHas('assignees', function ($q) use ($user) {
                 $q->where('users.id', $user->id);
             })->with([
@@ -171,6 +187,29 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             Log::error('Error fetching filter options: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal memuat opsi filter'], 500);
+        }
+    }
+
+    /**
+     * HELPER: Cek apakah user yang sedang login memiliki role Super Admin.
+     */
+    private function isSuperAdmin(Request $request): bool
+    {
+        $currentUser = $request->user();
+
+        return $currentUser && $currentUser->hasRole(self::SUPER_ADMIN_ROLE);
+    }
+
+    /**
+     * HELPER: Batasi query User agar user dengan role Super Admin tidak ikut
+     * muncul untuk viewer yang bukan Super Admin (mis. Admin biasa).
+     */
+    private function restrictSuperAdminVisibility($query, Request $request): void
+    {
+        if (! $this->isSuperAdmin($request)) {
+            $query->whereDoesntHave('roles', function ($q) {
+                $q->where('name', self::SUPER_ADMIN_ROLE);
+            });
         }
     }
 
@@ -348,6 +387,9 @@ public function previewPdf(Request $request): JsonResponse
                     $q->orderBy('cards.created_at', 'desc');
                 }
             ]);
+
+            // Admin biasa tidak boleh export/preview data milik Super Admin.
+            $this->restrictSuperAdminVisibility($query, $request);
 
             if ($request->filled('user_id')) {
                 $query->where('users.id', $request->user_id);
