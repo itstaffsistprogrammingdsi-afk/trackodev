@@ -184,7 +184,7 @@ class UserController extends Controller
             $request->user(),
             'viewed',
             'user_list',
-            (string) $request->user()->id,
+            (string) $request->user()->uuid,
             "Melihat daftar user dengan filter: " . json_encode($request->only([
                 'search',
                 'role',
