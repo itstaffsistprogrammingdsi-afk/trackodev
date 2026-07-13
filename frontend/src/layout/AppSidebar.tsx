@@ -1,10 +1,15 @@
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+
+import api from "@/lib/axios";
+
+import { AxiosError } from "axios";
 
 import { Link, useLocation } from "react-router-dom";
 
@@ -74,23 +79,23 @@ function normalizePath(path: string) {
   return path.replace(/\/+$/, "");
 }
 
-function matchDynamicRoute(pathname: string, routePath: string) {
-  const pathnameParts = normalizePath(pathname).split("/");
+// function matchDynamicRoute(pathname: string, routePath: string) {
+//   const pathnameParts = normalizePath(pathname).split("/");
 
-  const routeParts = normalizePath(routePath).split("/");
+//   const routeParts = normalizePath(routePath).split("/");
 
-  if (pathnameParts.length !== routeParts.length) {
-    return false;
-  }
+//   if (pathnameParts.length !== routeParts.length) {
+//     return false;
+//   }
 
-  return routeParts.every((part, index) => {
-    if (part.startsWith(":")) {
-      return true;
-    }
+//   return routeParts.every((part, index) => {
+//     if (part.startsWith(":")) {
+//       return true;
+//     }
 
-    return part === pathnameParts[index];
-  });
-}
+//     return part === pathnameParts[index];
+//   });
+// }
 
 /* -------------------------------------------------------------------------- */
 /*                           FIXED ACTIVE MATCHER                             */
@@ -117,25 +122,24 @@ function usePersistedRouteParams() {
   const location = useLocation();
 
   const [divisionId, setDivisionId] = useState<string | null>(() =>
-    localStorage.getItem("lastDivisionId"),
+    localStorage.getItem("lastDivisionId")
   );
 
   const [workspaceId, setWorkspaceId] = useState<string | null>(() =>
-    localStorage.getItem("lastWorkspaceId"),
+    localStorage.getItem("lastWorkspaceId")
   );
 
   const [campaignId, setCampaignId] = useState<string | null>(() =>
-    localStorage.getItem("lastCampaignId"),
+    localStorage.getItem("lastCampaignId")
   );
 
+  // Simpan ID terakhir ketika user berpindah halaman
   useEffect(() => {
     const divisionMatch = location.pathname.match(/^\/divisions\/([^/]+)/);
 
     if (divisionMatch?.[1]) {
       const id = divisionMatch[1];
-
       setDivisionId(id);
-
       localStorage.setItem("lastDivisionId", id);
     }
 
@@ -143,22 +147,80 @@ function usePersistedRouteParams() {
 
     if (workspaceMatch?.[1]) {
       const id = workspaceMatch[1];
-
       setWorkspaceId(id);
-
       localStorage.setItem("lastWorkspaceId", id);
     }
 
-    const campaignMatch = location.pathname.match(/^\/workspaces\/[^/]+\/campaigns\/([^/]+)/);
+    const campaignMatch = location.pathname.match(
+      /^\/workspaces\/[^/]+\/campaigns\/([^/]+)/
+    );
 
     if (campaignMatch?.[1]) {
       const id = campaignMatch[1];
-
       setCampaignId(id);
-
       localStorage.setItem("lastCampaignId", id);
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const validate = async (
+      id: string | null,
+      endpoint: string,
+      storageKey: string,
+      clearState: React.Dispatch<React.SetStateAction<string | null>>
+    ) => {
+      if (!id) return;
+
+      try {
+        await api.get(`${endpoint}/${id}`);
+      } catch (error: unknown) {
+        // Sebelumnya cuma 404/400 yang dianggap "ID tidak valid". Padahal
+        // untuk role admin/user yang aksesnya dibatasi per division/
+        // workspace/campaign, ID lama yang tersimpan di localStorage (mis.
+        // dari sesi/role lain di browser yang sama) biasanya ditolak server
+        // dengan 401/403, bukan 404. Karena statusnya tidak ditangani,
+        // ID yang sudah tidak valid itu tidak pernah dibersihkan, dan
+        // menu Task Management (Workspace/Campaigns/Board) terus mengarah
+        // ke path yang error. Superadmin nyaris tidak pernah kena kasus ini
+        // karena aksesnya tidak dibatasi. Di sini semua status 4xx kita
+        // anggap "ID ini tidak berlaku untuk user sekarang" dan kita bersihkan.
+        const status =
+          error instanceof AxiosError ? error.response?.status : undefined;
+
+        if (mounted && status !== undefined && status >= 400 && status < 500) {
+          localStorage.removeItem(storageKey);
+          clearState(null);
+        }
+      }
+    };
+
+    void Promise.all([
+      validate(
+        divisionId,
+        "/divisions",
+        "lastDivisionId",
+        setDivisionId
+      ),
+      validate(
+        workspaceId,
+        "/workspaces",
+        "lastWorkspaceId",
+        setWorkspaceId
+      ),
+      validate(
+        campaignId,
+        "/campaigns",
+        "lastCampaignId",
+        setCampaignId
+      ),
+    ]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [divisionId, workspaceId, campaignId]);
 
   return {
     divisionId,
@@ -226,6 +288,31 @@ const active = useMemo(() => {
   );
 }, [location.pathname, subItem]);
 
+// Path antar child ini bersarang (Campaigns ⊂ Campaign Detail ⊂ Board),
+// jadi kalau tiap child dicek independen pakai startsWithRoute, waktu buka
+// halaman Board, Campaigns dan Campaign Detail ikut keanggap "active" juga
+// karena pathname-nya sama-sama diawali path mereka. Di sini kita cari
+// SATU child dengan path paling spesifik (paling panjang) yang cocok —
+// cuma itu yang boleh nyala.
+const activeChildIndex = useMemo(() => {
+  if (!subItem.children?.length) return -1;
+
+  let bestIndex = -1;
+  let bestLength = -1;
+
+  subItem.children.forEach((child, index) => {
+    if (
+      startsWithRoute(location.pathname, child.path) &&
+      child.path.length > bestLength
+    ) {
+      bestLength = child.path.length;
+      bestIndex = index;
+    }
+  });
+
+  return bestIndex;
+}, [location.pathname, subItem.children]);
+
   const [open, setOpen] = useState(active);
 
   useEffect(() => {
@@ -290,15 +377,13 @@ const active = useMemo(() => {
             }}
           >
             <ul className="ml-4 mt-1 border-l border-gray-200 dark:border-gray-700 pl-3 space-y-1">
-              {subItem.children?.map((child) => (
+              {subItem.children?.map((child, index) => (
                 <TreeLeaf
                   key={child.path}
                   name={child.name}
                   path={child.path}
-active={startsWithRoute(
-    location.pathname,
-    child.path,
-)}                />
+                  active={index === activeChildIndex}
+                />
               ))}
             </ul>
           </div>
@@ -352,9 +437,48 @@ const AppSidebar: React.FC = () => {
   /* ---------------------------------------------------------------------- */
   /*                               DYNAMIC MENU                             */
   /* ---------------------------------------------------------------------- */
-  const { can } = useAuth();
+  // useAuth() bisa mengembalikan can()/hasRole() yang belum "siap" (mis. saat
+  // permission user masih di-fetch dari API setelah login) atau yang bentuknya
+  // beda antar role. Superadmin biasanya lolos karena rolenya sering di-treat
+  // "boleh semua" tanpa perlu data permission, sedangkan admin/user betul-betul
+  // bergantung ke data itu — ini yang bikin error cuma muncul untuk admin/user.
+  // Wrapper di bawah memastikan can()/hasRole() tidak akan pernah bikin
+  // sidebar crash, apa pun yang dikembalikan/dilempar oleh AuthContext.
+  const auth = useAuth();
+
+  const isSuperAdmin = useMemo(() => {
+    try {
+      return typeof auth?.hasRole === "function"
+        ? !!auth.hasRole("super_admin")
+        : false;
+    } catch {
+      return false;
+    }
+  }, [auth]);
+
+  const can = useCallback(
+    (permission: string) => {
+      // Superadmin selalu true tanpa perlu memanggil can() asli, jadi kalau
+      // pun implementasi can() di AuthContext bermasalah untuk role lain,
+      // superadmin tidak akan pernah terdampak (sesuai perilaku yang sudah
+      // terlihat sekarang).
+      if (isSuperAdmin) return true;
+
+      try {
+        return typeof auth?.can === "function" ? !!auth.can(permission) : false;
+      } catch {
+        // Kalau can() error (mis. permission belum ke-load), sembunyikan
+        // saja item menu terkait, jangan sampai seluruh sidebar ikut crash.
+        return false;
+      }
+    },
+    [auth, isSuperAdmin],
+  );
+
   const navItems = useMemo<NavItem[]>(
-    () => [
+    () => {
+      try {
+        return [
       {
         icon: <GridIcon />,
         name: "Dashboard",
@@ -369,21 +493,38 @@ const AppSidebar: React.FC = () => {
             path: "/divisions",
 
             children: [
-              {
-                name: "Divisions",
-                path: "/divisions",
-              },
+              // "Divisions" (daftar semua division) cuma untuk superadmin.
+              // admin & user tidak boleh lihat/akses halaman ini sama sekali.
+              ...(isSuperAdmin
+                ? [
+                    {
+                      name: "Divisions",
+                      path: "/divisions",
+                    },
+                  ]
+                : []),
 
               {
                 name: "Workspace",
-                path: divisionId ? `/divisions/${divisionId}` : "/divisions",
+                // Kalau divisionId belum ada: superadmin boleh fallback ke
+                // /divisions (dia memang boleh milih division dari sana).
+                // admin/user TIDAK boleh ke /divisions, jadi fallback-nya
+                // diarahkan ke /my-work supaya tidak "nyelonong" ke halaman
+                // yang seharusnya tidak bisa mereka akses.
+                path: divisionId
+                  ? `/divisions/${divisionId}`
+                  : isSuperAdmin
+                  ? "/divisions"
+                  : "/my-work",
               },
 
               {
                 name: "Campaigns",
                 path: workspaceId
                   ? `/workspaces/${workspaceId}/campaigns`
-                  : "/divisions",
+                  : isSuperAdmin
+                  ? "/divisions"
+                  : "/my-work",
               },
 
 ...(workspaceId && campaignId
@@ -463,9 +604,25 @@ const AppSidebar: React.FC = () => {
             },
           ]
         : []),
-    ],
+        ];
+      } catch (error) {
+        // Jaring pengaman terakhir: kalau ada bagian mana pun dari menu di
+        // atas yang gagal dibangun karena sebab tak terduga, jangan sampai
+        // seluruh sidebar ikut crash untuk user. Tampilkan menu minimal saja
+        // dan catat errornya di console supaya tetap bisa di-debug.
+        console.error("Gagal membangun menu sidebar:", error);
 
-    [divisionId, workspaceId, campaignId, can],
+        return [
+          {
+            icon: <GridIcon />,
+            name: "Dashboard",
+            path: "/my-work",
+          },
+        ];
+      }
+    },
+
+    [divisionId, workspaceId, campaignId, can, isSuperAdmin],
   );
 
   /* ---------------------------------------------------------------------- */

@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
                 AdminSeeder::class,
                 // ProjectManagementSeeder::class,
                 // MasterReportSeeder::class,
+                UserSeeder::class,
 
             ]);
         }
