@@ -13,13 +13,6 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Akun Utama (Wafiq)
-        $userUtama = User::create([
-            'name' => 'wafiq',
-            'email' => 'wafiq.lana999@gmail.com',
-            'password' => Hash::make('userpassword'),
-        ]);
-        $userUtama->assignRole('user');
 
         // 2. Akun userdm1@gmail.com sampai userdm10@gmail.com
         for ($i = 1; $i <= 10; $i++) {
