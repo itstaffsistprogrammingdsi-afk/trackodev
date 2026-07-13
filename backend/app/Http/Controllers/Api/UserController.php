@@ -180,20 +180,24 @@ class UserController extends Controller
         // RESPONSE
         // ============================================
 
-        ActivityLogService::log(
-            $request->user(),
-            'viewed',
-            'user_list',
-            (string) $request->user()->uuid,
-            "Melihat daftar user dengan filter: " . json_encode($request->only([
-                'search',
-                'role',
-                'division_id',
-                'assign',
-                'all',
-                'per_page'
-            ]))
-        );
+ActivityLogService::log(
+    $request->user(),
+
+    'user',
+    (string) $request->user()->id,
+    'viewed',
+
+    "Melihat daftar user dengan filter: " . json_encode(
+        $request->only([
+            'search',
+            'role',
+            'division_id',
+            'assign',
+            'all',
+            'per_page',
+        ])
+    )
+);
 
         return response()->json([
 
