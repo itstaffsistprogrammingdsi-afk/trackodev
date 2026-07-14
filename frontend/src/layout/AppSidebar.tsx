@@ -527,7 +527,10 @@ const AppSidebar: React.FC = () => {
       {
         icon: <GridIcon />,
         name: "Dashboard",
-        path: "/my-work",
+        // Superadmin punya halaman ringkasan sistem sendiri di /dashboard.
+        // admin/user tidak punya akses ke situ, jadi tetap diarahkan ke
+        // /my-work seperti sebelumnya.
+        path: isSuperAdmin ? "/dashboard" : "/my-work",
       },
       {
         name: "Task Management",
@@ -667,7 +670,7 @@ const AppSidebar: React.FC = () => {
           {
             icon: <GridIcon />,
             name: "Dashboard",
-            path: "/my-work",
+            path: isSuperAdmin ? "/dashboard" : "/my-work",
           },
         ];
       }
