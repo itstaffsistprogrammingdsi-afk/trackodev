@@ -26,6 +26,7 @@ import {
 
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "@/context/AuthContext";
+import { getMyDivisions } from "@/features/division/api/division.api";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -34,6 +35,12 @@ import { useAuth } from "@/context/AuthContext";
 type ChildItem = {
   name: string;
   path: string;
+  // true kalau `path` di atas cuma fallback (id dependency-nya belum ada),
+  // BUKAN halaman asli milik item ini. Item begini harus dilewati saat
+  // nentuin active state, karena fallback-nya bisa "nabrak" path milik
+  // menu lain (mis. /my-work milik Dashboard) dan bikin dua menu nyala
+  // bareng.
+  isFallback?: boolean;
 };
 
 type SubItem = {
@@ -118,7 +125,7 @@ function startsWithRoute(
 /*                            PERSIST LAST PARAMS                             */
 /* -------------------------------------------------------------------------- */
 
-function usePersistedRouteParams() {
+function usePersistedRouteParams(isSuperAdmin: boolean) {
   const location = useLocation();
 
   const [divisionId, setDivisionId] = useState<string | null>(() =>
@@ -161,6 +168,39 @@ function usePersistedRouteParams() {
       localStorage.setItem("lastCampaignId", id);
     }
   }, [location.pathname]);
+
+  // Auto-discover divisionId untuk admin/user biasa yang BELUM PERNAH
+  // membuka /divisions/:id sama sekali (localStorage masih kosong) —
+  // sebelumnya, tanpa divisionId, menu "Workspace" cuma fallback terus ke
+  // /my-work dan admin/user tidak punya cara lain untuk sampai ke
+  // division/workspace miliknya. Superadmin dilewati karena dia memang
+  // punya jalur sendiri lewat halaman /divisions (daftar semua division).
+  useEffect(() => {
+    if (isSuperAdmin) return;
+    if (divisionId) return;
+
+    let mounted = true;
+
+    getMyDivisions()
+      .then((divisions) => {
+        if (!mounted) return;
+
+        const first = divisions[0];
+
+        if (first?.id) {
+          setDivisionId(first.id);
+          localStorage.setItem("lastDivisionId", first.id);
+        }
+      })
+      .catch(() => {
+        // Diamkan saja — kalau gagal, menu Workspace tetap fallback ke
+        // /my-work seperti sebelumnya, tidak bikin sidebar crash.
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isSuperAdmin, divisionId]);
 
   useEffect(() => {
     let mounted = true;
@@ -282,8 +322,10 @@ const active = useMemo(() => {
   }
 
   return (
-    subItem.children?.some((child) =>
-      startsWithRoute(location.pathname, child.path)
+    subItem.children?.some(
+      (child) =>
+        !child.isFallback &&
+        startsWithRoute(location.pathname, child.path)
     ) ?? false
   );
 }, [location.pathname, subItem]);
@@ -302,6 +344,7 @@ const activeChildIndex = useMemo(() => {
 
   subItem.children.forEach((child, index) => {
     if (
+      !child.isFallback &&
       startsWithRoute(location.pathname, child.path) &&
       child.path.length > bestLength
     ) {
@@ -379,7 +422,7 @@ const activeChildIndex = useMemo(() => {
             <ul className="ml-4 mt-1 border-l border-gray-200 dark:border-gray-700 pl-3 space-y-1">
               {subItem.children?.map((child, index) => (
                 <TreeLeaf
-                  key={child.path}
+                  key={child.name}
                   name={child.name}
                   path={child.path}
                   active={index === activeChildIndex}
@@ -428,15 +471,6 @@ const AppSidebar: React.FC = () => {
   //   toggleDark,
   // } = useDarkMode();
 
-  const { divisionId, workspaceId, campaignId } = usePersistedRouteParams();
-
-  const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
-
-  const slim = !isExpanded && !isHovered && !isMobileOpen;
-
-  /* ---------------------------------------------------------------------- */
-  /*                               DYNAMIC MENU                             */
-  /* ---------------------------------------------------------------------- */
   // useAuth() bisa mengembalikan can()/hasRole() yang belum "siap" (mis. saat
   // permission user masih di-fetch dari API setelah login) atau yang bentuknya
   // beda antar role. Superadmin biasanya lolos karena rolenya sering di-treat
@@ -455,6 +489,17 @@ const AppSidebar: React.FC = () => {
       return false;
     }
   }, [auth]);
+
+  const { divisionId, workspaceId, campaignId } =
+    usePersistedRouteParams(isSuperAdmin);
+
+  const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
+
+  const slim = !isExpanded && !isHovered && !isMobileOpen;
+
+  /* ---------------------------------------------------------------------- */
+  /*                               DYNAMIC MENU                             */
+  /* ---------------------------------------------------------------------- */
 
   const can = useCallback(
     (permission: string) => {
@@ -516,6 +561,9 @@ const AppSidebar: React.FC = () => {
                   : isSuperAdmin
                   ? "/divisions"
                   : "/my-work",
+                // Tanpa divisionId, path di atas cuma fallback ke menu lain
+                // (Divisions/Dashboard) — bukan path "Workspace" yang asli.
+                isFallback: !divisionId,
               },
 
               {
@@ -525,6 +573,9 @@ const AppSidebar: React.FC = () => {
                   : isSuperAdmin
                   ? "/divisions"
                   : "/my-work",
+                // Sama seperti Workspace: tanpa workspaceId, path di atas
+                // cuma fallback, bukan path Campaigns yang asli.
+                isFallback: !workspaceId,
               },
 
 ...(workspaceId && campaignId
@@ -631,8 +682,16 @@ const AppSidebar: React.FC = () => {
 
 
 
-useEffect(() => {
-  const activeMenuIndex = navItems.findIndex((item) => {
+// Index submenu (Task Management, Forms, dst) yang SECARA RUTE lagi aktif —
+// dipakai KHUSUS buat warna highlight header submenu. Ini sengaja dipisah
+// dari `openSubmenu` (state buka/tutup dropdown yang dikontrol klik).
+// Sebelumnya highlight header pakai `isOpen`, jadi begitu submenu diklik
+// buka (tanpa pindah halaman), headernya ikut keliatan "active" walau
+// rute yang jalan masih di menu lain (mis. Dashboard) — makanya dua menu
+// nyala bareng. Dengan dipisah begini, header submenu cuma nyala kalau
+// rute saat ini memang match salah satu path di dalamnya.
+const routeActiveIndex = useMemo(() => {
+  return navItems.findIndex((item) => {
     if (!item.subItems) {
       return false;
     }
@@ -643,15 +702,19 @@ useEffect(() => {
       }
 
       return (
-        sub.children?.some((child) =>
-          startsWithRoute(location.pathname, child.path)
+        sub.children?.some(
+          (child) =>
+            !child.isFallback &&
+            startsWithRoute(location.pathname, child.path)
         ) ?? false
       );
     });
   });
-
-  setOpenSubmenu(activeMenuIndex >= 0 ? activeMenuIndex : null);
 }, [location.pathname, navItems]);
+
+useEffect(() => {
+  setOpenSubmenu(routeActiveIndex >= 0 ? routeActiveIndex : null);
+}, [routeActiveIndex]);
 
   const handleMouseEnter = () => {
     if (!isExpanded) {
@@ -779,7 +842,7 @@ useEffect(() => {
                           )
                         }
                         className={`${menuItemBase} w-full px-3 py-2.5
-                          ${isOpen ? menuItemActive : menuItemInactive}
+                          ${routeActiveIndex === index ? menuItemActive : menuItemInactive}
                           ${slim ? "justify-center" : ""}`}
                       >
                         <span className="shrink-0">{item.icon}</span>
@@ -810,7 +873,7 @@ useEffect(() => {
                           <ul className="ml-4 mt-2 border-l border-gray-200 dark:border-gray-700 pl-3 space-y-1">
                             {item.subItems.map((subItem) => (
                               <TreeBranch
-                                key={`${item.name}-${subItem.path}`}
+                                key={`${item.name}-${subItem.name}`}
                                 subItem={subItem}
                                 // isActive={isActive}
                               />

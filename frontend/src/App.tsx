@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
@@ -54,6 +54,15 @@ import PermissionRoute from "./components/auth/PermissionRoute";
 
 import LandingPage from "@/features/landing/pages/LandingPage";
 
+function RootRoute() {
+  const token = localStorage.getItem("token");
+
+  return token ? (
+    <Navigate to="/dashboard" replace />
+  ) : (
+    <LandingPage />
+  );
+}
 
 export default function App() {
   return (
@@ -62,7 +71,7 @@ export default function App() {
 
       <Routes>
         {/* ================= PUBLIC ================= */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<RootRoute />} />
 
         <Route
           path="/public/forms/:slug"

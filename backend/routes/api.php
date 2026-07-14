@@ -150,15 +150,29 @@ Route::middleware([
         [DivisionController::class, 'index']
     )->middleware('permission:division.view');
 
+    // Division milik user yang login (member biasa maupun admin division).
+    // Sengaja TANPA middleware permission:division.view — endpoint ini cuma
+    // mengembalikan division milik user sendiri, dipakai sidebar untuk
+    // auto-discover division/workspace tanpa perlu permission khusus.
+    Route::get(
+        'my-divisions',
+        [DivisionController::class, 'myDivisions']
+    );
+
     Route::post(
         'divisions',
         [DivisionController::class, 'store']
     )->middleware('permission:division.create');
 
+    // Otorisasi buka SATU division dicek di dalam controller
+    // (DivisionController::authorizeDivisionAccess) supaya member biasa
+    // tetap bisa buka division-nya sendiri walau tidak punya permission
+    // 'division.view' (permission itu tetap dipakai di index() di atas,
+    // yang menampilkan SEMUA division).
     Route::get(
         'divisions/{division}',
         [DivisionController::class, 'show']
-    )->middleware('permission:division.view');
+    );
 
     Route::put(
         'divisions/{division}',
@@ -170,10 +184,12 @@ Route::middleware([
         [DivisionController::class, 'destroy']
     )->middleware('permission:division.delete');
 
+    // Sama seperti show() di atas — member biasa boleh lihat daftar
+    // member division-nya sendiri, otorisasi dicek di controller.
     Route::get(
         'divisions/{division}/members',
         [DivisionController::class, 'members']
-    )->middleware('permission:division.view');
+    );
 
     Route::post(
         'divisions/{division}/members',
@@ -716,6 +732,7 @@ Route::middleware([
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/activities', [DashboardController::class, 'activities']);
+    Route::get('/my-activities/export', [MyActivityController::class, 'export']);
 
 
 

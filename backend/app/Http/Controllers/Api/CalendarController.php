@@ -117,24 +117,24 @@ class CalendarController extends Controller
     /**
      * Apply Access Control
      */
-    private function applyPermission(Builder $query, $user): void
-    {
-        if ($user->isSuperAdmin()) {
-            return;
-        }
-
-        $divisionIds = $user->divisions()->pluck('divisions.id')->toArray();
-
-        if ($user->isAdmin()) {
-            $query->whereHas('campaign.workspace', function (Builder $q) use ($divisionIds) {
-                $q->whereIn('division_id', $divisionIds);
-            });
-            return;
-        }
-
-        // Untuk User Biasa
-        $query->whereHas('assignees.divisions', function (Builder $q) use ($divisionIds) {
-            $q->whereIn('divisions.id', $divisionIds);
-        });
+private function applyPermission(Builder $query, $user): void
+{
+    if ($user->isSuperAdmin()) {
+        return;
     }
+
+    $divisionIds = $user->divisions()->pluck('divisions.id')->toArray();
+
+    if ($user->isAdmin()) {
+        $query->whereHas('board.campaign.workspace', function (Builder $q) use ($divisionIds) {
+            $q->whereIn('division_id', $divisionIds);
+        });
+        return;
+    }
+
+    // Untuk User Biasa
+    $query->whereHas('assignees.divisions', function (Builder $q) use ($divisionIds) {
+        $q->whereIn('divisions.id', $divisionIds);
+    });
+}
 }

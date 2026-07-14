@@ -122,8 +122,57 @@ public function store(Request $request): JsonResponse
         Division $division
     ): JsonResponse {
 
+        $this->authorizeDivisionAccess($division);
+
         return response()->json([
             'data' => new DivisionResource($division->load('users'))
+        ]);
+    }
+
+    /**
+     * Otorisasi akses ke SATU division tertentu.
+     *
+     * Beda dengan index() yang tetap dibatasi permission 'division.view'
+     * di route (karena index() menampilkan SEMUA division, dan itu memang
+     * cuma untuk superadmin/pemegang permission) — di sini kita izinkan
+     * juga kalau user adalah member dari division ini, supaya admin/user
+     * biasa tetap bisa membuka division/workspace tempat mereka terdaftar.
+     */
+    private function authorizeDivisionAccess(Division $division): void
+    {
+        $user = auth()->user();
+
+        if ($user->can('division.view')) {
+            return;
+        }
+
+        $isMember = $division->users()
+            ->where('users.id', $user->id)
+            ->exists();
+
+        if (! $isMember) {
+            abort(403, 'Anda tidak punya akses ke divisi ini.');
+        }
+    }
+
+    /**
+     * Daftar division tempat user yang login jadi member (admin atau
+     * member biasa). Dipakai sidebar untuk auto-discover division/
+     * workspace milik user, tanpa perlu permission 'division.view'.
+     */
+    public function myDivisions(): JsonResponse
+    {
+        $user = auth()->user();
+
+        $divisions = Division::query()
+            ->whereHas('users', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->with('users')
+            ->get();
+
+        return response()->json([
+            'data' => DivisionResource::collection($divisions)
         ]);
     }
 
@@ -233,6 +282,8 @@ public function store(Request $request): JsonResponse
     public function members(
         Division $division
     ): JsonResponse {
+
+        $this->authorizeDivisionAccess($division);
 
         $members = $division
             ->users()
