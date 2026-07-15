@@ -292,16 +292,17 @@ Route::middleware([
     Route::get(
         '/campaigns/{campaign}/stats',
         [CampaignController::class, 'stats']
-    );
+    )->middleware('permission:campaign.view');
 
     Route::get(
         '/campaigns/{campaign}/overdue-tasks',
         [CampaignController::class, 'overdueTasks']
-    );
+    )->middleware('permission:campaign.view');
+
     Route::get(
         '/campaigns/{campaign}/health',
         [CampaignController::class, 'health']
-    );
+    )->middleware('permission:campaign.view');
 
     // ========================================
     // BOARDS

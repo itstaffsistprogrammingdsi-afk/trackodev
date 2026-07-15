@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import NotificationBell from "../components/header/NotificationBell";
 import { useMemo } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 /* -------------------------------------------------------------------------- */
 /*                                   ROUTES                                   */
@@ -235,6 +236,24 @@ const matchedRoute = breadcrumbRoutes
 
 const AppHeader: React.FC = () => {
 const location = useLocation();
+
+const auth = useAuth();
+
+// Sama seperti di AppSidebar: superadmin satu-satunya role yang boleh
+// buka /divisions (daftar semua division). admin/user -- termasuk yang
+// cuma "tamu" karena diundang lintas divisi ke satu campaign/workspace --
+// tidak boleh akses halaman itu, jadi breadcrumb "Divisions" untuk mereka
+// tidak boleh berupa link (biar tidak berujung 403 kalau diklik).
+const isSuperAdmin = useMemo(() => {
+  try {
+    return typeof auth?.hasRole === "function"
+      ? !!auth.hasRole("super_admin")
+      : false;
+  } catch {
+    return false;
+  }
+}, [auth]);
+
 const impersonatedBy = useMemo(() => {
   const raw = localStorage.getItem(
     "impersonated_by"
@@ -251,7 +270,19 @@ const impersonatedBy = useMemo(() => {
   }
 }, []);
 
-  const breadcrumbs = buildBreadcrumbs(location.pathname);
+  const breadcrumbs = useMemo(() => {
+    const raw = buildBreadcrumbs(location.pathname);
+
+    if (isSuperAdmin) {
+      return raw;
+    }
+
+    return raw.map((crumb) =>
+      crumb.href === "/divisions"
+        ? { ...crumb, href: undefined }
+        : crumb
+    );
+  }, [location.pathname, isSuperAdmin]);
 
   const currentPage =
     breadcrumbs.length > 0

@@ -77,4 +77,72 @@ class Workspace extends Model
             'workspace_id'
         );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ACCESS CONTROL
+    |--------------------------------------------------------------------------
+    | Cross-division invite direstui bebas: seorang user bisa jadi member
+    | workspace ini meski divisi utamanya berbeda (tersync otomatis saat
+    | diundang ke salah satu campaign di workspace ini). Karena itu, akses
+    | User & fallback Admin dicek lewat membership workspace, bukan hanya
+    | lewat kecocokan division_id.
+    |--------------------------------------------------------------------------
+    */
+
+    public function canBeAccessedBy(User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($user->isAdmin()) {
+
+            // Admin di divisi pemilik workspace ini punya akses penuh
+            $ownsDivision = $user->divisions()
+                ->where('divisions.id', $this->division_id)
+                ->exists();
+
+            if ($ownsDivision) {
+                return true;
+            }
+
+            // Admin juga bisa jadi member lintas divisi (mis. diundang ke
+            // campaign di workspace ini), jadi tetap dicek sebagai member
+            return $this->members()
+                ->where('users.id', $user->id)
+                ->exists();
+        }
+
+        // USER: akses berdasarkan keanggotaan workspace, termasuk hasil
+        // undangan lintas divisi
+        return $this->members()
+            ->where('users.id', $user->id)
+            ->exists();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MANAGE (update/delete workspace itu sendiri)
+    |--------------------------------------------------------------------------
+    | Sengaja lebih ketat dari canBeAccessedBy(): member hasil undangan
+    | lintas divisi boleh MELIHAT workspace, tapi tidak boleh
+    | mengubah/menghapusnya — hanya Admin pemilik divisi & Super Admin.
+    |--------------------------------------------------------------------------
+    */
+
+    public function canBeManagedBy(User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($user->isAdmin()) {
+            return $user->divisions()
+                ->where('divisions.id', $this->division_id)
+                ->exists();
+        }
+
+        return false;
+    }
 }
