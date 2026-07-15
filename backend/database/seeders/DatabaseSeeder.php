@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
                 // ProjectManagementSeeder::class,
                 // MasterReportSeeder::class,
                 UserSeeder::class,
+                MyWorkExportSeeder::class,
 
             ]);
         }

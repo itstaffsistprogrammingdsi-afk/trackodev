@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\MyWorkLogExport;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\Card;
 use App\Models\CardAttachment;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MyActivityController extends Controller
 {
@@ -15,6 +20,17 @@ class MyActivityController extends Controller
         'week',
         'month',
         'all',
+    ];
+
+    private const ALLOWED_EXPORT_TYPES = [
+        'daily',
+        'monthly',
+        'yearly',
+    ];
+
+    private const ALLOWED_EXPORT_FORMATS = [
+        'xlsx',
+        'pdf',
     ];
 
     public function index(Request $request)
@@ -253,5 +269,199 @@ class MyActivityController extends Controller
             default:
                 break;
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export Log (Harian / Bulanan / Tahunan)
+    |--------------------------------------------------------------------------
+    */
+
+    public function export(Request $request)
+    {
+        $type = $request->input('type', 'daily');
+
+        if (! in_array($type, self::ALLOWED_EXPORT_TYPES)) {
+            $type = 'daily';
+        }
+
+        $format = $request->input('format', 'xlsx');
+
+        if (! in_array($format, self::ALLOWED_EXPORT_FORMATS)) {
+            $format = 'xlsx';
+        }
+
+        $data = $this->gatherExportData($type, $request);
+
+        return $format === 'pdf'
+            ? $this->exportAsPdf($type, $data)
+            : $this->exportAsExcel($type, $data);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Kumpulkan data export (dipakai bersama oleh Excel & PDF)
+    |--------------------------------------------------------------------------
+    */
+
+    private function gatherExportData(string $type, Request $request): array
+    {
+        $user = auth()->user();
+
+        [$start, $end, $label] = $this->resolveExportPeriod($type, $request);
+
+        /*
+        |----------------------------------------------------------------
+        | Activity Log dalam periode
+        |----------------------------------------------------------------
+        */
+
+        $activities = ActivityLog::query()
+            ->with('user')
+            ->where('user_id', $user->id)
+            ->whereBetween('created_at', [$start, $end])
+            ->latest()
+            ->get();
+
+        /*
+        |----------------------------------------------------------------
+        | Task yang selesai dalam periode
+        |----------------------------------------------------------------
+        | Catatan: relasi 'assignees' di bawah ini mengikuti pola route
+        | `cards/{card}/assign` & `cards/{card}/assign/{user}` (many-to-many).
+        | Sesuaikan nama relasi ini dengan relasi assignment yang sebenarnya
+        | ada pada model Card (mis. assignees(), assignedUsers(), atau
+        | kolom assigned_to) jika berbeda di project Anda.
+        */
+
+        $completedTasks = Card::query()
+            ->whereHas('assignees', function (Builder $query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->whereNotNull('completed_at')
+            ->whereBetween('completed_at', [$start, $end])
+            ->with('board')
+            ->latest('completed_at')
+            ->get();
+
+        /*
+        |----------------------------------------------------------------
+        | Attachment yang diupload dalam periode
+        |----------------------------------------------------------------
+        */
+
+        $attachments = CardAttachment::query()
+            ->with('card')
+            ->where('uploaded_by', $user->id)
+            ->whereBetween('created_at', [$start, $end])
+            ->latest()
+            ->get();
+
+        $totalStorageUsedMb = round(
+            ($attachments->sum('file_size') ?? 0) / 1024 / 1024,
+            2
+        );
+
+        $summary = [
+            'periode' => $label,
+            'nama_user' => $user->name,
+            'total_completed_tasks' => $completedTasks->count(),
+            'total_activities' => $activities->count(),
+            'total_attachments' => $attachments->count(),
+            'total_storage_used_mb' => $totalStorageUsedMb,
+        ];
+
+        return [
+            'summary' => $summary,
+            'completedTasks' => $completedTasks,
+            'activities' => $activities,
+            'attachments' => $attachments,
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export ke Excel (.xlsx)
+    |--------------------------------------------------------------------------
+    */
+
+    private function exportAsExcel(string $type, array $data)
+    {
+        $fileName = sprintf(
+            'log-kerja-%s-%s.xlsx',
+            $type,
+            now()->format('Ymd-His')
+        );
+
+        return Excel::download(
+            new MyWorkLogExport(
+                $data['summary'],
+                $data['completedTasks'],
+                $data['activities'],
+                $data['attachments']
+            ),
+            $fileName
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export ke PDF
+    |--------------------------------------------------------------------------
+    | Menggunakan package barryvdh/laravel-dompdf. Kalau belum terpasang:
+    | composer require barryvdh/laravel-dompdf
+    */
+
+    private function exportAsPdf(string $type, array $data)
+    {
+        $fileName = sprintf(
+            'log-kerja-%s-%s.pdf',
+            $type,
+            now()->format('Ymd-His')
+        );
+
+        $pdf = Pdf::loadView('exports.my-work-log', [
+            'summary' => $data['summary'],
+            'completedTasks' => $data['completedTasks'],
+            'activities' => $data['activities'],
+            'attachments' => $data['attachments'],
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download($fileName);
+    }
+
+    private function resolveExportPeriod(string $type, Request $request): array
+    {
+        switch ($type) {
+            case 'monthly':
+                $month = (int) $request->input('month', now()->month);
+                $year = (int) $request->input('year', now()->year);
+
+                $start = Carbon::create($year, $month, 1)->startOfMonth();
+                $end = $start->copy()->endOfMonth();
+                $label = $start->translatedFormat('F Y');
+                break;
+
+            case 'yearly':
+                $year = (int) $request->input('year', now()->year);
+
+                $start = Carbon::create($year, 1, 1)->startOfYear();
+                $end = $start->copy()->endOfYear();
+                $label = (string) $year;
+                break;
+
+            case 'daily':
+            default:
+                $date = $request->filled('date')
+                    ? Carbon::parse($request->input('date'))
+                    : now();
+
+                $start = $date->copy()->startOfDay();
+                $end = $date->copy()->endOfDay();
+                $label = $start->translatedFormat('d F Y');
+                break;
+        }
+
+        return [$start, $end, $label];
     }
 }

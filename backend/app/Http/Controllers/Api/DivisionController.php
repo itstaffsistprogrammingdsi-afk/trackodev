@@ -122,8 +122,90 @@ public function store(Request $request): JsonResponse
         Division $division
     ): JsonResponse {
 
+        $access = $this->resolveDivisionAccess($division);
+
+        abort_unless(
+            $access !== 'none',
+            403,
+            'Anda tidak punya akses ke divisi ini.'
+        );
+
+        // Guest lintas divisi (bukan member resmi divisi ini) hanya dapat
+        // info dasar divisi -- daftar anggota lengkap TIDAK di-load, supaya
+        // roster divisi lain tidak ikut terekspos hanya gara-gara user
+        // pernah diundang ke satu campaign/workspace di divisi tsb.
+        if ($access === 'full') {
+            $division->load('users');
+        }
+
         return response()->json([
-            'data' => new DivisionResource($division->load('users'))
+            'data' => new DivisionResource($division)
+        ]);
+    }
+
+    /**
+     * Menentukan level akses user terhadap SATU division tertentu.
+     *
+     * - 'full'  : super admin / pemegang permission 'division.view' /
+     *             member resmi divisi ini (tercatat di pivot division_user)
+     *             -> boleh lihat detail lengkap + daftar anggota.
+     * - 'guest' : bukan member resmi divisi ini, tapi jadi anggota salah
+     *             satu workspace di divisi ini lewat undangan lintas
+     *             divisi (cross-division invite) -> boleh lihat info dasar
+     *             divisi saja (mis. untuk label/breadcrumb "campaign ini
+     *             milik divisi apa"), bukan daftar anggota.
+     * - 'none'  : tidak ada akses sama sekali.
+     *
+     * Beda dengan index() yang tetap dibatasi permission 'division.view'
+     * di route (karena index() menampilkan SEMUA division, dan itu memang
+     * cuma untuk superadmin/pemegang permission).
+     */
+    private function resolveDivisionAccess(Division $division): string
+    {
+        $user = auth()->user();
+
+        if ($user->isSuperAdmin() || $user->can('division.view')) {
+            return 'full';
+        }
+
+        $isDivisionMember = $division->users()
+            ->where('users.id', $user->id)
+            ->exists();
+
+        if ($isDivisionMember) {
+            return 'full';
+        }
+
+        // Cross-division invite: user bukan member resmi divisi ini, tapi
+        // jadi member salah satu workspace di dalamnya (tersync otomatis
+        // saat diundang ke campaign lintas divisi).
+        $isCrossDivisionGuest = $division->workspaces()
+            ->whereHas('members', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->exists();
+
+        return $isCrossDivisionGuest ? 'guest' : 'none';
+    }
+
+    /**
+     * Daftar division tempat user yang login jadi member (admin atau
+     * member biasa). Dipakai sidebar untuk auto-discover division/
+     * workspace milik user, tanpa perlu permission 'division.view'.
+     */
+    public function myDivisions(): JsonResponse
+    {
+        $user = auth()->user();
+
+        $divisions = Division::query()
+            ->whereHas('users', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->with('users')
+            ->get();
+
+        return response()->json([
+            'data' => DivisionResource::collection($divisions)
         ]);
     }
 
@@ -233,6 +315,12 @@ public function store(Request $request): JsonResponse
     public function members(
         Division $division
     ): JsonResponse {
+
+        abort_unless(
+            $this->resolveDivisionAccess($division) === 'full',
+            403,
+            'Anda tidak punya akses ke divisi ini.'
+        );
 
         $members = $division
             ->users()

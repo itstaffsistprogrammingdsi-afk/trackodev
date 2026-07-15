@@ -155,9 +155,6 @@ class PermissionSeeder extends Seeder
 
             // WORKSPACE
             'workspace.view',
-            'workspace.create',
-            'workspace.update',
-            'workspace.delete',
 
             // CAMPAIGN
             'campaign.view',

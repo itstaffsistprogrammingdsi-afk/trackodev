@@ -1,8 +1,14 @@
 import { Campaign, Member,  } from "../types";
 import { Link, useParams } from "react-router-dom";
 import { useState, useMemo } from "react";
-import api from "../../../lib/axios";
 import { AxiosError } from "axios";
+import {
+  deleteCampaign,
+  updateCampaign,
+  addMember,
+  removeMember,
+  getMembers,
+} from "../api/campaign.api"; // ⚠️ sesuaikan path ini dengan lokasi campaign.api.ts di project kamu
 import MemberMentionInput from "./MemberMentionInput";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -41,10 +47,7 @@ export default function CampaignCard({
   // ================= MEMBERS QUERY =================
   const { data: members = [] } = useQuery<Member[]>({
     queryKey: ["campaign-members", campaign.id],
-    queryFn: async () => {
-      const res = await api.get(`/workspaces/${workspaceId}/campaigns/${campaign.id}`);
-      return res.data.data.members;
-    },
+    queryFn: () => getMembers(campaign.id),
     initialData: campaign.members ?? [],
     refetchOnMount: true,
     staleTime: 0,
@@ -72,7 +75,7 @@ export default function CampaignCard({
     try {
       setLoading(true);
 
-      await api.delete(`/workspaces/${workspaceId}/campaigns/${campaign.id}`);
+      await deleteCampaign(campaign.id);
 
       await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
 
@@ -89,7 +92,7 @@ export default function CampaignCard({
     try {
       setLoading(true);
 
-      await api.put(`/workspaces/${workspaceId}/campaigns/${campaign.id}`, {
+      await updateCampaign(campaign.id, {
         name,
         description,
         due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
@@ -125,9 +128,7 @@ export default function CampaignCard({
 
       await Promise.all(
         selectedUsers.map((user) =>
-          api.post(`/workspaces/${workspaceId}/campaigns/${campaign.id}/members`, {
-            user_id: user.id,
-          }),
+          addMember(campaign.id, user.id),
         ),
       );
 
@@ -150,7 +151,7 @@ export default function CampaignCard({
     try {
       setLoading(true);
 
-      await api.delete(`/workspaces/${workspaceId}/campaigns/${campaign.id}/members/${id}`);
+      await removeMember(campaign.id, id);
 
       await queryClient.invalidateQueries({
         queryKey: ["campaign-members", campaign.id],

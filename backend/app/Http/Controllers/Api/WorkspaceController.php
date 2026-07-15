@@ -56,6 +56,19 @@ public function index(
 
     public function store(Request $request, Division $division): JsonResponse
     {
+        $user = $request->user();
+
+        $canManageDivision = $user->isSuperAdmin()
+            || $user->divisions()
+                ->where('divisions.id', $division->id)
+                ->exists();
+
+        abort_unless(
+            $canManageDivision,
+            403,
+            'Anda tidak memiliki akses untuk membuat workspace di divisi ini.'
+        );
+
         $request->validate([
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -76,13 +89,25 @@ public function index(
         ], 201);
     }
 
-    public function show(Workspace $workspace): JsonResponse
+    public function show(Request $request, Workspace $workspace): JsonResponse
     {
+        abort_unless(
+            $workspace->canBeAccessedBy($request->user()),
+            403,
+            'Anda tidak memiliki akses ke workspace ini.'
+        );
+
         return response()->json(['data' => new WorkspaceResource($workspace)]);
     }
 
     public function update(Request $request, Workspace $workspace): JsonResponse
     {
+        abort_unless(
+            $workspace->canBeManagedBy($request->user()),
+            403,
+            'Anda tidak memiliki akses untuk mengubah workspace ini.'
+        );
+
         $request->validate([
             'name'        => 'sometimes|string|max:255',
             'description' => 'nullable|string',
@@ -103,8 +128,13 @@ public function index(
         ]);
     }
 
-    public function destroy(Workspace $workspace): JsonResponse
+    public function destroy(Request $request, Workspace $workspace): JsonResponse
     {
+        abort_unless(
+            $workspace->canBeManagedBy($request->user()),
+            403,
+            'Anda tidak memiliki akses untuk menghapus workspace ini.'
+        );
 
         $workspace->delete();
 

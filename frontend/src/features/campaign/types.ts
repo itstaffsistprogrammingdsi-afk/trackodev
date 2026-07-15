@@ -11,7 +11,7 @@ export type Campaign = {
   name: string;
   description?: string;
   type: "personal" | "group";
-  due_date?: string;
+  due_date?: string | null;
   created_by?: User;
   members?: User[];
   created_at?: string;
@@ -24,7 +24,7 @@ export type CreateCampaignRequest = {
   name: string;
   description?: string;
   type: CampaignType;
-  due_date?: string;
+  due_date?: string | null;
   member_ids?: string[];
   division_id?: string;
 };
@@ -70,7 +70,7 @@ export type OverdueTask = {
   title: string;
   code?: string;
   status: string;
-  due_date?: string;
+  due_date?: string | null;
   due_text: string;
 };
 

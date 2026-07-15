@@ -126,3 +126,14 @@ export const removeDivisionMember =
 
     return res.data
   }
+
+  export interface MyDivisionItem {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+export const getMyDivisions = async (): Promise<MyDivisionItem[]> => {
+  const res = await api.get("/my-divisions");
+  return res.data.data ?? [];
+};

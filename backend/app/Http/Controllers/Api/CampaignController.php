@@ -591,6 +591,8 @@ class CampaignController extends Controller
 
     public function gantt(Campaign $campaign): JsonResponse
     {
+        $this->authorize('view', $campaign);
+
         $cards = $campaign->boards()
             ->with('cards')
             ->get()
@@ -674,6 +676,8 @@ class CampaignController extends Controller
 
     public function boardProgress(Campaign $campaign): JsonResponse
     {
+        $this->authorize('view', $campaign);
+
         $cards = Card::query()
             ->join('boards', 'cards.board_id', '=', 'boards.id')
             ->where('boards.campaign_id', $campaign->id)
@@ -707,6 +711,8 @@ class CampaignController extends Controller
 
     public function stats(Campaign $campaign): JsonResponse
     {
+        $this->authorize('view', $campaign);
+
         $cards = Card::query()
             ->join('boards', 'cards.board_id', '=', 'boards.id')
             ->where('boards.campaign_id', $campaign->id)
@@ -744,6 +750,8 @@ class CampaignController extends Controller
 
     public function overdueTasks(Campaign $campaign): JsonResponse
     {
+        $this->authorize('view', $campaign);
+
         $now = Carbon::now();
 
         $cards = Card::query()
@@ -802,6 +810,8 @@ class CampaignController extends Controller
 
     public function health(Campaign $campaign): JsonResponse
     {
+        $this->authorize('view', $campaign);
+
         $cards = Card::query()
             ->join('boards', 'cards.board_id', '=', 'boards.id')
             ->where('boards.campaign_id', $campaign->id)

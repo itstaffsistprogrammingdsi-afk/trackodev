@@ -4,6 +4,7 @@ import SummaryCards from "../components/SummaryCards";
 // import DailyTodoPanel from "../components/DailyTodoPanel";
 import ActivityTimeline from "../components/ActivityTimeline";
 import AttachmentPanel from "../components/AttachmentPanel";
+import ExportLogPanel from "../components/ExportLogPanel";
 
 export default function MyWorkPage() {
   const {
@@ -106,6 +107,7 @@ export default function MyWorkPage() {
           {/* ATTACHMENT */}
           <div>
             <AttachmentPanel data={activities} />
+            <ExportLogPanel />
           </div>
 
         </div>

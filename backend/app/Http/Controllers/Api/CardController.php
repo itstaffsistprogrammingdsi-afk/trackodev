@@ -187,6 +187,20 @@ class CardController extends Controller
                         ->syncWithoutDetaching($assignees);
 
                     \Log::info('SYNC CAMPAIGN MEMBERS SUCCESS');
+
+                    // ========================================
+                    // AUTO JOIN WORKSPACE
+                    // ========================================
+                    // Supaya assignee juga tercatat sebagai member
+                    // workspace (konsisten dengan alur addMember() di
+                    // CampaignController), kalau tidak, Workspace::
+                    // canBeAccessedBy() bisa menolak orang yang harusnya
+                    // sudah legit terlibat di campaign ini.
+
+                    $board->campaign
+                        ->workspace
+                        ?->members()
+                        ->syncWithoutDetaching($assignees);
                 }
             }
 
@@ -763,6 +777,19 @@ class CardController extends Controller
             if ($campaign) {
 
                 $campaign->members()
+                    ->syncWithoutDetaching([
+                        $userId,
+                    ]);
+
+                // ========================================
+                // AUTO JOIN WORKSPACE
+                // ========================================
+                // Konsisten dengan CampaignController::addMember() --
+                // tanpa ini, assignee bisa gagal buka workspace-nya
+                // sendiri walau sudah legit terlibat di campaign ini.
+
+                $campaign->workspace
+                    ?->members()
                     ->syncWithoutDetaching([
                         $userId,
                     ]);

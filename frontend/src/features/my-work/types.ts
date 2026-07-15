@@ -4,6 +4,23 @@ export type ActivityRange =
   | "month"
   | "all";
 
+  export type ExportPeriodType =
+  | "daily"
+  | "monthly"
+  | "yearly";
+
+  export type ExportFormat =
+  | "xlsx"
+  | "pdf";
+
+  export interface ExportLogParams {
+    type: ExportPeriodType;
+    format: ExportFormat;
+    date?: string;   // dipakai saat type = "daily", format: YYYY-MM-DD
+    month?: number;  // dipakai saat type = "monthly", 1-12
+    year?: number;   // dipakai saat type = "monthly" | "yearly"
+  }
+
 export interface DailyTodoItem {
   id: string;
   title: string;
@@ -126,4 +143,6 @@ export interface ActivityResponse {
 
     total: number;
   };
+
+
 }
