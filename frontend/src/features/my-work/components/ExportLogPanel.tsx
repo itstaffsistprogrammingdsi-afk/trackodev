@@ -9,6 +9,9 @@ const MONTHS = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
+const currentYear = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i).reverse();
+
 const PERIOD_OPTIONS: { key: ExportPeriodType; label: string }[] = [
   { key: "daily", label: "Harian" },
   { key: "monthly", label: "Bulanan" },
@@ -24,12 +27,21 @@ const FORMAT_OPTIONS: {
   { key: "pdf", label: "PDF", icon: FileText },
 ];
 
+// Helper: format Date -> "YYYY-MM-DD" (aman dari geseran timezone ala toISOString)
+const toDateInputValue = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 export default function ExportLogPanel() {
   const now = new Date();
 
   const [type, setType] = useState<ExportPeriodType>("daily");
   const [format, setFormat] = useState<ExportFormat>("xlsx");
-  const [date, setDate] = useState(now.toISOString().slice(0, 10));
+
+  // Disimpan langsung sebagai string "YYYY-MM-DD", sesuai format <input type="date">
+  const [selectedDate, setSelectedDate] = useState<string>(toDateInputValue(now));
+
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
 
@@ -44,7 +56,7 @@ export default function ExportLogPanel() {
       await exportMyWorkLog({
         type,
         format,
-        ...(type === "daily" ? { date } : {}),
+        ...(type === "daily" ? { date: selectedDate } : {}),
         ...(type === "monthly" ? { month, year } : {}),
         ...(type === "yearly" ? { year } : {}),
       });
@@ -57,13 +69,11 @@ export default function ExportLogPanel() {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white">
-
       {/* HEADER */}
       <div className="border-b border-gray-100 p-5">
         <h2 className="text-base font-semibold text-gray-900">
           Export Laporan
         </h2>
-
         <p className="text-xs text-gray-500 mt-1">
           Unduh ringkasan task selesai, log aktivitas, dan attachment
         </p>
@@ -71,7 +81,6 @@ export default function ExportLogPanel() {
 
       {/* BODY */}
       <div className="p-5 space-y-4">
-
         {/* PERIOD TYPE */}
         <div className="flex gap-2">
           {PERIOD_OPTIONS.map((opt) => (
@@ -95,12 +104,12 @@ export default function ExportLogPanel() {
         {/* PERIOD VALUE */}
         {type === "daily" && (
           <div>
-            <label className="text-xs text-gray-500">Pilih Tanggal</label>
+            <label className="text-xs text-gray-500 block mb-1">Pilih Tanggal</label>
             <input
               type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
         )}
@@ -108,11 +117,11 @@ export default function ExportLogPanel() {
         {type === "monthly" && (
           <div className="grid grid-cols-3 gap-2">
             <div className="col-span-2">
-              <label className="text-xs text-gray-500">Bulan</label>
+              <label className="text-xs text-gray-500 block mb-1">Bulan</label>
               <select
                 value={month}
                 onChange={(e) => setMonth(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 {MONTHS.map((m, i) => (
                   <option key={m} value={i + 1}>
@@ -123,37 +132,45 @@ export default function ExportLogPanel() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-500">Tahun</label>
-              <input
-                type="number"
+              <label className="text-xs text-gray-500 block mb-1">Tahun</label>
+              <select
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              />
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         )}
 
         {type === "yearly" && (
           <div>
-            <label className="text-xs text-gray-500">Pilih Tahun</label>
-            <input
-              type="number"
+            <label className="text-xs text-gray-500 block mb-1">Pilih Tahun</label>
+            <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-            />
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              {YEAR_OPTIONS.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
-        {error && (
-          <p className="text-xs text-red-600">{error}</p>
-        )}
+        {error && <p className="text-xs text-red-600">{error}</p>}
 
         {/* FORMAT */}
         <div>
-          <label className="text-xs text-gray-500">Format File</label>
-          <div className="mt-1 flex gap-2">
+          <label className="text-xs text-gray-500 block mb-1">Format File</label>
+          <div className="flex gap-2">
             {FORMAT_OPTIONS.map((opt) => {
               const Icon = opt.icon;
               return (
@@ -184,7 +201,7 @@ export default function ExportLogPanel() {
           disabled={loading}
           className="
             flex w-full items-center justify-center gap-2
-            rounded-lg bg-blue-600 px-4 py-2.5
+            rounded-lg bg-blue-600 px-4 py-2.5 mt-2
             text-sm font-medium text-white
             hover:bg-blue-700 transition disabled:opacity-60
           "
@@ -198,7 +215,6 @@ export default function ExportLogPanel() {
             ? "Mengekspor..."
             : `Export ${format === "pdf" ? "PDF" : "Excel"}`}
         </button>
-
       </div>
     </div>
   );
