@@ -1,17 +1,19 @@
 export interface User {
-  id: number;
+  id: string;
   name: string;
   avatar: string | null;
 }
 
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   status: string;
   due_date: string | null;
-  campaign?: { id: number; name: string } | null;
-  board?: { id: number; name: string } | null;
+  created_at: string;
+  campaign?: { id: string; name: string } | null;
+  board?: { id: string; name: string } | null;
   assignees?: User[];
+  creator?: User | null;
 }
 
 export interface DayData {
@@ -32,4 +34,10 @@ export interface CalendarDayResponse {
   date: string;
   total: number;
   tasks: Task[];
+}
+
+export interface GridDayCell {
+  dateString: string;
+  dayNumber: number;
+  isCurrentMonth: boolean;
 }

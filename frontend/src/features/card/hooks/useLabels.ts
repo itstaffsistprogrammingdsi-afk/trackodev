@@ -60,6 +60,24 @@ export default function useLabels({
       ]);
 
       setNewLabel("");
+
+      // 🔥 Auto-attach label baru ke card yang sedang dibuka,
+      // supaya tidak perlu klik "add" manual lagi.
+      if (detail) {
+        const updated = await attachLabel(
+          detail.id,
+          created.id
+        );
+
+        setDetail((prev) => {
+          if (!prev) return prev;
+
+          return {
+            ...prev,
+            labels: updated.labels,
+          };
+        });
+      }
     } catch (err) {
       console.error(err);
     }

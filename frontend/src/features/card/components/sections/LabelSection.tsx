@@ -1,6 +1,6 @@
 // 📁 src/features/card/components/sections/LabelSection.tsx
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { HexColorPicker } from "react-colorful";
 
@@ -45,9 +45,33 @@ export default function LabelSection({
   const [openPicker, setOpenPicker] =
     useState(false);
 
+  const pickerRef = useRef<HTMLDivElement>(null);
+
   const PAGE_SIZE = 8;
 
   const [page, setPage] = useState(1);
+
+  // ============================================
+  // CLOSE PICKER ON OUTSIDE CLICK
+  // ============================================
+
+  useEffect(() => {
+    if (!openPicker) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(e.target as Node)
+      ) {
+        setOpenPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, [openPicker]);
 
   // ============================================
   // GUARD
@@ -125,7 +149,7 @@ export default function LabelSection({
         <div className="flex items-center gap-2">
           {/* PICKER */}
 
-          <div className="relative">
+          <div className="relative" ref={pickerRef}>
             <button
               type="button"
               onClick={() =>
@@ -223,7 +247,11 @@ export default function LabelSection({
           {/* BUTTON */}
 
           <button
-            onClick={handleCreateLabel}
+            onClick={() => {
+              // Tutup picker dulu supaya tidak menutupi list di bawahnya
+              setOpenPicker(false);
+              handleCreateLabel();
+            }}
             className="
               flex-1
               h-9

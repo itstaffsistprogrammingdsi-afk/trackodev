@@ -54,40 +54,53 @@ public function index(
     ]);
 }
 
-    public function store(Request $request, Division $division): JsonResponse
-    {
-        $user = $request->user();
+public function store(Request $request, Division $division): JsonResponse
+{
+    $user = $request->user();
 
-        $canManageDivision = $user->isSuperAdmin()
-            || $user->divisions()
-                ->where('divisions.id', $division->id)
-                ->exists();
+    // ========================================
+    // Hanya Super Admin dan Admin yang boleh membuat workspace
+    // ========================================
 
-        abort_unless(
-            $canManageDivision,
-            403,
-            'Anda tidak memiliki akses untuk membuat workspace di divisi ini.'
-        );
+    $canManageDivision = false;
 
-        $request->validate([
-            'name'        => 'required|string|max:255',
-            'description' => 'nullable|string',
-        ]);
-
-        $workspace = $division->workspaces()->create($request->only(['name', 'description']));
-
-        ActivityLogService::log(
-            $request->user(),
-            'workspace',
-            $workspace->id,
-            'created',
-            "Membuat workspace '{$workspace->name}' di divisi '{$division->name}'"
-        );
-        return response()->json([
-            'message' => 'Workspace berhasil dibuat.',
-            'data'    => new WorkspaceResource($workspace),
-        ], 201);
+    if ($user->isSuperAdmin()) {
+        $canManageDivision = true;
+    } elseif (
+        $user->isAdmin() &&
+        $user->divisions()
+            ->where('divisions.id', $division->id)
+            ->exists()
+    ) {
+        $canManageDivision = true;
     }
+
+    abort_unless(
+        $canManageDivision,
+        403,
+        'Hanya Admin dan Super Admin yang dapat membuat workspace.'
+    );
+
+    $validated = $request->validate([
+        'name'        => 'required|string|max:255',
+        'description' => 'nullable|string',
+    ]);
+
+    $workspace = $division->workspaces()->create($validated);
+
+    ActivityLogService::log(
+        $user,
+        'workspace',
+        (string) $workspace->id,
+        'created',
+        "Membuat workspace '{$workspace->name}' di divisi '{$division->name}'"
+    );
+
+    return response()->json([
+        'message' => 'Workspace berhasil dibuat.',
+        'data'    => new WorkspaceResource($workspace),
+    ], 201);
+}
 
     public function show(Request $request, Workspace $workspace): JsonResponse
     {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { calendarApi } from "../api/calendar.api";
-import { CalendarMonthResponse } from "../types";
+import { CalendarMonthResponse, GridDayCell } from "../types";
 
 export function useCalendar() {
   const [currentMonth, setCurrentMonth] = useState<string>(() => {
@@ -47,14 +47,14 @@ export function useCalendar() {
     );
   };
 
-  const generateGridDays = () => {
+  const generateGridDays = (): GridDayCell[] => {
     const [year, monthNum] = currentMonth.split("-").map(Number);
     const firstDayOfMonth = new Date(year, monthNum - 1, 1);
     const lastDayOfMonth = new Date(year, monthNum, 0);
     const daysInMonth = lastDayOfMonth.getDate();
     const startDayOfWeek = firstDayOfMonth.getDay();
 
-    const grid = [];
+    const grid: GridDayCell[] = [];
 
     // Padding Bulan Sebelumnya
     const prevMonthLastDay = new Date(year, monthNum - 1, 0).getDate();

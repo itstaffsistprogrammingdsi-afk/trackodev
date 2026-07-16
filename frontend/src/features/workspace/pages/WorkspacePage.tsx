@@ -1,29 +1,40 @@
-import { useParams } from 'react-router-dom'
-import { useState } from 'react'
-import { useWorkspaces } from '../hooks/useWorkspaces'
-import WorkspaceCard from '../components/WorkspaceCard'
-import CreateWorkspaceModal from '../components/CreateWorkspaceModal'
+import { useParams } from "react-router-dom";
+import { useState } from "react";
+import { useWorkspaces } from "../hooks/useWorkspaces";
+import WorkspaceCard from "../components/WorkspaceCard";
+import CreateWorkspaceModal from "../components/CreateWorkspaceModal";
+import { useAuth } from "../../../context/AuthContext"; // sesuaikan path jika berbeda
 
 export default function WorkspacePage() {
-  const { id } = useParams() // divisionId
-  const divisionId = id as string
+  const { id } = useParams();
+  const divisionId = id as string;
 
-  const { data, isLoading } = useWorkspaces(divisionId)
-  const [open, setOpen] = useState(false)
+  const { user, loading } = useAuth();
 
-  if (isLoading) return <div>Loading...</div>
+  const { data, isLoading } = useWorkspaces(divisionId);
+  const [open, setOpen] = useState(false);
+
+  if (loading || isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  const canCreateWorkspace =
+    user?.roles?.includes("super_admin") ||
+    user?.roles?.includes("admin");
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex justify-between">
+      <div className="flex justify-between items-center">
         <h1 className="text-xl font-semibold">Workspaces</h1>
 
-        <button
-          onClick={() => setOpen(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          + Workspace
-        </button>
+        {canCreateWorkspace && (
+          <button
+            onClick={() => setOpen(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            + Workspace
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -42,5 +53,5 @@ export default function WorkspacePage() {
         divisionId={divisionId}
       />
     </div>
-  )
+  );
 }
