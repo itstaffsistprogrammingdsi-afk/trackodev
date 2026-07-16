@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { HexColorPicker } from "react-colorful";
 
@@ -38,9 +38,33 @@ export default function BrandSection({
   const [openPicker, setOpenPicker] =
     useState(false);
 
+  const pickerRef = useRef<HTMLDivElement>(null);
+
   const PAGE_SIZE = 8;
 
   const [page, setPage] = useState(1);
+
+  // ============================================
+  // CLOSE PICKER ON OUTSIDE CLICK
+  // ============================================
+
+  useEffect(() => {
+    if (!openPicker) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(e.target as Node)
+      ) {
+        setOpenPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, [openPicker]);
 
   // ============================================
   // GUARD
@@ -84,12 +108,19 @@ export default function BrandSection({
   // CREATE BRAND
   // ============================================
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim()) return;
 
-    createAndAttach(name, color);
+    // Tutup picker dulu supaya tidak menutupi list di bawahnya
+    setOpenPicker(false);
 
-    setName("");
+    try {
+      await createAndAttach(name, color);
+
+      setName("");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ============================================
@@ -127,7 +158,7 @@ export default function BrandSection({
         <div className="flex items-center gap-2">
           {/* MODERN COLOR PICKER */}
 
-          <div className="relative">
+          <div className="relative" ref={pickerRef}>
             {/* TRIGGER */}
 
             <button

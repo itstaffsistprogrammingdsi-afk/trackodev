@@ -1,46 +1,6 @@
 import React, { useState } from 'react';
 import { useCalendar } from '../hooks/useCalendar';
-
-// --- TYPE DEFINITIONS ---
-interface Assignee {
-  id: string | number;
-  name: string;
-}
-
-interface Campaign {
-  id: string | number;
-  name: string;
-}
-
-interface Task {
-  id: string | number;
-  title: string;
-  status: string;
-  created_at?: string;
-  due_date?: string;
-  campaign?: Campaign;
-  assignees?: Assignee[];
-}
-
-interface LocalDayData {
-  date?: string;
-  total: number;
-  tasks: Task[];
-}
-
-interface GridDayCell {
-  dateString: string;
-  dayNumber: number;
-  isCurrentMonth: boolean;
-}
-
-// Data yang dikembalikan oleh useCalendar
-interface CalendarData {
-  days: LocalDayData[] | Record<string, LocalDayData>;
-  summary?: {
-    total_tasks: number;
-  };
-}
+import { Task, User, DayData, GridDayCell } from '../types';
 
 // --- CONSTANTS ---
 const WEEK_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -82,18 +42,19 @@ export const CalendarView: React.FC = () => {
     }
   };
 
+  // Format tanggal lokal (bukan UTC) agar konsisten dengan dateString yang dipakai grid
+  const getLocalDateString = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   // --- DATA HANDLER ---
-  const getDayData = (dateStr: string): LocalDayData | null => {
+  const getDayData = (dateStr: string): DayData | null => {
     if (!data || !data.days) return null;
-    if (Array.isArray(data.days)) {
-      return data.days.find((d: LocalDayData) => d.date === dateStr) || null;
-    }
-    return (data.days as Record<string, LocalDayData>)[dateStr] || null;
+    return data.days[dateStr] ?? null;
   };
 
   const selectedDayData = selectedDate ? getDayData(selectedDate) : null;
-  const calendarData = data as CalendarData | null;
-  const totalTasks = calendarData?.summary?.total_tasks || 0;
+  const totalTasks = data?.summary?.total_tasks ?? 0;
+  const todayStr = getLocalDateString(new Date());
 
   return (
     <div className="w-full text-slate-800 font-sans select-none relative max-w-7xl mx-auto">
@@ -157,9 +118,9 @@ export const CalendarView: React.FC = () => {
         <div className="grid grid-cols-7 auto-rows-[160px] bg-slate-50 gap-px">
           {gridDays.map((cell: GridDayCell, idx: number) => {
             const dayData = getDayData(cell.dateString);
-            const tasks = dayData && Array.isArray(dayData.tasks) ? dayData.tasks : [];
+            const tasks = dayData ? dayData.tasks : [];
             const totalTasksOnDay = dayData ? dayData.total : 0;
-            const isToday = cell.dateString === new Date().toISOString().split('T')[0];
+            const isToday = cell.dateString === todayStr;
 
             return (
               <div 
@@ -185,6 +146,8 @@ export const CalendarView: React.FC = () => {
                 <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-none">
                   {tasks.slice(0, 3).map((task: Task) => {
                     const isCompleted = task.status === 'completed' || task.status === 'done';
+                    const creatorName = task.creator?.name || 'Tidak diketahui';
+                    const assigneeNames = task.assignees?.map((a) => a.name).join(', ') || 'Belum ada assignee';
 
                     return (
                       <div 
@@ -194,7 +157,7 @@ export const CalendarView: React.FC = () => {
                             ? 'border-transparent opacity-60 hover:opacity-100' 
                             : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'
                         }`}
-                        title={task.title}
+                        title={`${task.title} — Dibuat: ${creatorName} — Assignee: ${assigneeNames}`}
                         onMouseEnter={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
                           setHoveredTask({ task, rect });
@@ -208,11 +171,12 @@ export const CalendarView: React.FC = () => {
                             : 'bg-amber-400 border-amber-500'
                         }`} />
                         
-                        {/* Judul */}
-                        <span className={`truncate text-xs font-medium ${
+                        {/* Judul + Nama Assignee */}
+                        <span className={`truncate text-xs ${
                           isCompleted ? 'text-slate-500 line-through' : 'text-slate-700'
                         }`}>
-                          {task.title}
+                          <span className="font-medium">{task.title}</span>
+                          <span className="font-normal text-slate-500"> · {assigneeNames}</span>
                         </span>
                       </div>
                     );
@@ -245,7 +209,7 @@ export const CalendarView: React.FC = () => {
                   <span className="flex items-center justify-center bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-0.5 rounded">
                     {selectedDayData.total}
                   </span>
-                  <span className="text-sm font-medium text-slate-500">Tasks dijadwalkan</span>
+                  <span className="text-sm font-medium text-slate-500">Tasks</span>
                 </div>
               </div>
               <button 
@@ -276,6 +240,22 @@ export const CalendarView: React.FC = () => {
                       <h4 className="text-sm font-semibold text-slate-900 truncate pr-4">
                         {task.title}
                       </h4>
+                      <div className="flex items-center gap-1 text-xs text-slate-500">
+                        <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A9 9 0 1118.879 6.196 9 9 0 015.12 17.804zM15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="truncate">Dibuat oleh {task.creator?.name || 'Tidak diketahui'}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-slate-600">
+                        <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        {task.assignees && task.assignees.length > 0 ? (
+                          <span className="truncate">{task.assignees.map((a) => a.name).join(', ')}</span>
+                        ) : (
+                          <span className="italic text-slate-400">Belum ada assignee</span>
+                        )}
+                      </div>
                       {task.campaign?.name && (
                         <div className="flex items-center">
                           <span className="text-[10px] font-bold tracking-wide uppercase text-slate-500 flex items-center gap-1">
@@ -291,17 +271,18 @@ export const CalendarView: React.FC = () => {
 
                   <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full pt-3 sm:pt-0 border-t sm:border-0 border-slate-100">
                     
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {task.due_date ? new Date(task.due_date.replace(' ', 'T')).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }) : '-'}
+                    <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                      {task.due_date ? (
+                        <>Jatuh tempo {new Date(task.due_date.replace(' ', 'T')).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}</>
+                      ) : (
+                        <>Dibuat {new Date(task.created_at.replace(' ', 'T')).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}</>
+                      )}
                     </div>
 
                     <div className="flex items-center">
                       {task.assignees && task.assignees.length > 0 ? (
                         <div className="flex -space-x-2">
-                          {task.assignees.slice(0, 3).map((user: Assignee) => (
+                          {task.assignees.slice(0, 3).map((user: User) => (
                             <div 
                               key={user.id} 
                               className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 ring-2 ring-white flex items-center justify-center text-[10px] font-bold"
@@ -349,14 +330,24 @@ export const CalendarView: React.FC = () => {
               {hoveredTask.task.title}
             </div>
             <div>
-              <span className="font-medium text-gray-700"></span>{' '}
-              {formatShortDate(hoveredTask.task.created_at)}{' '} -
-              <span className="font-medium text-gray-700"></span>{' '}
-              {formatShortDate(hoveredTask.task.due_date)}
+              <span className="font-medium text-gray-700">Creator:</span>{' '}
+              {hoveredTask.task.creator?.name || 'Tidak diketahui'}
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Members:</span>{' '}
+              {hoveredTask.task.assignees && hoveredTask.task.assignees.length > 0
+                ? hoveredTask.task.assignees.map((a) => a.name).join(', ')
+                : 'Belum ada'}
             </div>
             <div>
               <span className="font-medium text-gray-700">Campaign / Project:</span>{' '}
               {hoveredTask.task.campaign?.name || '-'}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              {formatShortDate(hoveredTask.task.created_at)}
+              {hoveredTask.task.due_date && (
+                <> &middot; Tenggat {formatShortDate(hoveredTask.task.due_date)}</>
+              )}
             </div>
           </div>
           {/* Segitiga penunjuk */}
