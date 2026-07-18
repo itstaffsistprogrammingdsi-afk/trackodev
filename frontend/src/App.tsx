@@ -56,6 +56,8 @@ import RoleRoute from "./components/auth/RoleRoute";
 
 import LandingPage from "@/features/landing/pages/LandingPage";
 
+import EditAccountPage from "@/features/account/pages/EditAccountPage";
+
 function RootRoute() {
   const token = localStorage.getItem("token");
   const auth = useAuth();
@@ -237,6 +239,13 @@ export default function App() {
             element={<BarChart />}
           />
         </Route>
+
+
+
+<Route
+  path="/account/edit"
+  element={<EditAccountPage />}
+/>
 
         {/* ================= FALLBACK ================= */}
         <Route path="*" element={<NotFound />} />

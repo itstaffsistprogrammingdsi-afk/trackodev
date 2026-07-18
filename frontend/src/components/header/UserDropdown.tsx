@@ -94,32 +94,34 @@ const handleLogout = async () => {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              to="/profile"
+              to="/account/edit"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-white/5"
             >
               Edit profile
             </DropdownItem>
           </li>
 
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              tag="a"
-              to="/settings"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-white/5"
-            >
-              Account settings
-            </DropdownItem>
-          </li>
         </ul>
 
         {/* LOGOUT */}
-        <button
-          onClick={handleLogout}
-          className="w-full mt-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg text-left"
-        >
-          Sign out
-        </button>
+<button
+  onClick={handleLogout}
+  className="w-full mt-2 flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+>
+  <svg
+    className="w-4 h-4"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+    <path d="M16 17l5-5-5-5" />
+    <path d="M21 12H9" />
+  </svg>
+
+  <span>Sign Out</span>
+</button>
       </Dropdown>
     </div>
   );
