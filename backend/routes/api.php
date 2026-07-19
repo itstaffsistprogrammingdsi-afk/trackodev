@@ -88,15 +88,11 @@ Route::prefix('auth')->group(function () {
             [AuthController::class, 'me']
         );
 
-        Route::put(
-            '/profile',
-            [AuthController::class, 'updateProfile']
-        );
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
 
-        Route::put(
-            '/password',
-            [AuthController::class, 'updatePassword']
-        );
+    Route::put('/password', [AuthController::class, 'updatePassword']);
+
+    Route::post('/avatar', [AuthController::class, 'updateAvatar']);
     });
 });
 
