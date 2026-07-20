@@ -1,10 +1,8 @@
 import { useState } from "react";
-
 import { Card } from "../types";
 
 import useDeleteCard from "../hooks/useDeleteCard";
 import useCardMembers from "../hooks/useCardMembers";
-
 import { useCardDetail } from "../hooks/useCardDetail";
 import useCardDescription from "../hooks/useCardDescription";
 import useComments from "../hooks/useComments";
@@ -12,17 +10,14 @@ import useTasks from "../hooks/useTasks";
 import useEscape from "../hooks/useEscape";
 import useCardSidebar from "../hooks/useCardSidebar";
 import useAttachments from "../hooks/useAttachments";
+import useBriefAttachments from "../hooks/useBriefAttachments";
+import useCardActivities from "../hooks/useCardActivities";
 
 import TaskSection from "./sections/TaskSection";
 import CommentSection from "./sections/CommentSection";
 import AttachmentSection from "./sections/AttachmentSection";
-import useBriefAttachments from "../hooks/useBriefAttachments";
-
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
-
-import useCardActivities from "../hooks/useCardActivities";
-
 
 import { AlignLeft, Clock3, Loader2, Sparkles } from "lucide-react";
 
@@ -42,32 +37,26 @@ export default function CardDetailModal({
   onDeleted,
 }: Props) {
   // =========================================
-  // DETAIL
+  // CARD DETAIL DATA
   // =========================================
   const { detail, users, loading, fetchDetail, setDetail } = useCardDetail(
     card,
-    isOpen,
+    isOpen
   );
 
   const [showLabels, setShowLabels] = useState(false);
-
   const [showAllActivities, setShowAllActivities] = useState(false);
 
   // =========================================
-  // DESCRIPTION
+  // CARD DESCRIPTION
   // =========================================
   const {
     description,
     setDescription,
-
     dueDate,
     setDueDate,
-
     saving,
-  } = useCardDescription(
-    detail,
-    onUpdated, // ✅ TAMBAHAN
-  );
+  } = useCardDescription(detail, onUpdated);
 
   // =========================================
   // COMMENTS
@@ -83,7 +72,6 @@ export default function CardDetailModal({
     total,
     done,
     progress,
-
     handleAddTask,
     toggleTask,
     deleteTask,
@@ -104,37 +92,28 @@ export default function CardDetailModal({
     setAttachments: setBriefAttachments,
     loading: briefLoading,
     fetchAttachments: fetchBriefAttachments,
-  } = useBriefAttachments(
-    card?.id,
-    isOpen,
-    // onUpdated
-  );
+  } = useBriefAttachments(card?.id, isOpen);
 
   // =========================================
-  // UI STATE
+  // UI SIDEBAR STATE
   // =========================================
   const {
     showMembers,
     setShowMembers,
-
     showDueDate,
     setShowDueDate,
-
     showResult,
     setShowResult,
-
     showBrief,
     setShowBrief,
-
     showBrands,
     setShowBrands,
-
     memberSearch,
     setMemberSearch,
   } = useCardSidebar();
 
   // =========================================
-  // ESC CLOSE
+  // ESC CLOSE HOOK
   // =========================================
   useEscape({
     isOpen,
@@ -142,17 +121,16 @@ export default function CardDetailModal({
   });
 
   // =========================================
-  // MEMBER
+  // MEMBERS MANAGEMENT
   // =========================================
   const { handleAssign, handleUnassign } = useCardMembers({
     cardId: card?.id,
     fetchDetail,
-
     onUpdated,
   });
 
   // =========================================
-  // DELETE
+  // DELETE CARD
   // =========================================
   const { handleDelete } = useDeleteCard({
     cardId: card?.id,
@@ -160,64 +138,52 @@ export default function CardDetailModal({
     onDeleted,
   });
 
+  // =========================================
+  // ACTIVITIES LOG
+  // =========================================
   const { activities, loading: activityLoading } = useCardActivities(
-  card?.id,
-  isOpen
-);
+    card?.id,
+    isOpen
+  );
 
-
-  // =========================================
-  // CLOSE
-  // =========================================
   if (!isOpen || !card) return null;
-
-
-
 
   return (
     <div
       onClick={onClose}
       className="
-        fixed inset-0 z-[9999]
-        bg-black/60 backdrop-blur-md
-        overflow-y-auto
-        p-0 md:p-6
+        fixed inset-0 z-[9999] flex items-center justify-center 
+        bg-slate-900/60 backdrop-blur-md overflow-y-auto 
+        p-0 md:p-4 lg:p-6 transition-all duration-300 animate-in fade-in
       "
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className="
-          min-h-screen md:min-h-0
-          w-full max-w-7xl
-          mx-auto
-          bg-[#f8fafc]
-          md:rounded-3xl
-          shadow-[0_20px_80px_rgba(0,0,0,0.25)]
-          overflow-hidden
-          border border-white/20
+          relative min-h-screen md:min-h-0 my-0 md:my-auto w-full max-w-7xl 
+          bg-slate-50 dark:bg-slate-950 rounded-none md:rounded-3xl 
+          shadow-2xl border border-slate-200/80 dark:border-slate-800 
+          overflow-hidden transition-all duration-300
         "
       >
         {/* ========================================= */}
-        {/* MAIN LAYOUT */}
+        {/* MAIN LAYOUT WRAPPER */}
         {/* ========================================= */}
         <div className="flex flex-col xl:flex-row">
+          
           {/* ========================================= */}
-          {/* LEFT CONTENT */}
+          {/* LEFT CONTENT AREA */}
           {/* ========================================= */}
           <div className="flex-1 min-w-0">
-            {/* HEADER */}
-            <div
-              className="
-                sticky top-0 z-20
-                bg-white/80 backdrop-blur-xl
-                border-b border-slate-200
-              "
-            >
+            {/* STICKY HEADER */}
+            <div className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800">
               <CardDetailHeader
-                title={detail?.title || card.title}
+                cardId={detail?.id ?? card.id}
+                title={detail?.title ?? card.title}
                 assignees={detail?.assignees}
-                brands={(detail?.brands ?? card?.brands) || []}
-                labels={(detail?.labels ?? card?.labels) || []}
+                brands={detail?.brands ?? card.brands ?? []}
+                labels={detail?.labels ?? card.labels ?? []}
+                priority={detail?.priority ?? card.priority}
                 dueDate={
                   dueDate
                     ? new Date(dueDate).toLocaleString("id-ID", {
@@ -226,85 +192,44 @@ export default function CardDetailModal({
                       })
                     : ""
                 }
+                setDetail={setDetail}
+                onUpdated={fetchDetail}
                 onClose={onClose}
                 onToggleMembers={() => setShowMembers((prev) => !prev)}
               />
             </div>
 
-            {/* CONTENT */}
-            <div
-              className="
-                px-4 py-5
-                sm:px-6 sm:py-6
-                lg:px-8 lg:py-8
-                space-y-6 lg:space-y-8
-              "
-            >
+            {/* INNER BODY CONTENT */}
+            <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
               {loading ? (
-                <div
-                  className="
-                    h-[60vh]
-                    flex flex-col items-center justify-center
-                    text-slate-500
-                  "
-                >
-                  <Loader2 className="w-8 h-8 animate-spin mb-4" />
-
-                  <p className="text-sm font-medium">Loading card detail...</p>
+                <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
+                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
+                  <p className="text-sm font-medium">Loading card details...</p>
                 </div>
               ) : (
                 <>
                   {/* ========================================= */}
-                  {/* DESCRIPTION */}
+                  {/* DESCRIPTION SECTION */}
                   {/* ========================================= */}
-                  <section
-                    className="
-                      bg-white
-                      border border-slate-200
-                      rounded-3xl
-                      p-5 sm:p-6
-                      shadow-sm
-                    "
-                  >
-                    <div className="flex items-center gap-3 mb-5">
-                      <div
-                        className="
-                          w-10 h-10
-                          rounded-2xl
-                          bg-slate-100
-                          flex items-center justify-center
-                        "
-                      >
-                        <AlignLeft size={18} className="text-slate-600" />
+                  <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm transition-all">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
+                        <AlignLeft size={18} />
                       </div>
 
                       <div className="flex-1">
-                        <h2
-                          className="
-                            text-base sm:text-lg
-                            font-semibold
-                            text-slate-800
-                          "
-                        >
+                        <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
                           Description
                         </h2>
-
-                        <p className="text-sm text-slate-400">
+                        <p className="text-xs sm:text-sm text-slate-400">
                           Describe this task clearly
                         </p>
                       </div>
 
                       {saving && (
-                        <div
-                          className="
-                            flex items-center gap-2
-                            text-xs
-                            text-blue-500
-                            font-medium
-                          "
-                        >
+                        <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          Saving...
+                          <span>Saving...</span>
                         </div>
                       )}
                     </div>
@@ -312,23 +237,12 @@ export default function CardDetailModal({
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Tambahkan deskripsi..."
+                      placeholder="Add a detailed description..."
                       className="
-                        w-full
-                        min-h-[180px]
-                        rounded-2xl
-                        border border-slate-200
-                        bg-slate-50
-                        p-4
-                        text-sm
-                        text-slate-700
-                        resize-none
-                        transition-all
-                        duration-200
-                        focus:outline-none
-                        focus:ring-4
-                        focus:ring-blue-100
-                        focus:border-blue-400
+                        w-full min-h-[160px] rounded-2xl border border-slate-200 dark:border-slate-700/80 
+                        bg-slate-50/50 dark:bg-slate-800/40 p-4 text-sm text-slate-800 dark:text-slate-100 
+                        placeholder-slate-400 resize-y transition-all duration-200 
+                        focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400
                       "
                     />
                   </section>
@@ -336,15 +250,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* TASK SECTION */}
                   {/* ========================================= */}
-                  <div
-                    className="
-                      bg-white
-                      border border-slate-200
-                      rounded-3xl
-                      p-5 sm:p-6
-                      shadow-sm
-                    "
-                  >
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
                     <TaskSection
                       tasks={tasks}
                       progress={progress}
@@ -355,17 +261,14 @@ export default function CardDetailModal({
                       deleteTask={deleteTask}
                     />
                   </div>
-                  <div
-                    className="
-                      bg-white
-                      border border-slate-200
-                      rounded-3xl
-                      p-5 sm:p-6
-                      shadow-sm
-                    "
-                    
-                  >
-                    <h4 className="text-lg font-semibold text-slate-800">Brief Attachments</h4>
+
+                  {/* ========================================= */}
+                  {/* BRIEF ATTACHMENTS */}
+                  {/* ========================================= */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                    <h4 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">
+                      Brief Attachments
+                    </h4>
                     <AttachmentSection
                       title="Brief Attachments"
                       attachments={briefAttachments}
@@ -377,18 +280,12 @@ export default function CardDetailModal({
                   </div>
 
                   {/* ========================================= */}
-                  {/* ATTACHMENTS */}
+                  {/* RESULT ATTACHMENTS */}
                   {/* ========================================= */}
-                  <div
-                    className="
-                      bg-white
-                      border border-slate-200
-                      rounded-3xl
-                      p-5 sm:p-6
-                      shadow-sm
-                    "
-                  >
-                    <h4 className="text-lg font-semibold text-slate-800">Result Attachments</h4>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                    <h4 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">
+                      Result Attachments
+                    </h4>
                     <AttachmentSection
                       title="Result Attachments"
                       attachments={attachments}
@@ -400,17 +297,9 @@ export default function CardDetailModal({
                   </div>
 
                   {/* ========================================= */}
-                  {/* COMMENTS */}
+                  {/* COMMENTS SECTION */}
                   {/* ========================================= */}
-                  <div
-                    className="
-                      bg-white
-                      border border-slate-200
-                      rounded-3xl
-                      p-5 sm:p-6
-                      shadow-sm
-                    "
-                  >
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
                     <CommentSection
                       comments={comments}
                       comment={comment}
@@ -420,145 +309,124 @@ export default function CardDetailModal({
                     />
                   </div>
 
-{/* ========================================= */}
-{/* ACTIVITY */}
-{/* ========================================= */}
-<section className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm">
-  {/* HEADER */}
-  <div className="flex items-center gap-3 mb-5">
-    <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center">
-      <Clock3 size={18} className="text-slate-600" />
-    </div>
+                  {/* ========================================= */}
+                  {/* ACTIVITY TIMELINE */}
+                  {/* ========================================= */}
+                  <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
+                        <Clock3 size={18} />
+                      </div>
 
-    <div>
-      <h2 className="text-base sm:text-lg font-semibold text-slate-800">
-        Activity
-      </h2>
-      <p className="text-sm text-slate-400">
-        Timeline & changes history
-      </p>
-    </div>
-  </div>
+                      <div>
+                        <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
+                          Activity
+                        </h2>
+                        <p className="text-xs sm:text-sm text-slate-400">
+                          Timeline & changes history
+                        </p>
+                      </div>
+                    </div>
 
-  {/* LOADING */}
-  {activityLoading ? (
-    <div className="py-10 text-center text-sm text-slate-400">
-      Loading activity...
-    </div>
-  ) : activities.length > 0 ? (
-    <>
-      {/* LIST */}
-      <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-        {(showAllActivities
-          ? activities
-          : activities.slice(0, 8)
-        ).map((activity) => (
-          <div
-            key={activity.id}
-            className="
-              rounded-2xl
-              border border-slate-200
-              bg-slate-50
-              p-4
-              text-sm
-              hover:bg-slate-100
-              transition
-            "
-          >
-            {/* TEXT */}
-            <div className="text-slate-800 font-medium leading-snug">
-              {activity.description ??
-                activity.action ??
-                "Activity recorded"}
-            </div>
+                    {activityLoading ? (
+                      <div className="py-8 text-center text-sm text-slate-400">
+                        Loading activity...
+                      </div>
+                    ) : activities.length > 0 ? (
+                      <>
+                        <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                          {(showAllActivities
+                            ? activities
+                            : activities.slice(0, 8)
+                          ).map((activity) => (
+                            <div
+                              key={activity.id}
+                              className="
+                                rounded-xl border border-slate-200/70 dark:border-slate-800 
+                                bg-slate-50/60 dark:bg-slate-800/40 p-3.5 text-sm 
+                                hover:bg-slate-100/80 dark:hover:bg-slate-800/70 transition-colors duration-200
+                              "
+                            >
+                              <div className="text-slate-800 dark:text-slate-200 font-medium leading-snug">
+                                {activity.description ??
+                                  activity.action ??
+                                  "Activity recorded"}
+                              </div>
 
-            {/* META */}
-            <div className="flex justify-between mt-2">
-              <span className="text-xs text-slate-500">
-                {activity.user?.name ?? "System"}
-              </span>
+                              <div className="flex justify-between items-center mt-2 pt-1 border-t border-slate-200/40 dark:border-slate-700/40 text-xs">
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                  {activity.user?.name ?? "System"}
+                                </span>
 
-              <span className="text-xs text-slate-400">
-                {activity.created_at
-                  ? new Date(activity.created_at).toLocaleString("id-ID", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })
-                  : "-"}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+                                <span className="text-slate-400 dark:text-slate-500">
+                                  {activity.created_at
+                                    ? new Date(
+                                        activity.created_at
+                                      ).toLocaleString("id-ID", {
+                                        dateStyle: "short",
+                                        timeStyle: "short",
+                                      })
+                                    : "-"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
 
-      {/* FOOTER */}
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <span className="text-xs text-slate-400">
-          Showing{" "}
-          {showAllActivities
-            ? activities.length
-            : Math.min(8, activities.length)}{" "}
-          of {activities.length}
-        </span>
+                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+                          <span className="text-xs text-slate-400">
+                            Showing{" "}
+                            {showAllActivities
+                              ? activities.length
+                              : Math.min(8, activities.length)}{" "}
+                            of {activities.length}
+                          </span>
 
-        {activities.length > 8 && (
-          <button
-            type="button"
-            onClick={() =>
-              setShowAllActivities((prev) => !prev)
-            }
-            className="
-              text-xs
-              font-medium
-              text-blue-600
-              hover:text-blue-700
-              hover:underline
-              transition
-            "
-          >
-            {showAllActivities
-              ? "Show less ←"
-              : "View full activity →"}
-          </button>
-        )}
-      </div>
-    </>
-  ) : (
-    /* EMPTY STATE */
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-        <Sparkles size={22} className="text-slate-400" />
-      </div>
+                          {activities.length > 8 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowAllActivities((prev) => !prev)
+                              }
+                              className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            >
+                              {showAllActivities
+                                ? "Show less ←"
+                                : "View full activity →"}
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 text-slate-400">
+                          <Sparkles size={20} />
+                        </div>
 
-      <h3 className="font-medium text-slate-700">
-        No activity yet
-      </h3>
+                        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          No activity recorded yet
+                        </h3>
 
-      <p className="text-sm text-slate-400 mt-1">
-        Activity history will appear here
-      </p>
-    </div>
-  )}
-</section>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Changes to this card will be tracked here
+                        </p>
+                      </div>
+                    )}
+                  </section>
                 </>
               )}
             </div>
           </div>
 
           {/* ========================================= */}
-          {/* SIDEBAR */}
+          {/* RIGHT SIDEBAR PANEL */}
           {/* ========================================= */}
           <div
             className="
-              w-full xl:w-[340px]
-              shrink-0
-              border-t xl:border-t-0 xl:border-l
-              border-slate-200
-              bg-white/70
-              backdrop-blur-xl
-              xl:sticky xl:top-0
-              xl:h-screen
-              overflow-y-auto
+              w-full xl:w-[340px] xl:max-w-[340px] shrink-0 
+              border-t xl:border-t-0 xl:border-l border-slate-200/80 dark:border-slate-800 
+              bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl 
+              xl:sticky xl:top-0 xl:h-screen overflow-y-auto
             "
           >
             <div className="p-4 sm:p-5 lg:p-6">
@@ -598,6 +466,7 @@ export default function CardDetailModal({
               />
             </div>
           </div>
+
         </div>
       </div>
     </div>

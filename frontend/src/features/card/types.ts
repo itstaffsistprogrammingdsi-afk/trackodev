@@ -1,13 +1,15 @@
+export type CardPriority =
+  | "low"
+  | "medium"
+  | "high"
+  | "urgent";
+
 export type CreateCardRequest = {
   title: string;
 
   description?: string;
 
-  priority?:
-    | "low"
-    | "medium"
-    | "high"
-    | "urgent";
+  priority?: CardPriority;
 
   due_date?: string;
   assignees?: string[]
@@ -98,11 +100,7 @@ export type Card = {
 
   created_by?: User | null;
 
-  priority?:
-    | "low"
-    | "medium"
-    | "high"
-    | "urgent";
+  priority?: CardPriority;
 
   due_date?: string | null;
 
