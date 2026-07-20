@@ -599,7 +599,7 @@ class CardController extends Controller
         // ========================================
         // STATUS NORMALIZATION
         // ========================================
-        $boardType = strtolower($board->type);
+        $boardType = strtolower($board->type ?? '');
 
         $status = match (true) {
             in_array($boardType, ['done', 'finished', 'complete', 'qc_done']) => 'completed',
@@ -664,7 +664,7 @@ class CardController extends Controller
 
         $cardIds = collect($request->cards)->pluck('id');
 
-        $cards = Card::whereIn('id', $cardIds)->get()->keyBy('id');
+        $cards = Card::with('board')->whereIn('id', $cardIds)->get()->keyBy('id');
 
         // authorize batch (lebih efisien)
         foreach ($cards as $card) {
@@ -686,15 +686,18 @@ class CardController extends Controller
         });
 
         $firstCard = $cards->first();
+        $board = $firstCard?->board;
 
-        $boardId = $firstCard?->board_id ?? $request->input('board_id');
+        $boardId = $board?->id ?? $request->input('board_id');
+        $boardName = $board?->name ?? $boardId;
 
         ActivityLogService::log(
             auth()->user(),
             'board',
-            $boardId,
+            (string) $boardId,
             'reordered',
-            "Merubah urutan card di board '{$boardId}'"
+            "Merubah urutan card di board '{$boardName}'",
+            ['board_id' => $boardId]
         );
 
         return response()->json([
@@ -1084,10 +1087,14 @@ class CardController extends Controller
     }
 
     public function removeAttachment(
+        Request $request,
         CardAttachment $attachment
     ): JsonResponse {
         $card = Card::findOrFail($attachment->card_id);
         $this->authorizeCard($card);
+
+        // Simpan nama file sebelum record-nya dihapus.
+        $fileName = $attachment->file_name;
 
         if (
             $attachment->file_path &&
@@ -1106,8 +1113,8 @@ class CardController extends Controller
             $request->user(),
             'card_attachment',
             (string) $attachment->id,
-            'created',
-            "Menambahkan attachment '{$fileName}' di card '{$card->title}' di board '{$card->board->name}'",
+            'deleted',
+            "Menghapus attachment '{$fileName}' di card '{$card->title}' di board '{$card->board->name}'",
             [
                 'card_id' => $card->id,
                 'attachment_id' => $attachment->id,

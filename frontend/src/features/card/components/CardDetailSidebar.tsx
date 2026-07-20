@@ -1,8 +1,5 @@
 import {
-  // Archive,
-  // Bell,
   Clock3,
-  // List,
   Paperclip,
   Tag,
   Layers,
@@ -21,15 +18,10 @@ import LabelSection from "./sections/LabelSection";
 
 interface Props {
   card: Card;
-
   users: User[];
-
   assignees?: User[];
-
   brands: Brand[];
-
   dueDate: string;
-
   setDueDate: (value: string) => void;
 
   showMembers: boolean;
@@ -48,7 +40,6 @@ interface Props {
   setMemberSearch: React.Dispatch<React.SetStateAction<string>>;
 
   handleAssign: (userId: string) => void;
-
   handleUnassign: (userId: string) => void;
 
   handleDelete: () => void;
@@ -61,55 +52,42 @@ interface Props {
 
   setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
 
-// RESULT
-attachments: Attachment[];
-setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
-attachmentLoading: boolean;
-fetchAttachments: () => Promise<void>;
+  // RESULT ATTACHMENTS
+  attachments: Attachment[];
+  setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
+  attachmentLoading: boolean;
+  fetchAttachments: () => Promise<void>;
 
-// BRIEF
-briefAttachments: Attachment[];
-setBriefAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
-briefLoading: boolean;
-fetchBriefAttachments: () => Promise<void>;
+  // BRIEF ATTACHMENTS
+  briefAttachments: Attachment[];
+  setBriefAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
+  briefLoading: boolean;
+  fetchBriefAttachments: () => Promise<void>;
 }
 
 export default function CardDetailSidebar({
-
   card,
-
   users,
   assignees,
-
   dueDate,
   setDueDate,
-
   showMembers,
   setShowMembers,
-
   showDueDate,
   setShowDueDate,
-
   showBrief,
   setShowBrief,
-
   showResult,
   setShowResult,
-
   memberSearch,
   setMemberSearch,
-
   handleAssign,
   handleUnassign,
-
   handleDelete,
-
   showBrands,
   setShowBrands,
-
   showLabels,
   setShowLabels,
-
   setDetail,
 
   // RESULT
@@ -124,184 +102,189 @@ export default function CardDetailSidebar({
   briefLoading,
   fetchBriefAttachments,
 }: Props) {
-  const toggleMembers = () => {
-    setShowMembers((prev) => !prev);
+  const toggleMembers = () => setShowMembers((prev) => !prev);
+  const toggleDueDate = () => setShowDueDate((prev) => !prev);
+  const toggleBrief = () => setShowBrief((prev) => !prev);
+  const toggleResult = () => setShowResult((prev) => !prev);
+  const toggleBrands = () => setShowBrands((prev) => !prev);
+  const toggleLabels = () => setShowLabels((prev) => !prev);
+
+  const resultSummary = {
+    files: attachments.filter((a) => a.attachment_type === "file").length,
+    links: attachments.filter((a) => a.attachment_type === "link").length,
   };
 
-  const toggleDueDate = () => {
-    setShowDueDate((prev) => !prev);
+  const briefSummary = {
+    files: briefAttachments.filter((a) => a.attachment_type === "file").length,
+    links: briefAttachments.filter((a) => a.attachment_type === "link").length,
   };
-
-
-  const toggleBrief = () => {
-  setShowBrief((prev) => !prev);
-};
-
-const toggleResult = () => {
-  setShowResult((prev) => !prev);
-};
-
-  const toggleBrands = () => {
-    setShowBrands((prev) => !prev);
-  };
-
-  const toggleLabels = () => {
-    setShowLabels((prev) => !prev);
-  };
-
-
-const resultSummary = {
-  files: attachments.filter(
-    (a) => a.attachment_type === "file"
-  ).length,
-
-  links: attachments.filter(
-    (a) => a.attachment_type === "link"
-  ).length,
-};
-
-const briefSummary = {
-  files: briefAttachments.filter(
-    (a) => a.attachment_type === "file",
-  ).length,
-
-  links: briefAttachments.filter(
-    (a) => a.attachment_type === "link",
-  ).length,
-};
 
   return (
-    <div className="w-[290px] border-l bg-white p-5 overflow-y-auto">
-      <div className="space-y-6">
-        {/* NAVIGATION */}
-        <div>
-          <h3 className="mb-3 text-xs font-bold uppercase text-gray-500">
-            Add to card
-          </h3>
+    <div className="w-full space-y-6">
+      {/* ========================================= */}
+      {/* NAVIGATION / ADD TO CARD */}
+      {/* ========================================= */}
+      <div>
+        <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          Add to card
+        </h3>
 
-          <div className="space-y-2">
-            {/* MEMBERS */}
+        <div className="space-y-2">
+          {/* MEMBERS */}
+          <div>
             <SidebarButton
-              icon={<Users size={17} />}
+              icon={<Users size={16} />}
               label="Members"
               onClick={toggleMembers}
             />
-
             {showMembers && (
-              <MemberSection
-                users={users}
-                assignees={assignees}
-                memberSearch={memberSearch}
-                setMemberSearch={setMemberSearch}
-                handleAssign={handleAssign}
-                handleUnassign={handleUnassign}
-              />
+              <div className="mt-2 animate-in fade-in duration-200">
+                <MemberSection
+                  users={users}
+                  assignees={assignees}
+                  memberSearch={memberSearch}
+                  setMemberSearch={setMemberSearch}
+                  handleAssign={handleAssign}
+                  handleUnassign={handleUnassign}
+                />
+              </div>
             )}
+          </div>
 
-            {/* LABEL */}
+          {/* LABELS */}
+          <div>
             <SidebarButton
-              icon={<Tag size={17} />}
+              icon={<Tag size={16} />}
               label="Labels"
               onClick={toggleLabels}
             />
+            {showLabels && (
+              <div className="mt-2 animate-in fade-in duration-200">
+                <LabelSection detail={card} setDetail={setDetail} />
+              </div>
+            )}
+          </div>
 
-            {showLabels && <LabelSection detail={card} setDetail={setDetail} />}
-
-            {/* BRAND */}
+          {/* BRANDS */}
+          <div>
             <SidebarButton
-              icon={<Layers size={17} />}
+              icon={<Layers size={16} />}
               label="Brand"
               onClick={toggleBrands}
             />
-
             {showBrands && (
-              <BrandSection
-                card={card}
-                isOpen={showBrands}
-                setDetail={setDetail}
-              />
+              <div className="mt-2 animate-in fade-in duration-200">
+                <BrandSection
+                  card={card}
+                  isOpen={showBrands}
+                  setDetail={setDetail}
+                />
+              </div>
             )}
+          </div>
 
-            {/* DUE DATE */}
+          {/* DUE DATE */}
+          <div>
             <SidebarButton
-              icon={<Clock3 size={17} />}
+              icon={<Clock3 size={16} />}
               label="Due Date"
               onClick={toggleDueDate}
             />
-
             {showDueDate && (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mt-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Select Due Date
+                </label>
                 <input
                   type="datetime-local"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="
+                    h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium 
+                    text-slate-800 outline-none transition-all duration-200 
+                    focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 
+                    dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400
+                  "
                 />
               </div>
             )}
+          </div>
 
-            {/* RESULT ATTACHMENT */}
+          {/* RESULT ATTACHMENTS */}
+          <div>
             <SidebarButton
-  icon={<Paperclip size={17} />}
-  label="Result Attachment"
-  onClick={toggleResult}
-  badge={`${resultSummary.files} Files • ${resultSummary.links} Links`}
-/>
+              icon={<Paperclip size={16} />}
+              label="Result Attachment"
+              onClick={toggleResult}
+              badge={`${resultSummary.files} Files • ${resultSummary.links} Links`}
+            />
+            {showResult && (
+              <div className="mt-2 animate-in fade-in duration-200">
+                <AttachmentSection
+                  attachments={attachments}
+                  setAttachments={setAttachments}
+                  loading={attachmentLoading}
+                  fetchAttachments={fetchAttachments}
+                  showUploader
+                  title="Result Attachment"
+                  uploadEndpoint={`/cards/${card.id}/attachments`}
+                  deleteEndpoint="/attachments"
+                  downloadEndpoint="/attachments"
+                />
+              </div>
+            )}
+          </div>
 
-{showResult && (
-  <AttachmentSection
-    attachments={attachments}
-    setAttachments={setAttachments}
-    loading={attachmentLoading}
-    fetchAttachments={fetchAttachments}
-    showUploader
-    title="Result Attachment"
-    uploadEndpoint={`/cards/${card.id}/attachments`}
-    deleteEndpoint="/attachments"
-    downloadEndpoint="/attachments"
-  />
-)}
-
-{/* BRIEF ATTACHMENT */}
-<SidebarButton
-  icon={<Paperclip size={17} />}
-  label="Brief Attachment"
-  onClick={toggleBrief}
-  badge={`${briefSummary.files} Files • ${briefSummary.links} Links`}
-/>
-
-{showBrief && (
-  <AttachmentSection
-    attachments={briefAttachments}
-    setAttachments={setBriefAttachments}
-    loading={briefLoading}
-    fetchAttachments={fetchBriefAttachments}
-    showUploader
-    title="Brief Attachment"
-    uploadEndpoint={`/cards/${card.id}/brief-attachments`}
-    deleteEndpoint="/brief-attachments"
-    downloadEndpoint="/brief-attachments"
-  />
-)}
-
+          {/* BRIEF ATTACHMENTS */}
+          <div>
+            <SidebarButton
+              icon={<Paperclip size={16} />}
+              label="Brief Attachment"
+              onClick={toggleBrief}
+              badge={`${briefSummary.files} Files • ${briefSummary.links} Links`}
+            />
+            {showBrief && (
+              <div className="mt-2 animate-in fade-in duration-200">
+                <AttachmentSection
+                  attachments={briefAttachments}
+                  setAttachments={setBriefAttachments}
+                  loading={briefLoading}
+                  fetchAttachments={fetchBriefAttachments}
+                  showUploader
+                  title="Brief Attachment"
+                  uploadEndpoint={`/cards/${card.id}/brief-attachments`}
+                  deleteEndpoint="/brief-attachments"
+                  downloadEndpoint="/brief-attachments"
+                />
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* ACTIONS */}
-        <div>
-          <h3 className="mb-3 text-xs font-bold uppercase text-gray-500">
-            Actions
-          </h3>
+      {/* ========================================= */}
+      {/* ACTIONS */}
+      {/* ========================================= */}
+      <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800">
+        <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          Actions
+        </h3>
 
-          <div className="space-y-2">
-            <button
-              onClick={handleDelete}
-              className="flex h-11 w-full items-center gap-3 rounded-xl bg-red-50 px-4 text-sm font-medium text-red-600 transition hover:bg-red-100"
-            >
-              <Trash2 size={17} />
-              Delete
-            </button>
-          </div>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="
+              flex h-10 w-full items-center justify-center gap-2 rounded-xl 
+              border border-rose-200/80 bg-rose-50/80 px-4 text-xs font-semibold 
+              text-rose-600 transition-all duration-200 hover:bg-rose-100 
+              hover:text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 
+              dark:text-rose-400 dark:hover:bg-rose-900/50 dark:hover:text-rose-300
+            "
+          >
+            <Trash2 size={15} />
+            <span>Delete Card</span>
+          </button>
         </div>
       </div>
     </div>

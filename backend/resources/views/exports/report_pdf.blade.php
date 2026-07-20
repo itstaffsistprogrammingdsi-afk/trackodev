@@ -36,12 +36,13 @@
         }
 
         .header .subtitle {
-            font-size: 10px;
-            color: #666;
+            font-size: 9px;
+            color: #555;
+            margin-top: 4px;
         }
 
         .header .subtitle span {
-            margin: 0 8px;
+            margin: 0 6px;
         }
 
         table {
@@ -69,17 +70,18 @@
             word-wrap: break-word;
         }
 
-        /* Lebar kolom tetap */
+        /* Lebar kolom disesuaikan untuk 11 kolom */
         .col-no { width: 3%; text-align: center; }
-        .col-user { width: 9%; }
-        .col-divisi { width: 8%; }
-        .col-card { width: 13%; }
-        .col-campaign { width: 9%; }
+        .col-user { width: 8%; }
+        .col-divisi { width: 7%; }
+        .col-workspace { width: 8%; }
+        .col-campaign { width: 8%; }
         .col-board { width: 7%; }
-        .col-labels { width: 10%; }
-        .col-attachment { width: 15%; }
-        .col-qc-qty { width: 8%; text-align: center; }
-        .col-qc-note { width: 18%; }
+        .col-card { width: 12%; }
+        .col-labels { width: 9%; }
+        .col-attachment { width: 14%; }
+        .col-qc-qty { width: 7%; text-align: center; }
+        .col-qc-note { width: 17%; }
 
         .text-center { text-align: center; }
         .text-muted { color: #999; font-style: italic; }
@@ -223,6 +225,18 @@
             <span>Waktu: {{ now()->format('H:i') }}</span>
             <span>|</span>
             <span>Total User: {{ $users->count() }}</span>
+            @if(isset($workspace))
+                <span>|</span>
+                <span>Workspace: {{ $workspace->name ?? 'Semua' }}</span>
+            @endif
+            @if(isset($campaign))
+                <span>|</span>
+                <span>Campaign: {{ $campaign->name ?? 'Semua' }}</span>
+            @endif
+            @if(isset($board))
+                <span>|</span>
+                <span>Board: {{ $board->name ?? 'Semua' }}</span>
+            @endif
         </div>
     </div>
 
@@ -233,9 +247,10 @@
                 <th class="col-no">No</th>
                 <th class="col-user">Nama User</th>
                 <th class="col-divisi">Divisi</th>
-                <th class="col-card">Judul Card<br><span style="font-weight:normal;font-size:6px;">(Created / Due)</span></th>
+                <th class="col-workspace">Workspace</th>
                 <th class="col-campaign">Campaign</th>
                 <th class="col-board">Board</th>
+                <th class="col-card">Judul Card<br><span style="font-weight:normal;font-size:6px;">(Created / Due)</span></th>
                 <th class="col-labels">Label &amp; Brand</th>
                 <th class="col-attachment">Attachment &amp; QC<br><span style="font-weight:normal;font-size:6px;">(Tanggal QC)</span></th>
                 <th class="col-qc-qty">Jumlah Akhir QC</th>
@@ -268,16 +283,9 @@
                                 </td>
                             @endif
 
-                            {{-- Kolom Card --}}
-                            <td class="col-card">
-                                <span class="card-title">{{ $card->title ?? '-' }}</span>
-                                @if (!empty($card->description))
-                                    <span class="card-desc">{{ Str::limit($card->description, 50) }}</span>
-                                @endif
-                                <span class="card-date">
-                                    Created: {{ $card->created_at ? \Carbon\Carbon::parse($card->created_at)->format('d/m/Y') : '-' }} 
-                                    | Due: {{ $card->due_date ? \Carbon\Carbon::parse($card->due_date)->format('d/m/Y') : '-' }}
-                                </span>
+                            {{-- Workspace --}}
+                            <td class="col-workspace">
+                                {{ $card->board->campaign->workspace->name ?? ($card->campaign->workspace->name ?? ($card->workspace->name ?? '-')) }}
                             </td>
 
                             {{-- Campaign --}}
@@ -288,6 +296,18 @@
                             {{-- Board --}}
                             <td class="col-board">
                                 {{ $card->board->name ?? '-' }}
+                            </td>
+
+                            {{-- Kolom Card --}}
+                            <td class="col-card">
+                                <span class="card-title">{{ $card->title ?? '-' }}</span>
+                                @if (!empty($card->description))
+                                    <span class="card-desc">{{ Str::limit($card->description, 50) }}</span>
+                                @endif
+                                <span class="card-date">
+                                    Created: {{ $card->created_at ? \Carbon\Carbon::parse($card->created_at)->format('d/m/Y') : '-' }} 
+                                    | Due: {{ $card->due_date ? \Carbon\Carbon::parse($card->due_date)->format('d/m/Y') : '-' }}
+                                </span>
                             </td>
 
                             {{-- Label & Brand --}}
@@ -412,13 +432,13 @@
                                 <span class="text-muted">-</span>
                             @endif
                         </td>
-                        <td colspan="7" class="no-data-card">Tidak ada data task/card yang sesuai filter</td>
+                        <td colspan="8" class="no-data-card">Tidak ada data task/card yang sesuai filter</td>
                     </tr>
                 @endif
 
             @empty
                 <tr>
-                    <td colspan="10" class="no-data"><strong>Tidak ada data user yang ditemukan.</strong></td>
+                    <td colspan="11" class="no-data"><strong>Tidak ada data user yang ditemukan.</strong></td>
                 </tr>
             @endforelse
         </tbody>
