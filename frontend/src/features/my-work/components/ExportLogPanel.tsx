@@ -104,7 +104,7 @@ export default function ExportLogPanel() {
         {/* PERIOD VALUE */}
         {type === "daily" && (
           <div>
-            <label className="text-xs text-gray-500 block mb-1">Pilih Tanggal</label>
+            <label className="text-xs text-gray-500 block mb-1">Verifikasi Tanggal</label>
             <input
               type="date"
               value={selectedDate}

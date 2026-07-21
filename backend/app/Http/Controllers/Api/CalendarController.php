@@ -172,19 +172,17 @@ private function applyPermission(Builder $query, $user): void
     }
 
     // Untuk User Biasa:
-    // - Card yang punya assignee di divisi user -> tetap tampil (perilaku lama).
-    // - Card yang BELUM punya assignee sama sekali -> tetap tampil selama
-    //   workspace-nya ada di divisi user (fallback, mencegah task baru/belum
-    //   di-assign hilang begitu saja dari kalender user biasa).
-    // - Card yang assignee-nya ada tapi di divisi LAIN -> tetap disembunyikan (sengaja).
+    // - Card yang punya assignee di divisi user -> tetap tampil.
+    // - Card apa pun (assigned ke divisi lain, assigned lewat mekanisme lain
+    //   seperti Assignment::designer_id/coordinator_id, atau belum di-assign
+    //   sama sekali) tetap tampil selama board.campaign.workspace-nya ada di
+    //   divisi user. Ini menyamakan perilaku dengan admin (yang melihat semua
+    //   card di divisinya), hanya saja user biasa dibatasi ke divisi mereka sendiri.
     $query->where(function (Builder $q) use ($divisionIds) {
         $q->whereHas('assignees.divisions', function (Builder $qq) use ($divisionIds) {
             $qq->whereIn('divisions.id', $divisionIds);
-        })->orWhere(function (Builder $qq) use ($divisionIds) {
-            $qq->whereDoesntHave('assignees')
-                ->whereHas('board.campaign.workspace', function (Builder $qqq) use ($divisionIds) {
-                    $qqq->whereIn('division_id', $divisionIds);
-                });
+        })->orWhereHas('board.campaign.workspace', function (Builder $qqq) use ($divisionIds) {
+            $qqq->whereIn('division_id', $divisionIds);
         });
     });
 }

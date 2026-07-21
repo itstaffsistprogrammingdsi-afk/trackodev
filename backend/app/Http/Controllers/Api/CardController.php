@@ -89,6 +89,28 @@ class CardController extends Controller
             'Unauthorized'
         );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BOARD TYPE -> STATUS
+    |--------------------------------------------------------------------------
+    | Single source of truth untuk board type mana yang dianggap "selesai".
+    | store() dan move() dulu masing-masing punya daftar sendiri yang beda
+    | (store() kenal 'selesai' tapi tidak 'qc_done', move() sebaliknya, dan
+    | store() case-sensitive sementara move() tidak) — akibatnya card yang
+    | di-drag ke board type 'selesai' tidak pernah tercatat completed_at,
+    | jadi tidak pernah muncul di laporan "Task Selesai". Semua pemanggil
+    | wajib lewat sini supaya definisi "selesai" selalu konsisten.
+    */
+
+    protected function isCompletedBoardType(?string $boardType): bool
+    {
+        return in_array(
+            strtolower($boardType ?? ''),
+            ['done', 'finished', 'complete', 'selesai', 'qc_done'],
+            true
+        );
+    }
     /*
     |--------------------------------------------------------------------------
     | CARD
@@ -138,9 +160,9 @@ class CardController extends Controller
 
         $lastOrder = $board->cards()->max('order') ?? 0;
 
-        $initialStatus = match ($board->type) {
-            'done', 'finished', 'complete', 'selesai' => 'completed',
-            'progress', 'in_progress', 'doing' => 'in_progress',
+        $initialStatus = match (true) {
+            $this->isCompletedBoardType($board->type) => 'completed',
+            in_array(strtolower($board->type ?? ''), ['progress', 'in_progress', 'doing']) => 'in_progress',
             default => 'todo',
         };
 
@@ -160,6 +182,7 @@ class CardController extends Controller
                 'created_by'  => $user->id,
                 'order'       => $lastOrder + 1,
                 'status'      => $initialStatus,
+                'completed_at' => $initialStatus === 'completed' ? now() : null,
             ]);
 
             \Log::info('CARD CREATED', [
@@ -602,7 +625,7 @@ class CardController extends Controller
         $boardType = strtolower($board->type ?? '');
 
         $status = match (true) {
-            in_array($boardType, ['done', 'finished', 'complete', 'qc_done']) => 'completed',
+            $this->isCompletedBoardType($boardType) => 'completed',
             in_array($boardType, ['progress', 'in_progress', 'doing'])        => 'in_progress',
             in_array($boardType, ['request', 'backlog', 'todo', 'start'])     => 'todo',
             default                                                           => 'in_progress',
@@ -1003,8 +1026,19 @@ class CardController extends Controller
         Card $card
     ): JsonResponse {
         $this->authorizeCard($card);
+
+        // Eager-load the full hierarchy so each attachment carries its
+        // Workspace / Campaign / Board (nested under attachment->card->...).
+        // Eloquent only serializes relations that were actually loaded, so
+        // without this, those keys were simply absent from the response.
+        $attachments = $card
+            ->attachments()
+            ->with('card.board.campaign.workspace')
+            ->latest()
+            ->get();
+
         return response()->json([
-            'data' => $card->attachments,
+            'data' => $attachments,
         ]);
     }
 
@@ -1079,6 +1113,11 @@ class CardController extends Controller
                 'attachment_id' => $attachment->id,
             ]
         );
+
+        // Sama seperti attachments(): load hierarchy-nya supaya response
+        // dari create ini juga langsung punya workspace/campaign/board,
+        // kalau FE memakai hasil ini langsung (bukan fetch ulang list).
+        $attachment->load('card.board.campaign.workspace');
 
         return response()->json([
             'message' => 'Attachment berhasil ditambahkan.',
@@ -1305,6 +1344,8 @@ class CardController extends Controller
                 'qc_note' => $attachment->qc_note,
             ]
         );
+
+        $attachment->load('card.board.campaign.workspace');
 
         return response()->json([
             'message' => 'QC berhasil diperbarui.',
