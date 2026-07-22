@@ -39,6 +39,7 @@ class ReportController extends Controller
 
             // Admin biasa tidak boleh melihat data milik Super Admin.
             $this->restrictSuperAdminVisibility($query, $request);
+            $this->restrictDivisionVisibility($query, $request);
 
             if ($request->filled('search')) {
                 $query->where('users.name', 'like', "%{$request->search}%");
@@ -469,4 +470,30 @@ public function previewPdf(Request $request): JsonResponse
             throw $e;
         }
     }
+
+private function restrictDivisionVisibility($query, Request $request): void
+{
+    $currentUser = $request->user();
+
+    // Super Admin bebas melihat semua divisi.
+    if ($currentUser->isSuperAdmin()) {
+        return;
+    }
+
+    // User biasa hanya boleh melihat dirinya sendiri.
+    if ($currentUser->isUser()) {
+        $query->where('users.id', $currentUser->id);
+        return;
+    }
+
+    // Admin hanya boleh melihat user dalam divisinya.
+    if ($currentUser->isAdmin()) {
+        $divisionIds = $currentUser->divisions()
+            ->pluck('divisions.id');
+
+        $query->whereHas('divisions', function ($q) use ($divisionIds) {
+            $q->whereIn('divisions.id', $divisionIds);
+        });
+    }
+}
 }
