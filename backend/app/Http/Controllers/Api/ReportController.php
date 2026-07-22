@@ -97,9 +97,7 @@ class ReportController extends Controller
                 ], 403);
             }
 
-            $query = Card::whereHas('assignees', function ($q) use ($user) {
-                $q->where('users.id', $user->id);
-            })->with([
+            $query = Card::with([
                 'campaign',
                 'board.campaign', // 🔥 Load campaign dari board
                 'board',
@@ -109,6 +107,7 @@ class ReportController extends Controller
                 'attachments.qcBy'
             ]);
 
+            $this->scopeCardsForUser($query, $user);
             $this->applyCardFilters($query, $request);
 
             $cards = $query->orderBy('cards.created_at', 'desc')->get();
@@ -211,6 +210,33 @@ class ReportController extends Controller
                 $q->where('name', self::SUPER_ADMIN_ROLE);
             });
         }
+    }
+
+    /**
+     * HELPER: Definisi "card ini milik user X".
+     *
+     * HARUS TETAP SAMA dengan MyActivityController::scopeCardsForUser()
+     * dan DailyTodoController::index() — supaya Report konsisten dengan
+     * apa yang user lihat di My Work / Daily Todo. Card dianggap milik
+     * user kalau salah satu benar:
+     *  - user adalah pembuat (creator) campaign card tersebut, ATAU
+     *  - user adalah anggota campaign card tersebut, ATAU
+     *  - user adalah assignee langsung di card (pivot card_user)
+     *
+     * Kalau logic ini berubah di salah satu controller, ubah juga di sini.
+     */
+    private function scopeCardsForUser($query, $user): void
+    {
+        $query->where(function ($q) use ($user) {
+            $q->whereHas('board.campaign', function ($c) use ($user) {
+                $c->where('created_by', $user->id)
+                    ->orWhereHas('members', function ($m) use ($user) {
+                        $m->where('users.id', $user->id);
+                    });
+            })->orWhereHas('assignees', function ($a) use ($user) {
+                $a->where('users.id', $user->id);
+            });
+        });
     }
 
     /**
@@ -370,23 +396,7 @@ public function previewPdf(Request $request): JsonResponse
     private function getExportData(Request $request)
     {
         try {
-            $query = User::with([
-                'divisions',
-                'cards' => function ($q) use ($request) {
-                    $q->with([
-                        'campaign',
-                        'board.campaign', // 🔥 Load campaign dari board
-                        'board',
-                        'labels',
-                        'brands',
-                        'attachments' => function ($attQ) {
-                            $attQ->with(['uploader', 'qcBy']);
-                        }
-                    ]);
-                    $this->applyCardFilters($q, $request);
-                    $q->orderBy('cards.created_at', 'desc');
-                }
-            ]);
+            $query = User::with('divisions');
 
             // Admin biasa tidak boleh export/preview data milik Super Admin.
             $this->restrictSuperAdminVisibility($query, $request);
@@ -411,19 +421,49 @@ public function previewPdf(Request $request): JsonResponse
                 });
             }
 
-            if ($request->filled('campaign_id')) {
-                $query->whereHas('cards.board', function ($q) use ($request) {
-                    $q->where('boards.campaign_id', $request->campaign_id);
-                });
+            $users = $query->get();
+
+            // Untuk tiap user, ambil card lewat definisi yang SAMA dengan
+            // scopeCardsForUser() (creator campaign ATAU anggota campaign
+            // ATAU assignee langsung) — bukan cuma lewat relasi cards()
+            // (pivot card_user) seperti sebelumnya, supaya konsisten dengan
+            // data yang user lihat sendiri di My Work.
+            $users->each(function ($user) use ($request) {
+                $cardsQuery = Card::with([
+                    'campaign',
+                    'board.campaign', // 🔥 Load campaign dari board
+                    'board',
+                    'labels',
+                    'brands',
+                    'attachments' => function ($attQ) {
+                        $attQ->with(['uploader', 'qcBy']);
+                    }
+                ]);
+
+                $this->scopeCardsForUser($cardsQuery, $user);
+
+                if ($request->filled('campaign_id')) {
+                    $cardsQuery->whereHas('board', function ($q) use ($request) {
+                        $q->where('boards.campaign_id', $request->campaign_id);
+                    });
+                }
+
+                $this->applyCardFilters($cardsQuery, $request);
+
+                $user->setRelation(
+                    'cards',
+                    $cardsQuery->orderBy('cards.created_at', 'desc')->get()
+                );
+            });
+
+            // Kalau ada filter yang mensyaratkan card cocok (campaign/label/
+            // brand/tanggal/search_card), user yang setelah difilter jadi
+            // tidak punya card sama sekali dibuang dari hasil akhir.
+            if ($this->hasCardFilters($request) || $request->filled('campaign_id')) {
+                $users = $users->filter(fn ($user) => $user->cards->isNotEmpty())->values();
             }
 
-            if ($this->hasCardFilters($request)) {
-                $query->whereHas('cards', function ($q) use ($request) {
-                    $this->applyCardFilters($q, $request);
-                });
-            }
-
-            return $query->get();
+            return $users;
         } catch (\Exception $e) {
             Log::error('Error getting export data: ' . $e->getMessage());
             throw $e;

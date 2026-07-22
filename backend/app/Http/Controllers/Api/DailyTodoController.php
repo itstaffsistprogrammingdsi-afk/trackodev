@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Card;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class DailyTodoController extends Controller
 {
@@ -16,11 +15,21 @@ class DailyTodoController extends Controller
         $startDate = $request->input('start_date');
         $endDate   = $request->input('end_date');
 
-        $query = Card::query()
-            ->with(['board', 'attachments'])
-            ->whereHas('assignees', function ($q) use ($user) {
-                $q->where('users.id', $user->id);
-            });
+$query = Card::query()
+    ->with(['board', 'attachments'])
+    ->where(function ($q) use ($user) {
+
+        $q->whereHas('board.campaign', function ($c) use ($user) {
+            $c->where('created_by', $user->id)
+              ->orWhereHas('members', function ($m) use ($user) {
+                  $m->where('users.id', $user->id);
+              });
+        })
+
+        ->orWhereHas('assignees', function ($a) use ($user) {
+            $a->where('users.id', $user->id);
+        });
+    });
 
         // =========================
         // FILTER RANGE (CUSTOM)

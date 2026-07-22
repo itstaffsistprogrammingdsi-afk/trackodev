@@ -22,10 +22,16 @@ class MyWorkCompletedTasksSheet implements FromCollection, WithHeadings, WithMap
 
     public function map($task): array
     {
+        $board = $task->board;
+        $campaign = $board?->campaign;
+        $workspace = $campaign?->workspace;
+
         return [
             $task->id,
             $task->title,
-            $task->board?->name ?? '-',
+            $workspace?->name ?? '-',
+            $campaign?->name ?? '-',
+            $board?->name ?? '-',
             optional($task->due_date)->format('d-m-Y') ?? '-',
             optional($task->completed_at)->format('d-m-Y H:i') ?? '-',
         ];
@@ -33,7 +39,7 @@ class MyWorkCompletedTasksSheet implements FromCollection, WithHeadings, WithMap
 
     public function headings(): array
     {
-        return ['ID', 'Judul Task', 'Board', 'Due Date', 'Selesai Pada'];
+        return ['ID', 'Judul Task', 'Workspace', 'Campaign', 'Board', 'Due Date', 'Selesai Pada'];
     }
 
     public function title(): string

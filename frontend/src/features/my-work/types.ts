@@ -77,6 +77,41 @@ export interface ActivityItem {
   };
 }
 
+export interface AttachmentFilterParams {
+  type: ExportPeriodType;
+  date?: string;   // dipakai saat type = "daily", format: YYYY-MM-DD
+  month?: number;  // dipakai saat type = "monthly", 1-12
+  year?: number;   // dipakai saat type = "monthly" | "yearly"
+  page?: number;
+  per_page?: number;
+}
+
+export interface AttachmentListResponse {
+  success: boolean;
+
+  filter: {
+    type: ExportPeriodType;
+    label: string;
+  };
+
+  summary: {
+    uploaded_files: number;
+    uploaded_links: number;
+    total_attachments: number;
+    total_storage_used: number;
+    total_storage_used_mb: number;
+  };
+
+  attachments: AttachmentItem[];
+
+  pagination: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
 export interface AttachmentItem {
   id: number;
 
