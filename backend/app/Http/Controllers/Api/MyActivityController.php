@@ -325,6 +325,117 @@ class MyActivityController extends Controller
         ]);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Attachment List (filter Harian / Bulanan / Tahunan - sama seperti Export)
+    |--------------------------------------------------------------------------
+    | Endpoint terpisah dari index() karena index() cuma ngasih 10 attachment
+    | terbaru dan filternya cuma ikut range activity feed (today/week/month/
+    | all). Di sini attachment bisa difilter dengan periode spesifik persis
+    | seperti pilihan di ExportLogPanel (tanggal / bulan+tahun / tahun),
+    | dengan hasil yang di-paginate. Reuse resolveExportPeriod() supaya
+    | logika resolusi tanggal selalu konsisten dengan fitur export.
+    */
+
+    public function attachments(Request $request)
+    {
+        $user = auth()->user();
+
+        $type = $request->input('type', 'daily');
+
+        if (! in_array($type, self::ALLOWED_EXPORT_TYPES)) {
+            $type = 'daily';
+        }
+
+        $perPage = $request->integer('per_page', 20);
+        $perPage = min(max($perPage, 1), 100);
+
+        [$start, $end, $label] = $this->resolveExportPeriod($type, $request);
+
+        $attachmentQuery = CardAttachment::query()
+            ->with('card.board.campaign.workspace')
+            ->where('uploaded_by', $user->id)
+            ->whereBetween('created_at', [$start, $end])
+            ->latest();
+
+        $uploadedFiles = (clone $attachmentQuery)
+            ->where('attachment_type', 'file')
+            ->count();
+
+        $uploadedLinks = (clone $attachmentQuery)
+            ->where('attachment_type', 'link')
+            ->count();
+
+        $totalStorageUsed = (clone $attachmentQuery)->sum('file_size') ?? 0;
+
+        $attachments = $attachmentQuery->paginate($perPage);
+
+        // Bentuk payload tiap attachment sama persis dengan recentAttachments
+        // di index(), supaya AttachmentItem di frontend tetap kompatibel.
+        $attachments->getCollection()->transform(function ($attachment) {
+            $board = $attachment->card?->board;
+            $campaign = $board?->campaign;
+            $workspace = $campaign?->workspace;
+
+            return [
+                'id' => $attachment->id,
+                'card_id' => $attachment->card_id,
+                'card_title' => $attachment->card?->title,
+
+                'file_name' => $attachment->file_name,
+                'file_type' => $attachment->file_type,
+                'file_size' => $attachment->file_size,
+
+                'file_size_kb' => round(($attachment->file_size ?? 0) / 1024, 2),
+                'file_size_mb' => round(($attachment->file_size ?? 0) / 1024 / 1024, 2),
+
+                'attachment_type' => $attachment->attachment_type,
+
+                'file_url' => $attachment->file_url,
+                'link_url' => $attachment->link_url,
+
+                'location' => [
+                    'workspace' => $workspace ? ['id' => $workspace->id, 'name' => $workspace->name] : null,
+                    'campaign' => $campaign ? ['id' => $campaign->id, 'name' => $campaign->name] : null,
+                    'board' => $board ? ['id' => $board->id, 'name' => $board->name] : null,
+                ],
+                'location_label' => $this->buildLocationLabel(
+                    $workspace?->name,
+                    $campaign?->name,
+                    $board?->name
+                ),
+
+                'created_at' => $attachment->created_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+
+            'filter' => [
+                'type' => $type,
+                'label' => $label,
+            ],
+
+            'summary' => [
+                'uploaded_files' => $uploadedFiles,
+                'uploaded_links' => $uploadedLinks,
+                'total_attachments' => $uploadedFiles + $uploadedLinks,
+                'total_storage_used' => $totalStorageUsed,
+                'total_storage_used_mb' => round($totalStorageUsed / 1024 / 1024, 2),
+            ],
+
+            'attachments' => $attachments->items(),
+
+            'pagination' => [
+                'current_page' => $attachments->currentPage(),
+                'last_page' => $attachments->lastPage(),
+                'per_page' => $attachments->perPage(),
+                'total' => $attachments->total(),
+            ],
+        ]);
+    }
+
     private function applyDateFilter(
         Builder $query,
         string $range,
@@ -439,8 +550,9 @@ class MyActivityController extends Controller
             ->whereBetween('completed_at', [$start, $end])
             // Eager-load the full hierarchy so the export can show which
             // Campaign & Workspace a completed task belongs to, not just
-            // the board.
-            ->with('board.campaign.workspace')
+            // the board. attachments.qcBy ditambahkan supaya tiap task bisa
+            // nampilin total QC & catatannya.
+            ->with(['board.campaign.workspace', 'attachments.qcBy'])
             ->latest('completed_at')
             ->get();
 
@@ -451,7 +563,7 @@ class MyActivityController extends Controller
         */
 
         $attachments = CardAttachment::query()
-            ->with('card.board.campaign.workspace')
+            ->with(['card.board.campaign.workspace', 'qcBy'])
             ->where('uploaded_by', $user->id)
             ->whereBetween('created_at', [$start, $end])
             ->latest()

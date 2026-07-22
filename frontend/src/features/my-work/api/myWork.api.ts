@@ -3,6 +3,8 @@ import axios from "@/lib/axios";
 import type {
   ActivityResponse,
   ActivityRange,
+  AttachmentFilterParams,
+  AttachmentListResponse,
   DailyTodoResponse,
   ExportLogParams,
 } from "../types";
@@ -23,6 +25,22 @@ export const getMyActivities = async (
       range,
       page,
       per_page: perPage,
+    },
+  });
+
+  return res.data;
+};
+
+export const getMyAttachments = async (
+  params: AttachmentFilterParams,
+): Promise<AttachmentListResponse> => {
+  const { page = 1, per_page = 20, ...rest } = params;
+
+  const res = await axios.get("/my-activities/attachments", {
+    params: {
+      ...rest,
+      page,
+      per_page,
     },
   });
 

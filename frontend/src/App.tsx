@@ -58,6 +58,16 @@ import LandingPage from "@/features/landing/pages/LandingPage";
 
 import EditAccountPage from "@/features/account/pages/EditAccountPage";
 
+function isSuperAdminUser(auth: ReturnType<typeof useAuth>) {
+  try {
+    return typeof auth?.hasRole === "function"
+      ? !!auth.hasRole("super_admin")
+      : false;
+  } catch {
+    return false;
+  }
+}
+
 function RootRoute() {
   const token = localStorage.getItem("token");
   const auth = useAuth();
@@ -69,22 +79,27 @@ function RootRoute() {
   // Sama seperti gate di RoleRoute: /dashboard cuma untuk Super Admin.
   // Dicek di sini juga supaya admin/user langsung diarahkan ke /my-work,
   // tidak muter dulu lewat /dashboard baru di-redirect ulang.
-  const isSuperAdmin = (() => {
-    try {
-      return typeof auth?.hasRole === "function"
-        ? !!auth.hasRole("super_admin")
-        : false;
-    } catch {
-      return false;
-    }
-  })();
-
   return (
     <Navigate
-      to={isSuperAdmin ? "/dashboard" : "/my-work"}
+      to={isSuperAdminUser(auth) ? "/dashboard" : "/my-work"}
       replace
     />
   );
+}
+
+// Super Admin sudah punya dashboard sendiri di /dashboard dan tidak perlu
+// (juga tidak boleh) diarahkan ke /my-work sama sekali. RootRoute di atas
+// sudah menangani ini untuk redirect dari "/", tapi kalau /my-work diakses
+// langsung (ketik URL manual, link lama, dsb) belum ada yang menahan —
+// guard ini menutup celah itu.
+function MyWorkRoute() {
+  const auth = useAuth();
+
+  if (isSuperAdminUser(auth)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <MyWorkPage />;
 }
 
 export default function App() {
@@ -121,7 +136,7 @@ export default function App() {
               </RoleRoute>
             }
           />
-          <Route path="/my-work" element={<MyWorkPage />} />
+          <Route path="/my-work" element={<MyWorkRoute />} />
 
           {/* Task Management */}
           <Route path="/divisions" element={<DivisionPage />} />

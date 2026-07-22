@@ -374,6 +374,8 @@ Route::middleware([
         [MyActivityController::class, 'index']
     );
 
+    Route::get('/my-activities/attachments', [MyActivityController::class, 'attachments']);
+
     // ========================================
     // ACTIVITY LOGS
     // ========================================

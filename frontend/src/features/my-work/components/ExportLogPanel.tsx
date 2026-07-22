@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Download, FileText, Loader2, FileSpreadsheet } from "lucide-react";
 
 import { exportMyWorkLog } from "../api/myWork.api";
+import DatePickerField from "./DatePickerField";
 import type { ExportPeriodType, ExportFormat } from "../types";
 
 const MONTHS = [
@@ -72,10 +73,10 @@ export default function ExportLogPanel() {
       {/* HEADER */}
       <div className="border-b border-gray-100 p-5">
         <h2 className="text-base font-semibold text-gray-900">
-          Export Laporan
+          Laporan Kinerja Individu
         </h2>
         <p className="text-xs text-gray-500 mt-1">
-          Unduh ringkasan task selesai, log aktivitas, dan attachment
+          Unduh ringkasan task selesai, log aktivitas, dan attachment anda
         </p>
       </div>
 
@@ -104,13 +105,7 @@ export default function ExportLogPanel() {
         {/* PERIOD VALUE */}
         {type === "daily" && (
           <div>
-            <label className="text-xs text-gray-500 block mb-1">Verifikasi Tanggal</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
+            <DatePickerField value={selectedDate} onChange={setSelectedDate} />
           </div>
         )}
 

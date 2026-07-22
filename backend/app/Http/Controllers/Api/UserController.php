@@ -611,15 +611,6 @@ ActivityLogService::log(
             ->limit(10)
             ->get();
 
-        ActivityLogService::log(
-            $request->user(),
-            
-            'mentionable_users',
-            (string) $request->user()->id,
-            'viewed',
-            "Melihat daftar user mentionable dengan filter: " . json_encode($request->only('search'))
-        );
-
         return response()->json([
             'data' => UserResource::collection($users)
         ]);

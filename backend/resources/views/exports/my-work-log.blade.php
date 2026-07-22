@@ -278,6 +278,25 @@
             border-color: #bae6fd;
         }
 
+        .badge-qc-approved {
+            background: #dcfce7;
+            color: #15803d;
+            border-color: #bbf7d0;
+        }
+
+        .badge-qc-pending {
+            background: #fef9c3;
+            color: #a16207;
+            border-color: #fde68a;
+        }
+
+        .qc-by {
+            display: block;
+            font-size: 8px;
+            color: #9ca3af;
+            margin-top: 2px;
+        }
+
         .empty-note {
             font-size: 10px;
             color: #9ca3af;
@@ -463,11 +482,13 @@
         @else
             <table class="data-table">
                 <colgroup>
+                    <col style="width: 17%">
                     <col style="width: 22%">
-                    <col style="width: 30%">
-                    <col style="width: 16%">
-                    <col style="width: 16%">
-                    <col style="width: 16%">
+                    <col style="width: 11%">
+                    <col style="width: 10%">
+                    <col style="width: 11%">
+                    <col style="width: 11%">
+                    <col style="width: 18%">
                 </colgroup>
                 <thead>
                     <tr>
@@ -476,6 +497,8 @@
                         <th>Board</th>
                         <th>Due Date</th>
                         <th>Selesai Pada</th>
+                        <th>Total QC</th>
+                        <th>Catatan QC</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -484,6 +507,10 @@
                             $board = $task->board;
                             $campaign = $board?->campaign;
                             $workspace = $campaign?->workspace;
+
+                            $taskAttachments = $task->attachments ?? collect();
+                            $taskTotalQc = $taskAttachments->sum('qc_quantity');
+                            $taskQcNotes = $taskAttachments->pluck('qc_note')->filter()->implode('; ');
                         @endphp
                         <tr>
                             <td>{{ $task->title }}</td>
@@ -491,6 +518,20 @@
                             <td>{{ $board?->name ?? '-' }}</td>
                             <td>{{ optional($task->due_date)->format('d-m-Y') ?? '-' }}</td>
                             <td>{{ optional($task->completed_at)->format('d-m-Y H:i') ?? '-' }}</td>
+                            <td>
+                                @if ($taskAttachments->count() > 0 && $taskTotalQc > 0)
+                                    {{ $taskTotalQc }}
+                                @else
+                                    <span class="muted">-</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if ($taskQcNotes)
+                                    {{ Str::limit($taskQcNotes, 60) }}
+                                @else
+                                    <span class="muted">-</span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -508,12 +549,14 @@
         @else
             <table class="data-table">
                 <colgroup>
-                    <col style="width: 20%">
-                    <col style="width: 26%">
-                    <col style="width: 24%">
-                    <col style="width: 10%">
-                    <col style="width: 10%">
-                    <col style="width: 10%">
+                    <col style="width: 15%">
+                    <col style="width: 17%">
+                    <col style="width: 16%">
+                    <col style="width: 7%">
+                    <col style="width: 8%">
+                    <col style="width: 9%">
+                    <col style="width: 12%">
+                    <col style="width: 16%">
                 </colgroup>
                 <thead>
                     <tr>
@@ -523,6 +566,8 @@
                         <th>Tipe</th>
                         <th>Ukuran</th>
                         <th>Diupload Pada</th>
+                        <th>Status QC</th>
+                        <th>Catatan QC</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -563,6 +608,23 @@
                             </td>
                             <td>{{ round(($attachment->file_size ?? 0) / 1024, 1) }} KB</td>
                             <td>{{ optional($attachment->created_at)->format('d-m-Y H:i') }}</td>
+                            <td>
+                                @if ($attachment->qc_quantity !== null)
+                                    <span class="badge badge-qc-approved">{{ $attachment->qc_quantity }}/{{ $attachment->quantity ?? 0 }}</span>
+                                    @if ($attachment->qcBy)
+                                        <span class="qc-by">oleh {{ $attachment->qcBy->name }}</span>
+                                    @endif
+                                @else
+                                    <span class="badge badge-qc-pending">Belum QC</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if ($attachment->qc_note)
+                                    {{ Str::limit($attachment->qc_note, 60) }}
+                                @else
+                                    <span class="muted">-</span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

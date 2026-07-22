@@ -27,12 +27,13 @@ class MyWorkActivityLogSheet implements FromCollection, WithHeadings, WithMappin
             $activity->action,
             $activity->entity_type,
             $activity->description,
+            $activity->location_label ?? '-',
         ];
     }
 
     public function headings(): array
     {
-        return ['Waktu', 'Aksi', 'Entity', 'Deskripsi'];
+        return ['Waktu', 'Aksi', 'Entity', 'Deskripsi', 'Lokasi'];
     }
 
     public function title(): string
