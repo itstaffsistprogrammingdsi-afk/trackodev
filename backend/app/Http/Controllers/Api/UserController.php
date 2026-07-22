@@ -37,7 +37,7 @@ class UserController extends Controller
             ->with([
                 'roles',
                 'divisions'
-            ]);
+            ])->orderBy('name', 'asc');
 
         // ============================================
         // SEARCH
