@@ -83,10 +83,17 @@ class AssignmentService
             |------------------------------------------
             | 6. ORDER CARD
             |------------------------------------------
+            | NOTE: PostgreSQL tidak mengizinkan `FOR UPDATE` dibarengi
+            | fungsi agregat (max/count/sum/dst) dalam satu query — beda
+            | dengan MySQL yang tetap meloloskannya. Dipakai
+            | `orderByDesc()->value()` (bukan agregat) untuk hasil yang
+            | sama persis ("order" tertinggi saat ini di board itu),
+            | tapi tetap boleh dibarengi lockForUpdate().
             */
             $nextOrder = (Card::where('board_id', $board->id)
                 ->lockForUpdate()
-                ->max('order')) ?? 0;
+                ->orderByDesc('order')
+                ->value('order')) ?? 0;
 
             $nextOrder++;
 
@@ -246,7 +253,7 @@ class AssignmentService
                 'designer',
                 'coordinator',
                 'submission',
-                'card.briefAttachments' // ðŸ”¥ WAJIB
+                'card.briefAttachments' // ?? WAJIB
             ]);
         });
     }

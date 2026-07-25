@@ -91,9 +91,9 @@ class AssignmentController extends Controller
 
             ActivityLogService::log(
                 auth()->user(),
-                'assigned',
                 'form_submission',
                 $submission->id,
+                'assigned',
                 "Menugaskan response form submission ID {$submission->id} ke campaign '{$campaign->name}'",
                 ['submission_id' => $submission->id, 'campaign_id' => $campaign->id]    
             );
