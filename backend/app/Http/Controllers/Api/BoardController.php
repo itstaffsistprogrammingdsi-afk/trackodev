@@ -58,8 +58,18 @@ class BoardController extends Controller
         // Wrap in a transaction with a locking read so two concurrent
         // "create column" requests can't both compute the same
         // max(order)+1 and collide.
+        //
+        // NOTE: PostgreSQL tidak mengizinkan `FOR UPDATE` dibarengi
+        // fungsi agregat (max/count/sum/dst) dalam satu query — beda
+        // dengan MySQL yang tetap meloloskannya. Jadi di sini dipakai
+        // `orderByDesc()->value()` (bukan agregat) untuk hasil yang
+        // sama persis ("order" tertinggi saat ini), tapi tetap boleh
+        // dibarengi lockForUpdate().
         $board = DB::transaction(function () use ($request, $campaign) {
-            $order = (int) ($campaign->boards()->lockForUpdate()->max('order')) + 1;
+            $order = (int) ($campaign->boards()
+                ->lockForUpdate()
+                ->orderByDesc('order')
+                ->value('order')) + 1;
 
             return $campaign->boards()->create([
                 'name'  => $request->name,
