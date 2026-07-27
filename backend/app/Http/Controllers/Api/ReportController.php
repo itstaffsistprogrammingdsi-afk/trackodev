@@ -15,11 +15,13 @@ use App\Models\Label;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
+use App\Services\EncryptedExportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Excel as ExcelWriter;
 
 class ReportController extends Controller
 {
@@ -309,7 +311,9 @@ public function previewPdf(Request $request): JsonResponse
                 ], 404);
             }
 
-            $pdf = Pdf::loadView('exports.report_pdf', compact('users'))
+            $html = view('exports.report_pdf', compact('users'))->render();
+
+            $pdf = Pdf::loadHTML($html)
                 ->setPaper('a4', 'landscape')
                 ->setOptions([
                     'defaultFont' => 'DejaVu Sans',
@@ -323,6 +327,7 @@ public function previewPdf(Request $request): JsonResponse
             return response()->json([
                 'success' => true,
                 'data' => [
+                    'html'         => $html,
                     'pdf_base64'   => $base64Pdf,
                     'users_count'  => $users->count(),
                     'total_cards'  => $users->sum(fn($user) => $user->cards->count()),
@@ -340,8 +345,16 @@ public function previewPdf(Request $request): JsonResponse
     /**
      * EXPORT PDF
      */
-    public function exportPdf(Request $request)
+    public function exportPdf(Request $request, EncryptedExportService $encryptedExport)
     {
+        $request->merge([
+            'export_password' => (string) $request->header('X-Export-Password'),
+        ]);
+
+        $validated = $request->validate([
+            'export_password' => 'required|string|min:12|max:128',
+        ]);
+
         try {
             $users = $this->getExportData($request);
 
@@ -361,7 +374,11 @@ public function previewPdf(Request $request): JsonResponse
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.pdf';
 
-            return $pdf->download($fileName);
+            return $encryptedExport->downloadPdf(
+                $pdf->output(),
+                $fileName,
+                $validated['export_password']
+            );
         } catch (\Exception $e) {
             Log::error('Export PDF error: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal export PDF: ' . $e->getMessage()], 500);
@@ -371,8 +388,16 @@ public function previewPdf(Request $request): JsonResponse
     /**
      * EXPORT EXCEL
      */
-    public function exportExcel(Request $request)
+    public function exportExcel(Request $request, EncryptedExportService $encryptedExport)
     {
+        $request->merge([
+            'export_password' => (string) $request->header('X-Export-Password'),
+        ]);
+
+        $validated = $request->validate([
+            'export_password' => 'required|string|min:12|max:128',
+        ]);
+
         try {
             $users = $this->getExportData($request);
 
@@ -384,7 +409,13 @@ public function previewPdf(Request $request): JsonResponse
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.xlsx';
 
-            return Excel::download(new ReportExportArray($users), $fileName);
+            $contents = Excel::raw(new ReportExportArray($users), ExcelWriter::XLSX);
+
+            return $encryptedExport->downloadSpreadsheet(
+                $contents,
+                $fileName,
+                $validated['export_password']
+            );
         } catch (\Exception $e) {
             Log::error('Export Excel error: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal export Excel: ' . $e->getMessage()], 500);

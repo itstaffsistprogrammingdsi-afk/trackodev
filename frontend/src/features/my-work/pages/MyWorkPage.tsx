@@ -1,22 +1,22 @@
 import { useMyWork } from "../hooks/useMyWork";
 
 import SummaryCards from "../components/SummaryCards";
-// import DailyTodoPanel from "../components/DailyTodoPanel";
-import ActivityTimeline from "../components/ActivityTimeline";
+import CardMovementFeed from "../components/CardMovementFeed";
+import MyWorkPeriodFilter from "../components/MyWorkPeriodFilter";
 import AttachmentPanel from "../components/AttachmentPanel";
 import ExportLogPanel from "../components/ExportLogPanel";
 
 export default function MyWorkPage() {
   const {
     loading,
+    activityLoading,
     error,
     range,
     setRange,
-    dailyTodo,
     activities,
   } = useMyWork();
 
-  if (loading) {
+  if (loading || (!activities && activityLoading)) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-sm text-gray-500">
@@ -26,7 +26,7 @@ export default function MyWorkPage() {
     );
   }
 
-  if (error || !dailyTodo || !activities) {
+  if (error || !activities) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
         {error ?? "Failed to load My Work"}
@@ -35,85 +35,46 @@ export default function MyWorkPage() {
   }
 
   return (
-    <div className="space-y-8">
-
-      {/* HEADER */}
-      <div className="space-y-4">
-
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
             My Work
           </h1>
-
           <p className="mt-1 text-sm text-gray-500">
-            Track your tasks, productivity, and daily activities
+            Pantau progres pekerjaan dan siapkan laporan kinerja Anda.
           </p>
         </div>
 
-        {/* FILTER BAR (clean pill style) */}
-        <div className="flex flex-wrap gap-2">
-
-          {(["today", "week", "month", "all"] as const).map((item) => (
-            <button
-              key={item}
-              onClick={() => setRange(item)}
-              className={`
-                rounded-full px-4 py-1.5 text-sm border transition
-                ${
-                  range === item
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                }
-              `}
-            >
-              {item.charAt(0).toUpperCase() + item.slice(1)}
-            </button>
-          ))}
-
-        </div>
-
-      </div>
-
-      {/* SUMMARY (SECTIONED) */}
-      <div>
-        <SummaryCards
-          totalCards={dailyTodo.summary.total_cards}
-          completedCards={dailyTodo.summary.completed}
-          completionRate={dailyTodo.summary.completion_rate}
-          totalActivities={activities.summary.total_activities}
+        <MyWorkPeriodFilter
+          value={range}
+          onChange={setRange}
+          disabled={activityLoading}
         />
       </div>
 
-      {/* MAIN CONTENT GRID */}
-      <div className="grid grid-cols-12 gap-8">
+      <SummaryCards
+        totalCards={activities.summary.tasks.total}
+        completedCards={activities.summary.tasks.completed}
+        completionRate={activities.summary.tasks.completion_rate}
+        loading={activityLoading}
+      />
 
-        {/* LEFT: ACTIVITY STACK */}
-        <div className="col-span-12 xl:col-span-8 space-y-6">
-
-          {/* ACTIVITY */}
-          <div className="rounded-3xl border border-gray-200 bg-white shadow-sm">
-            <ActivityTimeline
-              activities={activities.activities}
-              total={activities.summary.total_activities}
-            />
-          </div>
-
-
-
+      <div className="grid items-start gap-6 xl:grid-cols-12 xl:gap-8">
+        <div className="xl:col-span-7">
+          <CardMovementFeed
+            key={range}
+            activities={activities.activities}
+            total={activities.summary.total_activities}
+            loading={activityLoading}
+          />
         </div>
 
-        {/* RIGHT: SIDEBAR */}
-        <div className="col-span-12 xl:col-span-4">
-          {/* ATTACHMENT */}
-          <div>
-            <AttachmentPanel data={activities} />
-            <ExportLogPanel />
-          </div>
-
+        <div className="space-y-6 xl:col-span-5">
+          <ExportLogPanel />
+          <AttachmentPanel />
         </div>
-
       </div>
-
     </div>
   );
 }

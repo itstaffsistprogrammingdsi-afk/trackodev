@@ -4,19 +4,9 @@ import { Loader2 } from "lucide-react";
 import { getMyAttachments } from "../api/myWork.api";
 import DatePickerField from "./DatePickerField";
 import type {
-  ActivityResponse,
   AttachmentItem,
   ExportPeriodType,
 } from "../types";
-
-type Props = {
-  data: ActivityResponse;
-};
-
-const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i).reverse();
@@ -33,22 +23,25 @@ const toDateInputValue = (d: Date) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-export default function AttachmentPanel({ data }: Props) {
+export default function AttachmentPanel() {
   const now = new Date();
 
   // Filter periode, persis pola yang sama dengan ExportLogPanel
   const [type, setType] = useState<ExportPeriodType>("daily");
   const [selectedDate, setSelectedDate] = useState<string>(toDateInputValue(now));
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [startDate, setStartDate] = useState(
+    toDateInputValue(new Date(now.getFullYear(), now.getMonth(), 1)),
+  );
+  const [endDate, setEndDate] = useState(
+    toDateInputValue(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  );
   const [year, setYear] = useState(now.getFullYear());
 
-  // Fallback awal: pakai recent_attachments yang sudah ada di prop `data`
-  // supaya panel langsung terisi sebelum fetch periode pertama selesai.
-  const [attachments, setAttachments] = useState<AttachmentItem[]>(data.recent_attachments ?? []);
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
   const [summary, setSummary] = useState({
-    uploaded_files: data.summary.uploaded_files ?? 0,
-    uploaded_links: data.summary.uploaded_links ?? 0,
-    total_storage_used_mb: data.summary.total_storage_used_mb ?? 0,
+    uploaded_files: 0,
+    uploaded_links: 0,
+    total_storage_used_mb: 0,
   });
   const [periodLabel, setPeriodLabel] = useState<string | null>(null);
 
@@ -57,9 +50,16 @@ export default function AttachmentPanel({ data }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const MAX_VISIBLE = 5;
+  const monthlyRangeInvalid = type === "monthly" && startDate > endDate;
 
   useEffect(() => {
     let cancelled = false;
+
+    if (monthlyRangeInvalid) {
+      setError(null);
+      setLoading(false);
+      return;
+    }
 
     const load = async () => {
       try {
@@ -69,7 +69,7 @@ export default function AttachmentPanel({ data }: Props) {
         const res = await getMyAttachments({
           type,
           ...(type === "daily" ? { date: selectedDate } : {}),
-          ...(type === "monthly" ? { month, year } : {}),
+          ...(type === "monthly" ? { start_date: startDate, end_date: endDate } : {}),
           ...(type === "yearly" ? { year } : {}),
           per_page: 50,
         });
@@ -96,8 +96,7 @@ export default function AttachmentPanel({ data }: Props) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, selectedDate, month, year]);
+  }, [type, selectedDate, startDate, endDate, year, monthlyRangeInvalid]);
 
   const visibleAttachments = expanded
     ? attachments
@@ -144,35 +143,36 @@ export default function AttachmentPanel({ data }: Props) {
         )}
 
         {type === "monthly" && (
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <div className="col-span-2">
-              <select
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="attachment-start-date" className="mb-1 block text-xs text-gray-500">
+                Tanggal Awal
+              </label>
+              <DatePickerField
+                id="attachment-start-date"
+                value={startDate}
+                onChange={setStartDate}
+              />
             </div>
 
             <div>
-              <select
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                {YEAR_OPTIONS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+              <label htmlFor="attachment-end-date" className="mb-1 block text-xs text-gray-500">
+                Tanggal Akhir
+              </label>
+              <DatePickerField
+                id="attachment-end-date"
+                value={endDate}
+                onChange={setEndDate}
+                align="right"
+              />
             </div>
           </div>
+        )}
+
+        {monthlyRangeInvalid && (
+          <p className="mt-2 text-xs text-red-600">
+            Tanggal akhir tidak boleh lebih awal dari tanggal awal.
+          </p>
         )}
 
         {type === "yearly" && (
@@ -202,7 +202,12 @@ export default function AttachmentPanel({ data }: Props) {
       {/* LIST */}
       <div className="p-5 space-y-3">
 
-        {loading ? (
+        {monthlyRangeInvalid ? (
+          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-6 text-center">
+            <p className="text-sm font-medium text-red-700">Rentang tanggal belum valid</p>
+            <p className="mt-1 text-xs text-red-500">Perbaiki tanggal untuk menampilkan attachment.</p>
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-gray-400">
             <Loader2 size={16} className="animate-spin" />
             Memuat attachment...

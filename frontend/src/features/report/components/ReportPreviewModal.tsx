@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Download, FileText, Eye, FileSpreadsheet } from 'lucide-react';
+import {
+  AttachmentPreviewModal,
+  type ReportAttachmentPreview,
+} from './AttachmentPreviewModal';
 
 interface ReportPreviewModalProps {
   isOpen: boolean;
@@ -25,7 +29,8 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   loading,
   title = 'Preview Laporan',
 }) => {
-  const [viewMode, setViewMode] = useState<'html' | 'pdf'>('pdf');
+  const [viewMode, setViewMode] = useState<'html' | 'pdf'>('html');
+  const [previewAttachment, setPreviewAttachment] = useState<ReportAttachmentPreview | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -37,6 +42,31 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
       }
     }
   }, [isOpen, previewData, viewMode]);
+
+  useEffect(() => {
+    if (!isOpen) setPreviewAttachment(null);
+  }, [isOpen]);
+
+  const handleHtmlClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const link = target.closest<HTMLAnchorElement>('[data-attachment-preview="true"]');
+    if (!link) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const url = link.dataset.attachmentUrl;
+    if (!url) return;
+
+    setPreviewAttachment({
+      name: link.dataset.attachmentName || link.textContent?.trim() || 'Attachment',
+      url,
+      fileType: link.dataset.attachmentFileType,
+    });
+  };
+
 
   if (!isOpen) return null;
 
@@ -68,16 +98,29 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
             
             <div className="flex items-center gap-2 flex-wrap">
               {/* Toggle View Mode */}
-              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <div className="flex overflow-hidden rounded-lg border border-gray-200">
                 <button
+                  type="button"
+                  onClick={() => setViewMode('html')}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium transition-colors ${
+                    viewMode === 'html'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <FileText className="h-4 w-4" />
+                  Detail
+                </button>
+                <button
+                  type="button"
                   onClick={() => setViewMode('pdf')}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-1 ${
+                  className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium transition-colors ${
                     viewMode === 'pdf'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  <Eye className="w-4 h-4" />
+                  <Eye className="h-4 w-4" />
                   PDF
                 </button>
               </div>
@@ -131,6 +174,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
                     <div 
                       className="max-w-6xl mx-auto"
                       dangerouslySetInnerHTML={{ __html: previewData.html }}
+                      onClick={handleHtmlClick}
                     />
                   </div>
                 )}
@@ -145,12 +189,16 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
           {/* Footer */}
           <div className="px-6 py-3 border-t border-gray-200 bg-gray-50/80 flex justify-between items-center flex-wrap gap-2">
             <div className="text-sm text-gray-500">
-              <span className="font-medium">Tip:</span> Gunakan tombol PDF/HTML untuk beralih tampilan
+              <span className="font-medium">Tip:</span> Klik nama file pada mode Detail untuk preview aman di dalam modal
             </div>
 
           </div>
         </div>
       </div>
+      <AttachmentPreviewModal
+        attachment={previewAttachment}
+        onClose={() => setPreviewAttachment(null)}
+      />
     </div>
   );
 };

@@ -9,7 +9,6 @@ class MyWorkLogExport implements WithMultipleSheets
     public function __construct(
         protected array $summary,
         protected $completedTasks,
-        protected $activities,
         protected $attachments,
     ) {
     }
@@ -19,7 +18,6 @@ class MyWorkLogExport implements WithMultipleSheets
         return [
             'Ringkasan'     => new MyWorkSummarySheet($this->summary),
             'Task Selesai'  => new MyWorkCompletedTasksSheet($this->completedTasks),
-            'Log Aktivitas' => new MyWorkActivityLogSheet($this->activities),
             'Attachment'    => new MyWorkAttachmentSheet($this->attachments),
         ];
     }

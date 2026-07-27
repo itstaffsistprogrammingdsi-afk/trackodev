@@ -1,4 +1,5 @@
 import axios from "@/lib/axios";
+import { getDownloadFileName } from "@/lib/exportSecurity";
 
 import type {
   ActivityResponse,
@@ -19,12 +20,14 @@ export const getMyActivities = async (
   range: ActivityRange = "today",
   page = 1,
   perPage = 20,
+  activityType?: "card_movement",
 ): Promise<ActivityResponse> => {
   const res = await axios.get("/my-activities", {
     params: {
       range,
       page,
       per_page: perPage,
+      activity_type: activityType,
     },
   });
 
@@ -50,18 +53,22 @@ export const getMyAttachments = async (
 export const exportMyWorkLog = async (
   params: ExportLogParams,
 ): Promise<void> => {
+  const { export_password, ...queryParams } = params;
+
   const res = await axios.get("/my-activities/export", {
-    params,
+    params: queryParams,
     responseType: "blob",
+    headers: {
+      "X-Export-Password": export_password,
+    },
   });
 
   const disposition = res.headers["content-disposition"];
 
-  const filename =
-    typeof disposition === "string"
-      ? disposition.match(/filename="?([^"]+)"?/)?.[1] ??
-        `log-kerja.${params.format}`
-      : `log-kerja.${params.format}`;
+  const filename = getDownloadFileName(
+    disposition,
+    `laporan-kerja-individu.${params.format}`,
+  );
 
   const contentType = res.headers["content-type"];
 

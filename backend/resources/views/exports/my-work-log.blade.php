@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Log Kerja - {{ $summary['periode'] }}</title>
+    <title>Laporan Kerja Individu - {{ $summary['periode'] }}</title>
     <style>
         * {
             box-sizing: border-box;
@@ -105,7 +105,7 @@
         }
 
         .summary-grid td {
-            width: 25%;
+            width: 33.333%;
             padding: 12px 12px;
             border: 1px solid #e5e7eb;
             border-radius: 6px;
@@ -406,9 +406,9 @@
 
         <div class="header">
             <div class="header-left">
-                <p class="eyebrow">Laporan Aktivitas Kerja</p>
-                <h1>Log Kerja</h1>
-                <p>Ringkasan task, aktivitas, dan attachment per periode</p>
+                <p class="eyebrow">Laporan Kerja Individu</p>
+                <h1>My Work</h1>
+                <p>Ringkasan progres task dan attachment per periode</p>
             </div>
             <div class="header-right">
                 <span class="user-chip">{{ $summary['nama_user'] }}</span>
@@ -418,21 +418,17 @@
 
         <table class="summary-grid">
             <tr>
+                <td>
+                    <div class="value">{{ $summary['total_tasks'] }}</div>
+                    <div class="label">Total Tasks</div>
+                </td>
                 <td class="accent-green">
                     <div class="value">{{ $summary['total_completed_tasks'] }}</div>
-                    <div class="label">Task Selesai</div>
-                </td>
-                <td>
-                    <div class="value">{{ $summary['total_activities'] }}</div>
-                    <div class="label">Aktivitas</div>
-                </td>
-                <td class="accent-amber">
-                    <div class="value">{{ $summary['total_attachments'] }}</div>
-                    <div class="label">Attachment</div>
+                    <div class="label">Completed</div>
                 </td>
                 <td class="accent-purple">
-                    <div class="value">{{ $summary['total_storage_used_mb'] }} MB</div>
-                    <div class="label">Storage Terpakai</div>
+                    <div class="value">{{ number_format($summary['completion_rate'], 1) }}%</div>
+                    <div class="label">Completion Rate</div>
                 </td>
             </tr>
         </table>
@@ -450,24 +446,6 @@
                 return '<span class="location-path">' .
                     implode('<span class="sep">&rsaquo;</span>', array_map('e', $parts)) .
                     '</span>';
-            };
-
-            $actionBadgeClass = function (?string $action) {
-                $action = strtolower((string) $action);
-
-                if (str_contains($action, 'create') || str_contains($action, 'tambah')) {
-                    return 'badge-create';
-                }
-
-                if (str_contains($action, 'delete') || str_contains($action, 'hapus')) {
-                    return 'badge-delete';
-                }
-
-                if (str_contains($action, 'update') || str_contains($action, 'edit') || str_contains($action, 'ubah')) {
-                    return 'badge-update';
-                }
-
-                return 'badge-default';
             };
         @endphp
 
@@ -631,58 +609,8 @@
             </table>
         @endif
 
-        {{-- LOG AKTIVITAS --}}
-        <div class="section-title">
-            <span>Log Aktivitas</span>
-            <span class="count-badge">{{ $activities->count() }} aktivitas</span>
-        </div>
-
-        @if ($activities->isEmpty())
-            <p class="empty-note">Tidak ada aktivitas pada periode ini.</p>
-        @else
-            <table class="data-table">
-                <colgroup>
-                    <col style="width: 13%">
-                    <col style="width: 10%">
-                    <col style="width: 10%">
-                    <col style="width: 27%">
-                    <col style="width: 40%">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th>Waktu</th>
-                        <th>Aksi</th>
-                        <th>Entity</th>
-                        <th>Lokasi (Workspace &rsaquo; Campaign &rsaquo; Board / Card)</th>
-                        <th>Deskripsi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($activities as $activity)
-                        <tr>
-                            <td>{{ optional($activity->created_at)->format('d-m-Y H:i') }}</td>
-                            <td><span
-                                    class="badge {{ $actionBadgeClass($activity->action) }}">{{ $activity->action }}</span>
-                            </td>
-                            <td><span class="badge badge-entity">{{ $activity->entity_type }}</span></td>
-                            <td>
-                                @if ($activity->location_label && $activity->location_label !== '-')
-                                    <span class="location-path">{{ $activity->location_label }}</span>
-                                @else
-                                    <span class="location-empty">-</span>
-                                @endif
-                            </td>
-                            <td>{{ $activity->description }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-
-
-
         <div class="footer">
-            <div class="footer-left">Log Kerja &middot; {{ $summary['nama_user'] }}</div>
+            <div class="footer-left">My Work &middot; {{ $summary['nama_user'] }}</div>
             <div class="footer-right">Dicetak pada {{ now()->translatedFormat('d F Y H:i') }}</div>
         </div>
 

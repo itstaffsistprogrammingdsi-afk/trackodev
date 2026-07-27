@@ -362,8 +362,15 @@
                                                     }
                                                 @endphp
 
-                                                @if ($hasUrl && $url)
-                                                    <a href="{{ $url }}">{{ $displayName }}</a>
+                                                @if ($hasUrl && $url && $attachment->attachment_type === 'file')
+                                                    <a
+                                                        href="#attachment-preview"
+                                                        data-attachment-preview="true"
+                                                        data-attachment-url="{{ $url }}"
+                                                        data-attachment-name="{{ $attachment->file_name ?? $displayName }}"
+                                                        data-attachment-file-type="{{ $attachment->file_type }}"
+                                                        title="Preview {{ $attachment->file_name ?? $displayName }}"
+                                                    >{{ $displayName }}</a>
                                                     @if ($attachment->attachment_type)
                                                         <span class="attachment-type">{{ $attachment->attachment_type }}</span>
                                                     @endif

@@ -617,6 +617,7 @@ class CardController extends Controller
         $this->authorizeCard($card);
         $this->authorizeBoard($board);
 
+        $sourceBoard = $card->board;
         $lastOrder = $board
             ->cards()
             ->where('id', '!=', $card->id)
@@ -658,14 +659,23 @@ class CardController extends Controller
 
         $card->update($updateData);
 
-        ActivityLogService::log(
-            auth()->user(),
-            'card',
-            (string) $card->id,
-            'moved',
-            "Memindahkan card '{$card->title}' ke board '{$board->name}'",
-            ['card_id' => $card->id]
-        );
+        if ($sourceBoard?->id !== $board->id) {
+            ActivityLogService::log(
+                auth()->user(),
+                'card',
+                (string) $card->id,
+                'moved',
+                "Memindahkan card '{$card->title}' dari board '{$sourceBoard?->name}' ke board '{$board->name}'",
+                [
+                    'card_id' => $card->id,
+                    'card_title' => $card->title,
+                    'from_board_id' => $sourceBoard?->id,
+                    'from_board_name' => $sourceBoard?->name,
+                    'to_board_id' => $board->id,
+                    'to_board_name' => $board->name,
+                ]
+            );
+        }
 
         return response()->json([
             'message' => 'Card berhasil dipindahkan.',
