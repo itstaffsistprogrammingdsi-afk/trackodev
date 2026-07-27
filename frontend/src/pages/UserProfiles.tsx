@@ -22,12 +22,14 @@ import {
   Users,
   Crown,
   ShieldCheck,
+  KeyRound,
 } from "lucide-react";
 
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import api from "../lib/axios";
+import UserPermissionModal from '../features/user/components/UserPermissionModal';
 
 // ============================================
 // TYPES
@@ -47,6 +49,7 @@ type User = {
   role?: RoleType;
 
   roles?: string[];
+  permissions?: string[];
 };
 
 type AuthUser = {
@@ -57,6 +60,7 @@ type AuthUser = {
   role?: string;
 
   roles?: string[];
+  permissions?: string[];
 };
 
 type PaginationLink = {
@@ -180,6 +184,9 @@ export default function UserProfiles() {
 
   const [editingId, setEditingId] =
     useState<string | null>(null);
+
+  const [permissionUser, setPermissionUser] =
+    useState<User | null>(null);
 
   // SEARCH + PAGINATION
 
@@ -445,6 +452,11 @@ export default function UserProfiles() {
 
   return (
     <>
+      <UserPermissionModal
+        user={permissionUser}
+        onClose={() => setPermissionUser(null)}
+        onSaved={fetchUsers}
+      />
       <PageMeta
         title="User Management"
         description="User Management Page"
@@ -854,6 +866,16 @@ export default function UserProfiles() {
 
                         <td className="px-6 py-5">
                           <div className="flex justify-end gap-2">
+                            {authUser?.permissions?.includes('user.update') && (
+                              <button
+                                onClick={() => setPermissionUser(user)}
+                                className='flex size-10 items-center justify-center rounded-xl border border-indigo-200 bg-white text-indigo-600 transition hover:bg-indigo-50 dark:border-indigo-500/30 dark:bg-gray-900'
+                                title='Atur akses tambahan'
+                                aria-label={`Atur akses ${user.name}`}
+                              >
+                                <KeyRound className='size-4' />
+                              </button>
+                            )}
                             <button
                               onClick={() =>
                                 handleEdit(
@@ -941,6 +963,16 @@ export default function UserProfiles() {
                     </div>
 
                     <div className="flex gap-2">
+                      {authUser?.permissions?.includes('user.update') && (
+                        <button
+                          onClick={() => setPermissionUser(user)}
+                          className='flex size-10 items-center justify-center rounded-xl border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-500/30'
+                          title='Atur akses tambahan'
+                          aria-label={`Atur akses ${user.name}`}
+                        >
+                          <KeyRound className='size-4' />
+                        </button>
+                      )}
                       <button
                         onClick={() =>
                           handleEdit(

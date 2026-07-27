@@ -5,11 +5,6 @@ import { exportMyWorkLog } from "../api/myWork.api";
 import DatePickerField from "./DatePickerField";
 import type { ExportPeriodType, ExportFormat } from "../types";
 
-const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
-
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i).reverse();
 
@@ -43,11 +38,17 @@ export default function ExportLogPanel() {
   // Disimpan langsung sebagai string "YYYY-MM-DD", sesuai format <input type="date">
   const [selectedDate, setSelectedDate] = useState<string>(toDateInputValue(now));
 
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [startDate, setStartDate] = useState(
+    toDateInputValue(new Date(now.getFullYear(), now.getMonth(), 1)),
+  );
+  const [endDate, setEndDate] = useState(
+    toDateInputValue(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  );
   const [year, setYear] = useState(now.getFullYear());
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const monthlyRangeInvalid = type === "monthly" && startDate > endDate;
 
   const handleExport = async () => {
     try {
@@ -58,7 +59,9 @@ export default function ExportLogPanel() {
         type,
         format,
         ...(type === "daily" ? { date: selectedDate } : {}),
-        ...(type === "monthly" ? { month, year } : {}),
+        ...(type === "monthly"
+          ? { start_date: startDate, end_date: endDate }
+          : {}),
         ...(type === "yearly" ? { year } : {}),
       });
     } catch {
@@ -110,35 +113,19 @@ export default function ExportLogPanel() {
         )}
 
         {type === "monthly" && (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 block mb-1">Bulan</label>
-              <select
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-gray-500">
+                Tanggal Awal
+              </label>
+              <DatePickerField value={startDate} onChange={setStartDate} />
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Tahun</label>
-              <select
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                {YEAR_OPTIONS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+              <label className="mb-1 block text-xs text-gray-500">
+                Tanggal Akhir
+              </label>
+              <DatePickerField value={endDate} onChange={setEndDate} />
             </div>
           </div>
         )}
@@ -158,6 +145,12 @@ export default function ExportLogPanel() {
               ))}
             </select>
           </div>
+        )}
+
+        {monthlyRangeInvalid && (
+          <p className="text-xs text-red-600">
+            Tanggal akhir tidak boleh lebih awal dari tanggal awal.
+          </p>
         )}
 
         {error && <p className="text-xs text-red-600">{error}</p>}
@@ -193,7 +186,7 @@ export default function ExportLogPanel() {
         {/* EXPORT BUTTON */}
         <button
           onClick={handleExport}
-          disabled={loading}
+          disabled={loading || monthlyRangeInvalid}
           className="
             flex w-full items-center justify-center gap-2
             rounded-lg bg-blue-600 px-4 py-2.5 mt-2

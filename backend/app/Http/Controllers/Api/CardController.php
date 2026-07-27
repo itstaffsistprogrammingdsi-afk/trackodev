@@ -23,6 +23,9 @@ use Illuminate\Support\Facades\Storage;
 
 class CardController extends Controller
 {
+    private const ATTACHMENT_MAX_SIZE_KB = 11254;
+
+    private const ATTACHMENT_ALLOWED_EXTENSIONS = 'pdf,png,jpg,jpeg,gif,webp,svg,bmp,tif,tiff,doc,docx,xls,xlsx,ppt,pptx,csv,txt,rtf,odt,ods,odp,zip,rar,7z,mp3,wav,m4a,mp4,mov,avi,mkv,webm';
     /*
     |----------------------------------------------------------------------
     | ACCESS CONTROL
@@ -474,8 +477,8 @@ class CardController extends Controller
                 'required_if:type,file',
                 'nullable',
                 'file',
-                'mimes:pdf,png,jpg,jpeg,gif,doc,docx,xls,xlsx',
-                'max:10240',
+                'mimes:'.self::ATTACHMENT_ALLOWED_EXTENSIONS,
+                'max:'.self::ATTACHMENT_MAX_SIZE_KB,
             ],
         ]);
 
@@ -1047,12 +1050,12 @@ class CardController extends Controller
         Card $card
     ): JsonResponse {
         $this->authorizeCard($card);
-        $request->validate([
+        $validated = $request->validate([
             'type' => 'required|in:file,link',
 
             'quantity' => 'nullable|integer|min:0',
 
-            'result_description' => 'nullable|string|max:255',
+            'result_description' => 'nullable|string|max:255|exists:result_description_templates,name',
 
             'link_url' => [
                 'required_if:type,link',
@@ -1064,17 +1067,19 @@ class CardController extends Controller
                 'required_if:type,file',
                 'nullable',
                 'file',
-                'mimes:pdf,png,jpg,jpeg,gif,doc,docx,xls,xlsx',
-                'max:10240',
+                'mimes:pdf,png,jpg,jpeg,gif,doc,docx,xls,xlsx,zip,rar',
+                'max:11024',
             ],
         ]);
+
 
         $data = [
             'card_id'         => $card->id,
             'uploaded_by'     => auth()->id(),
-            'attachment_type' => $request->input('type'),
-            'quantity'        => $request->quantity,
-            'result_description'     => $request->result_description,
+            'attachment_type' => $validated['type'],
+            'quantity'        => $validated['quantity'] ?? null,
+            'result_description' => $validated['result_description'] ?? null,
+
         ];
 
         if ($request->input('type') === 'file') {

@@ -4,6 +4,7 @@ import { HexColorPicker } from "react-colorful";
 
 import { Card } from "../../types";
 import { useCardBrand } from "../../hooks/useCardBrand";
+import { useAuth } from '../../../../context/AuthContext';
 
 interface Props {
   card: Card;
@@ -18,6 +19,7 @@ export default function BrandSection({
   isOpen,
   setDetail,
 }: Props) {
+  const { can } = useAuth();
   const {
     brands,
     attachBrand,
@@ -131,7 +133,7 @@ export default function BrandSection({
     <div className="space-y-3">
       {/* CREATE */}
 
-      <div className="space-y-2">
+      {can('brand.create') && <div className="space-y-2">
         {/* BRAND NAME INPUT */}
 
         <input
@@ -277,7 +279,7 @@ export default function BrandSection({
               : "Add Brand"}
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* LIST */}
 
@@ -322,7 +324,7 @@ export default function BrandSection({
 
               {/* ACTION */}
 
-              {active ? (
+              {active ? (can('brand.detach') &&
                 <button
                   onClick={() =>
                     detachBrand(b.id)
@@ -335,7 +337,7 @@ export default function BrandSection({
                 >
                   remove
                 </button>
-              ) : (
+              ) : (can('brand.attach') &&
                 <button
                   onClick={() =>
                     attachBrand(b.id)

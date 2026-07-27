@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -9,11 +10,12 @@ class BoardResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'          => $this->id,
+            'id' => $this->id,
             'campaign_id' => $this->campaign_id,
-            'name'        => $this->name,
-            'color'       => $this->color,
-            'order'       => $this->order,
+            'name' => $this->name,
+            'type' => $this->type,
+            'color' => $this->color,
+            'order' => $this->order,
             // BUG FIX: this used to be `CardResource::collection($this->whenLoaded('cards'))`.
             // `whenLoaded()` omits the key entirely when the relation wasn't eager-loaded —
             // which is exactly what happened on store()/update(), since those actions only
@@ -22,8 +24,8 @@ class BoardResource extends JsonResource
             // `board.cards.map(...)` throw at runtime the moment a board was created or
             // renamed. Reading `$this->cards` directly always returns an array (lazy-loading
             // it if needed), keeping this response's shape identical to index()'s.
-            'cards'       => CardResource::collection($this->cards),
-            'created_at'  => $this->created_at?->toDateTimeString(),
+            'cards' => CardResource::collection($this->cards),
+            'created_at' => $this->created_at?->toDateTimeString(),
         ];
     }
 }

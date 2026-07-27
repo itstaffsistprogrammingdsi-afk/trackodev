@@ -2,11 +2,13 @@
 // FILE: AttachmentSection.tsx
 // ============================================
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import CreatableSelect from "react-select/creatable";
 
 import api from "@/lib/axios";
+import { resolveStorageUrl } from "@/lib/storageUrl";
+import { useAuth } from "@/context/AuthContext";
 
 import {
   Upload,
@@ -41,6 +43,8 @@ interface Props {
   deleteEndpoint?: string;
 
   downloadEndpoint?: string;
+
+  supportsResultDescription?: boolean;
 }
 
 export default function AttachmentSection({
@@ -53,18 +57,23 @@ export default function AttachmentSection({
   uploadEndpoint,
   deleteEndpoint,
   downloadEndpoint,
+  supportsResultDescription = false,
 }: Props) {
+  const { hasRole } = useAuth();
+  const canCreateResultDescriptionTemplate =
+    supportsResultDescription &&
+    (hasRole("admin") || hasRole("super_admin"));
   const [uploading, setUploading] = useState(false);
 
   const [linkUrl, setLinkUrl] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [resultDescription, setResultDescription] = useState("");
-  const [descriptionOptions, setDescriptionOptions] = useState([
-    { value: "Foto", label: "Foto" },
-    { value: "Video", label: "Video" },
-    { value: "Halaman", label: "Halaman" },
-  ]);
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const [descriptionOptions, setDescriptionOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  const MAX_FILE_SIZE = 11254 * 1024; // ≈ 10.99 MB
 
   type DescriptionOption = {
   value: string;
@@ -120,19 +129,53 @@ export default function AttachmentSection({
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const [previewFile, setPreviewFile] = useState<Attachment | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [failedThumbnailIds, setFailedThumbnailIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const previewRequestRef = useRef(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // =========================================
   // FETCH
   // =========================================
 
+  useEffect(() => {
+    if (!supportsResultDescription) return;
+
+    let active = true;
+    setTemplatesLoading(true);
+
+    api.get("/result-description-templates")
+      .then((response) => {
+        if (!active) return;
+
+        const templates = response.data?.data ?? [];
+        setDescriptionOptions(
+          templates.map((template: { name: string }) => ({
+            value: template.name,
+            label: template.name,
+          })),
+        );
+      })
+      .catch((error) => console.error("Gagal memuat template result description:", error))
+      .finally(() => active && setTemplatesLoading(false));
+
+    return () => {
+      active = false;
+    };
+  }, [supportsResultDescription]);
   // =========================================
   // ESC CLOSE PREVIEW
   // =========================================
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        previewRequestRef.current += 1;
         setPreviewOpen(false);
+        setPreviewUrl(null);
       }
     };
 
@@ -140,6 +183,14 @@ export default function AttachmentSection({
 
     return () => window.removeEventListener("keydown", esc);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith("blob:")) {
+        window.URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   // =========================================
   // FORMAT SIZE
@@ -159,11 +210,8 @@ export default function AttachmentSection({
   // =========================================
   // FILE URL
   // =========================================
-  const getFileUrl = (path?: string) => {
-    if (!path) return "#";
-
-    return `${import.meta.env.VITE_API_URL}/storage/${path}`;
-  };
+  const getFileUrl = (attachment: Attachment) =>
+    resolveStorageUrl(attachment.file_url || attachment.file_path);
 
   const isImage = (fileName?: string, fileType?: string) => {
     const value = (fileType || fileName || "").toLowerCase();
@@ -190,10 +238,36 @@ export default function AttachmentSection({
   // =========================================
   // OPEN PREVIEW
   // =========================================
-  const openPreview = (item: Attachment) => {
+  const openPreview = async (item: Attachment) => {
+    const requestId = previewRequestRef.current + 1;
+    previewRequestRef.current = requestId;
     setPreviewFile(item);
-
     setPreviewOpen(true);
+    setPreviewUrl(null);
+    setPreviewError("");
+    setPreviewLoading(true);
+
+    try {
+      if (!downloadEndpoint) throw new Error("Endpoint preview tidak tersedia");
+
+      const response = await api.get(
+        `${downloadEndpoint}/${item.id}/download`,
+        { responseType: "blob" },
+      );
+
+      if (previewRequestRef.current !== requestId) return;
+
+      const blob = response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], { type: item.file_type });
+      setPreviewUrl(window.URL.createObjectURL(blob));
+    } catch (error) {
+      if (previewRequestRef.current !== requestId) return;
+      console.error("Preview gagal:", error);
+      setPreviewError("File tidak dapat dimuat atau sudah tidak tersedia.");
+    } finally {
+      if (previewRequestRef.current === requestId) setPreviewLoading(false);
+    }
   };
 
   const handleDownload = async (attachment: Attachment) => {
@@ -234,7 +308,7 @@ export default function AttachmentSection({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
-      alert("Ukuran file maksimal 10MB");
+      alert("Ukuran file maksimal 10,99 MB");
       e.target.value = "";
       return;
     }
@@ -252,7 +326,7 @@ export default function AttachmentSection({
       return;
     }
 
-    if (!resultDescription.trim()) {
+    if (supportsResultDescription && !resultDescription.trim()) {
       alert("Result Description wajib diisi");
       return;
     }
@@ -267,7 +341,9 @@ export default function AttachmentSection({
         formData.append("type", "file");
         formData.append("file", selectedFile);
         formData.append("quantity", String(quantity));
-        formData.append("result_description", resultDescription);
+        if (supportsResultDescription) {
+          formData.append("result_description", resultDescription);
+        }
 
         await api.post(uploadEndpoint, formData, {
           headers: {
@@ -282,7 +358,9 @@ export default function AttachmentSection({
           type: "link",
           link_url: linkUrl,
           quantity,
-          result_description: resultDescription,
+          ...(supportsResultDescription
+            ? { result_description: resultDescription }
+            : {}),
         });
       } else {
         alert("Pilih file atau isi link");
@@ -390,7 +468,7 @@ space-y-6
                   </p>
 
                   <p className="text-xs text-slate-500 mt-1">
-                    PNG, JPG, PDF, DOCX hingga 10MB
+                    Gambar, dokumen, arsip, audio, dan video hingga 10,99 MB
                   </p>
                 </div>
 
@@ -488,10 +566,14 @@ space-y-6
               </div>
 
               <p className="text-xs text-red-400">
-                File yang diunggah harus berukuran maksimal 10MB
+                File yang diunggah harus berukuran maksimal 10,99 MB
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div
+              className={`grid grid-cols-1 gap-3 ${
+                supportsResultDescription ? "md:grid-cols-2" : ""
+              }`}
+            >
               <input
                 type="number"
                 min="0"
@@ -511,7 +593,7 @@ space-y-6
     "
               />
 
-<CreatableSelect
+{supportsResultDescription && <CreatableSelect
   isClearable
   styles={selectStyles}
   placeholder="Pilih / tambah"
@@ -527,21 +609,33 @@ space-y-6
   onChange={(newValue) =>
     setResultDescription(newValue?.value || "")
   }
-  onCreateOption={(inputValue) => {
-    const newOption = {
-      value: inputValue,
-      label: inputValue,
-    };
+  isLoading={templatesLoading}
+  isValidNewOption={(inputValue) =>
+    canCreateResultDescriptionTemplate &&
+    Boolean(inputValue.trim()) &&
+    !descriptionOptions.some(
+      (option) => option.value.toLowerCase() === inputValue.trim().toLowerCase(),
+    )
+  }
+  onCreateOption={async (inputValue) => {
+    if (!canCreateResultDescriptionTemplate) return;
 
-    setDescriptionOptions((prev) => [
-      ...prev,
-      newOption,
-    ]);
+    try {
+      const response = await api.post("/result-description-templates", {
+        name: inputValue.trim(),
+      });
+      const name = response.data.data.name as string;
+      const newOption = { value: name, label: name };
 
-    setResultDescription(inputValue);
+      setDescriptionOptions((prev) => [...prev, newOption]);
+      setResultDescription(name);
+    } catch (error) {
+      console.error("Gagal membuat template result description:", error);
+      alert("Gagal membuat template Result Description");
+    }
   }}
   className="text-sm"
-/>
+/>}
             </div>
 {(selectedFile || linkUrl.trim()) && (
   <button
@@ -607,7 +701,7 @@ space-y-6
           {/* LIST */}
           {!loading &&
             attachments.map((item) => {
-              const fileUrl = getFileUrl(item.file_path);
+              const fileUrl = getFileUrl(item);
 
               const clickable = item.attachment_type === "file";
 
@@ -628,10 +722,16 @@ space-y-6
                     >
                       {/* IMAGE */}
                       {item.attachment_type === "file" &&
-                        isImage(item.file_type, item.file_name) && (
+                        isImage(item.file_type, item.file_name) &&
+                        !failedThumbnailIds.has(item.id) && (
                           <img
                             src={fileUrl}
                             alt={item.file_name}
+                            onError={() =>
+                              setFailedThumbnailIds((current) =>
+                                new Set(current).add(item.id),
+                              )
+                            }
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           />
                         )}
@@ -650,7 +750,8 @@ space-y-6
 
                       {/* OTHER FILE */}
                       {item.attachment_type === "file" &&
-                        !isImage(item.file_type, item.file_name) &&
+                        (!isImage(item.file_type, item.file_name) ||
+                          failedThumbnailIds.has(item.id)) &&
                         !isPdf(item.file_type, item.file_name) && (
                           <div className="flex h-full w-full flex-col items-center justify-center text-gray-500">
                             <File size={24} />
@@ -765,8 +866,12 @@ space-y-6
       {/* ===================================== */}
       {previewOpen && previewFile && (
         <div
-          onClick={() => setPreviewOpen(false)}
-          className="relative inset-0 z-[99999] flex items-center justify-center p-6"
+          onClick={() => {
+            previewRequestRef.current += 1;
+            setPreviewOpen(false);
+            setPreviewUrl(null);
+          }}
+          className="relative mt-4 flex w-full items-center justify-center"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -790,7 +895,11 @@ space-y-6
 
                 {/* CLOSE BUTTON */}
                 <button
-                  onClick={() => setPreviewOpen(false)}
+                  onClick={() => {
+                    previewRequestRef.current += 1;
+                    setPreviewOpen(false);
+                    setPreviewUrl(null);
+                  }}
                   className="w-9 h-9 rounded-xl hover:bg-white/10 text-white flex items-center justify-center"
                 >
                   <X size={18} />
@@ -799,42 +908,76 @@ space-y-6
             </div>
 
             {/* BODY */}
-            <div className="max-h-[85vh] overflow-auto flex items-center justify-center bg-[#111]">
-              {/* IMAGE */}
-              {isImage(previewFile.file_type) && (
-                <img
-                  src={getFileUrl(previewFile.file_path)}
-                  alt={previewFile.file_name}
-                  className="max-w-full max-h-[82vh] object-contain"
-                />
+            <div className="flex max-h-[85vh] min-h-80 items-center justify-center overflow-auto bg-[#111]">
+              {previewLoading && (
+                <div className="flex flex-col items-center gap-3 text-gray-300">
+                  <Loader2 size={32} className="animate-spin" />
+                  <span className="text-sm">Memuat preview...</span>
+                </div>
               )}
 
-              {/* PDF */}
-              {isPdf(previewFile.file_type) && (
-                <iframe
-                  src={getFileUrl(previewFile.file_path)}
-                  className="w-full h-[82vh] bg-white"
-                />
+              {!previewLoading && previewError && (
+                <div className="flex flex-col items-center px-6 text-center text-gray-300">
+                  <File size={60} />
+                  <p className="mt-4 text-lg font-medium">Preview gagal dimuat</p>
+                  <p className="mt-2 text-sm text-gray-400">{previewError}</p>
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(previewFile)}
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
+                  >
+                    <Download size={14} />
+                    Coba Download
+                  </button>
+                </div>
               )}
 
-              {/* OTHER */}
-              {!isImage(previewFile.file_type) &&
-                !isPdf(previewFile.file_type) && (
-                  <div className="h-[82vh] flex flex-col items-center justify-center text-gray-300">
+              {!previewLoading &&
+                !previewError &&
+                previewUrl &&
+                isImage(previewFile.file_type, previewFile.file_name) && (
+                  <img
+                    src={previewUrl}
+                    alt={previewFile.file_name}
+                    onError={() => {
+                      setPreviewError("Gambar gagal ditampilkan.");
+                      setPreviewUrl(null);
+                    }}
+                    className="max-h-[82vh] max-w-full object-contain"
+                  />
+                )}
+
+              {!previewLoading &&
+                !previewError &&
+                previewUrl &&
+                isPdf(previewFile.file_type, previewFile.file_name) && (
+                  <iframe
+                    src={previewUrl}
+                    title={previewFile.file_name || "Preview PDF"}
+                    onError={() => {
+                      setPreviewError("PDF gagal ditampilkan.");
+                      setPreviewUrl(null);
+                    }}
+                    className="h-[82vh] w-full bg-white"
+                  />
+                )}
+
+              {!previewLoading &&
+                !previewError &&
+                previewUrl &&
+                !isImage(previewFile.file_type, previewFile.file_name) &&
+                !isPdf(previewFile.file_type, previewFile.file_name) && (
+                  <div className="flex h-[82vh] flex-col items-center justify-center text-gray-300">
                     <File size={60} />
-
-                    <p className="mt-4 text-lg font-medium">
-                      Preview tidak tersedia
-                    </p>
-
-                    <a
-                      href={getFileUrl(previewFile.file_path)}
-                      download={previewFile.file_name}
-                      className="mt-5 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                    <p className="mt-4 text-lg font-medium">Preview tidak tersedia</p>
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(previewFile)}
+                      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
                     >
-                      <Paperclip size={14} />
+                      <Download size={14} />
                       Download File
-                    </a>
+                    </button>
                   </div>
                 )}
             </div>

@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
-
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
 use App\Services\ActivityLogService;
-
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -36,7 +36,7 @@ class UserController extends Controller
         $query = User::query()
             ->with([
                 'roles',
-                'divisions'
+                'divisions',
             ])->orderBy('name', 'asc');
 
         // ============================================
@@ -84,13 +84,11 @@ class UserController extends Controller
             $divisionId =
                 $request->division_id;
 
-            $query->where(function ($q)
-            use ($divisionId) {
+            $query->where(function ($q) use ($divisionId) {
 
                 $q->whereHas(
                     'divisions',
-                    function ($sub)
-                    use ($divisionId) {
+                    function ($sub) use ($divisionId) {
 
                         $sub->where(
                             'divisions.id',
@@ -140,9 +138,9 @@ class UserController extends Controller
             ->latest()
             ->paginate($perPage);
 
-    // ============================================
-    // ROLE STATS
-    // ============================================
+        // ============================================
+        // ROLE STATS
+        // ============================================
         /** @var Role|null $superAdminRole */
         $superAdminRole = Role::where(
             'name',
@@ -180,24 +178,24 @@ class UserController extends Controller
         // RESPONSE
         // ============================================
 
-ActivityLogService::log(
-    $request->user(),
+        ActivityLogService::log(
+            $request->user(),
 
-    'user',
-    (string) $request->user()->id,
-    'viewed',
+            'user',
+            (string) $request->user()->id,
+            'viewed',
 
-    "Melihat daftar user dengan filter: " . json_encode(
-        $request->only([
-            'search',
-            'role',
-            'division_id',
-            'assign',
-            'all',
-            'per_page',
-        ])
-    )
-);
+            'Melihat daftar user dengan filter: '.json_encode(
+                $request->only([
+                    'search',
+                    'role',
+                    'division_id',
+                    'assign',
+                    'all',
+                    'per_page',
+                ])
+            )
+        );
 
         return response()->json([
 
@@ -213,20 +211,15 @@ ActivityLogService::log(
             // PAGINATION
             // ========================================
 
-            'current_page' =>
-            $users->currentPage(),
+            'current_page' => $users->currentPage(),
 
-            'last_page' =>
-            $users->lastPage(),
+            'last_page' => $users->lastPage(),
 
-            'per_page' =>
-            $users->perPage(),
+            'per_page' => $users->perPage(),
 
-            'total' =>
-            $users->total(),
+            'total' => $users->total(),
 
-            'links' =>
-            $users->linkCollection(),
+            'links' => $users->linkCollection(),
 
             // ========================================
             // STATS
@@ -234,19 +227,15 @@ ActivityLogService::log(
 
             'stats' => [
 
-                'total_users' =>
-                User::count(),
+                'total_users' => User::count(),
 
-                'total_super_admin' =>
-                $superAdminRole?->users()->count()
+                'total_super_admin' => $superAdminRole?->users()->count()
                     ?? 0,
 
-                'total_admin' =>
-                $adminRole?->users()->count()
+                'total_admin' => $adminRole?->users()->count()
                     ?? 0,
 
-                'total_user' =>
-                $userRole?->users()->count()
+                'total_user' => $userRole?->users()->count()
                     ?? 0,
             ],
         ]);
@@ -303,19 +292,15 @@ ActivityLogService::log(
 
         $user = User::create([
 
-            'name' =>
-            $validated['name'],
+            'name' => $validated['name'],
 
-            'email' =>
-            $validated['email'],
+            'email' => $validated['email'],
 
-            'password' =>
-            Hash::make(
+            'password' => Hash::make(
                 $validated['password']
             ),
 
-            'phone' =>
-            $validated['phone'] ?? null,
+            'phone' => $validated['phone'] ?? null,
         ]);
 
         // ============================================
@@ -328,7 +313,7 @@ ActivityLogService::log(
 
         $user->load([
             'roles',
-            'divisions'
+            'divisions',
         ]);
 
         // ============================================
@@ -337,7 +322,7 @@ ActivityLogService::log(
 
         ActivityLogService::log(
             auth()->user(),
-            
+
             'user',
             (string) $user->id,
             'created',
@@ -346,11 +331,9 @@ ActivityLogService::log(
 
         return response()->json([
 
-            'message' =>
-            'User berhasil dibuat.',
+            'message' => 'User berhasil dibuat.',
 
-            'data' =>
-            new UserResource($user),
+            'data' => new UserResource($user),
 
         ], 201);
     }
@@ -372,14 +355,34 @@ ActivityLogService::log(
 
         $user->load([
             'roles',
-            'divisions'
+            'divisions',
         ]);
 
         return response()->json([
 
-            'data' =>
-            new UserResource($user),
+            'data' => new UserResource($user),
         ]);
+    }
+
+    public function permissions(Request $request, User $user): JsonResponse
+    {
+        $this->authorizePermissionManagement($request, $user);
+
+        return response()->json([
+            'data' => $this->permissionPayload($request->user(), $user),
+        ]);
+    }
+
+    public function updatePermissions(Request $request, User $user): JsonResponse
+    {
+        $this->authorizePermissionManagement($request, $user);
+        $manageable = $this->manageablePermissions($request->user())->pluck('name');
+        $validated = $request->validate([
+            'permissions' => ['required', 'array'],
+            'permissions.*' => ['string', 'distinct', Rule::in($manageable->all())],
+        ]);
+
+        return $this->persistUserPermissions($request, $user, $validated['permissions'], $manageable);
     }
 
     // ============================================
@@ -412,7 +415,7 @@ ActivityLogService::log(
             'email' => [
                 'sometimes',
                 'email',
-                'unique:users,email,' . $user->id,
+                'unique:users,email,'.$user->id,
             ],
 
             'phone' => [
@@ -432,16 +435,13 @@ ActivityLogService::log(
 
         $user->update([
 
-            'name' =>
-            $validated['name']
+            'name' => $validated['name']
                 ?? $user->name,
 
-            'email' =>
-            $validated['email']
+            'email' => $validated['email']
                 ?? $user->email,
 
-            'phone' =>
-            $validated['phone']
+            'phone' => $validated['phone']
                 ?? $user->phone,
         ]);
 
@@ -460,7 +460,7 @@ ActivityLogService::log(
 
         $user->load([
             'roles',
-            'divisions'
+            'divisions',
         ]);
 
         // ============================================
@@ -469,7 +469,7 @@ ActivityLogService::log(
 
         ActivityLogService::log(
             auth()->user(),
-            
+
             'user',
             (string) $user->id,
             'updated',
@@ -478,11 +478,9 @@ ActivityLogService::log(
 
         return response()->json([
 
-            'message' =>
-            'User berhasil diupdate.',
+            'message' => 'User berhasil diupdate.',
 
-            'data' =>
-            new UserResource($user),
+            'data' => new UserResource($user),
         ]);
     }
 
@@ -511,8 +509,7 @@ ActivityLogService::log(
 
             return response()->json([
 
-                'message' =>
-                'Tidak bisa menghapus akun sendiri.',
+                'message' => 'Tidak bisa menghapus akun sendiri.',
 
             ], 422);
         }
@@ -522,6 +519,7 @@ ActivityLogService::log(
         // ============================================
 
         $user->syncRoles([]);
+        $user->syncPermissions([]);
 
         $user->divisions()->detach();
 
@@ -537,7 +535,7 @@ ActivityLogService::log(
 
         ActivityLogService::log(
             auth()->user(),
-            
+
             'user',
             (string) $user->id,
             'deleted',
@@ -546,9 +544,97 @@ ActivityLogService::log(
 
         return response()->json([
 
-            'message' =>
-            'User berhasil dihapus.',
+            'message' => 'User berhasil dihapus.',
         ]);
+    }
+
+    private function authorizePermissionManagement(Request $request, User $target): void
+    {
+        /** @var User $actor */
+        $actor = $request->user();
+        abort_unless(
+            $actor->can('user.update'),
+            403,
+            'Anda tidak memiliki izin untuk mengatur akses user.'
+        );
+
+        if (
+            ! $actor->isSuperAdmin()
+            && ($actor->is($target) || $target->isAdmin() || $target->isSuperAdmin())
+        ) {
+            abort(403, 'Hanya super admin yang dapat mengatur akses user ini.');
+        }
+    }
+
+    private function manageablePermissions(User $actor)
+    {
+        $query = Permission::where('guard_name', 'web')->orderBy('name');
+
+        if (! $actor->isSuperAdmin()) {
+            $query->whereIn('name', $actor->getAllPermissions()->pluck('name'));
+        }
+
+        return $query->get(['id', 'name']);
+    }
+
+    private function persistUserPermissions(
+        Request $request, User $user, array $permissions, $manageable
+    ): JsonResponse {
+        $requested = $this->normalizePermissions(collect($permissions), $manageable);
+        $rolePermissions = $user->getPermissionsViaRoles()->pluck('name');
+        $protectedPermissions = $user->getDirectPermissions()
+            ->pluck('name')->diff($manageable);
+        $directPermissions = $requested->diff($rolePermissions)
+            ->merge($protectedPermissions)->unique()->values();
+        $user->syncPermissions($directPermissions->all());
+
+        ActivityLogService::log(
+            $request->user(), 'user', (string) $user->id,
+            'permissions_updated', 'Mengubah akses tambahan user '.$user->name
+        );
+
+        return response()->json([
+            'message' => 'Akses tambahan user berhasil diperbarui.',
+            'data' => $this->permissionPayload($request->user(), $user),
+        ]);
+    }
+
+    private function normalizePermissions($requested, $manageable)
+    {
+        $available = Permission::where('guard_name', 'web')->pluck('name');
+
+        foreach ($requested as $permission) {
+            [$module, $action] = array_pad(explode('.', $permission, 2), 2, null);
+            $view = $module.'.view';
+
+            if ($action !== 'view' && $available->contains($view) && $manageable->contains($view)) {
+                $requested->push($view);
+            }
+        }
+
+        return $requested->unique();
+    }
+
+    private function permissionPayload(User $actor, User $target): array
+    {
+        $target->loadMissing('roles');
+        $manageable = $this->manageablePermissions($actor)->pluck('name');
+
+        return [
+            'user' => [
+                'id' => $target->id,
+                'name' => $target->name,
+                'email' => $target->email,
+                'roles' => $target->getRoleNames()->values(),
+            ],
+            'available_permissions' => $manageable->values(),
+            'role_permissions' => $target->getPermissionsViaRoles()
+                ->pluck('name')->sort()->values(),
+            'direct_permissions' => $target->getDirectPermissions()
+                ->pluck('name')->intersect($manageable)->sort()->values(),
+            'effective_permissions' => $target->getAllPermissions()
+                ->pluck('name')->sort()->values(),
+        ];
     }
 
     public function mentionable(
@@ -562,7 +648,7 @@ ActivityLogService::log(
                 'id',
                 'name',
                 'email',
-                'avatar'
+                'avatar',
             ]);
 
         // ============================================
@@ -591,7 +677,7 @@ ActivityLogService::log(
         // FILTER BERDASARKAN DIVISION
         // ============================================
 
-        if (!$user->isSuperAdmin()) {
+        if (! $user->isSuperAdmin()) {
 
             $divisionIds = $user
                 ->divisions
@@ -599,8 +685,7 @@ ActivityLogService::log(
 
             $query->whereHas(
                 'divisions',
-                fn($q) =>
-                $q->whereIn(
+                fn ($q) => $q->whereIn(
                     'divisions.id',
                     $divisionIds
                 )
@@ -612,7 +697,7 @@ ActivityLogService::log(
             ->get();
 
         return response()->json([
-            'data' => UserResource::collection($users)
+            'data' => UserResource::collection($users),
         ]);
     }
 }

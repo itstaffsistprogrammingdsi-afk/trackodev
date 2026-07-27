@@ -485,6 +485,16 @@ class MyActivityController extends Controller
 
     public function export(Request $request)
     {
+        $request->validate([
+            'type' => 'nullable|in:daily,monthly,yearly',
+            'format' => 'nullable|in:xlsx,pdf',
+            'date' => 'nullable|date_format:Y-m-d',
+            'start_date' => 'nullable|required_with:end_date|date_format:Y-m-d',
+            'end_date' => 'nullable|required_with:start_date|date_format:Y-m-d|after_or_equal:start_date',
+            'month' => 'nullable|integer|between:1,12',
+            'year' => 'nullable|integer|between:2000,2100',
+        ]);
+
         $type = $request->input('type', 'daily');
 
         if (! in_array($type, self::ALLOWED_EXPORT_TYPES)) {
@@ -649,12 +659,28 @@ class MyActivityController extends Controller
     {
         switch ($type) {
             case 'monthly':
-                $month = (int) $request->input('month', now()->month);
-                $year = (int) $request->input('year', now()->year);
+                if ($request->filled(['start_date', 'end_date'])) {
+                    $start = Carbon::createFromFormat(
+                        'Y-m-d',
+                        $request->string('start_date')->toString()
+                    )->startOfDay();
+                    $end = Carbon::createFromFormat(
+                        'Y-m-d',
+                        $request->string('end_date')->toString()
+                    )->endOfDay();
+                    $label = sprintf(
+                        '%s - %s',
+                        $start->translatedFormat('d F Y'),
+                        $end->translatedFormat('d F Y')
+                    );
+                } else {
+                    $month = (int) $request->input('month', now()->month);
+                    $year = (int) $request->input('year', now()->year);
 
-                $start = Carbon::create($year, $month, 1)->startOfMonth();
-                $end = $start->copy()->endOfMonth();
-                $label = $start->translatedFormat('F Y');
+                    $start = Carbon::create($year, $month, 1)->startOfMonth();
+                    $end = $start->copy()->endOfMonth();
+                    $label = $start->translatedFormat('F Y');
+                }
                 break;
 
             case 'yearly':

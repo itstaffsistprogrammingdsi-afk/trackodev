@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BoardResource;
 use App\Models\Board;
 use App\Models\Campaign;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Services\ActivityLogService;
+use Illuminate\Validation\ValidationException;
 
 class BoardController extends Controller
 {
@@ -36,7 +37,7 @@ class BoardController extends Controller
             ->get();
 
         return response()->json([
-            'data' => BoardResource::collection($boards)
+            'data' => BoardResource::collection($boards),
         ]);
     }
 
@@ -51,7 +52,7 @@ class BoardController extends Controller
         );
 
         $request->validate([
-            'name'  => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'color' => 'nullable|string|max:20',
         ]);
 
@@ -62,7 +63,7 @@ class BoardController extends Controller
             $order = (int) ($campaign->boards()->lockForUpdate()->max('order')) + 1;
 
             return $campaign->boards()->create([
-                'name'  => $request->name,
+                'name' => $request->name,
                 'color' => $request->color ?? '#6366f1',
                 'order' => $order,
             ]);
@@ -84,7 +85,7 @@ class BoardController extends Controller
 
         return response()->json([
             'message' => 'Board berhasil dibuat.',
-            'data'    => new BoardResource($board),
+            'data' => new BoardResource($board),
         ], 201);
     }
 
@@ -99,7 +100,7 @@ class BoardController extends Controller
         );
 
         $request->validate([
-            'name'  => 'sometimes|string|max:255',
+            'name' => 'sometimes|string|max:255',
             'color' => 'nullable|string|max:20',
         ]);
 
@@ -121,38 +122,93 @@ class BoardController extends Controller
 
         return response()->json([
             'message' => 'Board berhasil diupdate.',
-            'data'    => new BoardResource($board),
+            'data' => new BoardResource($board),
         ]);
     }
 
     public function reorder(Request $request): JsonResponse
     {
-        $request->validate([
-            'boards'         => 'required|array|min:1',
-            'boards.*.id'    => 'required|uuid|exists:boards,id',
-            'boards.*.order' => 'required|integer',
+        $validated = $request->validate([
+            'boards' => 'required|array|min:1',
+            'boards.*.id' => 'required|uuid|distinct|exists:boards,id',
+            'boards.*.order' => 'required|integer|min:0|distinct',
         ]);
 
         $user = $request->user();
+        $requestedBoards = collect($validated['boards']);
+        $normalizeBoardKey = static fn (?string $value): string => strtolower(
+            (string) preg_replace('/[\s-]+/', '_', trim((string) $value))
+        );
+        $isOrderLocked = static function (Board $board) use ($normalizeBoardKey): bool {
+            $lockedKeys = ['by_request', 'request', 'done'];
 
-        $boards = Board::whereIn('id', collect($request->boards)->pluck('id'))
-            ->get()
-            ->keyBy('id');
+            return in_array($normalizeBoardKey($board->type), $lockedKeys, true)
+                || in_array($normalizeBoardKey($board->name), $lockedKeys, true);
+        };
 
-        // Every board in the payload must belong to a campaign the
-        // requesting user can access -- previously this endpoint let
-        // any authenticated user reorder any board in the system.
-        foreach ($boards as $board) {
-            abort_unless($board->canBeAccessedBy($user), 403, 'Unauthorized');
-        }
+        $firstBoard = DB::transaction(function () use (
+            $requestedBoards,
+            $user,
+            $isOrderLocked
+        ) {
+            $payloadBoards = Board::query()
+                ->whereIn('id', $requestedBoards->pluck('id'))
+                ->get();
 
-        DB::transaction(function () use ($request, $boards) {
-            foreach ($request->boards as $item) {
-                $boards[$item['id']]->update(['order' => $item['order']]);
+            if ($payloadBoards->count() !== $requestedBoards->count()) {
+                throw ValidationException::withMessages([
+                    'boards' => 'Daftar board tidak valid.',
+                ]);
             }
-        });
 
-        $firstBoard = $boards->first();
+            foreach ($payloadBoards as $board) {
+                abort_unless($board->canBeAccessedBy($user), 403, 'Unauthorized');
+            }
+
+            $campaignIds = $payloadBoards->pluck('campaign_id')->unique();
+            if ($campaignIds->count() !== 1) {
+                throw ValidationException::withMessages([
+                    'boards' => 'Semua board harus berasal dari campaign yang sama.',
+                ]);
+            }
+
+            $campaignBoards = Board::query()
+                ->where('campaign_id', $campaignIds->first())
+                ->lockForUpdate()
+                ->orderBy('order')
+                ->orderBy('created_at')
+                ->orderBy('id')
+                ->get();
+
+            $expectedIds = $campaignBoards->pluck('id')->sort()->values()->all();
+            $requestedIds = $requestedBoards->pluck('id')->sort()->values()->all();
+            if ($expectedIds !== $requestedIds) {
+                throw ValidationException::withMessages([
+                    'boards' => 'Urutan harus memuat seluruh board dalam campaign.',
+                ]);
+            }
+
+            $requestedByPosition = $requestedBoards
+                ->sortBy('order')
+                ->values();
+
+            foreach ($campaignBoards as $position => $board) {
+                if (
+                    $isOrderLocked($board)
+                    && $requestedByPosition->get($position)['id'] !== $board->id
+                ) {
+                    throw ValidationException::withMessages([
+                        'boards' => 'Column By Request dan Done tidak dapat dipindahkan.',
+                    ]);
+                }
+            }
+
+            foreach ($requestedByPosition as $position => $item) {
+                Board::whereKey($item['id'])->update(['order' => $position + 1]);
+            }
+
+            return $campaignBoards->first();
+        });
 
         ActivityLogService::log(
             $user,
@@ -164,7 +220,7 @@ class BoardController extends Controller
         );
 
         return response()->json([
-            'message' => 'Board berhasil direorder.'
+            'message' => 'Board berhasil direorder.',
         ]);
     }
 

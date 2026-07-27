@@ -3,9 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class PermissionSeeder extends Seeder
@@ -57,10 +56,31 @@ class PermissionSeeder extends Seeder
             'task.delete',
             'task.assign',
 
+            // LABEL
+            'label.view',
+            'label.create',
+            'label.update',
+            'label.delete',
+            'label.attach',
+            'label.detach',
+
+            // BRAND
+            'brand.view',
+            'brand.create',
+            'brand.update',
+            'brand.delete',
+            'brand.attach',
+            'brand.detach',
+
             'dashboard.view',
             'report.view',
             'profile.view',
             'form.view',
+            'form.create',
+            'form.update',
+            'form.delete',
+            'form.responses.view',
+            'form.submission.assign',
         ];
 
         // ============================================
@@ -74,6 +94,9 @@ class PermissionSeeder extends Seeder
                 'guard_name' => 'web',
             ]);
         }
+
+        // Permission lama terlalu luas dan tidak lagi digunakan.
+        Permission::whereIn('name', ['label.manage', 'brand.manage'])->delete();
 
         // ============================================
         // ROLES
@@ -115,9 +138,9 @@ class PermissionSeeder extends Seeder
             'user.delete',
             'user.bypass',
 
-            //DIVISION
+            // DIVISION
             'division.view',
-            
+
             // WORKSPACE
             'workspace.view',
             'workspace.create',
@@ -136,9 +159,30 @@ class PermissionSeeder extends Seeder
             'task.update',
             'task.delete',
             'task.assign',
+
+            // LABEL
+            'label.view',
+            'label.create',
+            'label.update',
+            'label.delete',
+            'label.attach',
+            'label.detach',
+
+            // BRAND
+            'brand.view',
+            'brand.create',
+            'brand.update',
+            'brand.delete',
+            'brand.attach',
+            'brand.detach',
             'dashboard.view',
             'report.view',
             'form.view',
+            'form.create',
+            'form.update',
+            'form.delete',
+            'form.responses.view',
+            'form.submission.assign',
         ]);
 
         // ============================================
@@ -146,11 +190,11 @@ class PermissionSeeder extends Seeder
         // ============================================
 
         $user->syncPermissions([
-            
+
             // USER
             'user.view',
 
-            //DIVISION
+            // DIVISION
             'division.view',
 
             // WORKSPACE
@@ -168,6 +212,14 @@ class PermissionSeeder extends Seeder
             'task.update',
             'task.delete',
             'task.assign',
+
+            // LABEL / BRAND: user hanya memilih dan melepas master data.
+            'label.view',
+            'label.attach',
+            'label.detach',
+            'brand.view',
+            'brand.attach',
+            'brand.detach',
         ]);
 
         // ============================================

@@ -15,6 +15,12 @@ import MemberSection from "./sections/MemberSection";
 import AttachmentSection from "./sections/AttachmentSection";
 import BrandSection from "./sections/BrandSection";
 import LabelSection from "./sections/LabelSection";
+import { useAuth } from '../../../context/AuthContext';
+import {
+  dueDateBadgeClasses,
+  getDueDateStatus,
+  isCardOverdue,
+} from "../utils/dueDate";
 
 interface Props {
   card: Card;
@@ -102,6 +108,7 @@ export default function CardDetailSidebar({
   briefLoading,
   fetchBriefAttachments,
 }: Props) {
+  const { can } = useAuth();
   const toggleMembers = () => setShowMembers((prev) => !prev);
   const toggleDueDate = () => setShowDueDate((prev) => !prev);
   const toggleBrief = () => setShowBrief((prev) => !prev);
@@ -118,6 +125,8 @@ export default function CardDetailSidebar({
     files: briefAttachments.filter((a) => a.attachment_type === "file").length,
     links: briefAttachments.filter((a) => a.attachment_type === "link").length,
   };
+  const dueStatus = getDueDateStatus(card.due_date);
+  const deleteDisabled = card.is_overdue === true || isCardOverdue(card.due_date);
 
   return (
     <div className="w-full space-y-6">
@@ -152,7 +161,7 @@ export default function CardDetailSidebar({
           </div>
 
           {/* LABELS */}
-          <div>
+          {can('label.view') && <div>
             <SidebarButton
               icon={<Tag size={16} />}
               label="Labels"
@@ -163,10 +172,10 @@ export default function CardDetailSidebar({
                 <LabelSection detail={card} setDetail={setDetail} />
               </div>
             )}
-          </div>
+          </div>}
 
           {/* BRANDS */}
-          <div>
+          {can('brand.view') && <div>
             <SidebarButton
               icon={<Layers size={16} />}
               label="Brand"
@@ -181,7 +190,7 @@ export default function CardDetailSidebar({
                 />
               </div>
             )}
-          </div>
+          </div>}
 
           {/* DUE DATE */}
           <div>
@@ -189,6 +198,19 @@ export default function CardDetailSidebar({
               icon={<Clock3 size={16} />}
               label="Due Date"
               onClick={toggleDueDate}
+              badge={
+                dueStatus !== "none" ? (
+                  <span
+                    className={`inline-flex rounded-full border px-2 py-0.5 font-semibold ${dueDateBadgeClasses[dueStatus]}`}
+                  >
+                    {dueStatus === "overdue"
+                      ? "Overdue"
+                      : dueStatus === "warning"
+                        ? "Due soon"
+                        : "On track"}
+                  </span>
+                ) : undefined
+              }
             />
             {showDueDate && (
               <div className="mt-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
@@ -230,6 +252,7 @@ export default function CardDetailSidebar({
                   uploadEndpoint={`/cards/${card.id}/attachments`}
                   deleteEndpoint="/attachments"
                   downloadEndpoint="/attachments"
+                  supportsResultDescription
                 />
               </div>
             )}
@@ -274,16 +297,28 @@ export default function CardDetailSidebar({
           <button
             type="button"
             onClick={handleDelete}
+            disabled={deleteDisabled}
+            title={
+              deleteDisabled
+                ? "Card overdue tidak dapat dihapus"
+                : "Hapus card"
+            }
             className="
               flex h-10 w-full items-center justify-center gap-2 rounded-xl 
               border border-rose-200/80 bg-rose-50/80 px-4 text-xs font-semibold 
               text-rose-600 transition-all duration-200 hover:bg-rose-100 
               hover:text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 
               dark:text-rose-400 dark:hover:bg-rose-900/50 dark:hover:text-rose-300
+              disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100
+              disabled:text-slate-400 disabled:hover:bg-slate-100
+              dark:disabled:border-slate-700 dark:disabled:bg-slate-800
+              dark:disabled:text-slate-500 dark:disabled:hover:bg-slate-800
             "
           >
             <Trash2 size={15} />
-            <span>Delete Card</span>
+            <span>
+              {deleteDisabled ? "Cannot Delete Overdue Card" : "Delete Card"}
+            </span>
           </button>
         </div>
       </div>

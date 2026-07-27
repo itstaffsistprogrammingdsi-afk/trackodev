@@ -1,3 +1,5 @@
+import { resolveStorageUrl } from "@/lib/storageUrl";
+
 export default function RenderCellValue({
   value,
   compact = false,
@@ -32,9 +34,7 @@ export default function RenderCellValue({
   const isVideo = /\.(mp4|webm|ogg)$/i.test(str);
   const isFile = /\.(pdf|doc|docx|xls|xlsx|zip)$/i.test(str);
 
-  const fileUrl = isUrl
-    ? str
-    : `http://localhost:8000/storage/${str}`;
+  const fileUrl = resolveStorageUrl(str);
 
   if (isImage) {
     return (

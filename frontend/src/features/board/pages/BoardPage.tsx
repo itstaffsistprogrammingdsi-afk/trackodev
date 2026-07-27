@@ -12,11 +12,15 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 
-import { arrayMove } from "@dnd-kit/sortable";
+import {
+  arrayMove,
+  horizontalListSortingStrategy,
+  SortableContext,
+} from "@dnd-kit/sortable";
 
 import { useBoards } from "../hooks/useBoards";
 
-import BoardColumn from "../components/BoardColumn";
+import SortableBoardColumn from "../components/SortableBoardColumn";
 import BoardListView from "../components/BoardListView";
 import BoardFormModal from "../components/BoardFormModal";
 import DeleteBoardDialog from "../components/DeleteBoardDialog";
@@ -24,9 +28,15 @@ import DeleteBoardDialog from "../components/DeleteBoardDialog";
 import CardDetailModal from "@/features/card/components/CardDetailModal";
 
 import { moveCard, reorderCards } from "@/features/card/api/card.api";
+import { reorderBoards } from "../api/board.api";
 
 import { Board } from "../types";
 import { Card } from "@/features/card/types";
+import {
+  getBoardIdFromSortableId,
+  getBoardSortableId,
+  isBoardOrderLocked,
+} from "../utils/boardOrder";
 
 import { Kanban, List, Plus, FolderKanban, Loader2 } from "lucide-react";
 
@@ -64,6 +74,7 @@ export default function BoardPage() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [activeBoard, setActiveBoard] = useState<Board | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
 
   // =========================================
@@ -147,10 +158,19 @@ export default function BoardPage() {
   // DRAG START
   // =========================================
   const handleDragStart = (event: DragStartEvent): void => {
+    if (event.active.data.current?.entityType === "board") {
+      const boardId = getBoardIdFromSortableId(String(event.active.id));
+      const board = boards.find((item) => item.id === boardId) ?? null;
+      setActiveBoard(board);
+      setActiveCard(null);
+      return;
+    }
+
     const rawCard = event.active.data.current?.card;
 
     if (isCard(rawCard)) {
       setActiveCard(rawCard);
+      setActiveBoard(null);
     }
   };
 
@@ -162,18 +182,82 @@ export default function BoardPage() {
       const { active, over } = event;
 
       setActiveCard(null);
+      setActiveBoard(null);
 
       if (!over) return;
 
       const activeId = String(active.id);
       const overId = String(over.id);
 
+      if (active.data.current?.entityType === "board") {
+        const activeBoardId = getBoardIdFromSortableId(activeId);
+        const draggedBoard = boards.find((board) => board.id === activeBoardId);
+        const overBoardFromData = over.data.current?.board as Board | undefined;
+        const overCard = findCard(overId);
+        const targetBoardId =
+          overBoardFromData?.id ??
+          getBoardIdFromSortableId(overId) ??
+          overCard?.board.id ??
+          boards.find((board) => board.id === overId)?.id;
+        const targetBoard = boards.find((board) => board.id === targetBoardId);
+
+        if (
+          !draggedBoard ||
+          !targetBoard ||
+          draggedBoard.id === targetBoard.id ||
+          isBoardOrderLocked(draggedBoard) ||
+          isBoardOrderLocked(targetBoard)
+        ) {
+          return;
+        }
+
+        const movableBoards = boards.filter(
+          (board) => !isBoardOrderLocked(board),
+        );
+        const oldIndex = movableBoards.findIndex(
+          (board) => board.id === draggedBoard.id,
+        );
+        const newIndex = movableBoards.findIndex(
+          (board) => board.id === targetBoard.id,
+        );
+
+        if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
+
+        const reorderedMovableBoards = arrayMove(
+          movableBoards,
+          oldIndex,
+          newIndex,
+        );
+        let movableIndex = 0;
+        const reorderedBoards = boards
+          .map((board) =>
+            isBoardOrderLocked(board)
+              ? board
+              : reorderedMovableBoards[movableIndex++],
+          )
+          .map((board, index) => ({ ...board, order: index + 1 }));
+
+        setBoards(reorderedBoards);
+
+        await reorderBoards(
+          reorderedBoards.map((board) => ({
+            id: board.id,
+            order: board.order,
+          })),
+        );
+
+        await refetch();
+        return;
+      }
+
       const activeData = findCard(activeId);
       if (!activeData) return;
 
       const sourceBoard = activeData.board;
       const overCardData = findCard(overId);
-      const targetBoardId = overCardData ? overCardData.board.id : overId;
+      const targetBoardId = overCardData
+        ? overCardData.board.id
+        : getBoardIdFromSortableId(overId) ?? overId;
 
       if (!targetBoardId) return;
 
@@ -319,6 +403,10 @@ export default function BoardPage() {
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => {
+        setActiveCard(null);
+        setActiveBoard(null);
+      }}
     >
 <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors">
   {/* ===================================== */}
@@ -416,16 +504,17 @@ export default function BoardPage() {
       </div>
     ) : viewMode === "kanban" ? (
       /* KANBAN BOARD VIEW */
-      <div
-        className="flex w-full gap-4 overflow-x-auto overflow-y-hidden pb-6 custom-scrollbar"
-        style={{ touchAction: "pan-x" }}
+      <SortableContext
+        items={boards.map((board) => getBoardSortableId(board.id))}
+        strategy={horizontalListSortingStrategy}
       >
-        {boards.map((board) => (
-          <div
-            key={board.id}
-            className="w-[85vw] max-w-[320px] shrink-0 sm:w-[320px] sm:max-w-none transition-all"
-          >
-            <BoardColumn
+        <div
+          className="flex w-full gap-4 overflow-x-auto overflow-y-hidden pb-6 custom-scrollbar"
+          style={{ touchAction: "pan-x" }}
+        >
+          {boards.map((board) => (
+            <SortableBoardColumn
+              key={board.id}
               board={board}
               onCardCreated={refetch}
               onRefresh={refetch}
@@ -433,9 +522,9 @@ export default function BoardPage() {
               onEdit={() => setEditingBoard(board)}
               onDelete={() => setDeletingBoard(board)}
             />
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </SortableContext>
     ) : (
       /* LIST VIEW */
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-sm">
@@ -493,7 +582,17 @@ export default function BoardPage() {
       {/* DRAG OVERLAY */}
       {/* ===================================== */}
       <DragOverlay>
-        {activeCard ? (
+        {activeBoard ? (
+          <div className="w-[300px] rounded-2xl border border-blue-500/30 bg-white p-4 shadow-2xl ring-2 ring-blue-500/20 dark:bg-slate-900">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+              <FolderKanban className="h-4 w-4 text-blue-500" />
+              <span>{activeBoard.name}</span>
+            </div>
+            <div className="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+              Moving column...
+            </div>
+          </div>
+        ) : activeCard ? (
           <div className="w-[300px] rotate-2 scale-105 rounded-2xl border border-blue-500/30 bg-white dark:bg-slate-900 p-4 shadow-2xl ring-2 ring-blue-500/20 transition-all cursor-grabbing">
             <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
               {activeCard.title}

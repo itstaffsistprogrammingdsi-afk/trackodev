@@ -72,6 +72,8 @@ export interface Attachment {
 
   file_path?: string;
 
+  file_url?: string;
+
   file_type?: string;
 
   file_size?: number;
@@ -103,6 +105,7 @@ export type Card = {
   priority?: CardPriority;
 
   due_date?: string | null;
+  is_overdue?: boolean;
 
   comments?: CardComment[];
 

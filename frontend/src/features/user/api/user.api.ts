@@ -1,5 +1,5 @@
 import api from "@/lib/axios";
-import { User } from "../types";
+import { User, UserPermissionData } from '../types';
 
 export const getUsers = async (): Promise<User[]> => {
   const res = await api.get(
@@ -29,3 +29,18 @@ export const searchUsers = async (
 
   return res.data.data
 }
+
+export const getUserPermissions = async (
+  userId: string
+): Promise<UserPermissionData> => {
+  const res = await api.get(`/users/${userId}/permissions`);
+  return res.data.data;
+};
+
+export const updateUserPermissions = async (
+  userId: string,
+  permissions: string[]
+): Promise<UserPermissionData> => {
+  const res = await api.put(`/users/${userId}/permissions`, { permissions });
+  return res.data.data;
+};

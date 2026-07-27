@@ -191,6 +191,12 @@ class Card extends Model
         || !is_null($this->completed_at);
 }
 
+public function isOverdue(): bool
+{
+    return $this->due_date !== null
+        && $this->due_date->isPast();
+}
+
 public function reminderLocked(): bool
 {
     return $this->due_reminder_lock_until

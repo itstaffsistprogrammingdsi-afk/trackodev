@@ -5,30 +5,31 @@ use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\CalendarController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\CardBrandController;
 use App\Http\Controllers\Api\CardController;
 use App\Http\Controllers\Api\CardLabelController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\DailyTodoController;
 use App\Http\Controllers\Api\DivisionController;
 use App\Http\Controllers\Api\FormController;
 use App\Http\Controllers\Api\FormFieldController;
 use App\Http\Controllers\Api\FormSubmissionController;
 use App\Http\Controllers\Api\LabelController;
+use App\Http\Controllers\Api\MyActivityController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PublicFormController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ResultDescriptionTemplateController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\WorkspaceController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Api\MyActivityController;
 // use App\Mail\CardAssignedMail;
 // use App\Models\Card;
 // use App\Models\User;
-use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\CalendarController;
 
 // ============================================
 // PUBLIC FORMS
@@ -49,11 +50,9 @@ Route::post(
     [PublicFormController::class, 'submit']
 );
 
-
 // ============================================
 // HEALTH CHECK
 // ============================================
-
 
 Route::get('/ping', function () {
 
@@ -88,11 +87,11 @@ Route::prefix('auth')->group(function () {
             [AuthController::class, 'me']
         );
 
-    Route::put('/profile', [AuthController::class, 'updateProfile']);
+        Route::put('/profile', [AuthController::class, 'updateProfile']);
 
-    Route::put('/password', [AuthController::class, 'updatePassword']);
+        Route::put('/password', [AuthController::class, 'updatePassword']);
 
-    Route::post('/avatar', [AuthController::class, 'updateAvatar']);
+        Route::post('/avatar', [AuthController::class, 'updateAvatar']);
     });
 });
 
@@ -118,24 +117,27 @@ Route::middleware([
     // USER MANAGEMENT
     // ========================================
 
+    Route::get('users/{user}/permissions', [UserController::class, 'permissions'])
+        ->middleware('permission:user.update');
+    Route::put('users/{user}/permissions', [UserController::class, 'updatePermissions'])
+        ->middleware('permission:user.update');
+
     Route::apiResource(
         'users',
         UserController::class
-    )
-        // ->middleware([
-        //     'index'   => 'permission:user.view',
-        //     'store'   => 'permission:user.create',
-        //     'show'    => 'permission:user.view',
-        //     'update'  => 'permission:user.update',
-        //     'destroy' => 'permission:user.delete',
-        // ])
-    ;
+    );
+    // ->middleware([
+    //     'index'   => 'permission:user.view',
+    //     'store'   => 'permission:user.create',
+    //     'show'    => 'permission:user.view',
+    //     'update'  => 'permission:user.update',
+    //     'destroy' => 'permission:user.delete',
+    // ])
 
     Route::get(
         'users-stats',
         [UserController::class, 'stats']
     )->middleware('permission:user.view');
-
 
     // ========================================
     // DIVISIONS
@@ -368,7 +370,7 @@ Route::middleware([
         [CardController::class, 'destroy']
     )->middleware('permission:task.delete');
 
-    Route::get('/daily-todo', [\App\Http\Controllers\Api\DailyTodoController::class, 'index']);
+    Route::get('/daily-todo', [DailyTodoController::class, 'index']);
     Route::get(
         '/my-activities',
         [MyActivityController::class, 'index']
@@ -403,48 +405,68 @@ Route::middleware([
     // LABELS
     // ========================================
 
-    Route::apiResource(
-        'labels',
-        LabelController::class
-    );
+    Route::get('labels', [LabelController::class, 'index'])
+        ->middleware('permission:label.view');
+    Route::post('labels', [LabelController::class, 'store'])
+        ->middleware('permission:label.create');
+    Route::put('labels/{label}', [LabelController::class, 'update'])
+        ->middleware('permission:label.update');
+    Route::delete('labels/{label}', [LabelController::class, 'destroy'])
+        ->middleware('permission:label.delete');
 
     Route::post(
         'cards/{card}/labels',
         [CardLabelController::class, 'attach']
-    )->middleware('permission:task.update');
+    )->middleware('permission:label.attach');
 
     Route::delete(
         'cards/{card}/labels/{label}',
         [CardLabelController::class, 'detach']
-    )->middleware('permission:task.update');
+    )->middleware('permission:label.detach');
 
     Route::patch(
         'cards/{card}/labels',
         [CardLabelController::class, 'toggle']
-    )->middleware('permission:task.update');
+    );
 
     // ========================================
     // BRANDS
     // ========================================
 
-    Route::apiResource(
-        'brands',
-        BrandController::class
-    );
+    Route::get('brands', [BrandController::class, 'index'])
+        ->middleware('permission:brand.view');
+    Route::post('brands', [BrandController::class, 'store'])
+        ->middleware('permission:brand.create');
+    Route::get('brands/{brand}', [BrandController::class, 'show'])
+        ->middleware('permission:brand.view');
+    Route::put('brands/{brand}', [BrandController::class, 'update'])
+        ->middleware('permission:brand.update');
+    Route::delete('brands/{brand}', [BrandController::class, 'destroy'])
+        ->middleware('permission:brand.delete');
 
     Route::post(
         'cards/{card}/brands/{brand}/attach',
         [CardBrandController::class, 'attach']
-    )->middleware('permission:task.update');
+    )->middleware('permission:brand.attach');
 
     Route::delete(
         'cards/{card}/brands/{brand}/detach',
         [CardBrandController::class, 'detach']
-    )->middleware('permission:task.update');
+    )->middleware('permission:brand.detach');
 
     // ========================================
     // ATTACHMENTS
     // ========================================
+
+    Route::get(
+        'result-description-templates',
+        [ResultDescriptionTemplateController::class, 'index']
+    )->middleware('permission:task.view');
+
+    Route::post(
+        'result-description-templates',
+        [ResultDescriptionTemplateController::class, 'store']
+    );
 
     Route::get(
         'cards/{card}/attachments',
@@ -620,10 +642,6 @@ Route::middleware([
 
     Route::get('/calendar/{date}', [CalendarController::class, 'show']);
 
-
-
-
-
     // ========================================
     // NOTIFICATIONS
     // ========================================
@@ -655,27 +673,27 @@ Route::middleware([
     Route::get(
         'forms',
         [FormController::class, 'index']
-    );
+    )->middleware('permission:form.view');
 
     Route::post(
         'forms',
         [FormController::class, 'store']
-    );
+    )->middleware('permission:form.create');
 
     Route::get(
         'forms/{form}',
         [FormController::class, 'show']
-    );
+    )->middleware('permission:form.view');
 
     Route::put(
         'forms/{form}',
         [FormController::class, 'update']
-    );
+    )->middleware('permission:form.update');
 
     Route::delete(
         'forms/{form}',
         [FormController::class, 'destroy']
-    );
+    )->middleware('permission:form.delete');
 
     // ========================================
     // FORM FIELDS
@@ -684,17 +702,17 @@ Route::middleware([
     Route::post(
         'forms/{form}/fields',
         [FormFieldController::class, 'store']
-    );
+    )->middleware('permission:form.update');
 
     Route::put(
         'form-fields/{field}',
         [FormFieldController::class, 'update']
-    );
+    )->middleware('permission:form.update');
 
     Route::delete(
         'form-fields/{field}',
         [FormFieldController::class, 'destroy']
-    );
+    )->middleware('permission:form.update');
 
     // ========================================
     // FORM SUBMISSIONS
@@ -703,22 +721,22 @@ Route::middleware([
     Route::get(
         'forms/{form}/submissions',
         [FormSubmissionController::class, 'index']
-    );
+    )->middleware('permission:form.responses.view');
 
     Route::post(
         'forms/{form}/submissions',
         [FormSubmissionController::class, 'store']
-    );
+    )->middleware('permission:form.view');
 
     Route::get(
         'form-submissions/{submission}',
         [FormSubmissionController::class, 'show']
-    );
+    )->middleware('permission:form.responses.view');
 
     Route::patch(
         'form-submissions/{submission}/forward',
         [FormSubmissionController::class, 'forwardToCard']
-    );
+    )->middleware('permission:form.submission.assign');
 
     // ========================================
     // ASSIGNMENT
@@ -727,13 +745,11 @@ Route::middleware([
     Route::post(
         'form-submissions/{submission}/assign',
         [AssignmentController::class, 'assign']
-    )->middleware('permission:task.assign');
+    )->middleware('permission:form.submission.assign');
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/activities', [DashboardController::class, 'activities']);
     Route::get('/my-activities/export', [MyActivityController::class, 'export']);
-
-
 
     // ========================================
     // REPORTS & QC MANAGEMENT
@@ -759,7 +775,7 @@ Route::middleware([
         Route::get('/users/{user}/activity-logs', [ReportController::class, 'getUserActivityLogs']);
     });
 
-        Route::post(
+    Route::post(
         '/auth/bypass/{user}',
         [AuthController::class, 'bypass']
     )->middleware('permission:user.bypass');

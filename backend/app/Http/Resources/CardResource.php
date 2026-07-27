@@ -20,6 +20,7 @@ class CardResource extends JsonResource
             'priority'     => $this->priority,
             'status'       => $this->status,
             'due_date'     => $this->due_date?->toDateTimeString(),
+            'is_overdue'   => $this->isOverdue(),
             'order'        => $this->order,
             'completed_at' => $this->completed_at?->toDateTimeString(),
             'is_completed' => $this->completed_at !== null,

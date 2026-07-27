@@ -191,22 +191,22 @@ export default function App() {
 
           <Route
             path="/forms/create"
-            element={<CreateFormPage />}
+            element={<PermissionRoute permission='form.create'><CreateFormPage /></PermissionRoute>}
           />
 
           <Route
             path="/forms/:id/builder"
-            element={<FormBuilderPage />}
+            element={<PermissionRoute permission='form.update'><FormBuilderPage /></PermissionRoute>}
           />
 
           <Route
             path="/forms/:id/edit"
-            element={<EditFormPage />}
+            element={<PermissionRoute permission='form.update'><EditFormPage /></PermissionRoute>}
           />
 
           <Route
             path="/forms/:id/responses"
-            element={<FormResponsesPage />}
+            element={<PermissionRoute permission='form.responses.view'><FormResponsesPage /></PermissionRoute>}
           />
 
           <Route

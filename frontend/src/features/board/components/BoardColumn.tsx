@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -23,6 +24,7 @@ type Props = {
   onOpenCard?: (card: Card) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  dragHandle?: ReactNode;
 };
 
 const priorities = [
@@ -49,6 +51,7 @@ export default function BoardColumn({
   onOpenCard,
   onEdit,
   onDelete,
+  dragHandle,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: board.id });
   const { data: users = [] } = useUsers();
@@ -209,6 +212,7 @@ export default function BoardColumn({
       {/* HEADER COLUMN */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0">
         <div className="flex min-w-0 items-center gap-2.5">
+          {dragHandle}
           {board.color && (
             <span
               className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow-xs"
