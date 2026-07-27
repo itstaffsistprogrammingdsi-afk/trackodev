@@ -138,7 +138,11 @@ const loadUser = async (): Promise<void> => {
 const can = (
   permission: string
 ): boolean => {
-
+  // Super Admin memiliki akses penuh. Menyamakan aturan ini dengan sidebar
+  // mencegah menu yang terlihat justru ditolak oleh PermissionRoute.
+  if (user?.roles?.includes("super_admin")) {
+    return true;
+  }
 
   return (
     user?.permissions?.includes(permission)

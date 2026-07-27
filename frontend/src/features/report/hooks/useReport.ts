@@ -3,6 +3,7 @@ import { reportApi } from '../api/report.api';
 import { User, Card, FilterParams, MasterFilterOptions } from '../types';
 import api from '@/lib/axios';
 
+import { getDownloadFileName } from '@/lib/exportSecurity';
 export const useReport = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
@@ -145,27 +146,35 @@ export const useReport = () => {
   };
 
   // Export PDF/Excel
-  const handleExport = async (type: 'excel' | 'pdf', userId?: string | number) => {
+  const handleExport = async (
+    type: 'excel' | 'pdf',
+    userId: string | number | undefined,
+    exportPassword: string,
+  ) => {
     setExporting(true);
     try {
-      const exportParams: FilterParams = { ...filters };
+      const exportParams: FilterParams & { export_password: string } = {
+        ...filters,
+        export_password: exportPassword,
+      };
       delete exportParams.page;
 
       if (userId) {
         exportParams.user_id = userId;
       }
 
-      const data =
+      const response =
         type === 'excel'
           ? await reportApi.exportExcel(exportParams)
           : await reportApi.exportPdf(exportParams);
 
+      const data = response.data;
       if (data instanceof Blob && data.type === 'application/json') {
         const text = await data.text();
         try {
           const error = JSON.parse(text);
           alert(error.message || 'Terjadi kesalahan saat export');
-          return;
+          return false;
         } catch {
           // Bukan JSON
         }
@@ -176,26 +185,22 @@ export const useReport = () => {
       const link = document.createElement('a');
       link.href = url;
 
-      const prefix = userId ? `Report_User_${userId}` : `Report_Kinerja_Batch`;
-      const extension = type === 'excel' ? 'xlsx' : 'pdf';
-      const userName = userId ? users.find((u) => u.id === String(userId))?.name : '';
-      const fileName = userName
-        ? `Laporan_${userName.replace(/\s+/g, '_')}_${new Date()
-            .toISOString()
-            .slice(0, 10)}.${extension}`
-        : `${prefix}_${new Date().toISOString().slice(0, 10)}.${extension}`;
-
-      link.setAttribute('download', fileName);
+      link.setAttribute(
+        'download',
+        getDownloadFileName(response.headers['content-disposition'], `laporan-kinerja.${type === 'pdf' ? 'pdf' : 'xlsx'}`),
+      );
 
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
       setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+      return true;
     } catch (error: unknown) {
       console.error('Gagal export data:', error);
       const message = (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (error as { message?: string }).message || 'Gagal mengunduh file laporan';
       alert(message);
+      return false;
     } finally {
       setExporting(false);
     }

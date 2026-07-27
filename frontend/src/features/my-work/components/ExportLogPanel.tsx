@@ -1,7 +1,20 @@
 import { useState } from "react";
-import { Download, FileText, Loader2, FileSpreadsheet } from "lucide-react";
+import {
+  Copy,
+  Eye,
+  EyeOff,
+  FileText,
+  Loader2,
+  FileSpreadsheet,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
 
 import { exportMyWorkLog } from "../api/myWork.api";
+import {
+  EXPORT_PASSWORD_MIN_LENGTH,
+  generateExportPassword,
+} from "@/lib/exportSecurity";
 import DatePickerField from "./DatePickerField";
 import type { ExportPeriodType, ExportFormat } from "../types";
 
@@ -34,6 +47,9 @@ export default function ExportLogPanel() {
 
   const [type, setType] = useState<ExportPeriodType>("daily");
   const [format, setFormat] = useState<ExportFormat>("xlsx");
+  const [exportPassword, setExportPassword] = useState(() => generateExportPassword());
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
   // Disimpan langsung sebagai string "YYYY-MM-DD", sesuai format <input type="date">
   const [selectedDate, setSelectedDate] = useState<string>(toDateInputValue(now));
@@ -50,15 +66,32 @@ export default function ExportLogPanel() {
   const [error, setError] = useState<string | null>(null);
   const monthlyRangeInvalid = type === "monthly" && startDate > endDate;
 
+  const copyPassword = async () => {
+    await navigator.clipboard.writeText(exportPassword);
+    setPasswordCopied(true);
+    window.setTimeout(() => setPasswordCopied(false), 2000);
+  };
+
+  const regeneratePassword = () => {
+    setExportPassword(generateExportPassword());
+    setPasswordCopied(false);
+  };
+
   const handleExport = async () => {
+    setError(null);
+    if (exportPassword.length < EXPORT_PASSWORD_MIN_LENGTH) {
+      setError(`Password minimal ${EXPORT_PASSWORD_MIN_LENGTH} karakter.`);
+      return;
+    }
+
     try {
       setLoading(true);
-      setError(null);
 
       await exportMyWorkLog({
         type,
         format,
         ...(type === "daily" ? { date: selectedDate } : {}),
+        export_password: exportPassword,
         ...(type === "monthly"
           ? { start_date: startDate, end_date: endDate }
           : {}),
@@ -79,7 +112,7 @@ export default function ExportLogPanel() {
           Laporan Kinerja Individu
         </h2>
         <p className="text-xs text-gray-500 mt-1">
-          Unduh ringkasan task selesai, log aktivitas, dan attachment anda
+          Unduh ringkasan progres task dan attachment Anda
         </p>
       </div>
 
@@ -115,17 +148,26 @@ export default function ExportLogPanel() {
         {type === "monthly" && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-gray-500">
+              <label htmlFor="report-start-date" className="mb-1 block text-xs text-gray-500">
                 Tanggal Awal
               </label>
-              <DatePickerField value={startDate} onChange={setStartDate} />
+              <DatePickerField
+                id="report-start-date"
+                value={startDate}
+                onChange={setStartDate}
+              />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-gray-500">
+              <label htmlFor="report-end-date" className="mb-1 block text-xs text-gray-500">
                 Tanggal Akhir
               </label>
-              <DatePickerField value={endDate} onChange={setEndDate} />
+              <DatePickerField
+                id="report-end-date"
+                value={endDate}
+                onChange={setEndDate}
+                align="right"
+              />
             </div>
           </div>
         )}
@@ -184,6 +226,64 @@ export default function ExportLogPanel() {
         </div>
 
         {/* EXPORT BUTTON */}
+        {/* EXPORT SECURITY */}
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5">
+          <div className="mb-3 flex items-start gap-2.5">
+            <span className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
+              <ShieldCheck size={17} aria-hidden="true" />
+            </span>
+            <div>
+              <label htmlFor="my-work-export-password" className="text-xs font-semibold text-emerald-950">Password Enkripsi</label>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">File tetap berupa PDF atau Excel dan akan meminta password saat dibuka.</p>
+            </div>
+          </div>
+
+          <div className="flex min-w-0 items-stretch overflow-hidden rounded-lg border border-emerald-200 bg-white focus-within:ring-2 focus-within:ring-emerald-500/20">
+            <input
+              id="my-work-export-password"
+              type={showPassword ? "text" : "password"}
+              value={exportPassword}
+              minLength={EXPORT_PASSWORD_MIN_LENGTH}
+              maxLength={128}
+              autoComplete="new-password"
+              spellCheck={false}
+              onChange={(event) => {
+                setExportPassword(event.target.value);
+                setPasswordCopied(false);
+              }}
+              className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none"
+              aria-describedby="my-work-export-password-help"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              className="px-2 text-gray-500 transition hover:text-gray-800"
+              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={regeneratePassword}
+              className="border-l border-gray-100 px-2 text-gray-500 transition hover:text-emerald-700"
+              aria-label="Buat password baru"
+            >
+              <RefreshCw size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={copyPassword}
+              className="border-l border-gray-100 px-2.5 text-gray-500 transition hover:text-emerald-700"
+              aria-label="Salin password"
+            >
+              <Copy size={16} />
+            </button>
+          </div>
+          <p id="my-work-export-password-help" className="mt-2 text-[11px] text-emerald-800">
+            {passwordCopied ? "Password berhasil disalin." : "Minimal 12 karakter dan tidak disimpan oleh sistem."}
+          </p>
+        </div>
+
         <button
           onClick={handleExport}
           disabled={loading || monthlyRangeInvalid}
@@ -197,11 +297,11 @@ export default function ExportLogPanel() {
           {loading ? (
             <Loader2 size={16} className="animate-spin" />
           ) : (
-            <Download size={16} />
+            <ShieldCheck size={16} />
           )}
           {loading
             ? "Mengekspor..."
-            : `Export ${format === "pdf" ? "PDF" : "Excel"}`}
+            : `Export Aman ${format === "pdf" ? "PDF" : "Excel"}`}
         </button>
       </div>
     </div>

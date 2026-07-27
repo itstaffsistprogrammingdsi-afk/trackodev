@@ -4,6 +4,8 @@ import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 type Props = {
   value: string; // "YYYY-MM-DD"
   onChange: (value: string) => void;
+  align?: "left" | "right";
+  id?: string;
   className?: string;
 };
 
@@ -34,7 +36,13 @@ const isSameDay = (a: Date, b: Date) =>
  * Dipakai untuk semua field "tanggal" bertipe harian di My Work
  * (AttachmentPanel & ExportLogPanel) supaya konsisten.
  */
-export default function DatePickerField({ value, onChange, className = "" }: Props) {
+export default function DatePickerField({
+  value,
+  onChange,
+  className = "",
+  align = "left",
+  id,
+}: Props) {
   const selected = parseValue(value);
 
   const [open, setOpen] = useState(false);
@@ -116,6 +124,9 @@ export default function DatePickerField({ value, onChange, className = "" }: Pro
   return (
     <div ref={rootRef} className={`relative ${className}`}>
       <button
+        id={id}
+        aria-haspopup="dialog"
+        aria-expanded={open}
         type="button"
         onClick={openPicker}
         className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-left hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -125,7 +136,13 @@ export default function DatePickerField({ value, onChange, className = "" }: Pro
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 w-72 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
+        <div
+          role="dialog"
+          aria-label="Pilih tanggal"
+          className={`absolute z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white p-3 shadow-xl ${
+            align === "right" ? "right-0" : "left-0"
+          }`}
+        >
 
           {/* HEADER: prev/next bulan */}
           <div className="flex items-center justify-between mb-2">

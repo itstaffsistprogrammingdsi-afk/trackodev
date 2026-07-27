@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Card, User } from '../types';
+import { Attachment, Card, User } from '../types';
 import { X, Download, FileSpreadsheet, Eye, CheckCircle, Clock } from 'lucide-react';
+import { AttachmentPreviewModal } from './AttachmentPreviewModal';
 
 interface CardDetailProps {
   selectedUser: User;
@@ -26,6 +27,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
   const [qcValues, setQcValues] = useState<{ [key: string]: string }>({});
   const [qcNotes, setQcNotes] = useState<{ [key: string]: string }>({});
   const [submittingQc, setSubmittingQc] = useState<{ [key: string]: boolean }>({});
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
 
   const handleQcSubmit = async (attachmentId: string) => {
     const quantity = parseInt(qcValues[attachmentId] || '0');
@@ -174,9 +176,19 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
-                                        <p className="font-medium text-gray-800">
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewAttachment(attachment)}
+                                          disabled={attachment.attachment_type !== 'file' || !attachment.file_url}
+                                          className="max-w-full truncate text-left font-medium text-blue-700 underline decoration-blue-200 underline-offset-4 transition hover:text-blue-800 disabled:cursor-default disabled:text-gray-800 disabled:no-underline"
+                                          title={
+                                            attachment.file_url
+                                              ? `Preview ${attachment.file_name}`
+                                              : attachment.file_name
+                                          }
+                                        >
                                           {attachment.file_name}
-                                        </p>
+                                        </button>
                                         {isQcDone ? (
                                           <CheckCircle className="w-4 h-4 text-green-600" />
                                         ) : (
@@ -290,6 +302,19 @@ export const CardDetail: React.FC<CardDetailProps> = ({
           </div>
         </div>
       </div>
+
+      <AttachmentPreviewModal
+        attachment={
+          previewAttachment?.file_url
+            ? {
+                name: previewAttachment.file_name,
+                url: previewAttachment.file_url,
+                fileType: previewAttachment.file_type,
+              }
+            : null
+        }
+        onClose={() => setPreviewAttachment(null)}
+      />
     </div>
   );
 };

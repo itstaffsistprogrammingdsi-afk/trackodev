@@ -3,6 +3,8 @@ import { useReport } from '../hooks/useReport';
 import { UserList } from '../components/UserList';
 import { CardDetail } from '../components/CardDetail';
 import { ReportPreviewModal } from '../components/ReportPreviewModal';
+import { SecureExportDialog } from '../components/SecureExportDialog';
+import { generateExportPassword } from '@/lib/exportSecurity';
 
 export const ReportPage: React.FC = () => {
   const {
@@ -27,6 +29,9 @@ export const ReportPage: React.FC = () => {
   } = useReport();
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [pendingExport, setPendingExport] = useState<{ format: 'pdf' | 'excel'; userId?: string | number } | null>(null);
+  const [exportPassword, setExportPassword] = useState(() => generateExportPassword());
+
 
   const handlePreviewClick = async (userId?: string | number) => {
     const result = await handlePreview(userId);
@@ -35,14 +40,29 @@ export const ReportPage: React.FC = () => {
     }
   };
 
+  const requestSecureExport = (format: 'pdf' | 'excel', userId?: string | number) => {
+    setExportPassword(generateExportPassword());
+    setPendingExport({ format, userId });
+  };
+
+  const confirmSecureExport = async () => {
+    if (!pendingExport) return;
+
+    const success = await handleExport(
+      pendingExport.format,
+      pendingExport.userId,
+      exportPassword,
+    );
+    if (success) setPendingExport(null);
+  };
   const handleDownloadFromPreview = () => {
     if (previewData) {
-      handleExport('pdf', selectedUser?.id);
+      requestSecureExport('pdf', selectedUser?.id);
     }
   };
 
   const handleExportExcelFromPreview = () => {
-    handleExport('excel', selectedUser?.id);
+    requestSecureExport('excel', selectedUser?.id);
   };
 
   return (
@@ -58,7 +78,7 @@ export const ReportPage: React.FC = () => {
           pagination={pagination}
           loading={loadingUsers}
           masterData={masterData}
-          onExport={handleExport}
+          onExport={requestSecureExport}
           onPreview={handlePreviewClick}
           previewLoading={loadingPreview}
           exporting={exporting}
@@ -87,12 +107,24 @@ export const ReportPage: React.FC = () => {
             loading={loadingCards}
             onQcSubmit={handleQcSubmit}
             onClose={() => setSelectedUser(null)}
-            onExport={handleExport}
+            onExport={requestSecureExport}
             onPreview={handlePreviewClick}
             exporting={exporting}
           />
         )}
         
+
+        <SecureExportDialog
+          open={pendingExport !== null}
+          format={pendingExport?.format ?? 'pdf'}
+          password={exportPassword}
+          loading={exporting}
+          onPasswordChange={setExportPassword}
+          onRegenerate={() => setExportPassword(generateExportPassword())}
+          onClose={() => setPendingExport(null)}
+          onConfirm={confirmSecureExport}
+        />
+
       </div>
     </div>
   );

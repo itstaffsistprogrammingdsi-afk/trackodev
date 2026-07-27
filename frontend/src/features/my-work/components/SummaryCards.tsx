@@ -1,7 +1,6 @@
 import {
   CheckCircle2,
   ClipboardList,
-  Activity,
   TrendingUp,
 } from "lucide-react";
 
@@ -9,26 +8,26 @@ type Props = {
   totalCards: number;
   completedCards: number;
   completionRate: number;
-  totalActivities: number;
+  loading?: boolean;
 };
 
 export default function SummaryCards({
   totalCards,
   completedCards,
   completionRate,
-  totalActivities,
+  loading = false,
 }: Props) {
   const safeRate = Number.isFinite(completionRate)
     ? completionRate
     : 0;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className={`grid grid-cols-1 gap-4 transition-opacity sm:grid-cols-2 md:grid-cols-3 ${loading ? "opacity-60" : "opacity-100"}`} aria-busy={loading}>
 
       <SummaryCard
         title="Total Tasks"
         value={totalCards ?? 0}
-        description="Assigned tasks"
+        description="Task pada periode terpilih"
         icon={
           <ClipboardList
             size={20}
@@ -41,7 +40,7 @@ export default function SummaryCards({
       <SummaryCard
         title="Completed"
         value={completedCards ?? 0}
-        description="Finished tasks"
+        description="Task berstatus selesai"
         icon={
           <CheckCircle2
             size={20}
@@ -54,7 +53,7 @@ export default function SummaryCards({
       <SummaryCard
         title="Completion Rate"
         value={`${safeRate.toFixed(1)}%`}
-        description="Productivity score"
+        description="Rasio penyelesaian task"
         icon={
           <TrendingUp
             size={20}
@@ -62,19 +61,6 @@ export default function SummaryCards({
           />
         }
         bg="bg-purple-50"
-      />
-
-      <SummaryCard
-        title="Activities"
-        value={totalActivities ?? 0}
-        description="Recent actions"
-        icon={
-          <Activity
-            size={20}
-            className="text-orange-600"
-          />
-        }
-        bg="bg-orange-50"
       />
 
     </div>
@@ -99,16 +85,15 @@ function SummaryCard({
   return (
     <div
       className="
-        group
-        rounded-3xl
+        rounded-2xl
         border
         border-gray-200
         bg-white
         p-5
         shadow-sm
         transition-all
-        hover:-translate-y-1
-        hover:shadow-lg
+        hover:border-blue-100
+        hover:shadow-md
       "
     >
       <div className="flex items-start justify-between">

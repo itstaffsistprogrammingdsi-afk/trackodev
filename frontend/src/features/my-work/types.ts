@@ -16,6 +16,7 @@ export type ActivityRange =
   export interface ExportLogParams {
     type: ExportPeriodType;
     format: ExportFormat;
+    export_password: string;
     date?: string;   // dipakai saat type = "daily", format: YYYY-MM-DD
     month?: number;  // dipakai saat type = "monthly", 1-12
     year?: number;   // dipakai saat type = "monthly" | "yearly"
@@ -71,6 +72,8 @@ export interface ActivityItem {
 
   meta: Record<string, unknown> | null;
 
+  is_ongoing?: boolean;
+
   created_at: string;
 
   user: {
@@ -84,6 +87,8 @@ export interface AttachmentFilterParams {
   date?: string;   // dipakai saat type = "daily", format: YYYY-MM-DD
   month?: number;  // dipakai saat type = "monthly", 1-12
   year?: number;   // dipakai saat type = "monthly" | "yearly"
+  start_date?: string; // range awal saat type = "monthly", YYYY-MM-DD
+  end_date?: string;   // range akhir saat type = "monthly", YYYY-MM-DD
   page?: number;
   per_page?: number;
 }
@@ -149,6 +154,12 @@ export interface ActivityResponse {
 
   summary: {
     total_activities: number;
+    tasks: {
+      total: number;
+      completed: number;
+      completion_rate: number;
+    };
+
 
     today: number;
 

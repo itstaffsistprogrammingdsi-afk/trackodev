@@ -12,11 +12,13 @@ use App\Models\CardAttachment;
 use App\Models\CardBriefAttachment;
 use App\Models\CardComment;
 use App\Models\Workspace;
+use App\Services\EncryptedExportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Excel as ExcelWriter;
 use Maatwebsite\Excel\Facades\Excel;
 
 class MyActivityController extends Controller
@@ -89,6 +91,11 @@ class MyActivityController extends Controller
         $currentMonth = now()->month;
         $currentYear = now()->year;
 
+        $ongoingCardsQuery = Card::query();
+        $this->scopeCardsForUser($ongoingCardsQuery, $user);
+        $ongoingCardIds = $ongoingCardsQuery->where('status', '!=', 'completed')
+            ->pluck('cards.id');
+
         /*
         |--------------------------------------------------------------------------
         | Activity Query
@@ -100,15 +107,58 @@ class MyActivityController extends Controller
             ->where('user_id', $user->id)
             ->latest();
 
-        $this->applyDateFilter(
-            $activityQuery,
-            $range,
-            $today,
-            $weekStart,
-            $weekEnd,
-            $currentMonth,
-            $currentYear
-        );
+        if ($request->input('activity_type') === 'card_movement') {
+            $activityQuery
+                ->where('entity_type', 'card')
+                ->where('action', 'moved');
+
+            if ($range !== 'all' && $ongoingCardIds->isNotEmpty()) {
+                $activityQuery->where(function (Builder $query) use (
+                    $range,
+                    $today,
+                    $weekStart,
+                    $weekEnd,
+                    $currentMonth,
+                    $currentYear,
+                    $ongoingCardIds
+                ) {
+                    $this->applyDateFilter(
+                        $query,
+                        $range,
+                        $today,
+                        $weekStart,
+                        $weekEnd,
+                        $currentMonth,
+                        $currentYear
+                    );
+
+                    $query->orWhere(function (Builder $ongoingQuery) use ($ongoingCardIds) {
+                        $ongoingQuery
+                            ->whereIn('entity_id', $ongoingCardIds)
+                            ->whereNotExists(function ($newerMovement) {
+                                $newerMovement
+                                    ->selectRaw('1')
+                                    ->from('activity_logs as newer_movement')
+                                    ->whereColumn('newer_movement.user_id', 'activity_logs.user_id')
+                                    ->whereColumn('newer_movement.entity_id', 'activity_logs.entity_id')
+                                    ->where('newer_movement.entity_type', 'card')
+                                    ->where('newer_movement.action', 'moved')
+                                    ->whereColumn('newer_movement.created_at', '>', 'activity_logs.created_at');
+                            });
+                    });
+                });
+            } else {
+                $this->applyDateFilter(
+                    $activityQuery, $range, $today, $weekStart, $weekEnd,
+                    $currentMonth, $currentYear
+                );
+            }
+        } else {
+            $this->applyDateFilter(
+                $activityQuery, $range, $today, $weekStart, $weekEnd,
+                $currentMonth, $currentYear
+            );
+        }
 
         $activities = $activityQuery->paginate($perPage);
 
@@ -227,6 +277,21 @@ class MyActivityController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | Task Summary for the selected My Work range
+        |--------------------------------------------------------------------------
+        | Pekerjaan yang belum selesai selalu dibawa ke periode Today/Week/Month.
+        | Card yang sudah selesai hanya dihitung bila completed_at masuk periode.
+        | Dengan begitu summary mengikuti feed dan pekerjaan aktif tidak menghilang.
+        */
+
+        $periodCompletedTasks = $completedTasksCount;
+        $periodTotalTasks = $ongoingCardIds->count() + $periodCompletedTasks;
+        $periodCompletionRate = $periodTotalTasks > 0
+            ? round(($periodCompletedTasks / $periodTotalTasks) * 100, 2)
+            : 0;
+
+        /*
+        |--------------------------------------------------------------------------
         | Activity Summary
         |--------------------------------------------------------------------------
         */
@@ -268,6 +333,12 @@ class MyActivityController extends Controller
 
                 'completed_tasks' => $completedTasksCount,
 
+                'tasks' => [
+                    'total' => $periodTotalTasks,
+                    'completed' => $periodCompletedTasks,
+                    'completion_rate' => $periodCompletionRate,
+                ],
+
                 'uploaded_files' => $uploadedFiles,
 
                 'uploaded_links' => $uploadedLinks,
@@ -283,7 +354,7 @@ class MyActivityController extends Controller
             ],
 
             'activities' => $activityCollection
-                ->map(function ($activity) {
+                ->map(function ($activity) use ($ongoingCardIds) {
                     return [
                         'id' => $activity->id,
 
@@ -298,6 +369,8 @@ class MyActivityController extends Controller
                         'meta' => $activity->meta,
 
                         'created_at' => $activity->created_at,
+
+                        'is_ongoing' => $ongoingCardIds->contains($activity->entity_id),
 
                         // Where the change actually happened: Workspace /
                         // Campaign / Board / Card, resolved from entity_type
@@ -339,6 +412,17 @@ class MyActivityController extends Controller
 
     public function attachments(Request $request)
     {
+        $request->validate([
+            'type' => 'nullable|in:daily,monthly,yearly',
+            'date' => 'nullable|date_format:Y-m-d',
+            'start_date' => 'nullable|required_with:end_date|date_format:Y-m-d',
+            'end_date' => 'nullable|required_with:start_date|date_format:Y-m-d|after_or_equal:start_date',
+            'month' => 'nullable|integer|between:1,12',
+            'year' => 'nullable|integer|between:2000,2100',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|between:1,100',
+        ]);
+
         $user = auth()->user();
 
         $type = $request->input('type', 'daily');
@@ -483,11 +567,16 @@ class MyActivityController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function export(Request $request)
+    public function export(Request $request, EncryptedExportService $encryptedExport)
     {
+        $request->merge([
+            'export_password' => (string) $request->header('X-Export-Password'),
+        ]);
+
         $request->validate([
             'type' => 'nullable|in:daily,monthly,yearly',
             'format' => 'nullable|in:xlsx,pdf',
+            'export_password' => 'required|string|min:12|max:128',
             'date' => 'nullable|date_format:Y-m-d',
             'start_date' => 'nullable|required_with:end_date|date_format:Y-m-d',
             'end_date' => 'nullable|required_with:start_date|date_format:Y-m-d|after_or_equal:start_date',
@@ -509,9 +598,11 @@ class MyActivityController extends Controller
 
         $data = $this->gatherExportData($type, $request);
 
+        $password = (string) $request->input('export_password');
+
         return $format === 'pdf'
-            ? $this->exportAsPdf($type, $data)
-            : $this->exportAsExcel($type, $data);
+            ? $this->exportAsPdf($type, $data, $password, $encryptedExport)
+            : $this->exportAsExcel($type, $data, $password, $encryptedExport);
     }
 
     /*
@@ -525,23 +616,6 @@ class MyActivityController extends Controller
         $user = auth()->user();
 
         [$start, $end, $label] = $this->resolveExportPeriod($type, $request);
-
-        /*
-        |----------------------------------------------------------------
-        | Activity Log dalam periode
-        |----------------------------------------------------------------
-        */
-
-        $activities = ActivityLog::query()
-            ->with('user')
-            ->where('user_id', $user->id)
-            ->whereBetween('created_at', [$start, $end])
-            ->latest()
-            ->get();
-
-        // Same enrichment as index(): attach the Workspace / Campaign /
-        // Board / Card each activity belongs to.
-        $activities = $this->attachLocationsToActivities($activities);
 
         /*
         |----------------------------------------------------------------
@@ -566,6 +640,12 @@ class MyActivityController extends Controller
             ->latest('completed_at')
             ->get();
 
+        $ongoingTasksQuery = Card::query();
+        $this->scopeCardsForUser($ongoingTasksQuery, $user);
+        $ongoingTasksCount = $ongoingTasksQuery
+            ->where('status', '!=', 'completed')
+            ->count();
+
         /*
         |----------------------------------------------------------------
         | Attachment yang diupload dalam periode
@@ -579,24 +659,23 @@ class MyActivityController extends Controller
             ->latest()
             ->get();
 
-        $totalStorageUsedMb = round(
-            ($attachments->sum('file_size') ?? 0) / 1024 / 1024,
-            2
-        );
+        $totalTasks = $ongoingTasksCount + $completedTasks->count();
+        $completionRate = $totalTasks > 0
+            ? round(($completedTasks->count() / $totalTasks) * 100, 2)
+            : 0;
 
         $summary = [
             'periode' => $label,
             'nama_user' => $user->name,
+            'total_tasks' => $totalTasks,
             'total_completed_tasks' => $completedTasks->count(),
-            'total_activities' => $activities->count(),
+            'completion_rate' => $completionRate,
             'total_attachments' => $attachments->count(),
-            'total_storage_used_mb' => $totalStorageUsedMb,
         ];
 
         return [
             'summary' => $summary,
             'completedTasks' => $completedTasks,
-            'activities' => $activities,
             'attachments' => $attachments,
         ];
     }
@@ -607,23 +686,29 @@ class MyActivityController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function exportAsExcel(string $type, array $data)
+    private function exportAsExcel(
+        string $type,
+        array $data,
+        string $password,
+        EncryptedExportService $encryptedExport
+    )
     {
         $fileName = sprintf(
-            'log-kerja-%s-%s.xlsx',
+            'laporan-kerja-individu-%s-%s.xlsx',
             $type,
             now()->format('Ymd-His')
         );
 
-        return Excel::download(
+        $contents = Excel::raw(
             new MyWorkLogExport(
                 $data['summary'],
                 $data['completedTasks'],
-                $data['activities'],
                 $data['attachments']
             ),
-            $fileName
+            ExcelWriter::XLSX
         );
+
+        return $encryptedExport->downloadSpreadsheet($contents, $fileName, $password);
     }
 
     /*
@@ -634,10 +719,15 @@ class MyActivityController extends Controller
     | composer require barryvdh/laravel-dompdf
     */
 
-    private function exportAsPdf(string $type, array $data)
+    private function exportAsPdf(
+        string $type,
+        array $data,
+        string $password,
+        EncryptedExportService $encryptedExport
+    )
     {
         $fileName = sprintf(
-            'log-kerja-%s-%s.pdf',
+            'laporan-kerja-individu-%s-%s.pdf',
             $type,
             now()->format('Ymd-His')
         );
@@ -645,14 +735,13 @@ class MyActivityController extends Controller
         $pdf = Pdf::loadView('exports.my-work-log', [
             'summary' => $data['summary'],
             'completedTasks' => $data['completedTasks'],
-            'activities' => $data['activities'],
             'attachments' => $data['attachments'],
         ])
             // Landscape gives the extra Workspace / Campaign / Board
             // columns room to breathe without truncating text.
             ->setPaper('a4', 'landscape');
 
-        return $pdf->download($fileName);
+        return $encryptedExport->downloadPdf($pdf->output(), $fileName, $password);
     }
 
     private function resolveExportPeriod(string $type, Request $request): array

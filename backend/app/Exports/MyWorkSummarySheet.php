@@ -19,10 +19,10 @@ class MyWorkSummarySheet implements FromArray, WithHeadings, WithStyles, WithTit
         return [
             ['Nama User', $this->summary['nama_user']],
             ['Periode', $this->summary['periode']],
+            ['Total Tasks', $this->summary['total_tasks']],
             ['Total Task Selesai', $this->summary['total_completed_tasks']],
-            ['Total Aktivitas (Activity Log)', $this->summary['total_activities']],
+            ['Completion Rate', $this->summary['completion_rate'].'%'],
             ['Total Attachment', $this->summary['total_attachments']],
-            ['Total Penyimpanan Terpakai (MB)', $this->summary['total_storage_used_mb']],
         ];
     }
 
