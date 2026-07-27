@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getForms, deleteForm } from "../api/form.api";
 import type { Form } from "../types";
+import { useAuth } from '../../../context/AuthContext';
 
 export default function FormPage() {
   const navigate = useNavigate();
+  const { can } = useAuth();
 
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,12 +83,14 @@ export default function FormPage() {
             Refresh
           </button>
 
-          <button
-            onClick={() => navigate("/forms/create")}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            + Create Form
-          </button>
+          {can('form.create') && (
+            <button
+              onClick={() => navigate('/forms/create')}
+              className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700'
+            >
+              + Create Form
+            </button>
+          )}
         </div>
       </div>
 
@@ -112,12 +116,11 @@ export default function FormPage() {
             Buat form pertama untuk mulai menggunakan modul ini.
           </p>
 
-          <button
-            onClick={() => navigate("/forms/create")}
-            className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            Buat Form
-          </button>
+          {can('form.create') && (
+            <button onClick={() => navigate('/forms/create')} className='mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700'>
+              Buat Form
+            </button>
+          )}
         </div>
       ) : (
         /* LIST */
@@ -167,26 +170,23 @@ export default function FormPage() {
                   </button>
 
 
-                  <button
-                    onClick={() => navigate(`/forms/${form.id}/responses`)}
-                    className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-                  >
-                    Responses
-                  </button>
+                  {can('form.responses.view') && (
+                    <button onClick={() => navigate(`/forms/${form.id}/responses`)} className='rounded-lg border px-3 py-2 text-sm hover:bg-gray-50'>
+                      Responses
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => navigate(`/forms/${form.id}/edit`)}
-                    className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-                  >
-                    Edit
-                  </button>
+                  {can('form.update') && (
+                    <button onClick={() => navigate(`/forms/${form.id}/edit`)} className='rounded-lg border px-3 py-2 text-sm hover:bg-gray-50'>
+                      Edit
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => handleDelete(form.id)}
-                    className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
+                  {can('form.delete') && (
+                    <button onClick={() => handleDelete(form.id)} className='rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50'>
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -7,6 +7,7 @@ import { HexColorPicker } from "react-colorful";
 import useLabels from "../../hooks/useLabels";
 
 import { Card, Label } from "../../types";
+import { useAuth } from '../../../../context/AuthContext';
 
 interface Props {
   detail: Card | null;
@@ -20,6 +21,7 @@ export default function LabelSection({
   detail,
   setDetail,
 }: Props) {
+  const { can } = useAuth();
   const {
     labels,
 
@@ -122,7 +124,7 @@ export default function LabelSection({
     <div className="space-y-3">
       {/* CREATE */}
 
-      <div className="space-y-2">
+      {can('label.create') && <div className="space-y-2">
         {/* INPUT */}
 
         <input
@@ -266,7 +268,7 @@ export default function LabelSection({
             Add Label
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* LIST */}
 
@@ -314,7 +316,7 @@ export default function LabelSection({
 
               {/* ACTION */}
 
-              {active ? (
+              {active ? (can('label.detach') &&
                 <button
                   onClick={() =>
                     detach(label.id)
@@ -327,7 +329,7 @@ export default function LabelSection({
                 >
                   remove
                 </button>
-              ) : (
+              ) : (can('label.attach') &&
                 <button
                   onClick={() =>
                     attach(label.id)

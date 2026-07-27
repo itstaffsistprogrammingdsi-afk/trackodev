@@ -44,7 +44,7 @@ export const deleteBoard = async (id: string): Promise<{ message: string }> => {
 export const reorderBoards = async (
   boards: ReorderBoardPayload[],
 ): Promise<{ message: string }> => {
-  const res = await api.post<{ message: string }>("/boards/reorder", {
+  const res = await api.patch<{ message: string }>("/boards/reorder", {
     boards,
   });
 

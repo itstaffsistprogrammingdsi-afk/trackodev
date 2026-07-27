@@ -4,6 +4,7 @@ export type Board = {
   id: string;
   campaign_id: string;
   name: string;
+  type?: string | null;
   color?: string;
   order: number;
   cards: Card[];

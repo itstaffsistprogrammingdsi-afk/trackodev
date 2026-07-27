@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Card;
 use App\Models\Label;
-use Illuminate\Http\Request;
 use App\Services\ActivityLogService;
+use Illuminate\Http\Request;
 
 class CardLabelController extends Controller
 {
@@ -26,12 +26,12 @@ class CardLabelController extends Controller
 
         $card->labels()
             ->syncWithoutDetaching([
-                $validated['label_id']
+                $validated['label_id'],
             ]);
 
         ActivityLogService::log(
             auth()->user(),
-            
+
             'card',
             (string) $card->id,
             'attached',
@@ -56,7 +56,7 @@ class CardLabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            
+
             'card',
             (string) $card->id,
             'detached',
@@ -89,6 +89,16 @@ class CardLabelController extends Controller
             ->where('labels.id', $labelId)
             ->exists();
 
+        $requiredPermission = $exists
+            ? 'label.detach'
+            : 'label.attach';
+
+        abort_unless(
+            $request->user()->can($requiredPermission),
+            403,
+            'Anda tidak memiliki izin untuk mengubah label pada card.'
+        );
+
         if ($exists) {
             $card->labels()->detach($labelId);
         } else {
@@ -97,7 +107,7 @@ class CardLabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            
+
             'card',
             (string) $card->id,
             'toggled',

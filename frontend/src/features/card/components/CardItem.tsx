@@ -4,6 +4,10 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 import { Card } from "../types";
+import {
+  dueDateBadgeClasses,
+  getDueDateStatus,
+} from "../utils/dueDate";
 
 // =========================================
 // PROPS
@@ -69,25 +73,8 @@ export default function CardItem({ card, onOpen }: Props) {
   // =========================================
   // DUE DATE STATUS
   // =========================================
-  const now = new Date();
-
-  const dueDateObj = card.due_date
-    ? new Date(card.due_date.replace(" ", "T"))
-    : null;
-
-  const diffMs = dueDateObj ? dueDateObj.getTime() - now.getTime() : 0;
-
-  const diffHours = diffMs / (1000 * 60 * 60);
-
-  let dueClasses = "bg-green-50 text-green-600";
-
-  if (diffHours < 0) {
-    dueClasses = "bg-gray-100 text-gray-500";
-  } else if (diffHours <= 4) {
-    dueClasses = "bg-red-50 text-red-600";
-  } else if (diffHours <= 24) {
-    dueClasses = "bg-yellow-50 text-yellow-600";
-  }
+  const dueStatus = getDueDateStatus(card.due_date);
+  const dueClasses = dueDateBadgeClasses[dueStatus];
 
   // =========================================
   // PRIORITY
@@ -240,7 +227,9 @@ export default function CardItem({ card, onOpen }: Props) {
                 ${dueClasses}
               `}
             >
-              Due {formattedDueDate}
+              {dueStatus === "overdue"
+                ? `Overdue · ${formattedDueDate}`
+                : `Due ${formattedDueDate}`}
             </div>
           )}
         </div>

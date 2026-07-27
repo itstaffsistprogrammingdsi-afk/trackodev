@@ -1,5 +1,9 @@
 import { Board } from "../types";
 import { Card } from "@/features/card/types";
+import {
+  dueDateBadgeClasses,
+  getDueDateStatus,
+} from "@/features/card/utils/dueDate";
 
 interface Props {
   boards: Board[];
@@ -32,6 +36,24 @@ const formatDate = (value?: string | null): string =>
         year: "numeric",
       })
     : "-";
+
+function DueDateBadge({ value }: { value?: string | null }) {
+  const status = getDueDateStatus(value);
+
+  if (status === "none") {
+    return <span className="text-gray-400">-</span>;
+  }
+
+  return (
+    <span
+      className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${dueDateBadgeClasses[status]}`}
+    >
+      {status === "overdue"
+        ? `Overdue · ${formatDate(value)}`
+        : `Due ${formatDate(value)}`}
+    </span>
+  );
+}
 
 export default function BoardListView({ boards, onOpenCard }: Props) {
   const rows = boards.flatMap((board) =>
@@ -91,9 +113,7 @@ export default function BoardListView({ boards, onOpenCard }: Props) {
                   {board.name}
                 </span>
 
-                <span className="text-[11px] text-gray-400">
-                  Due {formatDate(card.due_date)}
-                </span>
+                <DueDateBadge value={card.due_date} />
               </div>
             </button>
           );
@@ -172,7 +192,7 @@ export default function BoardListView({ boards, onOpenCard }: Props) {
 
                   {/* Due Date Column - whitespace-nowrap agar tanggal tidak patah ke baris dua */}
                   <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
-                    {formatDate(card.due_date)}
+                    <DueDateBadge value={card.due_date} />
                   </td>
 
                   {/* Created Column - whitespace-nowrap */}

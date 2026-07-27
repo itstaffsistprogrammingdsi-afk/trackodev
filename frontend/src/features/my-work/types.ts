@@ -19,6 +19,8 @@ export type ActivityRange =
     date?: string;   // dipakai saat type = "daily", format: YYYY-MM-DD
     month?: number;  // dipakai saat type = "monthly", 1-12
     year?: number;   // dipakai saat type = "monthly" | "yearly"
+    start_date?: string; // range awal saat type = "monthly", YYYY-MM-DD
+    end_date?: string;   // range akhir saat type = "monthly", YYYY-MM-DD
   }
 
 export interface DailyTodoItem {

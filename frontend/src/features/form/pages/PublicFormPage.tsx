@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import api from "@/lib/axios";
+import { resolveStorageUrl } from "@/lib/storageUrl";
 
 import DatePicker from "react-datepicker";
 
@@ -248,7 +249,7 @@ export default function PublicFormPage() {
         <div className="overflow-hidden rounded-t-3xl border border-b-0 border-[#dadce0] bg-white shadow-sm">
           {form.header_image ? (
             <img
-              src={`http://localhost:8000/storage/${form.header_image}`}
+              src={resolveStorageUrl(form.header_image)}
               alt={form.name}
               className="max-h-[320px] w-full object-cover sm:max-h-[380px]"
             />
