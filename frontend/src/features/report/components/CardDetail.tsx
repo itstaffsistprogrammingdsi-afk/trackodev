@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Attachment, Card, User } from '../types';
 import { X, Download, FileSpreadsheet, Eye, CheckCircle, Clock } from 'lucide-react';
 import { AttachmentPreviewModal } from './AttachmentPreviewModal';
+import { useAuth } from '@/context/AuthContext';
 
 interface CardDetailProps {
   selectedUser: User;
@@ -24,6 +25,11 @@ export const CardDetail: React.FC<CardDetailProps> = ({
   onPreview,
   exporting = false,
 }) => {
+  const { can } = useAuth();
+  const canPreview = can('report.preview') || can('report.preview.pdf');
+  const canExportPdf = can('report.export') || can('report.export.pdf');
+  const canExportExcel = can('report.export') || can('report.export.excel');
+  const canQc = can('report.qc');
   const [qcValues, setQcValues] = useState<{ [key: string]: string }>({});
   const [qcNotes, setQcNotes] = useState<{ [key: string]: string }>({});
   const [submittingQc, setSubmittingQc] = useState<{ [key: string]: boolean }>({});
@@ -65,7 +71,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
             <div className="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
               <button
                 onClick={() => onPreview?.(selectedUser.id)}
-                className="px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
+                className={`${canPreview ? 'flex' : 'hidden'} px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors items-center gap-1`}
               >
                 <Eye className="w-4 h-4" />
                 Preview
@@ -73,7 +79,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
               <button
                 onClick={() => onExport?.('pdf', selectedUser.id)}
                 disabled={exporting}
-                className="px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50"
+                className={`${canExportPdf ? 'flex' : 'hidden'} px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors items-center gap-1 disabled:opacity-50`}
               >
                 <Download className="w-4 h-4" />
                 PDF
@@ -81,7 +87,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
               <button
                 onClick={() => onExport?.('excel', selectedUser.id)}
                 disabled={exporting}
-                className="px-3 py-1.5 text-sm text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50"
+                className={`${canExportExcel ? 'flex' : 'hidden'} px-3 py-1.5 text-sm text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors items-center gap-1 disabled:opacity-50`}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 Excel
@@ -221,7 +227,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                                   </div>
 
                                   {/* QC Input Area */}
-                                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-white p-3 rounded-lg border border-gray-200">
+                                  <div className={`${canQc ? 'flex' : 'hidden'} flex-col sm:flex-row items-start sm:items-center gap-2 bg-white p-3 rounded-lg border border-gray-200`}>
                                     <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
                                       <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
                                         QC:

@@ -3,6 +3,7 @@ import { ThemeToggleButton } from "../common/ThemeToggleButton";
 import NotificationDropdown from "./NotificationDropdown";
 import UserDropdown from "./UserDropdown";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 // Define the interface for the props
 interface HeaderProps {
@@ -10,6 +11,7 @@ interface HeaderProps {
   onToggle: () => void;
 }
 const Header: React.FC<HeaderProps> = ({ onClick, onToggle }) => {
+  const { can } = useAuth();
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
 
   const toggleApplicationMenu = () => {
@@ -154,7 +156,7 @@ const Header: React.FC<HeaderProps> = ({ onClick, onToggle }) => {
             {/* <!-- Dark Mode Toggler --> */}
             <ThemeToggleButton />
             {/* <!-- Dark Mode Toggler --> */}
-            <NotificationDropdown />
+            {can("notification.view") && <NotificationDropdown />}
             {/* <!-- Notification Menu Area --> */}
           </div>
           {/* <!-- User Area --> */}

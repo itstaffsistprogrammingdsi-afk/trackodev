@@ -3,8 +3,10 @@ import { useAccountQuery } from "../hooks/useAccount";
 import AvatarUploader from "../components/AvatarUploader";
 import ProfileCard from "../components/ProfileCard";
 import PasswordCard from "../components/PasswordCard";
+import { useAuth } from "@/context/AuthContext";
 
 export default function EditAccountPage() {
+  const { can } = useAuth();
   const { data: user, isLoading, isError } = useAccountQuery();
 
   return (
@@ -35,15 +37,16 @@ export default function EditAccountPage() {
 
       {user && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:p-6">
-            <h3 className="mb-4 text-base font-semibold text-gray-800 dark:text-white/90">
-              Foto Profil
-            </h3>
-            <AvatarUploader name={user.name} avatarUrl={user.avatar} />
-          </div>
-
-          <ProfileCard user={user} />
-          <PasswordCard />
+          {can("account.avatar.update") && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:p-6">
+              <h3 className="mb-4 text-base font-semibold text-gray-800 dark:text-white/90">
+                Foto Profil
+              </h3>
+              <AvatarUploader name={user.name} avatarUrl={user.avatar} />
+            </div>
+          )}
+          {can("account.update") && <ProfileCard user={user} />}
+          {can("account.password.update") && <PasswordCard />}
         </div>
       )}
     </div>

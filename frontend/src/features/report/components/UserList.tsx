@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, FilterParams } from '../types';
+import { useAuth } from '@/context/AuthContext';
 import { Eye, 
   // FileText,
    Download, FileSpreadsheet, 
@@ -42,6 +43,12 @@ export const UserList: React.FC<UserListProps> = ({
   onSelectUser,
   onImpersonate,
 }) => {
+  const { can } = useAuth();
+  const canPreview = can('report.preview') || can('report.preview.pdf');
+  const canExportPdf = can('report.export') || can('report.export.pdf');
+  const canExportExcel = can('report.export') || can('report.export.excel');
+  const canBypass = can('user.bypass');
+
   return (
     <div className="space-y-6">
       {/* HEADER & FILTER BAR */}
@@ -170,7 +177,7 @@ export const UserList: React.FC<UserListProps> = ({
         <button 
           onClick={() => onPreview?.()}
           disabled={previewLoading}
-          className="justify-center px-4 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`${canPreview ? 'flex' : 'hidden'} justify-center px-4 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-colors items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           <Eye className="w-4 h-4" />
           {previewLoading ? 'Memuat...' : 'All Preview '}
@@ -178,7 +185,7 @@ export const UserList: React.FC<UserListProps> = ({
         <button 
           onClick={() => onExport?.('pdf')}
           disabled={exporting}
-          className="justify-center px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`${canExportPdf ? 'flex' : 'hidden'} justify-center px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           <Download className="w-4 h-4" />
           {exporting ? 'Mengunduh...' : 'All PDF '}
@@ -186,7 +193,7 @@ export const UserList: React.FC<UserListProps> = ({
         <button 
           onClick={() => onExport?.('excel')}
           disabled={exporting}
-          className="justify-center px-4 py-2.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`${canExportExcel ? 'flex' : 'hidden'} justify-center px-4 py-2.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           <FileSpreadsheet className="w-4 h-4" />
           {exporting ? 'Mengunduh...' : 'All Excel '}
@@ -241,7 +248,7 @@ export const UserList: React.FC<UserListProps> = ({
                             onPreview?.(user.id);
                           }}
                           disabled={previewLoading}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1"
+                          className={`${canPreview ? 'inline-flex' : 'hidden'} items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1`}
                         >
                           <Eye className="w-3.5 h-3.5" />
                           Preview
@@ -253,7 +260,7 @@ export const UserList: React.FC<UserListProps> = ({
                             onExport?.('pdf', user.id);
                           }}
                           disabled={exporting}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1"
+                          className={`${canExportPdf ? 'inline-flex' : 'hidden'} items-center px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1`}
                         >
                           <Download className="w-3.5 h-3.5" />
                           PDF
@@ -265,7 +272,7 @@ export const UserList: React.FC<UserListProps> = ({
                             onExport?.('excel', user.id);
                           }}
                           disabled={exporting}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1"
+                          className={`${canExportExcel ? 'inline-flex' : 'hidden'} items-center px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1`}
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5" />
                           Excel
@@ -278,7 +285,7 @@ export const UserList: React.FC<UserListProps> = ({
         onImpersonate(user.id);
     }
   }}
-  className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors gap-1"
+  className={`${canBypass ? 'inline-flex' : 'hidden'} items-center px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors gap-1`}
 >
   {/* Anda bisa import icon User/Lock dari lucide-react */}
   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

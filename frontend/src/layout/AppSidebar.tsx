@@ -404,11 +404,13 @@ const AppSidebar: React.FC = () => {
   const navItems = useMemo<NavItem[]>(() => {
     try {
       return [
-        {
-          icon: <GridIcon />,
-          name: "Dashboard",
-          path: isSuperAdmin ? "/dashboard" : "/my-work",
-        },
+        ...((isSuperAdmin && can("dashboard.view")) || (!isSuperAdmin && can("my_work.view"))
+          ? [{
+              icon: <GridIcon />,
+              name: "Dashboard",
+              path: isSuperAdmin ? "/dashboard" : "/my-work",
+            }]
+          : []),
         {
           name: "Task Management",
           icon: <BoxCubeIcon />,
@@ -459,11 +461,13 @@ const AppSidebar: React.FC = () => {
             },
           ],
         },
-        {
-          name: "Calendar",
-          icon: <ListIcon />,
-          path: "/calendar",
-        },
+        ...(can("calendar.view")
+          ? [{
+              name: "Calendar",
+              icon: <ListIcon />,
+              path: "/calendar",
+            }]
+          : []),
         ...(can("form.view")
           ? [
               {
@@ -490,11 +494,13 @@ const AppSidebar: React.FC = () => {
               },
             ]
           : []),
-        {
-          name: "Chats",
-          icon: <ListIcon />,
-          path: "/chats",
-        },
+        ...(can("chat.view")
+          ? [{
+              name: "Chats",
+              icon: <ListIcon />,
+              path: "/chats",
+            }]
+          : []),
         ...(can("report.view")
           ? [
               {

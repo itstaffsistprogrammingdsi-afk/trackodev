@@ -12,8 +12,10 @@ import CampaignHealth from "../components/CampaignHealth";
 import BoardProgress from "../components/BoardProgress";
 import CampaignGantt from "../components/CampaignGantt";
 import OverdueTasks from "../components/OverdueTasks";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CampaignDetailPage() {
+  const { can } = useAuth();
   const { campaignId } = useParams();
   const navigate = useNavigate();
 
@@ -118,20 +120,20 @@ export default function CampaignDetailPage() {
           STATS
       ========================================= */}
 
-      <CampaignStats campaignId={campaign.id} />
+      {(can("campaign.analytics.view") || can("campaign.stats.view")) && <CampaignStats campaignId={campaign.id} />}
 
       {/* =========================================
           BOARD PROGRESS
       ========================================= */}
 
-      <BoardProgress campaignId={campaign.id} />
+      {(can("campaign.analytics.view") || can("campaign.progress.view")) && <BoardProgress campaignId={campaign.id} />}
 
       {/* =========================================
           GANTT
       ========================================= */}
 
       <div className="overflow-hidden">
-        <CampaignGantt campaignId={campaign.id} />
+        {(can("campaign.analytics.view") || can("campaign.gantt.view")) && <CampaignGantt campaignId={campaign.id} />}
       </div>
 
       {/* =========================================
@@ -140,11 +142,11 @@ export default function CampaignDetailPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
-          <CampaignHealth campaignId={campaign.id} />
+          {(can("campaign.analytics.view") || can("campaign.health.view")) && <CampaignHealth campaignId={campaign.id} />}
         </div>
 
         <div>
-          <OverdueTasks campaignId={campaign.id} />
+          {(can("campaign.analytics.view") || can("campaign.overdue.view")) && <OverdueTasks campaignId={campaign.id} />}
         </div>
       </div>
     </div>

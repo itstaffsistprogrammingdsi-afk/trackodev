@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -20,11 +21,17 @@ class MyWorkCompletionRankingTest extends TestCase
 
     public function test_admin_sees_top_three_finishers_in_their_division(): void
     {
+        $rankingPermission = Permission::firstOrCreate([
+            'name' => 'my_work.ranking.view',
+            'guard_name' => 'web',
+        ]);
+
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
         $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
 
         $admin = User::factory()->create();
         $admin->assignRole($adminRole);
+        $admin->givePermissionTo($rankingPermission);
 
         $division = Division::create([
             'name' => 'Digital',

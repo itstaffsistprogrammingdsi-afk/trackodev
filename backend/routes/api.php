@@ -87,11 +87,14 @@ Route::prefix('auth')->group(function () {
             [AuthController::class, 'me']
         );
 
-        Route::put('/profile', [AuthController::class, 'updateProfile']);
+        Route::put('/profile', [AuthController::class, 'updateProfile'])
+            ->middleware('permission:account.update');
 
-        Route::put('/password', [AuthController::class, 'updatePassword']);
+        Route::put('/password', [AuthController::class, 'updatePassword'])
+            ->middleware('permission:account.password.update');
 
-        Route::post('/avatar', [AuthController::class, 'updateAvatar']);
+        Route::post('/avatar', [AuthController::class, 'updateAvatar'])
+            ->middleware('permission:account.avatar.update');
     });
 });
 
@@ -111,16 +114,16 @@ Route::middleware([
         ->get(
             '/users/mentionable',
             [UserController::class, 'mentionable']
-        );
+        )->middleware('permission:user.mention|user.view');
 
     // ========================================
     // USER MANAGEMENT
     // ========================================
 
     Route::get('users/{user}/permissions', [UserController::class, 'permissions'])
-        ->middleware('permission:user.update');
+        ->middleware('permission:user.permissions.view|user.update');
     Route::put('users/{user}/permissions', [UserController::class, 'updatePermissions'])
-        ->middleware('permission:user.update');
+        ->middleware('permission:user.permissions.update|user.update');
 
     Route::apiResource(
         'users',
@@ -137,7 +140,7 @@ Route::middleware([
     Route::get(
         'users-stats',
         [UserController::class, 'stats']
-    )->middleware('permission:user.view');
+    )->middleware('permission:user.stats.view|user.view');
 
     // ========================================
     // DIVISIONS
@@ -187,22 +190,22 @@ Route::middleware([
     Route::get(
         'divisions/{division}/members',
         [DivisionController::class, 'members']
-    );
+    )->middleware('permission:division.member.view|division.view');
 
     Route::post(
         'divisions/{division}/members',
         [DivisionController::class, 'addMember']
-    )->middleware('permission:division.update');
+    )->middleware('permission:division.member.add|division.update');
 
     Route::put(
         'divisions/{division}/members/{user}',
         [DivisionController::class, 'updateMember']
-    )->middleware('permission:division.update');
+    )->middleware('permission:division.member.update|division.update');
 
     Route::delete(
         'divisions/{division}/members/{user}',
         [DivisionController::class, 'removeMember']
-    )->middleware('permission:division.delete');
+    )->middleware('permission:division.member.remove|division.delete');
 
     // ========================================
     // WORKSPACES
@@ -265,42 +268,42 @@ Route::middleware([
     Route::get(
         'campaigns/{campaign}/members',
         [CampaignController::class, 'members']
-    )->middleware('permission:campaign.view');
+    )->middleware('permission:campaign.member.view|campaign.view');
 
     Route::post(
         'campaigns/{campaign}/members',
         [CampaignController::class, 'addMember']
-    )->middleware('permission:campaign.update');
+    )->middleware('permission:campaign.member.add|campaign.update');
 
     Route::delete(
         'campaigns/{campaign}/members/{user}',
         [CampaignController::class, 'removeMember']
-    )->middleware('permission:campaign.update');
+    )->middleware('permission:campaign.member.remove|campaign.update');
 
     Route::get(
         'campaigns/{campaign}/gantt',
         [CampaignController::class, 'gantt']
-    )->middleware('permission:campaign.view');
+    )->middleware('permission:campaign.gantt.view|campaign.analytics.view');
 
     Route::get(
         'campaigns/{campaign}/board-progress',
         [CampaignController::class, 'boardProgress']
-    )->middleware('permission:campaign.view');
+    )->middleware('permission:campaign.progress.view|campaign.analytics.view');
 
     Route::get(
         '/campaigns/{campaign}/stats',
         [CampaignController::class, 'stats']
-    )->middleware('permission:campaign.view');
+    )->middleware('permission:campaign.stats.view|campaign.analytics.view');
 
     Route::get(
         '/campaigns/{campaign}/overdue-tasks',
         [CampaignController::class, 'overdueTasks']
-    )->middleware('permission:campaign.view');
+    )->middleware('permission:campaign.overdue.view|campaign.analytics.view');
 
     Route::get(
         '/campaigns/{campaign}/health',
         [CampaignController::class, 'health']
-    )->middleware('permission:campaign.view');
+    )->middleware('permission:campaign.health.view|campaign.analytics.view');
 
     // ========================================
     // BOARDS
@@ -309,27 +312,27 @@ Route::middleware([
     Route::get(
         'campaigns/{campaign}/boards',
         [BoardController::class, 'index']
-    )->middleware('permission:campaign.view');
+    )->middleware('permission:board.view|campaign.view');
 
     Route::post(
         'campaigns/{campaign}/boards',
         [BoardController::class, 'store']
-    )->middleware('permission:campaign.create');
+    )->middleware('permission:board.create|campaign.create');
 
     Route::put(
         'boards/{board}',
         [BoardController::class, 'update']
-    )->middleware('permission:campaign.update');
+    )->middleware('permission:board.update|campaign.update');
 
     Route::patch(
         'boards/reorder',
         [BoardController::class, 'reorder']
-    )->middleware('permission:campaign.update');
+    )->middleware('permission:board.reorder|campaign.update');
 
     Route::delete(
         'boards/{board}',
         [BoardController::class, 'destroy']
-    )->middleware('permission:campaign.delete');
+    )->middleware('permission:board.delete|campaign.delete');
 
     // ========================================
     // CARDS
@@ -338,50 +341,52 @@ Route::middleware([
     Route::get(
         'boards/{board}/cards',
         [CardController::class, 'index']
-    )->middleware('permission:task.view');
+    )->middleware('permission:card.view|task.view');
 
     Route::post(
         'boards/{board}/cards',
         [CardController::class, 'store']
-    )->middleware('permission:task.create');
+    )->middleware('permission:card.create|task.create');
 
     Route::get(
         'cards/{card}',
         [CardController::class, 'show']
-    )->middleware('permission:task.view');
+    )->middleware('permission:card.view|task.view');
 
     Route::put(
         'cards/{card}',
         [CardController::class, 'update']
-    )->middleware('permission:task.update');
+    )->middleware('permission:card.update|task.update');
 
     Route::patch(
         'cards/{card}/move',
         [CardController::class, 'move']
-    )->middleware('permission:task.update');
+    )->middleware('permission:card.move|task.update');
 
     Route::patch(
         'cards/reorder',
         [CardController::class, 'reorder']
-    )->middleware('permission:task.update');
+    )->middleware('permission:card.reorder|task.update');
 
     Route::delete(
         'cards/{card}',
         [CardController::class, 'destroy']
-    )->middleware('permission:task.delete');
+    )->middleware('permission:card.delete|task.delete');
 
-    Route::get('/daily-todo', [DailyTodoController::class, 'index']);
+    Route::get('/daily-todo', [DailyTodoController::class, 'index'])
+        ->middleware('permission:my_work.todo.view');
     Route::get(
         '/my-activities',
         [MyActivityController::class, 'index']
-    );
+    )->middleware('permission:my_work.activities.view');
 
     Route::get(
         '/my-activities/completion-ranking',
         [MyActivityController::class, 'completionRanking']
-    );
+    )->middleware('permission:my_work.ranking.view');
 
-    Route::get('/my-activities/attachments', [MyActivityController::class, 'attachments']);
+    Route::get('/my-activities/attachments', [MyActivityController::class, 'attachments'])
+        ->middleware('permission:my_work.attachments.view');
 
     // ========================================
     // ACTIVITY LOGS
@@ -390,7 +395,7 @@ Route::middleware([
     Route::get(
         'cards/{card}/activities',
         [ActivityLogController::class, 'cardActivities']
-    )->middleware('permission:task.view');
+    )->middleware('permission:card.activity.view|task.view');
 
     // ========================================
     // CARD ASSIGNMENT
@@ -399,12 +404,12 @@ Route::middleware([
     Route::post(
         'cards/{card}/assign',
         [CardController::class, 'assign']
-    )->middleware('permission:task.assign');
+    )->middleware('permission:card.assign|task.assign');
 
     Route::delete(
         'cards/{card}/assign/{user}',
         [CardController::class, 'unassign']
-    )->middleware('permission:task.assign');
+    )->middleware('permission:card.unassign|task.assign');
 
     // ========================================
     // LABELS
@@ -432,7 +437,7 @@ Route::middleware([
     Route::patch(
         'cards/{card}/labels',
         [CardLabelController::class, 'toggle']
-    );
+    )->middleware('permission:label.toggle');
 
     // ========================================
     // BRANDS
@@ -466,32 +471,32 @@ Route::middleware([
     Route::get(
         'result-description-templates',
         [ResultDescriptionTemplateController::class, 'index']
-    )->middleware('permission:task.view');
+    )->middleware('permission:result_template.view|task.view');
 
     Route::post(
         'result-description-templates',
         [ResultDescriptionTemplateController::class, 'store']
-    );
+    )->middleware('role_or_permission:admin|super_admin|result_template.create|task.update');
 
     Route::get(
         'cards/{card}/attachments',
         [CardController::class, 'attachments']
-    )->middleware('permission:task.view');
+    )->middleware('permission:attachment.view|task.view');
 
     Route::post(
         'cards/{card}/attachments',
         [CardController::class, 'addAttachment']
-    )->middleware('permission:task.update');
+    )->middleware('permission:attachment.upload|task.update');
 
     Route::delete(
         'attachments/{attachment}',
         [CardController::class, 'removeAttachment']
-    )->middleware('permission:task.update');
+    )->middleware('permission:attachment.delete|task.update');
 
     Route::get(
         'attachments/{attachment}/download',
         [CardController::class, 'download']
-    )->middleware('permission:task.view');
+    )->middleware('permission:attachment.download|task.view');
 
     // ========================================
     // BRIEF ATTACHMENTS
@@ -500,22 +505,22 @@ Route::middleware([
     Route::get(
         'cards/{card}/brief-attachments',
         [CardController::class, 'briefAttachments']
-    )->middleware('permission:task.view');
+    )->middleware('permission:brief_attachment.view|task.view');
 
     Route::post(
         'cards/{card}/brief-attachments',
         [CardController::class, 'addBriefAttachment']
-    )->middleware('permission:task.update');
+    )->middleware('permission:brief_attachment.upload|task.update');
 
     Route::delete(
         'brief-attachments/{attachment}',
         [CardController::class, 'removeBriefAttachment']
-    )->middleware('permission:task.update');
+    )->middleware('permission:brief_attachment.delete|task.update');
 
     Route::get(
         'brief-attachments/{attachment}/download',
         [CardController::class, 'downloadBriefAttachment']
-    )->middleware('permission:task.view');
+    )->middleware('permission:brief_attachment.download|task.view');
 
     // ========================================
     // COMMENTS
@@ -524,22 +529,22 @@ Route::middleware([
     Route::get(
         'cards/{card}/comments',
         [CardController::class, 'comments']
-    )->middleware('permission:task.view');
+    )->middleware('permission:comment.view|task.view');
 
     Route::post(
         'cards/{card}/comments',
         [CardController::class, 'addComment']
-    )->middleware('permission:task.update');
+    )->middleware('permission:comment.create|task.update');
 
     Route::put(
         'comments/{comment}',
         [CardController::class, 'updateComment']
-    )->middleware('permission:task.update');
+    )->middleware('permission:comment.update|task.update');
 
     Route::delete(
         'comments/{comment}',
         [CardController::class, 'deleteComment']
-    )->middleware('permission:task.update');
+    )->middleware('permission:comment.delete|task.update');
 
     // ========================================
     // TASKS
@@ -548,32 +553,32 @@ Route::middleware([
     Route::get(
         'cards/{card}/tasks',
         [TaskController::class, 'index']
-    )->middleware('permission:task.view');
+    )->middleware('permission:checklist.view|task.view');
 
     Route::post(
         'cards/{card}/tasks',
         [TaskController::class, 'store']
-    )->middleware('permission:task.create');
+    )->middleware('permission:checklist.create|task.create');
 
     Route::put(
         'tasks/{task}',
         [TaskController::class, 'update']
-    )->middleware('permission:task.update');
+    )->middleware('permission:checklist.update|task.update');
 
     Route::patch(
         'tasks/{task}/complete',
         [TaskController::class, 'complete']
-    )->middleware('permission:task.update');
+    )->middleware('permission:checklist.complete|task.update');
 
     Route::patch(
         'tasks/reorder',
         [TaskController::class, 'reorder']
-    )->middleware('permission:task.update');
+    )->middleware('permission:checklist.reorder|task.update');
 
     Route::delete(
         'tasks/{task}',
         [TaskController::class, 'destroy']
-    )->middleware('permission:task.delete');
+    )->middleware('permission:checklist.delete|task.delete');
 
     // ========================================
     // SUBTASKS
@@ -582,27 +587,27 @@ Route::middleware([
     Route::get(
         'tasks/{task}/subtasks',
         [TaskController::class, 'subtasks']
-    )->middleware('permission:task.view');
+    )->middleware('permission:subtask.view|task.view');
 
     Route::post(
         'tasks/{task}/subtasks',
         [TaskController::class, 'storeSubtask']
-    )->middleware('permission:task.update');
+    )->middleware('permission:subtask.create|task.update');
 
     Route::put(
         'subtasks/{subtask}',
         [TaskController::class, 'updateSubtask']
-    )->middleware('permission:task.update');
+    )->middleware('permission:subtask.update|task.update');
 
     Route::patch(
         'subtasks/{subtask}/complete',
         [TaskController::class, 'completeSubtask']
-    )->middleware('permission:task.update');
+    )->middleware('permission:subtask.complete|task.update');
 
     Route::delete(
         'subtasks/{subtask}',
         [TaskController::class, 'destroySubtask']
-    )->middleware('permission:task.update');
+    )->middleware('permission:subtask.delete|task.update');
 
     // ========================================
     // CHAT
@@ -611,41 +616,43 @@ Route::middleware([
     Route::get(
         'chat/rooms',
         [ChatController::class, 'rooms']
-    );
+    )->middleware('permission:chat.view');
 
     Route::post(
         'chat/rooms/dm',
         [ChatController::class, 'createDm']
-    );
+    )->middleware('permission:chat.room.create');
 
     Route::get(
         'chat/rooms/{chatRoom}',
         [ChatController::class, 'show']
-    );
+    )->middleware('permission:chat.view');
 
     Route::get(
         'chat/rooms/{chatRoom}/messages',
         [ChatController::class, 'messages']
-    );
+    )->middleware('permission:chat.message.view');
 
     Route::post(
         'chat/rooms/{chatRoom}/messages',
         [ChatController::class, 'sendMessage']
-    );
+    )->middleware('permission:chat.message.create');
 
     Route::delete(
         'chat/messages/{message}',
         [ChatController::class, 'deleteMessage']
-    );
+    )->middleware('permission:chat.message.delete');
 
     Route::post(
         'chat/rooms/{chatRoom}/read',
         [ChatController::class, 'markRead']
-    );
+    )->middleware('permission:chat.read');
 
-    Route::get('/calendar', [CalendarController::class, 'index']);
+    Route::get('/calendar', [CalendarController::class, 'index'])
+        ->middleware('permission:calendar.view');
 
-    Route::get('/calendar/{date}', [CalendarController::class, 'show']);
+    Route::get('/calendar/{date}', [CalendarController::class, 'show'])
+        ->middleware('permission:calendar.detail.view|calendar.view');
 
     // ========================================
     // NOTIFICATIONS
@@ -654,22 +661,22 @@ Route::middleware([
     Route::get(
         'notifications',
         [NotificationController::class, 'index']
-    );
+    )->middleware('permission:notification.view');
 
     Route::patch(
         'notifications/{notification}/read',
         [NotificationController::class, 'markRead']
-    );
+    )->middleware('permission:notification.read');
 
     Route::patch(
         'notifications/read-all',
         [NotificationController::class, 'markAllRead']
-    );
+    )->middleware('permission:notification.read_all');
 
     Route::delete(
         'notifications/{notification}',
         [NotificationController::class, 'destroy']
-    );
+    )->middleware('permission:notification.delete');
 
     // ========================================
     // FORMS
@@ -707,17 +714,17 @@ Route::middleware([
     Route::post(
         'forms/{form}/fields',
         [FormFieldController::class, 'store']
-    )->middleware('permission:form.update');
+    )->middleware('permission:form.field.create|form.update|form.create');
 
     Route::put(
         'form-fields/{field}',
         [FormFieldController::class, 'update']
-    )->middleware('permission:form.update');
+    )->middleware('permission:form.field.update|form.update');
 
     Route::delete(
         'form-fields/{field}',
         [FormFieldController::class, 'destroy']
-    )->middleware('permission:form.update');
+    )->middleware('permission:form.field.delete|form.update|form.create');
 
     // ========================================
     // FORM SUBMISSIONS
@@ -731,7 +738,7 @@ Route::middleware([
     Route::post(
         'forms/{form}/submissions',
         [FormSubmissionController::class, 'store']
-    )->middleware('permission:form.view');
+    )->middleware('permission:form.submission.create|form.view');
 
     Route::get(
         'form-submissions/{submission}',
@@ -741,7 +748,7 @@ Route::middleware([
     Route::patch(
         'form-submissions/{submission}/forward',
         [FormSubmissionController::class, 'forwardToCard']
-    )->middleware('permission:form.submission.assign');
+    )->middleware('permission:form.submission.forward|form.submission.assign');
 
     // ========================================
     // ASSIGNMENT
@@ -752,32 +759,36 @@ Route::middleware([
         [AssignmentController::class, 'assign']
     )->middleware('permission:form.submission.assign');
 
-    Route::get('/dashboard', [DashboardController::class, 'index']);
-    Route::get('/dashboard/activities', [DashboardController::class, 'activities']);
-    Route::get('/my-activities/export', [MyActivityController::class, 'export']);
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('permission:dashboard.view');
+    Route::get('/dashboard/division-rankings', [DashboardController::class, 'divisionRankings'])
+        ->middleware('permission:dashboard.division_ranking.view');
+
+    Route::get('/dashboard/activities', [DashboardController::class, 'activities'])
+        ->middleware('permission:dashboard.activities.view');
+    Route::get('/my-activities/export', [MyActivityController::class, 'export'])
+        ->middleware('permission:my_work.export');
 
     // ========================================
     // REPORTS & QC MANAGEMENT
     // ========================================
     Route::prefix('reports')->group(function () {
-
-        // Menyuplai data riil untuk dropdown filter di frontend
-        Route::get('/filters-options', [ReportController::class, 'getFilterOptions']);
-
-        // LEFT PANEL: Mengambil list user dengan pagination + filter
-        Route::get('/users', [ReportController::class, 'index']);
-
-        // RIGHT PANEL: Mengambil list card dan attachments spesifik milik satu user
-        Route::get('/users/{user}/cards', [ReportController::class, 'showUserCards']);
-
-        // ACTION QC: Melakukan submit verifikasi QC per file attachment
-        Route::post('/attachments/{attachment}/qc', [ReportController::class, 'submitAttachmentQc']);
-
-        // Rute Export
-        Route::get('/export/excel', [ReportController::class, 'exportExcel']);
-        Route::get('/export/pdf', [ReportController::class, 'exportPdf']);
-        Route::get('/preview/pdf', [ReportController::class, 'previewPdf']);
-        Route::get('/users/{user}/activity-logs', [ReportController::class, 'getUserActivityLogs']);
+        Route::get('/filters-options', [ReportController::class, 'getFilterOptions'])
+            ->middleware('permission:report.view');
+        Route::get('/users', [ReportController::class, 'index'])
+            ->middleware('permission:report.view');
+        Route::get('/users/{user}/cards', [ReportController::class, 'showUserCards'])
+            ->middleware('permission:report.view');
+        Route::post('/attachments/{attachment}/qc', [ReportController::class, 'submitAttachmentQc'])
+            ->middleware('permission:report.qc');
+        Route::get('/export/excel', [ReportController::class, 'exportExcel'])
+            ->middleware('permission:report.export.excel|report.export');
+        Route::get('/export/pdf', [ReportController::class, 'exportPdf'])
+            ->middleware('permission:report.export.pdf|report.export');
+        Route::get('/preview/pdf', [ReportController::class, 'previewPdf'])
+            ->middleware('permission:report.preview.pdf|report.preview');
+        Route::get('/users/{user}/activity-logs', [ReportController::class, 'getUserActivityLogs'])
+            ->middleware('permission:report.activity.view');
     });
 
     Route::post(

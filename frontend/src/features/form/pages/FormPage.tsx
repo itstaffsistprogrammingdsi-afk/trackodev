@@ -176,6 +176,12 @@ export default function FormPage() {
                     </button>
                   )}
 
+                  {(can('form.field.create') || can('form.field.update') || can('form.field.delete')) && (
+                    <button onClick={() => navigate(`/forms/${form.id}/builder`)} className='rounded-lg border px-3 py-2 text-sm hover:bg-gray-50'>
+                      Fields
+                    </button>
+                  )}
+
                   {can('form.update') && (
                     <button onClick={() => navigate(`/forms/${form.id}/edit`)} className='rounded-lg border px-3 py-2 text-sm hover:bg-gray-50'>
                       Edit

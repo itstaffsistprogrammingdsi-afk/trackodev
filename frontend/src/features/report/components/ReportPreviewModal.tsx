@@ -4,6 +4,7 @@ import {
   AttachmentPreviewModal,
   type ReportAttachmentPreview,
 } from './AttachmentPreviewModal';
+import { useAuth } from '@/context/AuthContext';
 
 interface ReportPreviewModalProps {
   isOpen: boolean;
@@ -29,6 +30,9 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   loading,
   title = 'Preview Laporan',
 }) => {
+  const { can } = useAuth();
+  const canExportPdf = can('report.export') || can('report.export.pdf');
+  const canExportExcel = can('report.export') || can('report.export.excel');
   const [viewMode, setViewMode] = useState<'html' | 'pdf'>('html');
   const [previewAttachment, setPreviewAttachment] = useState<ReportAttachmentPreview | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -128,7 +132,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
               {/* Action Buttons */}
               <button
                 onClick={onExportExcel}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className={`${canExportExcel ? 'flex' : 'hidden'} items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700`}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 Excel
@@ -136,7 +140,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
               
               <button
                 onClick={onDownload}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className={`${canExportPdf ? 'flex' : 'hidden'} items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700`}
               >
                 <Download className="w-4 h-4" />
                 Download PDF

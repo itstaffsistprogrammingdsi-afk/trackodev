@@ -11,7 +11,7 @@ type UserDropdownProps = {
 
 export default function UserDropdown({ compact = false }: UserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const navigate = useNavigate();
 
   const toggleDropdown = () => setIsOpen((prev) => !prev);
@@ -90,7 +90,7 @@ const handleLogout = async () => {
 
         {/* MENU */}
         <ul className="flex flex-col gap-1 pt-3">
-          <li>
+          {can("account.view") && <li>
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
@@ -99,7 +99,7 @@ const handleLogout = async () => {
             >
               Edit profile
             </DropdownItem>
-          </li>
+          </li>}
 
         </ul>
 

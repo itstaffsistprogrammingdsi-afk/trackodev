@@ -5,12 +5,14 @@ import { useAuth } from "@/context/AuthContext";
 interface Props {
   children: React.ReactNode;
   permission?: string;
+  permissions?: string[];
   role?: string;
 }
 
 export default function PermissionRoute({
   children,
   permission,
+  permissions,
   role,
 }: Props) {
   const {
@@ -47,8 +49,8 @@ export default function PermissionRoute({
 
   // cek permission
   if (
-    permission &&
-    !can(permission)
+    (permission && !can(permission))
+    || (permissions?.length && !permissions.some((item) => can(item)))
   ) {
     return (
       <Navigate

@@ -16,7 +16,7 @@ class UserPermissionManagementTest extends TestCase
     public function test_super_admin_can_add_form_access_to_a_regular_user(): void
     {
         foreach (['user.update', 'form.view', 'form.create'] as $name) {
-            Permission::create(['name' => $name, 'guard_name' => 'web']);
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         }
 
         $superAdmin = Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
@@ -42,8 +42,8 @@ class UserPermissionManagementTest extends TestCase
 
     public function test_admin_cannot_grant_a_permission_they_do_not_have(): void
     {
-        Permission::create(['name' => 'user.update', 'guard_name' => 'web']);
-        Permission::create(['name' => 'form.delete', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'user.update', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'form.delete', 'guard_name' => 'web']);
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
         $adminRole->givePermissionTo('user.update');
         $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
@@ -64,7 +64,7 @@ class UserPermissionManagementTest extends TestCase
     public function test_saving_does_not_remove_permissions_outside_the_editors_authority(): void
     {
         foreach (['user.update', 'form.view', 'report.view'] as $name) {
-            Permission::create(['name' => $name, 'guard_name' => 'web']);
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         }
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
         $adminRole->givePermissionTo(['user.update', 'form.view']);

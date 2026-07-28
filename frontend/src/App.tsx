@@ -132,41 +132,49 @@ export default function App() {
             path="/dashboard"
             element={
               <RoleRoute role="super_admin" redirectTo="/my-work">
-                <Home />
+                <PermissionRoute permission="dashboard.view">
+                  <Home />
+                </PermissionRoute>
               </RoleRoute>
             }
           />
-          <Route path="/my-work" element={<MyWorkRoute />} />
+          <Route
+            path="/my-work"
+            element={<PermissionRoute permission="my_work.view"><MyWorkRoute /></PermissionRoute>}
+          />
 
           {/* Task Management */}
-          <Route path="/divisions" element={<DivisionPage />} />
+          <Route path="/divisions" element={<PermissionRoute permission="division.view"><DivisionPage /></PermissionRoute>} />
 
           <Route
             path="/divisions/:id"
-            element={<WorkspacePage />}
+            element={<PermissionRoute permission="workspace.view"><WorkspacePage /></PermissionRoute>}
           />
 
           <Route
             path="/workspaces/:workspaceId/campaigns"
-            element={<CampaignListPage />}
+            element={<PermissionRoute permission="campaign.view"><CampaignListPage /></PermissionRoute>}
           />
 
           <Route
             path="/workspaces/:workspaceId/campaigns/:campaignId"
-            element={<CampaignDetailPage />}
+            element={<PermissionRoute permission="campaign.view"><CampaignDetailPage /></PermissionRoute>}
           />
 
           <Route
             path="/workspaces/:workspaceId/campaigns/:campaignId/boards"
-            element={<BoardPage />}
+            element={<PermissionRoute permissions={['board.view', 'campaign.view']}><BoardPage /></PermissionRoute>}
           />
 
           {/* Communication */}
-          <Route path="/chats" element={<ChatPage />} />
+          <Route
+            path="/chats"
+            element={<PermissionRoute permission="chat.view"><ChatPage /></PermissionRoute>}
+          />
 
           <Route
             path="/notifications"
-            element={<NotificationPage />}
+            element={<PermissionRoute permission="notification.view"><NotificationPage /></PermissionRoute>}
           />
 
           {/* User Management */}
@@ -196,7 +204,7 @@ export default function App() {
 
           <Route
             path="/forms/:id/builder"
-            element={<PermissionRoute permission='form.update'><FormBuilderPage /></PermissionRoute>}
+            element={<PermissionRoute permissions={['form.update', 'form.field.create', 'form.field.update', 'form.field.delete']}><FormBuilderPage /></PermissionRoute>}
           />
 
           <Route
@@ -225,7 +233,7 @@ export default function App() {
           />
 
           {/* Utilities */}
-          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/calendar" element={<PermissionRoute permission="calendar.view"><CalendarPage /></PermissionRoute>} />
           <Route path="/blank" element={<Blank />} />
           <Route path="/test" element={<TestConnection />} />
 
@@ -259,7 +267,13 @@ export default function App() {
 
 <Route
   path="/account/edit"
-  element={<EditAccountPage />}
+  element={
+    <ProtectedRoute>
+      <PermissionRoute permission="account.view">
+        <EditAccountPage />
+      </PermissionRoute>
+    </ProtectedRoute>
+  }
 />
 
         {/* ================= FALLBACK ================= */}

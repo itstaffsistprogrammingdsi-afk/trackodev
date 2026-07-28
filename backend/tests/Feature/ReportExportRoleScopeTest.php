@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Division;
 use App\Models\User;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
@@ -15,9 +16,10 @@ class ReportExportRoleScopeTest extends TestCase
 
     public function test_report_batch_downloads_follow_the_viewers_role_and_divisions(): void
     {
-        $adminRole = Role::create(['name' => User::ROLE_ADMIN, 'guard_name' => 'web']);
-        $superAdminRole = Role::create(['name' => User::ROLE_SUPER_ADMIN, 'guard_name' => 'web']);
-        $userRole = Role::create(['name' => User::ROLE_USER, 'guard_name' => 'web']);
+        $this->seed(PermissionSeeder::class);
+        $adminRole = Role::findByName(User::ROLE_ADMIN);
+        $superAdminRole = Role::findByName(User::ROLE_SUPER_ADMIN);
+        $userRole = Role::findByName(User::ROLE_USER);
 
         $admin = User::factory()->create(['name' => 'Division Scope Admin']);
         $admin->assignRole($adminRole);
