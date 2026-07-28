@@ -5,8 +5,11 @@ import CardMovementFeed from "../components/CardMovementFeed";
 import MyWorkPeriodFilter from "../components/MyWorkPeriodFilter";
 import AttachmentPanel from "../components/AttachmentPanel";
 import ExportLogPanel from "../components/ExportLogPanel";
+import CompletionRanking from "../components/CompletionRanking";
+import { useAuth } from "@/context/AuthContext";
 
 export default function MyWorkPage() {
+  const { hasRole } = useAuth();
   const {
     loading,
     activityLoading,
@@ -59,6 +62,8 @@ export default function MyWorkPage() {
         completionRate={activities.summary.tasks.completion_rate}
         loading={activityLoading}
       />
+
+      {hasRole("admin") && <CompletionRanking />}
 
       <div className="grid items-start gap-6 xl:grid-cols-12 xl:gap-8">
         <div className="xl:col-span-7">

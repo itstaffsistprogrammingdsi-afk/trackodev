@@ -4,6 +4,28 @@ export type ActivityRange =
   | "month"
   | "all";
 
+export type RankingPeriod = "day" | "month" | "year";
+
+export interface CompletionRankingItem {
+  rank: number;
+  user: {
+    id: string;
+    name: string;
+    avatar: string | null;
+  };
+  completed_tasks: number;
+}
+
+export interface CompletionRankingResponse {
+  success: boolean;
+  filter: {
+    period: RankingPeriod;
+    start: string;
+    end: string;
+  };
+  ranking: CompletionRankingItem[];
+}
+
   export type ExportPeriodType =
   | "daily"
   | "monthly"
