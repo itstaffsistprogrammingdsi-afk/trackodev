@@ -194,20 +194,27 @@ const AppHeader: React.FC = () => {
   return (
 <header
   className="
+    relative
+    z-30
+    border-b
+    border-slate-200/80
+    bg-white/90
+    backdrop-blur-xl
+    dark:border-slate-800
+    dark:bg-slate-950/90
     flex
     shrink-0
     flex-col
     gap-3
-    px-4
-    pt-3
-    pb-3
+    px-3
+    py-3
+    xsm:px-4
     transition-colors
     lg:flex-row
     lg:items-center
     lg:justify-between
     lg:px-8
-    lg:pt-10
-    lg:pb-4
+    lg:py-3.5
   "
 >
       {/* Breadcrumb & Mobile Menu */}
@@ -215,7 +222,7 @@ const AppHeader: React.FC = () => {
         <button
           type="button"
           onClick={toggleMobileSidebar}
-          className="rounded-lg p-1 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
           aria-label="Toggle mobile sidebar"
         >
           <Menu className="h-6 w-6" />
@@ -288,7 +295,7 @@ const AppHeader: React.FC = () => {
           </div>
         )}
 
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white transition-all hover:border-indigo-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white transition-all hover:border-indigo-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
           <NotificationBell />
         </div>
       </div>

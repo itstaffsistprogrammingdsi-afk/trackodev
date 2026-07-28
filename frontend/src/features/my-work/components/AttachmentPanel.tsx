@@ -192,7 +192,7 @@ export default function AttachmentPanel() {
         )}
 
         {/* STATS */}
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 xsm:grid-cols-3">
           <Stat label="Files" value={summary.uploaded_files} />
           <Stat label="Links" value={summary.uploaded_links} />
           <Stat label="MB" value={summary.total_storage_used_mb} />

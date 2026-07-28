@@ -573,8 +573,8 @@ const AppSidebar: React.FC = () => {
       )}
 
       <aside
-        className={`fixed bottom-4 left-4 top-4 z-50 flex flex-col overflow-hidden rounded-[32px] border border-gray-200/70 bg-white/95 shadow-2xl backdrop-blur-xl transition-all duration-300 dark:border-gray-800 dark:bg-gray-950/95 ${
-          slim ? "w-[76px]" : "w-[270px]"
+        className={`fixed inset-y-0 left-0 z-50 sm:bottom-4 sm:left-4 sm:top-4 flex flex-col overflow-hidden rounded-r-[28px] sm:rounded-[32px] border border-gray-200/70 bg-white/95 shadow-2xl backdrop-blur-xl transition-all duration-300 dark:border-gray-800 dark:bg-gray-950/95 ${
+          slim ? "w-[76px]" : "w-[min(88vw,300px)] sm:w-[270px]"
         } ${
           isMobileOpen
             ? "translate-x-0"

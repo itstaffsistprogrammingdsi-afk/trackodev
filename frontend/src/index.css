@@ -185,8 +185,31 @@ layer(base);
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+  html {
+    min-width: 320px;
+    background: var(--color-gray-50);
+    color-scheme: light;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  html.dark { color-scheme: dark; }
+  html, body, #root { min-height: 100%; width: 100%; }
   body {
-    @apply relative font-normal font-outfit z-1 bg-gray-50;
+    @apply relative z-1 overflow-x-hidden bg-gray-50 font-outfit font-normal antialiased text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+    text-rendering: optimizeLegibility;
+  }
+  img, svg, video, canvas { max-width: 100%; }
+  :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+  @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 

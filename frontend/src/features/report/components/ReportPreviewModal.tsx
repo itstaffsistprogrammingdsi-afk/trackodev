@@ -79,11 +79,11 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="absolute inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
+        <div className="relative flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[90dvh] sm:rounded-2xl">
           
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50/80 flex-wrap gap-2">
+          <div className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-blue-600" />
               <div>
@@ -96,7 +96,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
               </div>
             </div>
             
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:flex-wrap sm:overflow-visible sm:pb-0">
               {/* Toggle View Mode */}
               <div className="flex overflow-hidden rounded-lg border border-gray-200">
                 <button
@@ -170,7 +170,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
                     title="PDF Preview"
                   />
                 ) : (
-                  <div className="h-full overflow-auto p-4 bg-white">
+                  <div className="h-full overflow-auto bg-white p-2 sm:p-4">
                     <div 
                       className="max-w-6xl mx-auto"
                       dangerouslySetInnerHTML={{ __html: previewData.html }}
@@ -187,7 +187,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-3 border-t border-gray-200 bg-gray-50/80 flex justify-between items-center flex-wrap gap-2">
+          <div className="hidden items-center justify-between gap-2 border-t border-gray-200 bg-gray-50/80 px-6 py-3 sm:flex sm:flex-wrap">
             <div className="text-sm text-gray-500">
               <span className="font-medium">Tip:</span> Klik nama file pada mode Detail untuk preview aman di dalam modal
             </div>

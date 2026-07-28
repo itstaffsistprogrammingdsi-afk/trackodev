@@ -91,7 +91,7 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto min-h-screen">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {/* 🟢 HEADER PAGE */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>

@@ -66,7 +66,7 @@ export default function CampaignDetailPage() {
     : null;
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 xl:p-8 max-w-[1600px] mx-auto">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
       {/* =========================================
           HERO
       ========================================= */}

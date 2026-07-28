@@ -57,12 +57,12 @@ export const CardDetail: React.FC<CardDetailProps> = ({
       <div className="absolute inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl overflow-hidden">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50/80 flex-wrap gap-2">
+          <div className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
             <div>
               <h2 className="text-xl font-bold text-gray-900">{selectedUser.name}</h2>
               <p className="text-sm text-gray-500">Detail Laporan Pekerjaan</p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
               <button
                 onClick={() => onPreview?.(selectedUser.id)}
                 className="px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
@@ -96,7 +96,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -108,9 +108,9 @@ export const CardDetail: React.FC<CardDetailProps> = ({
             ) : (
               <div className="space-y-6">
                 {cards.map((card) => (
-                  <div key={card.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                  <div key={card.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                     {/* Card Header */}
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">{card.title}</h3>
                         {card.campaign && (
@@ -195,7 +195,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                                           <Clock className="w-4 h-4 text-yellow-500" />
                                         )}
                                       </div>
-                                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                                         <span>Total: {maxQty}</span>
                                         {isQcDone && (
                                           <>
@@ -261,7 +261,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                                           }));
                                         }}
                                         placeholder="Catatan QC..."
-                                        className="flex-1 min-w-[100px] px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                                        className="min-w-0 flex-1 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                                         disabled={isQcDone || isSubmitting}
                                       />
                                     </div>

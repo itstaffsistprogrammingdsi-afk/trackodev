@@ -138,7 +138,7 @@ export default function Home() {
   const { stats, activities, trend } = data;
 
   return (
-    <div className="p-4 sm:p-8 space-y-8 bg-[#f8fafc] min-h-screen font-sans">
+    <div className="space-y-6 font-sans sm:space-y-8">
       {/* HEADER + FILTER */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div className="space-y-1">
@@ -450,9 +450,9 @@ function KpiCard({ label, value, icon: Icon, color, bg }: KpiCardProps) {
 
 function SkeletonLoader() {
   return (
-    <div className="p-4 sm:p-8 space-y-8 bg-[#f8fafc] min-h-screen">
+    <div className="space-y-6 sm:space-y-8">
       <div className="h-10 w-64 bg-slate-200 rounded-lg animate-pulse" />
-      <div className="grid grid-cols-2 md:grid-cols-7 gap-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-7">
         {Array.from({ length: 7 }).map((_, i) => (
           <div
             key={i}
