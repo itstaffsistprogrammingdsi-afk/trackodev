@@ -72,6 +72,8 @@ class AttachmentResultDescriptionTemplateTest extends TestCase
             'name' => 'admin',
             'guard_name' => 'web',
         ]);
+        $adminRole->givePermissionTo(
+            Permission::findOrCreate('result_template.create', 'web'));
         $admin = User::factory()->create();
         $admin->assignRole($adminRole);
         Sanctum::actingAs($admin);
@@ -204,8 +206,10 @@ class AttachmentResultDescriptionTemplateTest extends TestCase
     {
         $user = User::factory()->create();
         $user->givePermissionTo([
-            Permission::findOrCreate('task.view', 'web'),
-            Permission::findOrCreate('task.update', 'web'),
+            Permission::findOrCreate('attachment.upload', 'web'),
+            Permission::findOrCreate('attachment.download', 'web'),
+            Permission::findOrCreate('brief_attachment.upload', 'web'),
+            Permission::findOrCreate('brief_attachment.download', 'web'),
         ]);
         $division = Division::create([
             'name' => 'Creative',

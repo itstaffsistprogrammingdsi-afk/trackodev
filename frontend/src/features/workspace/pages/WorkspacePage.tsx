@@ -12,7 +12,7 @@ export default function WorkspacePage() {
   const { id } = useParams<{ id: string }>();
   const divisionId = id ?? "";
 
-  const { user, loading: authLoading } = useAuth();
+  const { can, loading: authLoading } = useAuth();
   const { data, isLoading: workspacesLoading } = useWorkspaces(divisionId);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -22,10 +22,9 @@ export default function WorkspacePage() {
   const isLoading = authLoading || workspacesLoading;
 
   // 🛡️ Safety Check Roles & Access Control
-  const canManageWorkspace = useMemo(() => {
-    if (!user?.roles || !Array.isArray(user.roles)) return false;
-    return user.roles.some((role) => ["super_admin", "admin"].includes(role));
-  }, [user]);
+  const canCreateWorkspace = can("workspace.create");
+  const canUpdateWorkspace = can("workspace.update");
+  const canDeleteWorkspace = can("workspace.delete");
 
   // 🛡️ Safe array fallback untuk mencegah crash
   const safeWorkspaces = useMemo(() => {
@@ -111,7 +110,7 @@ export default function WorkspacePage() {
         </div>
 
         {/* ACTION BUTTON */}
-        {canManageWorkspace && (
+        {canCreateWorkspace && (
           <button
             onClick={openCreateModal}
             className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm px-4 py-2.5 rounded-xl shadow-sm shadow-blue-200 dark:shadow-none transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 w-full sm:w-auto"
@@ -153,12 +152,12 @@ export default function WorkspacePage() {
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-6">
             {searchQuery
               ? `Tidak ada workspace yang cocok dengan kata kunci "${searchQuery}".`
-              : canManageWorkspace
+              : canCreateWorkspace
               ? "Buat workspace pertama untuk mulai mengelompokkan project dan campaign divisi Anda."
               : "Workspace akan muncul di sini setelah dibuat oleh administrator."}
           </p>
 
-          {!searchQuery && canManageWorkspace && (
+          {!searchQuery && canCreateWorkspace && (
             <button
               onClick={openCreateModal}
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-200 dark:shadow-none"
@@ -176,7 +175,8 @@ export default function WorkspacePage() {
               key={ws.id}
               workspace={ws}
               divisionId={divisionId}
-              canManage={canManageWorkspace}
+              canEdit={canUpdateWorkspace}
+              canDelete={canDeleteWorkspace}
               onEdit={openEditModal}
             />
           ))}

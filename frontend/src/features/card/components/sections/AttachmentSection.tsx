@@ -59,10 +59,14 @@ export default function AttachmentSection({
   downloadEndpoint,
   supportsResultDescription = false,
 }: Props) {
-  const { hasRole } = useAuth();
+  const { can } = useAuth();
+  const permissionPrefix = supportsResultDescription ? "attachment" : "brief_attachment";
+  const canUpload = can(`${permissionPrefix}.upload`);
+  const canDelete = can(`${permissionPrefix}.delete`);
+  const canDownload = can(`${permissionPrefix}.download`);
   const canCreateResultDescriptionTemplate =
     supportsResultDescription &&
-    (hasRole("admin") || hasRole("super_admin"));
+    can("result_template.create");
   const [uploading, setUploading] = useState(false);
 
   const [linkUrl, setLinkUrl] = useState("");
@@ -403,7 +407,7 @@ export default function AttachmentSection({
         {/* HEADER */}
 
         {/* UPLOADER */}
-        {showUploader && (
+        {showUploader && canUpload && (
           <div
             className="
 bg-white
@@ -850,6 +854,7 @@ space-y-6
                     {/* ========================================= */}
                     <button
                       onClick={() => handleDelete(item.id)}
+                      hidden={!canDelete}
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-red-500 transition hover:bg-red-50 hover:text-red-600"
                     >
                       <Trash2 size={16} />
@@ -887,6 +892,7 @@ space-y-6
                 {/* DOWNLOAD BUTTON */}
                 <button
                   onClick={() => handleDownload(previewFile)}
+                  hidden={!canDownload}
                   className="w-9 h-9 rounded-xl hover:bg-white/10 text-white flex items-center justify-center"
                   title="Download"
                 >
@@ -923,6 +929,7 @@ space-y-6
                   <p className="mt-2 text-sm text-gray-400">{previewError}</p>
                   <button
                     type="button"
+                    hidden={!canDownload}
                     onClick={() => handleDownload(previewFile)}
                     className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
                   >
@@ -972,6 +979,7 @@ space-y-6
                     <p className="mt-4 text-lg font-medium">Preview tidak tersedia</p>
                     <button
                       type="button"
+                      hidden={!canDownload}
                       onClick={() => handleDownload(previewFile)}
                       className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
                     >

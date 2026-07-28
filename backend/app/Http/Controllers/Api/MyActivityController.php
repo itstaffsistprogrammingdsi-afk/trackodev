@@ -702,6 +702,16 @@ class MyActivityController extends Controller
             $format = 'xlsx';
         }
 
+        $formatPermission = $format === 'pdf'
+            ? 'my_work.export.pdf'
+            : 'my_work.export.excel';
+
+        abort_unless(
+            $request->user()->can('my_work.export') || $request->user()->can($formatPermission),
+            403,
+            'Anda tidak memiliki izin export untuk format yang dipilih.'
+        );
+
         $data = $this->gatherExportData($type, $request);
 
         $password = (string) $request->input('export_password');

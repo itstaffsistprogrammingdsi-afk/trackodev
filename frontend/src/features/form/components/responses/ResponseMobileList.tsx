@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   Eye,
+  Download,
 } from "lucide-react";
 
 import type {
@@ -22,6 +23,9 @@ type Props = {
 
   summaryFields: FormField[];
 
+  exportPDF: (submission: FormSubmission) => void;
+
+  canExport: boolean;
   toggleExpanded: (id: string) => void;
 };
 
@@ -29,6 +33,8 @@ export default function ResponseMobileList({
   form,
   submissions,
   expandedRows,
+  exportPDF,
+  canExport,
   summaryFields,
   toggleExpanded,
 }: Props) {
@@ -57,6 +63,17 @@ export default function ResponseMobileList({
                   {formatDate(s.created_at)}
                 </p>
               </div>
+
+              {canExport && (
+                <button
+                  type="button"
+                  onClick={() => exportPDF(s)}
+                  className="ml-auto flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs"
+                  title="Export respons ke PDF"
+                >
+                  <Download className="h-4 w-4" /> PDF
+                </button>
+              )}
 
               <button
                 onClick={() =>

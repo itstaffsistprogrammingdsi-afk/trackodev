@@ -60,7 +60,7 @@ class BoardReorderTest extends TestCase
     private function createCampaignWithBoards(): array
     {
         $user = User::factory()->create();
-        $user->givePermissionTo(Permission::findOrCreate('campaign.update', 'web'));
+        $user->givePermissionTo(Permission::findOrCreate('board.reorder', 'web'));
 
         $division = Division::create([
             'name' => 'Creative',

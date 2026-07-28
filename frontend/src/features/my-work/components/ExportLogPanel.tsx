@@ -41,12 +41,16 @@ const toDateInputValue = (d: Date) => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
+type Props = {
+  allowedFormats: ExportFormat[];
+};
 
-export default function ExportLogPanel() {
+
+export default function ExportLogPanel({ allowedFormats }: Props) {
   const now = new Date();
 
   const [type, setType] = useState<ExportPeriodType>("daily");
-  const [format, setFormat] = useState<ExportFormat>("xlsx");
+  const [format, setFormat] = useState<ExportFormat>(() => allowedFormats[0] ?? "xlsx");
   const [exportPassword, setExportPassword] = useState(() => generateExportPassword());
   const [showPassword, setShowPassword] = useState(false);
   const [passwordCopied, setPasswordCopied] = useState(false);
@@ -201,7 +205,7 @@ export default function ExportLogPanel() {
         <div>
           <label className="text-xs text-gray-500 block mb-1">Format File</label>
           <div className="flex gap-2">
-            {FORMAT_OPTIONS.map((opt) => {
+            {FORMAT_OPTIONS.filter((opt) => allowedFormats.includes(opt.key)).map((opt) => {
               const Icon = opt.icon;
               return (
                 <button

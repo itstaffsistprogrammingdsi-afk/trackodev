@@ -1,5 +1,6 @@
 import { Users } from "lucide-react";
 import { CardComment } from "../../types";
+import { useAuth } from "@/context/AuthContext";
 
 interface Props {
   comments: CardComment[];
@@ -17,6 +18,7 @@ export default function CommentSection({
   setComment,
   handleAddComment,
 }: Props) {
+  const { can } = useAuth();
   return (
     <section>
       <div className="flex items-center gap-3 mb-4">
@@ -52,7 +54,7 @@ export default function CommentSection({
 ))}
       </div>
 
-      <div className="flex gap-3 mt-4">
+      <div hidden={!can("comment.create")} className="flex gap-3 mt-4">
         <input
           value={comment}
           onChange={(e) => setComment(e.target.value)}

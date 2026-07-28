@@ -46,7 +46,7 @@ class CardOverdueDeletionTest extends TestCase
     private function createCampaignMember(): array
     {
         $user = User::factory()->create();
-        $user->givePermissionTo(Permission::findOrCreate('task.delete', 'web'));
+        $user->givePermissionTo(Permission::findOrCreate('card.delete', 'web'));
 
         $division = Division::create([
             'name' => 'Creative',

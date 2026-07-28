@@ -19,6 +19,7 @@ type Priority = "low" | "medium" | "high" | "urgent";
 
 type Props = {
   board: Board;
+  canCreateCard: boolean;
   onCardCreated?: () => void;
   onRefresh?: () => void;
   onOpenCard?: (card: Card) => void;
@@ -46,6 +47,7 @@ const PRIORITY_CONFIG: Record<
 
 export default function BoardColumn({
   board,
+  canCreateCard,
   onCardCreated,
   onRefresh,
   onOpenCard,
@@ -305,7 +307,7 @@ export default function BoardColumn({
       </div>
 
       {/* CREATE TASK AREA */}
-      <div className="px-3 pb-3 shrink-0">
+      <div hidden={!canCreateCard} className="px-3 pb-3 shrink-0">
         {!isAdding ? (
           <button
             type="button"

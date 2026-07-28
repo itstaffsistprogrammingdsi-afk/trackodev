@@ -11,6 +11,7 @@ import {
 import DivisionMembers
   from '../components/members/DivisionMembers'
 
+import { useAuth } from '@/context/AuthContext'
 import EditDivisionModal
   from '../components/modals/EditDivisionModal'
 
@@ -18,6 +19,13 @@ export default function
 DivisionDetailPage() {
 
   const { id } = useParams()
+  const { can } = useAuth()
+  const canManageMembers = [
+    'division.member.view',
+    'division.member.add',
+    'division.member.update',
+    'division.member.remove',
+  ].some(can)
 
   const [openEdit, setOpenEdit] =
     useState(false)
@@ -60,6 +68,7 @@ DivisionDetailPage() {
           </div>
 
           <button
+            hidden={!can('division.update')}
             onClick={() =>
               setOpenEdit(true)
             }
@@ -76,16 +85,18 @@ DivisionDetailPage() {
       {/* MEMBERS */}
       {/* ===================================== */}
 
-      <DivisionMembers
-        divisionId={division.id}
-      />
+      {canManageMembers && (
+        <DivisionMembers
+          divisionId={division.id}
+        />
+      )}
 
       {/* ===================================== */}
       {/* EDIT MODAL */}
       {/* ===================================== */}
 
       <EditDivisionModal
-        open={openEdit}
+        open={openEdit && can('division.update')}
         onClose={() =>
           setOpenEdit(false)
         }

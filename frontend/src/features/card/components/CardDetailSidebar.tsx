@@ -140,7 +140,7 @@ export default function CardDetailSidebar({
 
         <div className="space-y-2">
           {/* MEMBERS */}
-          <div>
+          <div hidden={!can('card.assign') && !can('card.unassign')}>
             <SidebarButton
               icon={<Users size={16} />}
               label="Members"
@@ -193,7 +193,7 @@ export default function CardDetailSidebar({
           </div>}
 
           {/* DUE DATE */}
-          <div>
+          <div hidden={!can('card.update')}>
             <SidebarButton
               icon={<Clock3 size={16} />}
               label="Due Date"
@@ -233,7 +233,7 @@ export default function CardDetailSidebar({
           </div>
 
           {/* RESULT ATTACHMENTS */}
-          <div>
+          <div hidden={!can('attachment.view')}>
             <SidebarButton
               icon={<Paperclip size={16} />}
               label="Result Attachment"
@@ -259,7 +259,7 @@ export default function CardDetailSidebar({
           </div>
 
           {/* BRIEF ATTACHMENTS */}
-          <div>
+          <div hidden={!can('brief_attachment.view')}>
             <SidebarButton
               icon={<Paperclip size={16} />}
               label="Brief Attachment"
@@ -296,6 +296,7 @@ export default function CardDetailSidebar({
         <div className="space-y-2">
           <button
             type="button"
+            hidden={!can('card.delete')}
             onClick={handleDelete}
             disabled={deleteDisabled}
             title={

@@ -14,6 +14,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, Pencil, Trash2, X, Check, } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CampaignCard({
   campaign,
@@ -25,6 +26,12 @@ export default function CampaignCard({
     workspaceId: string;
   }>();
   const queryClient = useQueryClient();
+  const { can } = useAuth();
+  const canViewMembers = can("campaign.member.view");
+  const canAddMembers = can("campaign.member.add");
+  const canRemoveMembers = can("campaign.member.remove");
+  const canManageMembers = canViewMembers || canAddMembers || canRemoveMembers;
+
 
   const [showMembers, setShowMembers] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -49,6 +56,7 @@ export default function CampaignCard({
     queryKey: ["campaign-members", campaign.id],
     queryFn: () => getMembers(campaign.id),
     initialData: campaign.members ?? [],
+    enabled: canViewMembers,
     refetchOnMount: true,
     staleTime: 0,
   });
@@ -214,6 +222,7 @@ export default function CampaignCard({
   {/* MEMBERS */}
   <button
     onClick={() => setShowMembers(true)}
+    hidden={!canManageMembers}
     className="p-2 rounded-lg hover:bg-blue-50"
     title="Manage Members"
   >
@@ -223,6 +232,7 @@ export default function CampaignCard({
   {/* EDIT */}
   <button
     onClick={() => setShowEdit(true)}
+    hidden={!can("campaign.update")}
     className="p-2 rounded-lg hover:bg-yellow-50"
     title="Edit Campaign"
   >
@@ -233,6 +243,7 @@ export default function CampaignCard({
   <button
     onClick={handleDeleteCampaign}
     disabled={loading}
+    hidden={!can("campaign.delete")}
     className="p-2 rounded-lg hover:bg-red-50 text-red-600 disabled:opacity-50"
     title="Delete Campaign"
   >
@@ -252,7 +263,7 @@ export default function CampaignCard({
 </footer>
 
       {/* MODALS (tidak diubah karena sudah clean) */}
-      {showMembers && (
+      {showMembers && canManageMembers && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <section className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4">
             <header className="flex justify-between items-center">
@@ -269,13 +280,14 @@ export default function CampaignCard({
                   className="flex justify-between text-sm bg-gray-50 px-3 py-2 rounded-lg"
                 >
                   {m.name}
-                  <button onClick={() => handleRemoveMember(m.id)}>
+                  <button hidden={!canRemoveMembers} onClick={() => handleRemoveMember(m.id)}>
                     <X size={14} className="text-red-500" />
                   </button>
                 </div>
               ))}
             </div>
 
+            <div hidden={!canAddMembers}>
             <MemberMentionInput onSelect={handleSelectUser} />
 
             <div className="flex flex-wrap gap-2">
@@ -291,6 +303,7 @@ export default function CampaignCard({
                 </div>
               ))}
             </div>
+            </div>
 
             <div className="flex justify-end gap-2">
               <button
@@ -303,6 +316,7 @@ export default function CampaignCard({
               <button
                 onClick={handleAddMembers}
                 className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded-lg"
+                hidden={!canAddMembers}
               >
                 <Check size={14} /> Add
               </button>
@@ -311,7 +325,7 @@ export default function CampaignCard({
         </div>
       )}
 
-      {showEdit && (
+      {showEdit && can("campaign.update") && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <section className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-5 space-y-3">
             <h3 className="text-lg font-semibold">Edit Campaign</h3>

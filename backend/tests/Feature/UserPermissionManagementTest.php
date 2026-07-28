@@ -42,10 +42,10 @@ class UserPermissionManagementTest extends TestCase
 
     public function test_admin_cannot_grant_a_permission_they_do_not_have(): void
     {
-        Permission::firstOrCreate(['name' => 'user.update', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'user.permissions.update', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'form.delete', 'guard_name' => 'web']);
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
-        $adminRole->givePermissionTo('user.update');
+        $adminRole->givePermissionTo('user.permissions.update');
         $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
 
         $admin = User::factory()->create();
@@ -63,11 +63,11 @@ class UserPermissionManagementTest extends TestCase
 
     public function test_saving_does_not_remove_permissions_outside_the_editors_authority(): void
     {
-        foreach (['user.update', 'form.view', 'report.view'] as $name) {
+        foreach (['user.permissions.update', 'form.view', 'report.view'] as $name) {
             Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         }
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
-        $adminRole->givePermissionTo(['user.update', 'form.view']);
+        $adminRole->givePermissionTo(['user.permissions.update', 'form.view']);
         $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
         $admin = User::factory()->create();
         $admin->assignRole($adminRole);

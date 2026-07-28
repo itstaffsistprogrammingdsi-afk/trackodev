@@ -45,11 +45,15 @@ class GranularPermissionManagementTest extends TestCase
             'form.field.create',
             'form.field.update',
             'form.field.delete',
+            'form.share',
             'form.responses.view',
             'form.submission.forward',
             'form.submission.assign',
             'report.preview',
             'report.export',
+            'report.filters.view',
+            'report.users.view',
+            'report.cards.view',
             'user.mention',
             'user.stats.view',
             'division.member.view',
@@ -71,6 +75,8 @@ class GranularPermissionManagementTest extends TestCase
             'my_work.ranking.view',
             'my_work.attachments.view',
             'my_work.export',
+            'my_work.export.pdf',
+            'my_work.export.excel',
             'calendar.view',
             'calendar.detail.view',
             'chat.view',
@@ -161,7 +167,7 @@ class GranularPermissionManagementTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('user');
-        $user->givePermissionTo('report.view');
+        $user->givePermissionTo(['report.view', 'report.users.view']);
         Sanctum::actingAs($user);
 
         $this->getJson('/api/reports/users')->assertOk();
@@ -175,6 +181,20 @@ class GranularPermissionManagementTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('export_password');
     }
+
+    public function test_form_view_permission_does_not_grant_create_access(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('user');
+        $user->givePermissionTo('form.view');
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/forms')->assertOk();
+        $this->postJson('/api/forms', [
+            'name' => 'Tidak boleh dibuat',
+        ])->assertForbidden();
+    }
+
 
     public function test_nested_form_permission_dependencies_are_added_automatically(): void
     {
@@ -202,7 +222,7 @@ class GranularPermissionManagementTest extends TestCase
             ['GET', 'api/my-activities/completion-ranking', 'permission:my_work.ranking.view'],
             ['POST', 'api/chat/rooms/{chatRoom}/messages', 'permission:chat.message.create'],
             ['DELETE', 'api/chat/messages/{message}', 'permission:chat.message.delete'],
-            ['GET', 'api/calendar/{date}', 'permission:calendar.detail.view|calendar.view'],
+            ['GET', 'api/calendar/{date}', 'permission:calendar.detail.view'],
             ['DELETE', 'api/notifications/{notification}', 'permission:notification.delete'],
             ['GET', 'api/dashboard/activities', 'permission:dashboard.activities.view'],
             ['GET', 'api/campaigns/{campaign}/health', 'permission:campaign.health.view|campaign.analytics.view'],
@@ -210,6 +230,48 @@ class GranularPermissionManagementTest extends TestCase
             ['GET', 'api/reports/export/pdf', 'permission:report.export.pdf|report.export'],
             ['GET', 'api/reports/export/excel', 'permission:report.export.excel|report.export'],
             ['GET', 'api/reports/preview/pdf', 'permission:report.preview.pdf|report.preview'],
+            ['POST', 'api/users', 'permission:user.create'],
+            ['PUT', 'api/users/{user}', 'permission:user.update'],
+            ['DELETE', 'api/users/{user}', 'permission:user.delete'],
+            ['GET', 'api/users/{user}/permissions', 'permission:user.permissions.view'],
+            ['PUT', 'api/users/{user}/permissions', 'permission:user.permissions.update'],
+            ['POST', 'api/divisions/{division}/members', 'permission:division.member.add'],
+            ['PUT', 'api/divisions/{division}/members/{user}', 'permission:division.member.update'],
+            ['DELETE', 'api/divisions/{division}/members/{user}', 'permission:division.member.remove'],
+            ['POST', 'api/divisions/{division}/workspaces', 'permission:workspace.create'],
+            ['PUT', 'api/workspaces/{workspace}', 'permission:workspace.update'],
+            ['DELETE', 'api/workspaces/{workspace}', 'permission:workspace.delete'],
+            ['POST', 'api/workspaces/{workspace}/campaigns', 'permission:campaign.create'],
+            ['PUT', 'api/campaigns/{campaign}', 'permission:campaign.update'],
+            ['DELETE', 'api/campaigns/{campaign}', 'permission:campaign.delete'],
+            ['POST', 'api/campaigns/{campaign}/members', 'permission:campaign.member.add'],
+            ['DELETE', 'api/campaigns/{campaign}/members/{user}', 'permission:campaign.member.remove'],
+            ['POST', 'api/campaigns/{campaign}/boards', 'permission:board.create'],
+            ['PATCH', 'api/boards/reorder', 'permission:board.reorder'],
+            ['PUT', 'api/boards/{board}', 'permission:board.update'],
+            ['DELETE', 'api/boards/{board}', 'permission:board.delete'],
+            ['POST', 'api/boards/{board}/cards', 'permission:card.create'],
+            ['PATCH', 'api/cards/reorder', 'permission:card.reorder'],
+            ['PATCH', 'api/cards/{card}/move', 'permission:card.move'],
+            ['PUT', 'api/cards/{card}', 'permission:card.update'],
+            ['DELETE', 'api/cards/{card}', 'permission:card.delete'],
+            ['POST', 'api/cards/{card}/assign', 'permission:card.assign'],
+            ['POST', 'api/cards/{card}/attachments', 'permission:attachment.upload'],
+            ['DELETE', 'api/attachments/{attachment}', 'permission:attachment.delete'],
+            ['POST', 'api/cards/{card}/comments', 'permission:comment.create'],
+            ['DELETE', 'api/comments/{comment}', 'permission:comment.delete'],
+            ['POST', 'api/cards/{card}/tasks', 'permission:checklist.create'],
+            ['PATCH', 'api/tasks/{task}/complete', 'permission:checklist.complete'],
+            ['POST', 'api/tasks/{task}/subtasks', 'permission:subtask.create'],
+            ['POST', 'api/forms', 'permission:form.create'],
+            ['PUT', 'api/forms/{form}', 'permission:form.update'],
+            ['DELETE', 'api/forms/{form}', 'permission:form.delete'],
+            ['POST', 'api/forms/{form}/fields', 'permission:form.field.create'],
+            ['PUT', 'api/form-fields/{field}', 'permission:form.field.update'],
+            ['DELETE', 'api/form-fields/{field}', 'permission:form.field.delete'],
+            ['GET', 'api/reports/filters-options', 'permission:report.filters.view'],
+            ['GET', 'api/reports/users', 'permission:report.users.view'],
+            ['GET', 'api/reports/users/{user}/cards', 'permission:report.cards.view'],
         ];
 
         $routes = collect(

@@ -30,6 +30,7 @@ import DivisionMemberMentionInput
 import {
   getUserRole,
 } from "../../utils/getUserRole";
+import { useAuth } from "@/context/AuthContext";
 
 type Props = {
   divisionId: string;
@@ -38,6 +39,7 @@ type Props = {
 export default function DivisionMembers({
   divisionId,
 }: Props) {
+  const { can } = useAuth();
   const [members, setMembers] =
     useState<DivisionMember[]>([]);
 
@@ -170,9 +172,11 @@ export default function DivisionMembers({
 
       {/* Add Member */}
 
-      <DivisionMemberMentionInput
-        onSelect={handleAdd}
-      />
+      <div hidden={!can("division.member.add")}>
+        <DivisionMemberMentionInput
+          onSelect={handleAdd}
+        />
+      </div>
 
       {/* Error */}
 
@@ -333,6 +337,7 @@ export default function DivisionMembers({
 
                       <button
                         type="button"
+                        hidden={!can("division.member.remove")}
                         disabled={
                           removingId ===
                           member.id

@@ -7,8 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 export default function FormBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const { can } = useAuth();
-  const canCreateField = can('form.field.create') || can('form.update');
-  const canDeleteField = can('form.field.delete') || can('form.update');
+  const canCreateField = can('form.field.create');
+  const canDeleteField = can('form.field.delete');
 
   const [form, setForm] = useState<Form | null>(null);
   const [loading, setLoading] = useState(true);

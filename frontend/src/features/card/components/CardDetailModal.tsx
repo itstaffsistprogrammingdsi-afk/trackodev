@@ -19,6 +19,7 @@ import AttachmentSection from "./sections/AttachmentSection";
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
 
+import { useAuth } from "@/context/AuthContext";
 import { AlignLeft, Clock3, Loader2, Sparkles } from "lucide-react";
 
 interface Props {
@@ -36,6 +37,7 @@ export default function CardDetailModal({
   onUpdated,
   onDeleted,
 }: Props) {
+  const { can } = useAuth();
   // =========================================
   // CARD DETAIL DATA
   // =========================================
@@ -236,6 +238,7 @@ export default function CardDetailModal({
 
                     <textarea
                       value={description}
+                      readOnly={!can("card.update")}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Add a detailed description..."
                       className="
@@ -250,7 +253,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* TASK SECTION */}
                   {/* ========================================= */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                  <div hidden={!can("checklist.view")} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
                     <TaskSection
                       tasks={tasks}
                       progress={progress}
@@ -265,7 +268,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* BRIEF ATTACHMENTS */}
                   {/* ========================================= */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                  <div hidden={!can("brief_attachment.view")} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
                     <h4 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">
                       Brief Attachments
                     </h4>
@@ -282,7 +285,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* RESULT ATTACHMENTS */}
                   {/* ========================================= */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                  <div hidden={!can("attachment.view")} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
                     <h4 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">
                       Result Attachments
                     </h4>
@@ -299,7 +302,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* COMMENTS SECTION */}
                   {/* ========================================= */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                  <div hidden={!can("comment.view")} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
                     <CommentSection
                       comments={comments}
                       comment={comment}
@@ -312,7 +315,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* ACTIVITY TIMELINE */}
                   {/* ========================================= */}
-                  <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                  <section hidden={!can("card.activity.view")} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
                     <div className="flex items-center gap-3 mb-5">
                       <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
                         <Clock3 size={18} />

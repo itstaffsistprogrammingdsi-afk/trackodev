@@ -172,6 +172,15 @@ export default function UserProfiles() {
 
   const [authUser, setAuthUser] =
     useState<AuthUser | null>(null);
+  const hasPermission = (permission: string) =>
+    authUser?.permissions?.includes(permission) ?? false;
+
+  const canCreateUser = hasPermission("user.create");
+  const canUpdateUser = hasPermission("user.update");
+  const canDeleteUser = hasPermission("user.delete");
+  const canViewUserPermissions = hasPermission("user.permissions.view");
+  const canUpdateUserPermissions = hasPermission("user.permissions.update");
+
 
   const [users, setUsers] =
     useState<User[]>([]);
@@ -341,6 +350,12 @@ export default function UserProfiles() {
   // ============================================
 
   const handleSubmit = async () => {
+    if (
+      (editingId && !canUpdateUser) ||
+      (!editingId && !canCreateUser)
+    ) return;
+
+
     try {
       setSubmitting(true);
 
@@ -590,6 +605,7 @@ export default function UserProfiles() {
       {/* FORM */}
       {/* ============================================ */}
 
+      {(canCreateUser || (editingId && canUpdateUser)) && (
       <div className="mb-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03] md:p-7">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white">
@@ -733,6 +749,7 @@ export default function UserProfiles() {
           )}
         </div>
       </div>
+      )}
 
       {/* ============================================ */}
       {/* TABLE */}
@@ -866,7 +883,7 @@ export default function UserProfiles() {
 
                         <td className="px-6 py-5">
                           <div className="flex justify-end gap-2">
-                            {(authUser?.permissions?.includes('user.permissions.view') || authUser?.permissions?.includes('user.update')) && (
+                            {(canViewUserPermissions || canUpdateUserPermissions) && (
                               <button
                                 onClick={() => setPermissionUser(user)}
                                 className='flex size-10 items-center justify-center rounded-xl border border-indigo-200 bg-white text-indigo-600 transition hover:bg-indigo-50 dark:border-indigo-500/30 dark:bg-gray-900'
@@ -877,6 +894,7 @@ export default function UserProfiles() {
                               </button>
                             )}
                             <button
+                              hidden={!canUpdateUser}
                               onClick={() =>
                                 handleEdit(
                                   user
@@ -888,6 +906,7 @@ export default function UserProfiles() {
                             </button>
 
                             <button
+                              hidden={!canDeleteUser}
                               onClick={() =>
                                 handleDelete(
                                   user.id
@@ -963,7 +982,7 @@ export default function UserProfiles() {
                     </div>
 
                     <div className="flex gap-2">
-                      {(authUser?.permissions?.includes('user.permissions.view') || authUser?.permissions?.includes('user.update')) && (
+                      {(canViewUserPermissions || canUpdateUserPermissions) && (
                         <button
                           onClick={() => setPermissionUser(user)}
                           className='flex size-10 items-center justify-center rounded-xl border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-500/30'
@@ -974,6 +993,7 @@ export default function UserProfiles() {
                         </button>
                       )}
                       <button
+                        hidden={!canUpdateUser}
                         onClick={() =>
                           handleEdit(
                             user
@@ -985,6 +1005,7 @@ export default function UserProfiles() {
                       </button>
 
                       <button
+                        hidden={!canDeleteUser}
                         onClick={() =>
                           handleDelete(
                             user.id

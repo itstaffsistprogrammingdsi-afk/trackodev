@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowRight,
+  Download,
 } from "lucide-react";
 
 import type {
@@ -39,6 +40,7 @@ type Props = {
   ) => void;
 
   canAssign: boolean;
+  canExport: boolean;
 };
 
 export default function ResponseTable({
@@ -47,8 +49,10 @@ export default function ResponseTable({
   expandedRows,
   summaryFields,
   toggleExpanded,
+  exportPDF,
   onAssign,
   canAssign,
+  canExport,
 }: Props) {
   return (
     <div
@@ -249,6 +253,18 @@ export default function ResponseTable({
                             ? "Hide"
                             : "View"}
                         </button>
+
+                        {canExport && (
+                          <button
+                            type="button"
+                            onClick={() => exportPDF(s)}
+                            className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-600 transition hover:bg-zinc-100"
+                            title="Export respons ke PDF"
+                          >
+                            <Download size={14} />
+                            PDF
+                          </button>
+                        )}
 
                         <button
                           hidden={!canAssign}

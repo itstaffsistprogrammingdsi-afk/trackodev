@@ -63,6 +63,8 @@ export default function FormResponsesPage() {
               expandedRows={expandedRows}
               summaryFields={summaryFields}
               toggleExpanded={toggleExpanded}
+              exportPDF={exportPDF}
+              canExport={can("form.responses.export")}
             />
 
             <ResponseTable
@@ -74,6 +76,7 @@ export default function FormResponsesPage() {
               exportPDF={exportPDF}
               onAssign={onAssign}
               canAssign={can("form.submission.assign")}
+              canExport={can("form.responses.export")}
             />
           </>
         )}

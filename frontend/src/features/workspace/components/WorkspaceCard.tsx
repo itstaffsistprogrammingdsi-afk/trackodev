@@ -10,15 +10,16 @@ import ConfirmDialog from "./ConfirmDialog";
 type Props = {
   workspace: Workspace;
   divisionId: string;
-  /** Whether the current user is allowed to edit/delete this workspace */
-  canManage: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
   onEdit: (workspace: Workspace) => void;
 };
 
 export default function WorkspaceCard({
   workspace,
   divisionId,
-  canManage,
+  canEdit,
+  canDelete,
   onEdit,
 }: Props) {
   const navigate = useNavigate();
@@ -77,10 +78,11 @@ export default function WorkspaceCard({
         <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
           <span className="text-xs font-medium text-slate-400">Workspace</span>
 
-          {canManage && (
+          {(canEdit || canDelete) && (
             <div className="flex items-center gap-3">
               <button
                 type="button"
+                hidden={!canEdit}
                 onClick={handleEditClick}
                 className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 transition"
               >
@@ -91,6 +93,7 @@ export default function WorkspaceCard({
               <button
                 type="button"
                 onClick={handleDeleteClick}
+                hidden={!canDelete}
                 disabled={deleteWorkspace.isPending}
                 className="flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-600 disabled:opacity-50 transition"
               >

@@ -597,11 +597,8 @@ class CardController extends Controller
             "Mengunduh brief attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'"
         );
 
-        return response()->download(
-            storage_path(
-                'app/public/' .
-                    $attachment->file_path
-            ),
+        return Storage::disk('public')->download(
+            $attachment->file_path,
             $attachment->file_name
         );
     }
@@ -744,6 +741,13 @@ class CardController extends Controller
     public function destroy(Card $card): JsonResponse
     {
         $this->authorizeCard($card);
+
+        if ($card->due_date?->isPast()) {
+            return response()->json([
+                'message' => 'Card overdue tidak dapat dihapus.',
+            ], 422);
+        }
+
         $card->delete();
 
         ActivityLogService::log(
@@ -1077,8 +1081,8 @@ class CardController extends Controller
                 'required_if:type,file',
                 'nullable',
                 'file',
-                'mimes:pdf,png,jpg,jpeg,gif,doc,docx,xls,xlsx,zip,rar',
-                'max:11024',
+                'mimes:'.self::ATTACHMENT_ALLOWED_EXTENSIONS,
+                'max:'.self::ATTACHMENT_MAX_SIZE_KB,
             ],
         ]);
 
@@ -1209,10 +1213,8 @@ class CardController extends Controller
             'downloaded',
             "Mengunduh attachment di card '{$card->title}' di board '{$card->board->name}'"
         );
-        return response()->download(
-            storage_path(
-                'app/public/' . $attachment->file_path
-            ),
+        return Storage::disk('public')->download(
+            $attachment->file_path,
             $attachment->file_name
         );
     }

@@ -7,6 +7,7 @@ import AttachmentPanel from "../components/AttachmentPanel";
 import ExportLogPanel from "../components/ExportLogPanel";
 import CompletionRanking from "../components/CompletionRanking";
 import { useAuth } from "@/context/AuthContext";
+import type { ExportFormat } from "../types";
 
 export default function MyWorkPage() {
   const { can } = useAuth();
@@ -18,6 +19,12 @@ export default function MyWorkPage() {
     setRange,
     activities,
   } = useMyWork();
+  const canExportAll = can("my_work.export");
+  const allowedExportFormats: ExportFormat[] = [
+    ...(canExportAll || can("my_work.export.excel") ? ["xlsx" as const] : []),
+    ...(canExportAll || can("my_work.export.pdf") ? ["pdf" as const] : []),
+  ];
+
 
   if (loading || (!activities && activityLoading)) {
     return (
@@ -76,7 +83,9 @@ export default function MyWorkPage() {
         </div>
 
         <div className="space-y-6 xl:col-span-5">
-          {can("my_work.export") && <ExportLogPanel />}
+          {allowedExportFormats.length > 0 && (
+            <ExportLogPanel allowedFormats={allowedExportFormats} />
+          )}
           {can("my_work.attachments.view") && <AttachmentPanel />}
         </div>
       </div>

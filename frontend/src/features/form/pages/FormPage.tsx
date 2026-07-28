@@ -164,6 +164,7 @@ export default function FormPage() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => handleCopyLink(form.slug)}
+                    hidden={!can('form.share')}
                     className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
                   >
                     Copy Link

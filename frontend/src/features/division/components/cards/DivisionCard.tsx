@@ -16,6 +16,7 @@ import { useDeleteDivision } from "../../hooks/useDivisions";
 
 import type { Division } from "../../types";
 import type { User } from "../../../user/types";
+import { useAuth } from "@/context/AuthContext";
 
 type Props = {
   division: Division;
@@ -29,6 +30,14 @@ export default function DivisionCard({
   onManageMembers,
 }: Props) {
   const navigate = useNavigate();
+  const { can } = useAuth();
+  const canManageMembers = [
+    "division.member.view",
+    "division.member.add",
+    "division.member.update",
+    "division.member.remove",
+  ].some(can);
+
 
   const deleteMutation =
     useDeleteDivision();
@@ -274,6 +283,7 @@ export default function DivisionCard({
             <button
               type="button"
               onClick={handleManageTeam}
+              hidden={!canManageMembers}
               className="
                 inline-flex
                 items-center
@@ -297,6 +307,7 @@ export default function DivisionCard({
             <button
               type="button"
               onClick={handleEdit}
+              hidden={!can("division.update")}
               className="
                 inline-flex
                 items-center
@@ -320,6 +331,7 @@ export default function DivisionCard({
             <button
               type="button"
               onClick={handleDelete}
+              hidden={!can("division.delete")}
               disabled={
                 deleteMutation.isPending
               }
@@ -351,7 +363,7 @@ export default function DivisionCard({
       </div>
 
       <EditDivisionModal
-        open={showEditModal}
+        open={showEditModal && can("division.update")}
         division={division}
         onClose={() =>
           setShowEditModal(false)

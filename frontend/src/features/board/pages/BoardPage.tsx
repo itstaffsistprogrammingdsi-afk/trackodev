@@ -39,6 +39,7 @@ import {
 } from "../utils/boardOrder";
 
 import { Kanban, List, Plus, FolderKanban, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 type ViewMode = "kanban" | "list";
 
@@ -62,6 +63,14 @@ export default function BoardPage() {
   const id = campaignId ?? "";
 
   const { data, isLoading, refetch } = useBoards(id);
+  const { can } = useAuth();
+  const canCreateBoard = can("board.create");
+  const canUpdateBoard = can("board.update");
+  const canDeleteBoard = can("board.delete");
+  const canReorderBoard = can("board.reorder");
+  const canCreateCard = can("card.create");
+  const canMoveCard = can("card.move");
+  const canReorderCard = can("card.reorder");
 
   // =========================================
   // STATE
@@ -159,12 +168,16 @@ export default function BoardPage() {
   // =========================================
   const handleDragStart = (event: DragStartEvent): void => {
     if (event.active.data.current?.entityType === "board") {
+      if (!canReorderBoard) return;
+
       const boardId = getBoardIdFromSortableId(String(event.active.id));
       const board = boards.find((item) => item.id === boardId) ?? null;
       setActiveBoard(board);
       setActiveCard(null);
       return;
     }
+
+    if (!canMoveCard && !canReorderCard) return;
 
     const rawCard = event.active.data.current?.card;
 
@@ -263,6 +276,8 @@ export default function BoardPage() {
 
       if (sourceBoard.id !== targetBoardId) {
         const targetBoard = boards.find((b) => b.id === targetBoardId);
+        if (!canMoveCard) return;
+
 
         if (!targetBoard) return;
 
@@ -312,6 +327,8 @@ export default function BoardPage() {
 
       const board = sourceBoard;
       const oldIndex = activeData.index;
+      if (!canReorderCard) return;
+
 
       let newIndex = board.cards.length - 1;
       if (overCardData) {
@@ -453,6 +470,7 @@ export default function BoardPage() {
         <button
           type="button"
           onClick={() => setIsCreateOpen(true)}
+          hidden={!canCreateBoard}
           className="
             flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold 
             text-white transition-all duration-200 hover:bg-blue-500 active:scale-[0.98] shadow-sm
@@ -497,6 +515,7 @@ export default function BoardPage() {
           type="button"
           onClick={() => setIsCreateOpen(true)}
           className="mt-2 flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-blue-500 active:scale-[0.98]"
+          hidden={!canCreateBoard}
         >
           <Plus size={15} />
           <span>Tambah Column</span>
@@ -518,9 +537,11 @@ export default function BoardPage() {
               board={board}
               onCardCreated={refetch}
               onRefresh={refetch}
+              canReorder={canReorderBoard}
+              canCreateCard={canCreateCard}
               onOpenCard={setSelectedCard}
-              onEdit={() => setEditingBoard(board)}
-              onDelete={() => setDeletingBoard(board)}
+              onEdit={canUpdateBoard ? () => setEditingBoard(board) : undefined}
+              onDelete={canDeleteBoard ? () => setDeletingBoard(board) : undefined}
             />
           ))}
         </div>

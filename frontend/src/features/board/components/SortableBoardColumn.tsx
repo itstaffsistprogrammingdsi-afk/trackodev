@@ -9,6 +9,8 @@ import { getBoardSortableId, isBoardOrderLocked } from "../utils/boardOrder";
 
 type Props = {
   board: Board;
+  canReorder: boolean;
+  canCreateCard: boolean;
   onCardCreated?: () => void;
   onRefresh?: () => void;
   onOpenCard?: (card: Card) => void;
@@ -16,7 +18,12 @@ type Props = {
   onDelete?: () => void;
 };
 
-export default function SortableBoardColumn({ board, ...columnProps }: Props) {
+export default function SortableBoardColumn({
+  board,
+  canReorder,
+  canCreateCard,
+  ...columnProps
+}: Props) {
   const isLocked = isBoardOrderLocked(board);
   const {
     attributes,
@@ -28,7 +35,7 @@ export default function SortableBoardColumn({ board, ...columnProps }: Props) {
   } = useSortable({
     id: getBoardSortableId(board.id),
     data: { entityType: "board", board },
-    disabled: isLocked,
+    disabled: isLocked || !canReorder,
   });
 
   return (
@@ -42,8 +49,9 @@ export default function SortableBoardColumn({ board, ...columnProps }: Props) {
       <BoardColumn
         board={board}
         {...columnProps}
+        canCreateCard={canCreateCard}
         dragHandle={
-          isLocked ? (
+          !canReorder ? null : isLocked ? (
             <span
               title="Posisi column ini dikunci"
               aria-label={`Column ${board.name} tidak dapat dipindahkan`}

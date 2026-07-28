@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 import { CardTask } from "../../types";
 
@@ -33,6 +34,7 @@ export default function TaskSection({
   toggleTask,
   deleteTask,
 }: Props) {
+  const { can } = useAuth();
   // ============================================
   // STATE
   // ============================================
@@ -137,6 +139,7 @@ export default function TaskSection({
             {/* CHECKBOX */}
 
             <button
+              disabled={!can("checklist.complete")}
               onClick={() =>
                 toggleTask(t.id)
               }
@@ -184,6 +187,7 @@ export default function TaskSection({
             {/* DELETE */}
 
             <button
+              hidden={!can("checklist.delete")}
               onClick={() =>
                 deleteTask(t.id)
               }
@@ -203,7 +207,7 @@ export default function TaskSection({
 
       {/* ADD TASK */}
 
-      <div className="mt-5">
+      <div hidden={!can("checklist.create")} className="mt-5">
         {!showForm ? (
           <button
             onClick={() =>
