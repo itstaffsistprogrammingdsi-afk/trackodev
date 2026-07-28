@@ -8,6 +8,8 @@ import type {
   AttachmentListResponse,
   DailyTodoResponse,
   ExportLogParams,
+  CompletionRankingResponse,
+  RankingPeriod,
 } from "../types";
 
 export const getDailyTodo = async (): Promise<DailyTodoResponse> => {
@@ -29,6 +31,16 @@ export const getMyActivities = async (
       per_page: perPage,
       activity_type: activityType,
     },
+  });
+
+  return res.data;
+};
+
+export const getCompletionRanking = async (
+  period: RankingPeriod = "month",
+): Promise<CompletionRankingResponse> => {
+  const res = await axios.get("/my-activities/completion-ranking", {
+    params: { period },
   });
 
   return res.data;

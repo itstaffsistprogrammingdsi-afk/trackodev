@@ -41,6 +41,12 @@ class MyActivityController extends Controller
         'pdf',
     ];
 
+    private const ALLOWED_RANKING_PERIODS = [
+        'day',
+        'month',
+        'year',
+    ];
+
     /*
     |--------------------------------------------------------------------------
     | CARD RELEVANT TO USER
@@ -398,6 +404,106 @@ class MyActivityController extends Controller
         ]);
     }
 
+    /**
+     * Tiga user dengan penyelesaian task terbanyak pada divisi admin.
+     *
+     * Pelaku penyelesaian diambil dari movement terakhir sebuah card yang
+     * saat ini berstatus completed. Dengan demikian ranking menunjukkan user
+     * yang benar-benar memindahkan task ke tahap selesai, bukan semua assignee.
+     */
+    public function completionRanking(Request $request)
+    {
+        $admin = $request->user();
+
+        abort_unless($admin?->isAdmin(), 403, 'Ranking hanya tersedia untuk admin.');
+
+        $validated = $request->validate([
+            'period' => ['nullable', 'in:'.implode(',', self::ALLOWED_RANKING_PERIODS)],
+        ]);
+
+        $period = $validated['period'] ?? 'month';
+        $now = now();
+
+        [$start, $end] = match ($period) {
+            'day' => [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
+            'year' => [$now->copy()->startOfYear(), $now->copy()->endOfYear()],
+            default => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
+        };
+
+        $divisionIds = $admin->divisions()->pluck('divisions.id');
+
+        if ($divisionIds->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'filter' => [
+                    'period' => $period,
+                    'start' => $start->toIso8601String(),
+                    'end' => $end->toIso8601String(),
+                ],
+                'ranking' => [],
+            ]);
+        }
+
+        $ranking = ActivityLog::query()
+            ->select([
+                'activity_logs.user_id',
+                'users.name',
+                'users.avatar',
+            ])
+            ->selectRaw('COUNT(*) as completed_tasks')
+            ->join('users', 'users.id', '=', 'activity_logs.user_id')
+            ->join('cards', 'cards.id', '=', 'activity_logs.entity_id')
+            ->where('activity_logs.entity_type', 'card')
+            ->where('activity_logs.action', 'moved')
+            ->where('cards.status', 'completed')
+            ->whereNotNull('cards.completed_at')
+            ->whereBetween('cards.completed_at', [$start, $end])
+            ->whereHas('user.divisions', function (Builder $query) use ($divisionIds) {
+                $query->whereIn('divisions.id', $divisionIds);
+            })
+            ->whereDoesntHave('user.roles', function (Builder $query) {
+                $query->where('name', 'super_admin');
+            })
+            ->whereNotExists(function ($query) {
+                $query
+                    ->selectRaw('1')
+                    ->from('activity_logs as newer_movement')
+                    ->whereColumn('newer_movement.entity_id', 'activity_logs.entity_id')
+                    ->where('newer_movement.entity_type', 'card')
+                    ->where('newer_movement.action', 'moved')
+                    ->whereColumn('newer_movement.created_at', '>', 'activity_logs.created_at');
+            })
+            ->groupBy(
+                'activity_logs.user_id',
+                'users.name',
+                'users.avatar'
+            )
+            ->orderByDesc('completed_tasks')
+            ->orderBy('users.name')
+            ->limit(3)
+            ->get()
+            ->values()
+            ->map(fn ($item, $index) => [
+                'rank' => $index + 1,
+                'user' => [
+                    'id' => $item->user_id,
+                    'name' => $item->name,
+                    'avatar' => $item->avatar,
+                ],
+                'completed_tasks' => (int) $item->completed_tasks,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'filter' => [
+                'period' => $period,
+                'start' => $start->toIso8601String(),
+                'end' => $end->toIso8601String(),
+            ],
+            'ranking' => $ranking,
+        ]);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Attachment List (filter Harian / Bulanan / Tahunan - sama seperti Export)
@@ -691,8 +797,7 @@ class MyActivityController extends Controller
         array $data,
         string $password,
         EncryptedExportService $encryptedExport
-    )
-    {
+    ) {
         $fileName = sprintf(
             'laporan-kerja-individu-%s-%s.xlsx',
             $type,
@@ -724,8 +829,7 @@ class MyActivityController extends Controller
         array $data,
         string $password,
         EncryptedExportService $encryptedExport
-    )
-    {
+    ) {
         $fileName = sprintf(
             'laporan-kerja-individu-%s-%s.pdf',
             $type,
@@ -970,10 +1074,10 @@ class MyActivityController extends Controller
             case 'card':
                 return $this->resolveLocationForCardId($activity->entity_id, $cards);
 
-            // These three log against the attachment/comment's own id, so
-            // resolve their parent card id first, then reuse the exact
-            // same Card -> Board -> Campaign -> Workspace resolution as
-            // the 'card' case above.
+                // These three log against the attachment/comment's own id, so
+                // resolve their parent card id first, then reuse the exact
+                // same Card -> Board -> Campaign -> Workspace resolution as
+                // the 'card' case above.
             case 'card_attachment':
                 return $this->resolveLocationForCardId(
                     $cardIdByAttachmentId->get($activity->entity_id),

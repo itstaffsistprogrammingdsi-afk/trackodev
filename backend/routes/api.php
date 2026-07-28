@@ -376,6 +376,11 @@ Route::middleware([
         [MyActivityController::class, 'index']
     );
 
+    Route::get(
+        '/my-activities/completion-ranking',
+        [MyActivityController::class, 'completionRanking']
+    );
+
     Route::get('/my-activities/attachments', [MyActivityController::class, 'attachments']);
 
     // ========================================
