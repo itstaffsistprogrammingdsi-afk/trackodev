@@ -8,8 +8,10 @@ import ResponseMobileList from "../components/responses/ResponseMobileList";
 import ResponseTable from "../components/responses/ResponseTable";
 
 import AssignmentModal from "../components/modals/AssignmentModal";
+import { useAuth } from "@/context/AuthContext";
 
 export default function FormResponsesPage() {
+  const { can } = useAuth();
   const { id } = useParams<{ id: string }>();
 
   const {
@@ -71,18 +73,19 @@ export default function FormResponsesPage() {
               toggleExpanded={toggleExpanded}
               exportPDF={exportPDF}
               onAssign={onAssign}
+              canAssign={can("form.submission.assign")}
             />
           </>
         )}
 
                 {/* MODAL DI SINI */}
-        <AssignmentModal
-          open={assignmentOpen}
-          submission={selectedSubmission}
-          onClose={() =>
-            setAssignmentOpen(false)
-          }
-        />
+        {can("form.submission.assign") && (
+          <AssignmentModal
+            open={assignmentOpen}
+            submission={selectedSubmission}
+            onClose={() => setAssignmentOpen(false)}
+          />
+        )}
       </div>
       
     </div>

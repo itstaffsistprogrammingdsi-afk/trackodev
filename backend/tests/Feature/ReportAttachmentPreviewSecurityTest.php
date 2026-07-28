@@ -9,6 +9,7 @@ use App\Models\CardAttachment;
 use App\Models\Division;
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -17,9 +18,17 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+    }
+
     public function test_report_exports_require_a_strong_password(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $manager = User::factory()->create();
+        $manager->assignRole('super_admin');
+        Sanctum::actingAs($manager);
 
         foreach (['pdf', 'excel'] as $format) {
             $this->getJson('/api/reports/export/'.$format)
@@ -37,6 +46,7 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
     public function test_report_preview_uses_internal_modal_trigger_instead_of_external_file_link(): void
     {
         $viewer = User::factory()->create();
+        $viewer->assignRole('super_admin');
         $reportUser = User::factory()->create();
         Sanctum::actingAs($viewer);
 

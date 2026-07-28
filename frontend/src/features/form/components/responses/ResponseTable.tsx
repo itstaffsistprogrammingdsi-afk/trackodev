@@ -37,6 +37,8 @@ type Props = {
   onAssign: (
     submission: FormSubmission
   ) => void;
+
+  canAssign: boolean;
 };
 
 export default function ResponseTable({
@@ -46,6 +48,7 @@ export default function ResponseTable({
   summaryFields,
   toggleExpanded,
   onAssign,
+  canAssign,
 }: Props) {
   return (
     <div
@@ -248,6 +251,7 @@ export default function ResponseTable({
                         </button>
 
                         <button
+                          hidden={!canAssign}
                           type="button"
                           onClick={() =>
                             onAssign(s)

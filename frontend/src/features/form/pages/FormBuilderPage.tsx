@@ -2,9 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getForm, createField, deleteField } from "../api/form.api";
 import type { Form, FormField } from "../types";
+import { useAuth } from "@/context/AuthContext";
 
 export default function FormBuilderPage() {
   const { id } = useParams<{ id: string }>();
+  const { can } = useAuth();
+  const canCreateField = can('form.field.create') || can('form.update');
+  const canDeleteField = can('form.field.delete') || can('form.update');
 
   const [form, setForm] = useState<Form | null>(null);
   const [loading, setLoading] = useState(true);
@@ -115,7 +119,7 @@ export default function FormBuilderPage() {
       </div>
 
       {/* CREATE FIELD */}
-      <div className="mb-6 rounded-xl border bg-white p-5 shadow-sm">
+      <div className={`${canCreateField ? 'block' : 'hidden'} mb-6 rounded-xl border bg-white p-5 shadow-sm`}>
 
         <div className="grid gap-4 md:grid-cols-3">
           <input
@@ -262,7 +266,7 @@ export default function FormBuilderPage() {
 
                   <button
                     onClick={() => handleDeleteField(field.id)}
-                    className="text-sm text-red-600"
+                    className={`${canDeleteField ? 'inline-flex' : 'hidden'} text-sm text-red-600`}
                   >
                     Delete
                   </button>

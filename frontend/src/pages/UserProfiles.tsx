@@ -866,7 +866,7 @@ export default function UserProfiles() {
 
                         <td className="px-6 py-5">
                           <div className="flex justify-end gap-2">
-                            {authUser?.permissions?.includes('user.update') && (
+                            {(authUser?.permissions?.includes('user.permissions.view') || authUser?.permissions?.includes('user.update')) && (
                               <button
                                 onClick={() => setPermissionUser(user)}
                                 className='flex size-10 items-center justify-center rounded-xl border border-indigo-200 bg-white text-indigo-600 transition hover:bg-indigo-50 dark:border-indigo-500/30 dark:bg-gray-900'
@@ -963,7 +963,7 @@ export default function UserProfiles() {
                     </div>
 
                     <div className="flex gap-2">
-                      {authUser?.permissions?.includes('user.update') && (
+                      {(authUser?.permissions?.includes('user.permissions.view') || authUser?.permissions?.includes('user.update')) && (
                         <button
                           onClick={() => setPermissionUser(user)}
                           className='flex size-10 items-center justify-center rounded-xl border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-500/30'

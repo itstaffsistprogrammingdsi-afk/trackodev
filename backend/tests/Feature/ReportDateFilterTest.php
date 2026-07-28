@@ -8,6 +8,7 @@ use App\Models\Card;
 use App\Models\Division;
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
@@ -19,10 +20,8 @@ class ReportDateFilterTest extends TestCase
 
     public function test_super_admin_date_filter_matches_the_actual_work_period_and_card_ownership(): void
     {
-        $superAdminRole = Role::create([
-            'name' => User::ROLE_SUPER_ADMIN,
-            'guard_name' => 'web',
-        ]);
+        $this->seed(PermissionSeeder::class);
+        $superAdminRole = Role::findByName(User::ROLE_SUPER_ADMIN);
 
         $superAdmin = User::factory()->create(['name' => 'Report Super Admin']);
         $superAdmin->assignRole($superAdminRole);

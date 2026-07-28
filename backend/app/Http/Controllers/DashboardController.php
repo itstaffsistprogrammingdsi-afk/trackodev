@@ -9,6 +9,7 @@ use App\Models\Campaign;
 use App\Models\Board;
 use App\Models\Card;
 use App\Models\ActivityLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -16,60 +17,367 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $scope = $request->query('scope', 'global');
-        $range = $request->query('range', 'all');
-
         $user = $request->user();
+        $filter = $this->resolvePeriod($request);
 
         return response()->json([
-            'stats'   => $this->stats($user, $scope),
-            'activities' => $this->activities($user, $scope, $range),
-            // tambahan untuk chart (opsional)
-            'trend'   => $this->trend($user, $scope, $range),
+            'filter' => $this->periodPayload($filter),
+            'stats' => $this->stats($user, $scope, $filter),
+            'task_status' => $this->taskStatus($user, $scope, $filter),
+        ]);
+    }
+
+    /**
+     * Top 3 penyelesai task untuk setiap divisi, khusus Super Admin.
+     *
+     * Penyelesai task mengikuti definisi ranking My Work: user yang melakukan
+     * movement terakhir pada card yang saat ini sudah selesai.
+     */
+    public function divisionRankings(Request $request)
+    {
+        $superAdmin = $request->user();
+
+        abort_unless(
+            $superAdmin?->isSuperAdmin(),
+            403,
+            'Ranking per divisi hanya tersedia untuk Super Admin.'
+        );
+
+        $filter = $this->resolvePeriod($request);
+
+        $rankingRows = ActivityLog::query()
+            ->select([
+                'divisions.id as division_id',
+                'activity_logs.user_id',
+                'users.name',
+                'users.avatar',
+            ])
+            ->selectRaw('COUNT(*) as completed_tasks')
+            ->join('users', 'users.id', '=', 'activity_logs.user_id')
+            ->join('division_user', 'division_user.user_id', '=', 'users.id')
+            ->join('divisions', 'divisions.id', '=', 'division_user.division_id')
+            ->join('cards', 'cards.id', '=', 'activity_logs.entity_id')
+            ->where('activity_logs.entity_type', 'card')
+            ->where('activity_logs.action', 'moved')
+            ->where('cards.status', 'completed')
+            ->whereNotNull('cards.completed_at')
+            ->when($filter['start'] && $filter['end'], function ($query) use ($filter) {
+                $query->whereBetween('cards.completed_at', [$filter['start'], $filter['end']]);
+            })
+            ->whereDoesntHave('user.roles', function ($query) {
+                $query->where('name', User::ROLE_SUPER_ADMIN);
+            })
+            ->whereNotExists(function ($query) {
+                $query
+                    ->selectRaw('1')
+                    ->from('activity_logs as newer_movement')
+                    ->whereColumn('newer_movement.entity_id', 'activity_logs.entity_id')
+                    ->where('newer_movement.entity_type', 'card')
+                    ->where('newer_movement.action', 'moved')
+                    ->whereColumn('newer_movement.created_at', '>', 'activity_logs.created_at');
+            })
+            ->groupBy(
+                'divisions.id',
+                'activity_logs.user_id',
+                'users.name',
+                'users.avatar'
+            )
+            ->get()
+            ->groupBy('division_id');
+
+        $divisions = Division::query()
+            ->select(['id', 'name', 'code'])
+            ->withCount('users')
+            ->orderBy('name')
+            ->get()
+            ->map(function (Division $division) use ($rankingRows) {
+                $ranking = $rankingRows
+                    ->get($division->id, collect())
+                    ->sort(function ($left, $right) {
+                        return ((int) $right->completed_tasks <=> (int) $left->completed_tasks)
+                            ?: strcasecmp($left->name, $right->name);
+                    })
+                    ->take(3)
+                    ->values()
+                    ->map(fn ($item, $index) => [
+                        'rank' => $index + 1,
+                        'user' => [
+                            'id' => $item->user_id,
+                            'name' => $item->name,
+                            'avatar' => $item->avatar,
+                        ],
+                        'completed_tasks' => (int) $item->completed_tasks,
+                    ]);
+
+                return [
+                    'id' => $division->id,
+                    'name' => $division->name,
+                    'code' => $division->code,
+                    'member_count' => $division->users_count,
+                    'ranking' => $ranking,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'filter' => $this->periodPayload($filter),
+            'summary' => [
+                'divisions' => $divisions->count(),
+                'active_divisions' => $divisions
+                    ->filter(fn ($division) => $division['ranking']->isNotEmpty())
+                    ->count(),
+                'ranked_users' => $rankingRows->flatten(1)->count(),
+                'completed_tasks' => (int) $rankingRows
+                    ->flatten(1)
+                    ->sum('completed_tasks'),
+            ],
+            'divisions' => $divisions,
         ]);
     }
 
     /**
      * STATISTIK (SAFE UNTUK SUPER ADMIN & USER)
      */
-    private function stats($user, string $scope): array
+    private function stats($user, string $scope, array $filter): array
     {
         $isSuperAdmin = $user->isSuperAdmin();
 
-        // ============================================
-        // GLOBAL (Super Admin)
-        // ============================================
         if ($scope === 'global' && $isSuperAdmin) {
             return [
-                'users'      => User::count(),
-                'divisions'  => Division::count(),
-                'workspaces' => Workspace::count(),
-                'campaigns'  => Campaign::count(),
-                'boards'     => Board::count(),
-                'cards'      => Card::count(),
-                'activities' => ActivityLog::count(),
+                'users' => $this->countWithinPeriod(
+                    User::query(), $filter, 'users.created_at'
+                ),
+                'divisions' => $this->countWithinPeriod(
+                    Division::query(), $filter, 'divisions.created_at'
+                ),
+                'workspaces' => $this->countWithinPeriod(
+                    Workspace::query(), $filter, 'workspaces.created_at'
+                ),
+                'campaigns' => $this->countWithinPeriod(
+                    Campaign::query(), $filter, 'campaigns.created_at'
+                ),
+                'boards' => $this->countWithinPeriod(
+                    Board::query(), $filter, 'boards.created_at'
+                ),
+                'cards' => $this->countWithinPeriod(
+                    Card::query(), $filter, 'cards.created_at'
+                ),
             ];
         }
 
-        // ============================================
-        // PERSONAL (User sendiri atau "me")
-        // ============================================
+        $campaignIds = $user->campaigns()->pluck('campaigns.id');
+
         return [
-            'users'      => 1, // self reference
-            'divisions'  => 0,
-            'workspaces' => $user->workspaces()->count(),
-            'campaigns'  => $user->campaigns()->count(),
-            'boards'     => Board::whereHas('campaign', function($q) use ($user) {
-                $q->whereIn('campaigns.id', $user->campaigns()->pluck('id'));
-            })->count(),
-            'cards'      => Card::whereIn('campaign_id', $user->campaigns()->pluck('id'))->count(),
-            'activities' => ActivityLog::where('user_id', $user->id)->count(),
+            'users' => $this->countWithinPeriod(
+                User::query()->whereKey($user->id), $filter, 'users.created_at'
+            ),
+            'divisions' => $this->countWithinPeriod(
+                $user->divisions()->getQuery(), $filter, 'divisions.created_at'
+            ),
+            'workspaces' => $this->countWithinPeriod(
+                $user->workspaces()->getQuery(), $filter, 'workspaces.created_at'
+            ),
+            'campaigns' => $this->countWithinPeriod(
+                $user->campaigns()->getQuery(), $filter, 'campaigns.created_at'
+            ),
+            'boards' => $this->countWithinPeriod(
+                Board::query()->whereHas('campaign', fn ($query) =>
+                    $query->whereIn('campaigns.id', $campaignIds)
+                ),
+                $filter,
+                'boards.created_at'
+            ),
+            'cards' => $this->countWithinPeriod(
+                Card::query()->whereHas('board.campaign', fn ($query) =>
+                    $query->whereIn('campaigns.id', $campaignIds)
+                ),
+                $filter,
+                'cards.created_at'
+            ),
         ];
     }
 
     /**
+     * Distribusi status task untuk visual operational health dashboard.
+     * Overdue dipisahkan dari todo/in progress agar setiap card hanya masuk
+     * ke satu kategori utama.
+     */
+    private function taskStatus($user, string $scope, array $filter): array
+    {
+        $query = Card::query();
+
+        if ($scope !== 'global' || ! $user->isSuperAdmin()) {
+            $query->where(function ($cardQuery) use ($user) {
+                $cardQuery
+                    ->where('created_by', $user->id)
+                    ->orWhereHas('assignees', function ($assigneeQuery) use ($user) {
+                        $assigneeQuery->where('users.id', $user->id);
+                    });
+            });
+        }
+
+        $this->applyPeriod($query, $filter, 'cards.created_at');
+
+        $now = now();
+        $dueSoonEnd = $now->copy()->addDays(7)->endOfDay();
+        $notOverdue = function ($dateQuery) use ($now) {
+            $dateQuery
+                ->whereNull('due_date')
+                ->orWhere('due_date', '>=', $now);
+        };
+
+        $total = (clone $query)->count();
+        $completed = (clone $query)
+            ->where('status', 'completed')
+            ->count();
+        $overdue = (clone $query)
+            ->where('status', '!=', 'completed')
+            ->whereNotNull('due_date')
+            ->where('due_date', '<', $now)
+            ->count();
+        $todo = (clone $query)
+            ->where('status', 'todo')
+            ->where($notOverdue)
+            ->count();
+        $inProgress = (clone $query)
+            ->where('status', 'in_progress')
+            ->where($notOverdue)
+            ->count();
+        $dueSoon = (clone $query)
+            ->where('status', '!=', 'completed')
+            ->whereBetween('due_date', [$now, $dueSoonEnd])
+            ->count();
+
+        return [
+            'total' => $total,
+            'todo' => $todo,
+            'in_progress' => $inProgress,
+            'completed' => $completed,
+            'overdue' => $overdue,
+            'due_soon' => $dueSoon,
+            'completion_rate' => $total > 0
+                ? round(($completed / $total) * 100, 2)
+                : 0,
+        ];
+    }
+
+    /**
+     * Satu resolver periode untuk semua widget dashboard.
+     *
+     * day/week memakai tanggal acuan, month memakai YYYY-MM, year memakai
+     * tahun kalender, sedangkan all dapat dibatasi ke satu tahun tertentu.
+     */
+    private function resolvePeriod(Request $request): array
+    {
+        $maximumYear = now()->year + 1;
+        $validated = $request->validate([
+            'period' => ['nullable', 'in:day,week,month,year,all'],
+            'date' => ['nullable', 'date_format:Y-m-d'],
+            'month' => ['nullable', 'date_format:Y-m'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:'.$maximumYear],
+            'all_year' => ['nullable', 'integer', 'min:2000', 'max:'.$maximumYear],
+        ]);
+
+        $period = $validated['period'] ?? 'month';
+        $date = isset($validated['date'])
+            ? Carbon::createFromFormat('Y-m-d', $validated['date'])->startOfDay()
+            : now()->startOfDay();
+        $month = isset($validated['month'])
+            ? Carbon::createFromFormat('Y-m', $validated['month'])->startOfMonth()
+            : now()->startOfMonth();
+        $year = (int) ($validated['year'] ?? now()->year);
+        $allYear = isset($validated['all_year'])
+            ? (int) $validated['all_year']
+            : null;
+
+        [$start, $end] = match ($period) {
+            'day' => [
+                $date->copy()->startOfDay(),
+                $date->copy()->endOfDay(),
+            ],
+            'week' => [
+                $date->copy()->startOfWeek()->startOfDay(),
+                $date->copy()->endOfWeek()->endOfDay(),
+            ],
+            'month' => [
+                $month->copy()->startOfMonth(),
+                $month->copy()->endOfMonth(),
+            ],
+            'year' => [
+                Carbon::create($year, 1, 1)->startOfYear(),
+                Carbon::create($year, 1, 1)->endOfYear(),
+            ],
+            default => $allYear
+                ? [
+                    Carbon::create($allYear, 1, 1)->startOfYear(),
+                    Carbon::create($allYear, 1, 1)->endOfYear(),
+                ]
+                : [null, null],
+        };
+
+        $label = match ($period) {
+            'day' => $start->format('d M Y'),
+            'week' => $start->format('d M').' - '.$end->format('d M Y'),
+            'month' => $start->format('M Y'),
+            'year' => (string) $year,
+            default => $allYear ? 'Semua data tahun '.$allYear : 'Semua waktu',
+        };
+
+        return [
+            'period' => $period,
+            'date' => $date->format('Y-m-d'),
+            'month' => $month->format('Y-m'),
+            'year' => $year,
+            'all_year' => $allYear,
+            'start' => $start,
+            'end' => $end,
+            'label' => $label,
+        ];
+    }
+
+    private function periodPayload(array $filter): array
+    {
+        return [
+            'period' => $filter['period'],
+            'date' => $filter['date'],
+            'month' => $filter['month'],
+            'year' => $filter['year'],
+            'all_year' => $filter['all_year'],
+            'start' => $filter['start']?->toIso8601String(),
+            'end' => $filter['end']?->toIso8601String(),
+            'label' => $filter['label'],
+        ];
+    }
+
+    private function applyPeriod($query, array $filter, string $column): void
+    {
+        if ($filter['start'] && $filter['end']) {
+            $query->whereBetween($column, [$filter['start'], $filter['end']]);
+        }
+    }
+
+    private function countWithinPeriod($query, array $filter, string $column): int
+    {
+        $this->applyPeriod($query, $filter, $column);
+
+        return $query->count();
+    }
+
+    public function activities(Request $request)
+    {
+        $scope = $request->query('scope', 'global');
+        $range = $request->query('range', 'all');
+
+        return response()->json([
+            'activities' => $this->activityData($request->user(), $scope, $range),
+        ]);
+    }
+
+
+    /**
      * AKTIVITAS TERBARU (PAGINATED)
      */
-    private function activities($user, string $scope, string $range)
+    private function activityData($user, string $scope, string $range)
     {
         $query = ActivityLog::with('user')->latest();
 

@@ -30,6 +30,7 @@ class LabelBrandPermissionTest extends TestCase
             'brand.view',
             'label.attach',
             'label.detach',
+            'label.toggle',
             'label.view',
         ], $permissions);
 

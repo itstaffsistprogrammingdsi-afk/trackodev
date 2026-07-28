@@ -24,7 +24,7 @@ class ResultDescriptionTemplateController extends Controller
         $user = $request->user();
 
         abort_unless(
-            $user->isAdmin() || $user->isSuperAdmin(),
+            $user->can('result_template.create') || $user->isAdmin() || $user->isSuperAdmin(),
             403,
             'Hanya admin dan super admin yang dapat membuat template result description.'
         );

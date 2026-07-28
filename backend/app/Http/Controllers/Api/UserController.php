@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use App\Support\PermissionCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -366,7 +367,7 @@ class UserController extends Controller
 
     public function permissions(Request $request, User $user): JsonResponse
     {
-        $this->authorizePermissionManagement($request, $user);
+        $this->authorizePermissionManagement($request, $user, 'view');
 
         return response()->json([
             'data' => $this->permissionPayload($request->user(), $user),
@@ -375,7 +376,7 @@ class UserController extends Controller
 
     public function updatePermissions(Request $request, User $user): JsonResponse
     {
-        $this->authorizePermissionManagement($request, $user);
+        $this->authorizePermissionManagement($request, $user, 'update');
         $manageable = $this->manageablePermissions($request->user())->pluck('name');
         $validated = $request->validate([
             'permissions' => ['required', 'array'],
@@ -548,14 +549,21 @@ class UserController extends Controller
         ]);
     }
 
-    private function authorizePermissionManagement(Request $request, User $target): void
-    {
+    private function authorizePermissionManagement(
+        Request $request,
+        User $target,
+        string $action
+    ): void {
         /** @var User $actor */
         $actor = $request->user();
+        $permission = 'user.permissions.'.$action;
+
         abort_unless(
-            $actor->can('user.update'),
+            $actor->can($permission) || $actor->can('user.update'),
             403,
-            'Anda tidak memiliki izin untuk mengatur akses user.'
+            $action === 'view'
+                ? 'Anda tidak memiliki izin untuk melihat akses user.'
+                : 'Anda tidak memiliki izin untuk mengatur akses user.'
         );
 
         if (
@@ -602,17 +610,23 @@ class UserController extends Controller
     private function normalizePermissions($requested, $manageable)
     {
         $available = Permission::where('guard_name', 'web')->pluck('name');
+        $normalized = $requested->unique()->values();
+        $queue = $normalized->all();
 
-        foreach ($requested as $permission) {
-            [$module, $action] = array_pad(explode('.', $permission, 2), 2, null);
-            $view = $module.'.view';
-
-            if ($action !== 'view' && $available->contains($view) && $manageable->contains($view)) {
-                $requested->push($view);
+        while ($permission = array_shift($queue)) {
+            foreach (PermissionCatalog::dependenciesFor($permission) as $dependency) {
+                if (
+                    $available->contains($dependency)
+                    && $manageable->contains($dependency)
+                    && ! $normalized->contains($dependency)
+                ) {
+                    $normalized->push($dependency);
+                    $queue[] = $dependency;
+                }
             }
         }
 
-        return $requested->unique();
+        return $normalized;
     }
 
     private function permissionPayload(User $actor, User $target): array
@@ -628,6 +642,9 @@ class UserController extends Controller
                 'roles' => $target->getRoleNames()->values(),
             ],
             'available_permissions' => $manageable->values(),
+            'can_update_permissions' => $actor->can('user.permissions.update')
+                || $actor->can('user.update'),
+            'permission_catalog' => PermissionCatalog::metadataFor($manageable),
             'role_permissions' => $target->getPermissionsViaRoles()
                 ->pluck('name')->sort()->values(),
             'direct_permissions' => $target->getDirectPermissions()

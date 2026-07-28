@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -103,7 +104,7 @@ class MyWorkExportDateRangeTest extends TestCase
 
     public function test_excel_and_pdf_exports_are_downloadable(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAsWithPermission('my_work.export');
 
         foreach (['xlsx', 'pdf'] as $format) {
             $response = $this
@@ -138,7 +139,7 @@ class MyWorkExportDateRangeTest extends TestCase
 
     public function test_export_requires_a_strong_password(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAsWithPermission('my_work.export');
 
         $this->getJson('/api/my-activities/export?type=daily&format=pdf')
             ->assertUnprocessable()
@@ -146,7 +147,7 @@ class MyWorkExportDateRangeTest extends TestCase
     }
     public function test_monthly_export_rejects_reversed_date_range(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAsWithPermission('my_work.export');
 
         $this->getJson(
             '/api/my-activities/export?type=monthly'
@@ -158,7 +159,7 @@ class MyWorkExportDateRangeTest extends TestCase
 
     public function test_monthly_export_requires_both_range_dates(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAsWithPermission('my_work.export');
 
         $this->getJson(
             '/api/my-activities/export?type=monthly'
@@ -170,8 +171,7 @@ class MyWorkExportDateRangeTest extends TestCase
 
     public function test_card_movement_feed_only_returns_moved_card_activities(): void
     {
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $user = $this->actingAsWithPermission('my_work.activities.view');
 
         $movement = ActivityLog::create([
             'user_id' => $user->id,
@@ -209,8 +209,7 @@ class MyWorkExportDateRangeTest extends TestCase
 
     public function test_task_summary_uses_the_same_selected_range_as_activity_feed(): void
     {
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $user = $this->actingAsWithPermission('my_work.activities.view');
 
         $division = Division::create([
             'name' => 'Digital',
@@ -319,7 +318,7 @@ class MyWorkExportDateRangeTest extends TestCase
 
     public function test_monthly_attachment_filter_rejects_reversed_date_range(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAsWithPermission('my_work.attachments.view');
 
         $this->getJson(
             '/api/my-activities/attachments?type=monthly'
@@ -331,7 +330,7 @@ class MyWorkExportDateRangeTest extends TestCase
 
     public function test_monthly_attachment_filter_requires_both_range_dates(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAsWithPermission('my_work.attachments.view');
 
         $this->getJson(
             '/api/my-activities/attachments?type=monthly'
@@ -339,5 +338,18 @@ class MyWorkExportDateRangeTest extends TestCase
         )
             ->assertUnprocessable()
             ->assertJsonValidationErrors('end_date');
+    }
+    private function actingAsWithPermission(string $permission): User
+    {
+        Permission::firstOrCreate([
+            'name' => $permission,
+            'guard_name' => 'web',
+        ]);
+
+        $user = User::factory()->create();
+        $user->givePermissionTo($permission);
+        Sanctum::actingAs($user);
+
+        return $user;
     }
 }
