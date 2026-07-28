@@ -34,7 +34,7 @@ DivisionDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
 
       {/* ===================================== */}
       {/* HEADER */}
@@ -42,7 +42,7 @@ DivisionDetailPage() {
 
       <div className="border rounded-xl p-5">
 
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
           <div>
 

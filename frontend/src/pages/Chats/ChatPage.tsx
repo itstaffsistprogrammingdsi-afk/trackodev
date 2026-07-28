@@ -35,15 +35,15 @@ const ChatPage: React.FC = () => {
 
   if (loadingToken) {
     return (
-      <div className="w-full h-[calc(100vh-73px)] flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="flex min-h-[50dvh] w-full items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-900">
         <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="w-full h-[calc(100vh-73px)] p-4 md:p-6 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 flex justify-center items-center">
-      <div className="w-full h-full max-w-[1200px] mx-auto bg-white dark:bg-gray-950 rounded-2xl border border-gray-200/80 dark:border-gray-800/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_30px_-4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center p-8 text-center">
+    <div className="flex min-h-[60dvh] w-full items-center justify-center rounded-2xl bg-gray-50 p-0 transition-colors duration-200 dark:bg-gray-900 sm:p-4">
+      <div className="min-h-[55dvh] w-full max-w-[1200px] mx-auto bg-white dark:bg-gray-950 rounded-2xl border border-gray-200/80 dark:border-gray-800/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_30px_-4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center p-5 text-center sm:p-8">
         
         {/* Icon Header */}
         <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/50 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6 border border-indigo-100/50 dark:border-indigo-900/50">

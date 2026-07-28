@@ -60,15 +60,15 @@ EditDivisionModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
 
-      <div className="bg-white rounded-xl p-6 w-[500px] space-y-4">
+      <div className="max-h-[100dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl sm:p-6">
 
         <h2 className="text-xl font-semibold">
           Edit Division
         </h2>
         
-        Nama Divisi
+        <label className="block text-sm font-semibold text-slate-700">Nama Divisi</label>
         <input
           value={name}
           onChange={(e) =>
@@ -76,9 +76,9 @@ EditDivisionModal({
               e.target.value
             )
           }
-          className="w-full border p-2 rounded"
+          className="w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
         /> 
-        Kode Divisi
+        <label className="block text-sm font-semibold text-slate-700">Kode Divisi</label>
         <input
           value={code}
           onChange={(e) =>
@@ -86,7 +86,7 @@ EditDivisionModal({
               e.target.value
             )
           }
-          className="w-full border p-2 rounded"
+          className="w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
         /> 
 
         {/* <textarea
@@ -96,21 +96,21 @@ EditDivisionModal({
               e.target.value
             )
           }
-          className="w-full border p-2 rounded"
+          className="w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
         /> */}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
 
           <button
             onClick={onClose}
-            className="border px-4 py-2 rounded"
+            className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             Cancel
           </button>
 
           <button
             onClick={submit}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
           >
             Save
           </button>

@@ -65,9 +65,9 @@ export default function FormPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="space-y-6">
       {/* HEADER */}
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Form Management</h1>
           <p className="text-sm text-gray-500">
@@ -75,7 +75,7 @@ export default function FormPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <button
             onClick={fetchForms}
             className="rounded-lg border bg-white px-4 py-2 text-sm hover:bg-gray-100"

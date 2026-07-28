@@ -408,7 +408,7 @@ export default function BoardPage() {
         setActiveBoard(null);
       }}
     >
-<div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors">
+<div className="w-full text-slate-800 transition-colors dark:text-slate-100">
   {/* ===================================== */}
   {/* TOP NAV BAR (SAAS MODERN & CLEAN) */}
   {/* ===================================== */}

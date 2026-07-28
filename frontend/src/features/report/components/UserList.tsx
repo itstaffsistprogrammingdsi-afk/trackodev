@@ -45,7 +45,7 @@ export const UserList: React.FC<UserListProps> = ({
   return (
     <div className="space-y-6">
       {/* HEADER & FILTER BAR */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60">
+      <div className="rounded-2xl border border-gray-200/60 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Laporan & QC</h1>
@@ -53,11 +53,12 @@ export const UserList: React.FC<UserListProps> = ({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {(filters.search || filters.division_id || filters.start_date || filters.end_date || 
-              filters.campaign_id || filters.workspace_id || filters.label_id || filters.brand_id) && (
+              filters.campaign_id || filters.workspace_id || filters.label_id || filters.brand_id ||
+              filters.search_card) && (
               <button 
                 onClick={() => onFilterChange({
                   search: '', division_id: '', start_date: '', end_date: '',
-                  campaign_id: '', workspace_id: '', label_id: '', brand_id: '', page: 1
+                  campaign_id: '', workspace_id: '', label_id: '', brand_id: '', search_card: '', page: 1
                 })}
                 className="text-sm px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-medium transition-colors"
               >
@@ -85,6 +86,9 @@ export const UserList: React.FC<UserListProps> = ({
             </div>
             <input
               type="date"
+              aria-label="Tanggal mulai periode hasil kerja"
+              title="Tanggal mulai periode hasil kerja"
+              max={filters.end_date || undefined}
               value={filters.start_date || ''}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               onChange={(e) => onFilterChange({ start_date: e.target.value })}
@@ -100,6 +104,8 @@ export const UserList: React.FC<UserListProps> = ({
             </div>
             <input
               type="date"
+              aria-label="Tanggal akhir periode hasil kerja"
+              title="Tanggal akhir periode hasil kerja"
               min={filters.start_date || undefined}
               value={filters.end_date || ''}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
@@ -153,14 +159,18 @@ export const UserList: React.FC<UserListProps> = ({
             {masterData.labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
         </div>
+
+        <p className="mt-3 text-xs leading-5 text-gray-500">
+          Periode hasil kerja: card selesai mengikuti tanggal selesai, sedangkan card yang masih berjalan mengikuti tanggal dibuat.
+        </p>
       </div>
 
       {/* Export Buttons Batch */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="grid grid-cols-1 gap-2 xsm:grid-cols-3">
         <button 
           onClick={() => onPreview?.()}
           disabled={previewLoading}
-          className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="justify-center px-4 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Eye className="w-4 h-4" />
           {previewLoading ? 'Memuat...' : 'All Preview '}
@@ -168,7 +178,7 @@ export const UserList: React.FC<UserListProps> = ({
         <button 
           onClick={() => onExport?.('pdf')}
           disabled={exporting}
-          className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="justify-center px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
           {exporting ? 'Mengunduh...' : 'All PDF '}
@@ -176,7 +186,7 @@ export const UserList: React.FC<UserListProps> = ({
         <button 
           onClick={() => onExport?.('excel')}
           disabled={exporting}
-          className="px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="justify-center px-4 py-2.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FileSpreadsheet className="w-4 h-4" />
           {exporting ? 'Mengunduh...' : 'All Excel '}
@@ -194,21 +204,21 @@ export const UserList: React.FC<UserListProps> = ({
             <p className="text-gray-500 font-medium">Tidak ada anggota yang ditemukan berdasarkan filter.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left whitespace-nowrap">
-              <thead className="bg-gray-50/80 text-gray-500 font-semibold uppercase tracking-wider text-[11px] border-b border-gray-200/60">
+          <div className="overflow-hidden sm:overflow-x-auto">
+            <table className="block w-full text-left text-sm sm:table sm:whitespace-nowrap">
+              <thead className="hidden bg-gray-50/80 sm:table-header-group text-gray-500 font-semibold uppercase tracking-wider text-[11px] border-b border-gray-200/60">
                 <tr>
                   <th scope="col" className="px-6 py-4 rounded-tl-2xl">Anggota Tim</th>
                   <th scope="col" className="px-6 py-4 text-right rounded-tr-2xl">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="block space-y-3 p-3 sm:table-row-group sm:space-y-0 sm:divide-y sm:divide-gray-100 sm:p-0">
                 {users.map((user) => (
                   <tr 
                     key={user.id}
-                    className="hover:bg-blue-50/30 transition-colors group bg-white"
+                    className="group block rounded-xl border border-gray-200 bg-white transition-colors hover:bg-blue-50/30 sm:table-row sm:rounded-none sm:border-0"
                   >
-                    <td className="px-6 py-4">
+                    <td className="block px-4 pb-2 pt-4 sm:table-cell sm:px-6 sm:py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
                           {user.name.charAt(0).toUpperCase()}
@@ -223,8 +233,8 @@ export const UserList: React.FC<UserListProps> = ({
                     </td>
                   
 
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="block px-4 pb-4 pt-2 sm:table-cell sm:px-6 sm:py-4 sm:text-right">
+                      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -300,13 +310,13 @@ export const UserList: React.FC<UserListProps> = ({
       </div>
 
       {/* PAGINATION */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-200/60 shadow-sm">
+      <div className="flex flex-col gap-3 rounded-xl border border-gray-200/60 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-gray-600 font-medium">Total: {pagination.total} Anggota</span>
-        <div className="flex gap-2">
+        <div className="grid w-full grid-cols-[1fr_auto_1fr] gap-2 sm:w-auto">
           <button
             disabled={pagination.current_page <= 1}
             onClick={() => onFilterChange({ page: pagination.current_page - 1 })}
-            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg disabled:opacity-50 text-sm font-medium transition-colors"
+            className="px-2.5 py-2 bg-gray-50 sm:px-4 hover:bg-gray-100 border border-gray-200 rounded-lg disabled:opacity-50 text-sm font-medium transition-colors"
           >
             Sebelumnya
           </button>
@@ -316,7 +326,7 @@ export const UserList: React.FC<UserListProps> = ({
           <button
             disabled={pagination.current_page >= pagination.last_page}
             onClick={() => onFilterChange({ page: pagination.current_page + 1 })}
-            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg disabled:opacity-50 text-sm font-medium transition-colors"
+            className="px-2.5 py-2 bg-gray-50 sm:px-4 hover:bg-gray-100 border border-gray-200 rounded-lg disabled:opacity-50 text-sm font-medium transition-colors"
           >
             Selanjutnya
           </button>

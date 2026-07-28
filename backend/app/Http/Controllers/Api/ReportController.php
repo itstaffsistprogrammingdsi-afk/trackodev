@@ -36,6 +36,8 @@ class ReportController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $this->validateReportFilters($request);
+
         try {
             $query = User::with('divisions');
 
@@ -53,22 +55,8 @@ class ReportController extends Controller
                 });
             }
 
-            if ($request->filled('workspace_id')) {
-                $query->whereHas('workspaces', function ($q) use ($request) {
-                    $q->where('workspaces.id', $request->workspace_id);
-                });
-            }
-
-            if ($request->filled('campaign_id')) {
-                $query->whereHas('cards.board', function ($q) use ($request) {
-                    $q->where('boards.campaign_id', $request->campaign_id);
-                });
-            }
-
             if ($this->hasCardFilters($request)) {
-                $query->whereHas('cards', function ($q) use ($request) {
-                    $this->applyCardFilters($q, $request);
-                });
+                $this->scopeUsersWithMatchingCards($query, $request);
             }
 
             $users = $query->paginate(20);
@@ -92,6 +80,8 @@ class ReportController extends Controller
      */
     public function showUserCards(Request $request, User $user): JsonResponse
     {
+        $this->validateReportFilters($request);
+
         try {
             // Admin biasa tidak boleh mengakses report milik Super Admin.
             if ($user->hasRole(self::SUPER_ADMIN_ROLE) && ! $this->isSuperAdmin($request)) {
@@ -113,7 +103,9 @@ class ReportController extends Controller
             $this->scopeCardsForUser($query, $user);
             $this->applyCardFilters($query, $request);
 
-            $cards = $query->orderBy('cards.created_at', 'desc')->get();
+            $cards = $query
+                ->orderByRaw('COALESCE(cards.completed_at, cards.created_at) DESC')
+                ->get();
 
             return response()->json([
                 'data' => CardResource::collection($cards)
@@ -243,6 +235,94 @@ class ReportController extends Controller
     }
 
     /**
+     * Batasi daftar user dengan definisi kepemilikan card yang sama dengan
+     * detail, preview, dan export: creator campaign, anggota campaign, atau
+     * assignee langsung. Callback terakhir di setiap whereHas adalah query Card.
+     */
+    private function scopeUsersWithMatchingCards($query, Request $request): void
+    {
+        $applyFilters = function ($cardQuery) use ($request) {
+            $this->applyCardFilters($cardQuery, $request);
+        };
+
+        $query->where(function ($userQuery) use ($applyFilters) {
+            $userQuery
+                ->whereHas('createdCampaigns.boards.cards', $applyFilters)
+                ->orWhereHas('campaigns.boards.cards', $applyFilters)
+                ->orWhereHas('cards', $applyFilters);
+        });
+    }
+
+    /**
+     * Tolak format/rentang tanggal yang tidak valid sebelum query dijalankan.
+     */
+    private function validateReportFilters(Request $request): void
+    {
+        $endDateRules = ['nullable', 'date_format:Y-m-d'];
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $endDateRules[] = 'after_or_equal:start_date';
+        }
+
+        $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => $endDateRules,
+        ]);
+    }
+
+    /**
+     * Filter periode hasil kerja. Card selesai mengikuti completed_at supaya
+     * pekerjaan yang dibuat lebih awal tetap muncul pada hari penyelesaiannya.
+     * Card yang belum selesai mengikuti created_at, sama seperti My Work.
+     */
+    private function applyWorkPeriodFilter($query, Request $request): void
+    {
+        $start = $request->filled('start_date')
+            ? $request->start_date . ' 00:00:00'
+            : null;
+        $end = $request->filled('end_date')
+            ? $request->end_date . ' 23:59:59'
+            : null;
+
+        $query->where(function ($periodQuery) use ($start, $end) {
+            $periodQuery
+                ->where(function ($completedQuery) use ($start, $end) {
+                    $completedQuery->whereNotNull('cards.completed_at');
+                    $this->applyDateBoundaries(
+                        $completedQuery,
+                        'cards.completed_at',
+                        $start,
+                        $end
+                    );
+                })
+                ->orWhere(function ($ongoingQuery) use ($start, $end) {
+                    $ongoingQuery->whereNull('cards.completed_at');
+                    $this->applyDateBoundaries(
+                        $ongoingQuery,
+                        'cards.created_at',
+                        $start,
+                        $end
+                    );
+                });
+        });
+    }
+
+    private function applyDateBoundaries(
+        $query,
+        string $column,
+        ?string $start,
+        ?string $end
+    ): void {
+        if ($start && $end) {
+            $query->whereBetween($column, [$start, $end]);
+        } elseif ($start) {
+            $query->where($column, '>=', $start);
+        } elseif ($end) {
+            $query->where($column, '<=', $end);
+        }
+    }
+
+    /**
      * HELPER: Terapkan filter pada query Card
      */
     private function applyCardFilters($query, Request $request): void
@@ -263,15 +343,8 @@ class ReportController extends Controller
             });
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('cards.created_at', [
-                $request->start_date . ' 00:00:00',
-                $request->end_date . ' 23:59:59'
-            ]);
-        } elseif ($request->filled('start_date')) {
-            $query->where('cards.created_at', '>=', $request->start_date . ' 00:00:00');
-        } elseif ($request->filled('end_date')) {
-            $query->where('cards.created_at', '<=', $request->end_date . ' 23:59:59');
+        if ($request->filled('start_date') || $request->filled('end_date')) {
+            $this->applyWorkPeriodFilter($query, $request);
         }
 
         if ($request->filled('label_id')) {
@@ -291,6 +364,8 @@ class ReportController extends Controller
     {
         return $request->filled('start_date') ||
             $request->filled('end_date') ||
+            $request->filled('campaign_id') ||
+            $request->filled('workspace_id') ||
             $request->filled('label_id') ||
             $request->filled('brand_id') ||
             $request->filled('search_card');
@@ -301,6 +376,8 @@ class ReportController extends Controller
      */
 public function previewPdf(Request $request): JsonResponse
     {
+        $this->validateReportFilters($request);
+
         try {
             $users = $this->getExportData($request);
 
@@ -347,6 +424,8 @@ public function previewPdf(Request $request): JsonResponse
      */
     public function exportPdf(Request $request, EncryptedExportService $encryptedExport)
     {
+        $this->validateReportFilters($request);
+
         $request->merge([
             'export_password' => (string) $request->header('X-Export-Password'),
         ]);
@@ -390,6 +469,8 @@ public function previewPdf(Request $request): JsonResponse
      */
     public function exportExcel(Request $request, EncryptedExportService $encryptedExport)
     {
+        $this->validateReportFilters($request);
+
         $request->merge([
             'export_password' => (string) $request->header('X-Export-Password'),
         ]);
@@ -432,6 +513,7 @@ public function previewPdf(Request $request): JsonResponse
 
             // Admin biasa tidak boleh export/preview data milik Super Admin.
             $this->restrictSuperAdminVisibility($query, $request);
+            $this->restrictDivisionVisibility($query, $request);
 
             if ($request->filled('user_id')) {
                 $query->where('users.id', $request->user_id);
@@ -444,12 +526,6 @@ public function previewPdf(Request $request): JsonResponse
             if ($request->filled('division_id')) {
                 $query->whereHas('divisions', function ($q) use ($request) {
                     $q->where('divisions.id', $request->division_id);
-                });
-            }
-
-            if ($request->filled('workspace_id')) {
-                $query->whereHas('workspaces', function ($q) use ($request) {
-                    $q->where('workspaces.id', $request->workspace_id);
                 });
             }
 
@@ -484,14 +560,16 @@ public function previewPdf(Request $request): JsonResponse
 
                 $user->setRelation(
                     'cards',
-                    $cardsQuery->orderBy('cards.created_at', 'desc')->get()
+                    $cardsQuery
+                        ->orderByRaw('COALESCE(cards.completed_at, cards.created_at) DESC')
+                        ->get()
                 );
             });
 
             // Kalau ada filter yang mensyaratkan card cocok (campaign/label/
             // brand/tanggal/search_card), user yang setelah difilter jadi
             // tidak punya card sama sekali dibuang dari hasil akhir.
-            if ($this->hasCardFilters($request) || $request->filled('campaign_id')) {
+            if ($this->hasCardFilters($request)) {
                 $users = $users->filter(fn ($user) => $user->cards->isNotEmpty())->values();
             }
 

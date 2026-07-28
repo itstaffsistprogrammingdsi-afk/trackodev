@@ -66,8 +66,8 @@ export const ReportPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-6 lg:p-8 font-sans">
-      <div className="max-w-[1600px] mx-auto">
+    <div className="w-full font-sans">
+      <div className="mx-auto w-full max-w-[1600px]">
         
         <UserList
           users={users}

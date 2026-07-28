@@ -254,8 +254,8 @@ export default function CreateFormBuilderPage() {
   // ======================================================
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto w-full max-w-7xl p-4 md:p-6">
+    <div className="w-full">
+      <div className="mx-auto w-full max-w-7xl">
         {/* ================================================= */}
         {/* PAGE HEADER */}
         {/* ================================================= */}
@@ -458,7 +458,7 @@ export default function CreateFormBuilderPage() {
             {/* ============================================= */}
 
             <div className="lg:col-span-1">
-              <div className="sticky top-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl lg:sticky lg:top-6 border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="mb-5">
                   <h2 className="text-lg font-semibold text-gray-900">
                     Add Field

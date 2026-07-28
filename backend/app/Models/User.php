@@ -146,6 +146,11 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function createdCampaigns(): HasMany
+    {
+        return $this->hasMany(Campaign::class, 'created_by');
+    }
+
     // ============================================
     // NOTIFICATIONS
     // ============================================

@@ -157,9 +157,9 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 mt-3 w-[420px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:bg-gray-900 dark:border-gray-800 z-50">
+        <div className="absolute -right-3 z-50 mt-3 flex max-h-[min(34rem,calc(100dvh-6rem))] w-[min(calc(100vw-1.5rem),26.25rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:right-0">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-start justify-between gap-3 border-b border-gray-200 px-4 py-4 dark:border-gray-800 sm:items-center sm:px-5">
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white">
                 Notifications
@@ -175,7 +175,7 @@ export default function NotificationBell() {
                 onClick={
                   handleMarkAllRead
                 }
-                className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700"
+                className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 sm:gap-2 sm:text-sm"
               >
                 <CheckCheck size={16} />
                 Mark all read
@@ -184,7 +184,7 @@ export default function NotificationBell() {
           </div>
 
           {/* Content */}
-          <div className="max-h-[450px] overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {loading ? (
               <div className="p-6 text-center text-sm text-gray-500">
                 Loading notifications...

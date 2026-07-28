@@ -22,21 +22,21 @@ export default function DivisionPage() {
   if (isLoading) return <div>Loading...</div>
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Divisions</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">Divisions</h1>
 
 {can("division.create") && (
   <button
     onClick={() => setOpen(true)}
-    className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+    className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
   >
     + Create Division
   </button>
 )}
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 xsm:grid-cols-2 xl:grid-cols-3">
         {data?.map((division) => (
 <DivisionCard
   key={division.id}

@@ -43,7 +43,7 @@ export default function FormResponsesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+    <div className="w-full">
       <div className="mx-auto max-w-[1600px] space-y-6">
 
         <ResponseHeader

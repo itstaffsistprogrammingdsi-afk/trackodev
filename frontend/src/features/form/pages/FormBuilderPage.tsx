@@ -104,7 +104,7 @@ export default function FormBuilderPage() {
   if (!form) return <div className="p-6 text-red-500">Form not found</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="space-y-6">
 
       {/* HEADER */}
       <div className="mb-6">

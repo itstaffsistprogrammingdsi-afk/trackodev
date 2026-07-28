@@ -17,6 +17,23 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_report_exports_require_a_strong_password(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        foreach (['pdf', 'excel'] as $format) {
+            $this->getJson('/api/reports/export/'.$format)
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('export_password');
+
+            $this
+                ->withHeader('X-Export-Password', 'too-short')
+                ->getJson('/api/reports/export/'.$format)
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('export_password');
+        }
+    }
+
     public function test_report_preview_uses_internal_modal_trigger_instead_of_external_file_link(): void
     {
         $viewer = User::factory()->create();
@@ -99,6 +116,28 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
                 $format === 'pdf' ? '.pdf' : '.xlsx',
                 (string) $exportResponse->headers->get('content-disposition')
             );
+
+            $encryptedContents = $exportResponse->getContent();
+            if ($format === 'pdf') {
+                $this->assertStringStartsWith('%PDF-', $encryptedContents);
+                $this->assertMatchesRegularExpression(
+                    '/\/Encrypt\s+\d+\s+0\s+R/',
+                    $encryptedContents
+                );
+            } else {
+                $this->assertStringStartsWith(
+                    "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1",
+                    $encryptedContents
+                );
+                $this->assertStringContainsString(
+                    'cipherAlgorithm="AES"',
+                    $encryptedContents
+                );
+                $this->assertStringContainsString(
+                    'keyBits="256"',
+                    $encryptedContents
+                );
+            }
         }
         $this->assertStringNotContainsString('href="/storage/reports/security-review.pdf"', $html);
         $this->assertStringNotContainsString('href="https://example.com/external-reference"', $html);

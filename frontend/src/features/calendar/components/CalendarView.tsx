@@ -103,10 +103,10 @@ export const CalendarView: React.FC = () => {
       </div>
 
       {/* --- CALENDAR GRID --- */}
-      <div className="bg-white rounded-xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         
         {/* Header Hari */}
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
+        <div className="grid min-w-[760px] grid-cols-7 border-b border-slate-200 bg-slate-50/80">
           {WEEK_DAYS.map((day) => (
             <div key={day} className="text-right py-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               {day}
@@ -115,7 +115,7 @@ export const CalendarView: React.FC = () => {
         </div>
 
         {/* Matriks Kotak */}
-        <div className="grid grid-cols-7 auto-rows-[160px] bg-slate-50 gap-px">
+        <div className="grid min-w-[760px] grid-cols-7 auto-rows-[160px] gap-px bg-slate-50">
           {gridDays.map((cell: GridDayCell, idx: number) => {
             const dayData = getDayData(cell.dateString);
             const tasks = dayData ? dayData.tasks : [];
@@ -197,10 +197,10 @@ export const CalendarView: React.FC = () => {
 
       {/* --- MODAL DIALOG (tetap) --- */}
       {selectedDate && selectedDayData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6 bg-slate-900/40 backdrop-blur-sm transition-opacity">
           <div className="absolute inset-0" onClick={() => setSelectedDate(null)} />
           
-          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-2xl rounded-t-2xl bg-white sm:rounded-2xl shadow-2xl ring-1 ring-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
             
             <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between bg-white">
               <div>
@@ -222,7 +222,7 @@ export const CalendarView: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50 space-y-3">
               {selectedDayData.tasks.map((task: Task) => (
                 <div 
                   key={task.id} 
@@ -318,7 +318,7 @@ export const CalendarView: React.FC = () => {
       {/* --- TOOLTIP --- */}
       {hoveredTask && (
         <div
-          className="fixed z-[100] bg-slate-300 text-gray-700 text-xs rounded-lg shadow-xl p-3 max-w-xs pointer-events-none transition-opacity duration-150"
+          className="fixed z-[100] hidden bg-slate-300 sm:block text-gray-700 text-xs rounded-lg shadow-xl p-3 max-w-xs pointer-events-none transition-opacity duration-150"
           style={{
             left: hoveredTask.rect.left + hoveredTask.rect.width / 2,
             top: hoveredTask.rect.top - 10,
