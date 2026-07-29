@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CalendarResource;
+use App\Models\Board;
 use App\Models\Card;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,72 @@ use Illuminate\Support\Carbon;
 
 class CalendarController extends Controller
 {
+    /**
+     * GET /api/calendar/create-options
+     *
+     * Board tujuan yang dapat dipakai user untuk membuat card dari Calendar.
+     */
+    public function createOptions(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $query = Board::query()
+            ->select(['id', 'campaign_id', 'name', 'type', 'order'])
+            ->with([
+                'campaign:id,workspace_id,name',
+                'campaign.workspace:id,division_id,name',
+                'campaign.workspace.division:id,name',
+            ]);
+
+        if (! $user->isSuperAdmin()) {
+            if ($user->isAdmin()) {
+                $divisionIds = $user->divisions()
+                    ->pluck('divisions.id');
+
+                $query->whereHas(
+                    'campaign.workspace',
+                    fn (Builder $builder) => $builder->whereIn(
+                        'division_id',
+                        $divisionIds
+                    )
+                );
+            } else {
+                $query->whereHas(
+                    'campaign.members',
+                    fn (Builder $builder) => $builder->whereKey($user->id)
+                );
+            }
+        }
+
+        $boards = $query->get()
+            ->sortBy(fn (Board $board) => implode('|', [
+                $board->campaign?->workspace?->division?->name ?? '',
+                $board->campaign?->workspace?->name ?? '',
+                $board->campaign?->name ?? '',
+                str_pad((string) $board->order, 10, '0', STR_PAD_LEFT),
+            ]))
+            ->values()
+            ->map(fn (Board $board) => [
+                'id' => $board->id,
+                'name' => $board->name,
+                'type' => $board->type,
+                'campaign' => [
+                    'id' => $board->campaign->id,
+                    'name' => $board->campaign->name,
+                ],
+                'workspace' => [
+                    'id' => $board->campaign->workspace->id,
+                    'name' => $board->campaign->workspace->name,
+                ],
+                'division' => [
+                    'id' => $board->campaign->workspace->division->id,
+                    'name' => $board->campaign->workspace->division->name,
+                ],
+            ]);
+
+        return response()->json(['data' => $boards]);
+    }
+
     /**
      * GET /api/calendar?month=2026-07
      */
@@ -171,15 +238,13 @@ private function applyPermission(Builder $query, $user): void
         return;
     }
 
-    // Untuk User Biasa:
-    // - Card yang punya assignee di divisi user -> tetap tampil.
-    // - Card apa pun (assigned ke divisi lain, assigned lewat mekanisme lain
-    //   seperti Assignment::designer_id/coordinator_id, atau belum di-assign
-    //   sama sekali) tetap tampil selama board.campaign.workspace-nya ada di
-    //   divisi user. Ini menyamakan perilaku dengan admin (yang melihat semua
-    //   card di divisinya), hanya saja user biasa dibatasi ke divisi mereka sendiri.
-    $query->where(function (Builder $q) use ($divisionIds) {
-        $q->whereHas('assignees.divisions', function (Builder $qq) use ($divisionIds) {
+    // Untuk User Biasa, samakan visibilitas Calendar dengan akses Card:
+    // campaign membership langsung tetap valid meskipun user berasal dari
+    // divisi lain. Jalur division dipertahankan untuk kompatibilitas akses lama.
+    $query->where(function (Builder $q) use ($divisionIds, $user) {
+        $q->whereHas('board.campaign.members', function (Builder $memberQuery) use ($user) {
+            $memberQuery->whereKey($user->id);
+        })->orWhereHas('assignees.divisions', function (Builder $qq) use ($divisionIds) {
             $qq->whereIn('divisions.id', $divisionIds);
         })->orWhereHas('board.campaign.workspace', function (Builder $qqq) use ($divisionIds) {
             $qqq->whereIn('division_id', $divisionIds);

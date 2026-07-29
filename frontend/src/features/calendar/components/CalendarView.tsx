@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
+import { ExternalLink, Plus } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import CardDetailModal from '@/features/card/components/CardDetailModal';
+import type { Card } from '@/features/card/types';
 import { useCalendar } from '../hooks/useCalendar';
 import { Task, User, DayData, GridDayCell } from '../types';
+import CalendarCardCreateModal from './CalendarCardCreateModal';
 
 // --- CONSTANTS ---
 const WEEK_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export const CalendarView: React.FC = () => {
-  const { currentMonth, data, loading, prevMonth, nextMonth, gridDays } = useCalendar();
+  const { currentMonth, data, loading, prevMonth, nextMonth, gridDays, refresh } = useCalendar();
+  const { can } = useAuth();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [createDate, setCreateDate] = useState<string | null>(null);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
 
   // State untuk tooltip
   const [hoveredTask, setHoveredTask] = useState<{ task: Task; rect: DOMRect } | null>(null);
@@ -52,9 +60,28 @@ export const CalendarView: React.FC = () => {
     return data.days[dateStr] ?? null;
   };
 
-  const selectedDayData = selectedDate ? getDayData(selectedDate) : null;
+  const selectedDayData = selectedDate
+    ? getDayData(selectedDate) ?? { total: 0, tasks: [] }
+    : null;
   const totalTasks = data?.summary?.total_tasks ?? 0;
   const todayStr = getLocalDateString(new Date());
+  const canCreateCard = can('card.create');
+  const canOpenCard = can('card.view') || can('task.view');
+
+  const openTask = (task: Task) => {
+    if (!canOpenCard) return;
+
+    setHoveredTask(null);
+    setSelectedCard({
+      id: task.id,
+      title: task.title,
+      board_id: task.board?.id ?? '',
+      campaign_id: task.campaign?.id,
+      campaign: task.campaign ?? undefined,
+      due_date: task.due_date,
+      created_at: task.created_at,
+    });
+  };
 
   return (
     <div className="w-full text-slate-800 font-sans select-none relative max-w-7xl mx-auto">
@@ -78,6 +105,16 @@ export const CalendarView: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
+          {canCreateCard && (
+            <button
+              type="button"
+              onClick={() => setCreateDate(selectedDate ?? todayStr)}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+            >
+              <Plus className="size-4" />
+              Buat Card
+            </button>
+          )}
           <div className="flex items-center bg-white ring-1 ring-slate-200 rounded-md shadow-sm overflow-hidden">
             <button 
               onClick={prevMonth} 
@@ -125,16 +162,31 @@ export const CalendarView: React.FC = () => {
             return (
               <div 
                 key={`${cell.dateString}-${idx}`} 
-                onClick={() => totalTasksOnDay > 0 && setSelectedDate(cell.dateString)}
-                className={`flex flex-col p-2.5 transition-colors h-[160px] ${
+                onClick={() => setSelectedDate(cell.dateString)}
+                className={`relative flex h-[160px] cursor-pointer flex-col p-2.5 transition-colors ${
                   cell.isCurrentMonth 
                     ? (isToday ? 'bg-indigo-50/30 hover:bg-indigo-50/60' : 'bg-white hover:bg-slate-50') 
                     : 'bg-slate-50/50 text-slate-400 hover:bg-slate-100/50'
-                } ${totalTasksOnDay > 0 ? 'cursor-pointer' : 'cursor-default'} group`}
+                } group`}
               >
                 {/* Tanggal */}
                 <div className="flex justify-between items-center mb-3">
-                  <span className="flex-1" />
+                  <span className="flex-1">
+                    {canCreateCard && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setCreateDate(cell.dateString);
+                        }}
+                        className="flex size-7 items-center justify-center rounded-lg text-slate-400 opacity-0 transition hover:bg-indigo-100 hover:text-indigo-700 group-hover:opacity-100 focus:opacity-100"
+                        title={`Buat card tanggal ${formatDateLabel(cell.dateString)}`}
+                        aria-label={`Buat card tanggal ${formatDateLabel(cell.dateString)}`}
+                      >
+                        <Plus className="size-4" />
+                      </button>
+                    )}
+                  </span>
                   <span className={`text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
                     isToday ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-700 group-hover:bg-slate-200'
                   } ${!cell.isCurrentMonth && !isToday && 'text-slate-400'}`}>
@@ -152,11 +204,24 @@ export const CalendarView: React.FC = () => {
                     return (
                       <div 
                         key={task.id}
+                        role={canOpenCard ? 'button' : undefined}
+                        tabIndex={canOpenCard ? 0 : undefined}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openTask(task);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            openTask(task);
+                          }
+                        }}
                         className={`group/task flex items-center gap-2 px-2 py-1.5 rounded-md transition-all border ${
                           isCompleted 
                             ? 'border-transparent opacity-60 hover:opacity-100' 
                             : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'
-                        }`}
+                        } ${canOpenCard ? 'cursor-pointer' : ''}`}
                         title={`${task.title} — Dibuat: ${creatorName} — Assignee: ${assigneeNames}`}
                         onMouseEnter={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
@@ -212,21 +277,47 @@ export const CalendarView: React.FC = () => {
                   <span className="text-sm font-medium text-slate-500">Tasks</span>
                 </div>
               </div>
-              <button 
-                onClick={() => setSelectedDate(null)} 
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors focus:outline-none"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2">
+                {canCreateCard && (
+                  <button
+                    type="button"
+                    onClick={() => setCreateDate(selectedDate)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 text-xs font-semibold text-white hover:bg-indigo-700"
+                  >
+                    <Plus className="size-3.5" /> Buat Card
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedDate(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors focus:outline-none"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50 space-y-3">
+              {selectedDayData.tasks.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+                  <p className="text-sm font-semibold text-slate-700">Belum ada card pada tanggal ini.</p>
+                  <p className="mt-1 text-xs text-slate-500">Pilih Buat Card untuk langsung menjadwalkan pekerjaan.</p>
+                </div>
+              )}
               {selectedDayData.tasks.map((task: Task) => (
                 <div 
                   key={task.id} 
-                  className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-xl ring-1 ring-slate-200 hover:ring-indigo-300 hover:shadow-md transition-all"
+                  role={canOpenCard ? 'button' : undefined}
+                  tabIndex={canOpenCard ? 0 : undefined}
+                  onClick={() => openTask(task)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openTask(task);
+                    }
+                  }}
+                  className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-xl ring-1 ring-slate-200 hover:ring-indigo-300 hover:shadow-md transition-all ${canOpenCard ? 'cursor-pointer' : ''}`}
                 >
                   <div className="flex items-start gap-3 overflow-hidden">
                     <div className="pt-1">
@@ -305,6 +396,7 @@ export const CalendarView: React.FC = () => {
                         </div>
                       )}
                     </div>
+                    {canOpenCard && <ExternalLink className="size-4 text-indigo-500" aria-label="Buka detail card" />}
                   </div>
 
                 </div>
@@ -356,6 +448,29 @@ export const CalendarView: React.FC = () => {
           />
         </div>
       )}
+
+      {createDate && (
+        <CalendarCardCreateModal
+          date={createDate}
+          onClose={() => setCreateDate(null)}
+          onCreated={(card) => {
+            setCreateDate(null);
+            refresh();
+            setSelectedCard(card);
+          }}
+        />
+      )}
+
+      <CardDetailModal
+        card={selectedCard}
+        isOpen={selectedCard !== null}
+        onClose={() => setSelectedCard(null)}
+        onUpdated={refresh}
+        onDeleted={() => {
+          setSelectedCard(null);
+          refresh();
+        }}
+      />
 
     </div>
   );

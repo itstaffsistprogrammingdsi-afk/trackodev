@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\PermissionCatalog;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -155,6 +156,62 @@ class GranularPermissionManagementTest extends TestCase
         $this->assertTrue($directPermissions->contains('form.field.create'));
         $this->assertTrue($directPermissions->contains('form.view'));
         $this->assertFalse($directPermissions->contains('form.update'));
+    }
+
+    public function test_super_admin_permission_payload_contains_the_complete_catalog(): void
+    {
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole('super_admin');
+
+        $target = User::factory()->create();
+        $target->assignRole('user');
+        Sanctum::actingAs($superAdmin);
+
+        $response = $this->getJson('/api/users/'.$target->id.'/permissions')
+            ->assertOk();
+
+        $catalogPermissions = collect(
+            $response->json('data.permission_catalog')
+        )->flatMap(
+            fn (array $module) => collect($module['permissions'])->pluck('name')
+        )->values()->all();
+
+        $this->assertEqualsCanonicalizing(
+            PermissionCatalog::names(),
+            $catalogPermissions
+        );
+        $this->assertEqualsCanonicalizing(
+            PermissionCatalog::names(),
+            $response->json('data.available_permissions')
+        );
+    }
+
+    public function test_admin_permission_payload_contains_all_admin_catalog_actions(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $target = User::factory()->create();
+        $target->assignRole('user');
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/users/'.$target->id.'/permissions')
+            ->assertOk();
+
+        $formPermissions = collect(
+            $response->json('data.permission_catalog')
+        )->firstWhere('key', 'form')['permissions'];
+
+        $this->assertEqualsCanonicalizing(
+            collect(PermissionCatalog::modules()['form']['permissions'])
+                ->keys()
+                ->all(),
+            collect($formPermissions)->pluck('name')->all()
+        );
+        $this->assertEqualsCanonicalizing(
+            PermissionCatalog::adminPermissions(),
+            $response->json('data.available_permissions')
+        );
     }
 
     public function test_report_preview_and_export_are_independent_from_report_view(): void

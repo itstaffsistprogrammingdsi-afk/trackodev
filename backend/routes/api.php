@@ -651,6 +651,9 @@ Route::middleware([
     Route::get('/calendar', [CalendarController::class, 'index'])
         ->middleware('permission:calendar.view');
 
+    Route::get('/calendar/create-options', [CalendarController::class, 'createOptions'])
+        ->middleware('permission:card.create');
+
     Route::get('/calendar/{date}', [CalendarController::class, 'show'])
         ->middleware('permission:calendar.detail.view|calendar.view');
 
