@@ -9,7 +9,10 @@ import CompletionRanking from "../components/CompletionRanking";
 import { useAuth } from "@/context/AuthContext";
 
 export default function MyWorkPage() {
-  const { can } = useAuth();
+  const { can, hasRole } = useAuth();
+  const canViewRanking =
+    (hasRole("super_admin") || hasRole("admin"))
+    && can("my_work.ranking.view");
   const {
     loading,
     activityLoading,
@@ -63,7 +66,7 @@ export default function MyWorkPage() {
         loading={activityLoading}
       />
 
-      {can("my_work.ranking.view") && <CompletionRanking />}
+      {canViewRanking && <CompletionRanking />}
 
       <div className="grid items-start gap-6 xl:grid-cols-12 xl:gap-8">
         <div className="xl:col-span-7">
