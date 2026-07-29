@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\UserController;
 // use App\Models\User;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\DashboardController;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
@@ -63,6 +64,12 @@ Route::get('/ping', function () {
         'time' => now(),
     ]);
 });
+
+Broadcast::routes([
+    'middleware' => ['auth:sanctum'],
+]);
+
+require __DIR__.'/channels.php';
 
 // ============================================
 // AUTH

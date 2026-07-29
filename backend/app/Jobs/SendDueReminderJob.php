@@ -11,10 +11,15 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class SendDueReminderJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 60;
 
     public function __construct(
         public string $cardId,
@@ -59,6 +64,21 @@ class SendDueReminderJob implements ShouldQueue
             'email' => $assignee->email,
             'card' => $card->title,
             'stage' => $this->stage,
+        ]);
+    }
+
+    public function backoff(): array
+    {
+        return [60, 300, 900];
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        Log::error('SEND DUE REMINDER JOB FAILED', [
+            'card_id' => $this->cardId,
+            'assignee_id' => $this->assigneeId,
+            'stage' => $this->stage,
+            'message' => $exception->getMessage(),
         ]);
     }
 }

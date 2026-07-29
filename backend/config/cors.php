@@ -1,5 +1,13 @@
 <?php
 
+$allowedOrigins = array_values(array_filter(array_map(
+    'trim',
+    explode(',', (string) env(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:5173,http://localhost:4173,http://dev.tracko.dsicorp.id,https://dev.tracko.dsicorp.id'
+    ))
+)));
+
 return [
 
     /*
@@ -18,12 +26,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'http://localhost:5173',
-        'http://localhost:4173',
-        'http://dev.tracko.dsicorp.id',
-        'https://dev.tracko.dsicorp.id',
-    ],
+    'allowed_origins' => $allowedOrigins,
 
     'allowed_origins_patterns' => [],
 
