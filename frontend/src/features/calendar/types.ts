@@ -41,3 +41,12 @@ export interface GridDayCell {
   dayNumber: number;
   isCurrentMonth: boolean;
 }
+
+export interface CalendarBoardOption {
+  id: string;
+  name: string;
+  type: string | null;
+  campaign: { id: string; name: string };
+  workspace: { id: string; name: string };
+  division: { id: string; name: string };
+}

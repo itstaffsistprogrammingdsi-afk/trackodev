@@ -1,6 +1,10 @@
 // 1. Import instance 'api' yang sudah memiliki interceptor token dari folder lib
 import api from '../../../lib/axios'; 
-import { CalendarMonthResponse, CalendarDayResponse } from '../types';
+import {
+  CalendarBoardOption,
+  CalendarMonthResponse,
+  CalendarDayResponse,
+} from '../types';
 
 export const calendarApi = {
   // Ambil data bulanan
@@ -15,5 +19,12 @@ export const calendarApi = {
   getDayDetail: async (date: string): Promise<CalendarDayResponse> => {
     const response = await api.get<CalendarDayResponse>(`/calendar/${date}`);
     return response.data;
-  }
+  },
+
+  getCreateOptions: async (): Promise<CalendarBoardOption[]> => {
+    const response = await api.get<{ data: CalendarBoardOption[] }>(
+      '/calendar/create-options',
+    );
+    return response.data.data;
+  },
 };
