@@ -93,6 +93,14 @@ class GranularPermissionManagementTest extends TestCase
         }
     }
 
+    public function test_my_work_ranking_is_not_a_default_user_permission(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('user');
+
+        $this->assertFalse($user->can('my_work.ranking.view'));
+    }
+
     public function test_permission_payload_is_grouped_and_supports_read_only_access(): void
     {
         $viewer = User::factory()->create();

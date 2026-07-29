@@ -98,10 +98,34 @@ class MyWorkCompletionRankingTest extends TestCase
 
     public function test_non_admin_cannot_open_completion_ranking(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $rankingPermission = Permission::firstOrCreate([
+            'name' => 'my_work.ranking.view',
+            'guard_name' => 'web',
+        ]);
+        $user = User::factory()->create();
+        $user->givePermissionTo($rankingPermission);
+
+        Sanctum::actingAs($user);
 
         $this->getJson('/api/my-activities/completion-ranking')
             ->assertForbidden();
+    }
+
+    public function test_super_admin_can_open_completion_ranking(): void
+    {
+        $superAdminRole = Role::create([
+            'name' => 'super_admin',
+            'guard_name' => 'web',
+        ]);
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole($superAdminRole);
+
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson('/api/my-activities/completion-ranking')
+            ->assertOk()
+            ->assertJsonPath('filter.period', 'month')
+            ->assertJsonCount(0, 'ranking');
     }
 
     private function createCompletedMovement(

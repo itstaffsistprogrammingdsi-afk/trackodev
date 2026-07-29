@@ -310,7 +310,7 @@ final class PermissionCatalog
             'result_template.view', 'result_template.create',
             'account.view', 'account.update', 'account.password.update', 'account.avatar.update',
             'my_work.view', 'my_work.todo.view', 'my_work.activities.view',
-            'my_work.ranking.view', 'my_work.attachments.view', 'my_work.export',
+            'my_work.attachments.view', 'my_work.export',
             'calendar.view', 'calendar.detail.view',
             'chat.view', 'chat.room.create', 'chat.message.view',
             'chat.message.create', 'chat.message.delete', 'chat.read',

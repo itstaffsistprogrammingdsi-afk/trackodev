@@ -413,9 +413,13 @@ class MyActivityController extends Controller
      */
     public function completionRanking(Request $request)
     {
-        $admin = $request->user();
+        $viewer = $request->user();
 
-        abort_unless($admin?->isAdmin(), 403, 'Ranking hanya tersedia untuk admin.');
+        abort_unless(
+            $viewer?->isAdmin() || $viewer?->isSuperAdmin(),
+            403,
+            'Ranking hanya tersedia untuk super admin dan admin.'
+        );
 
         $validated = $request->validate([
             'period' => ['nullable', 'in:'.implode(',', self::ALLOWED_RANKING_PERIODS)],
@@ -430,7 +434,7 @@ class MyActivityController extends Controller
             default => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
         };
 
-        $divisionIds = $admin->divisions()->pluck('divisions.id');
+        $divisionIds = $viewer->divisions()->pluck('divisions.id');
 
         if ($divisionIds->isEmpty()) {
             return response()->json([
