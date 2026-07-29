@@ -160,21 +160,7 @@ export default function CardDetailSidebar({
             )}
           </div>
 
-          {/* LABELS */}
-          {can('label.view') && <div>
-            <SidebarButton
-              icon={<Tag size={16} />}
-              label="Labels"
-              onClick={toggleLabels}
-            />
-            {showLabels && (
-              <div className="mt-2 animate-in fade-in duration-200">
-                <LabelSection detail={card} setDetail={setDetail} />
-              </div>
-            )}
-          </div>}
-
-          {/* BRANDS */}
+                    {/* BRANDS */}
           {can('brand.view') && <div>
             <SidebarButton
               icon={<Layers size={16} />}
@@ -191,6 +177,22 @@ export default function CardDetailSidebar({
               </div>
             )}
           </div>}
+
+          {/* LABELS */}
+          {can('label.view') && <div>
+            <SidebarButton
+              icon={<Tag size={16} />}
+              label="Labels"
+              onClick={toggleLabels}
+            />
+            {showLabels && (
+              <div className="mt-2 animate-in fade-in duration-200">
+                <LabelSection detail={card} setDetail={setDetail} />
+              </div>
+            )}
+          </div>}
+
+
 
           {/* DUE DATE */}
           <div>
