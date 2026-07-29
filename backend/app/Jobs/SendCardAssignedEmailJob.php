@@ -11,10 +11,15 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class SendCardAssignedEmailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 60;
 
     public function __construct(
         public string $cardId,
@@ -59,6 +64,20 @@ class SendCardAssignedEmailJob implements ShouldQueue
         Log::info('SEND CARD EMAIL SUCCESS', [
             'email' => $assignee->email,
             'card' => $card->title,
+        ]);
+    }
+
+    public function backoff(): array
+    {
+        return [60, 300, 900];
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        Log::error('SEND CARD EMAIL JOB FAILED', [
+            'card_id' => $this->cardId,
+            'assignee_id' => $this->assigneeId,
+            'message' => $exception->getMessage(),
         ]);
     }
 }

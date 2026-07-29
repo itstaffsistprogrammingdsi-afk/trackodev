@@ -9,6 +9,8 @@ import {
   getNotifications,
   markAllNotificationsRead,
 } from "@/features/notification/api/notification.api";
+import { useAuth } from "@/context/AuthContext";
+import { createEcho } from "@/lib/echo";
 
 interface Notification {
   id: string;
@@ -19,6 +21,8 @@ interface Notification {
 }
 
 export default function NotificationBell() {
+  const { user } = useAuth();
+
   const [notifications, setNotifications] = useState<
     Notification[]
   >([]);
@@ -46,6 +50,50 @@ export default function NotificationBell() {
 
   useEffect(() => {
     loadNotifications();
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    const echo = createEcho();
+
+    if (!echo) {
+      return;
+    }
+
+    const channelName = `users.${user.id}`;
+
+    echo.private(channelName).listen(
+      ".notification.created",
+      (event: { notification: Notification }) => {
+        const incoming = event.notification;
+
+        setNotifications((current) => [
+          incoming,
+          ...current.filter((item) => item.id !== incoming.id),
+        ]);
+      }
+    );
+
+    return () => {
+      echo.leave(channelName);
+      echo.disconnect();
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadNotifications();
+      }
+    };
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () =>
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
   }, []);
 
   useEffect(() => {

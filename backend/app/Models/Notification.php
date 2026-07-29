@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\NotificationCreated;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,8 +19,14 @@ class Notification extends Model
     protected $casts = [
         'data'    => 'array',
         'is_read' => 'boolean',
-        'due_date' => 'datetime'
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Notification $notification): void {
+            NotificationCreated::dispatch($notification);
+        });
+    }
 
     public function user(): BelongsTo
     {

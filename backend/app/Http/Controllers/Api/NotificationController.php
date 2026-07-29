@@ -17,6 +17,8 @@ class NotificationController extends Controller
 
     public function markRead(Request $request, Notification $notification): JsonResponse
     {
+        abort_unless($notification->user_id === $request->user()->id, 404);
+
         $notification->update(['is_read' => true]);
         return response()->json(['message' => 'Notifikasi ditandai dibaca.']);
     }
@@ -27,8 +29,10 @@ class NotificationController extends Controller
         return response()->json(['message' => 'Semua notifikasi ditandai dibaca.']);
     }
 
-    public function destroy(Notification $notification): JsonResponse
+    public function destroy(Request $request, Notification $notification): JsonResponse
     {
+        abort_unless($notification->user_id === $request->user()->id, 404);
+
         $notification->delete();
         return response()->json(['message' => 'Notifikasi berhasil dihapus.']);
     }
