@@ -29,6 +29,6 @@ export const createEcho = (): Echo<"reverb"> | null => {
         Authorization: `Bearer ${token}`,
       },
     },
-    client: Pusher,
+    Pusher,
   });
 };
