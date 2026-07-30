@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendCardAssignedEmailJob;
 use App\Models\Campaign;
 use App\Models\FormSubmission;
+use App\Models\Notification;
+use App\Services\ActivityLogService;
 use App\Services\AssignmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Services\ActivityLogService;
+use Illuminate\Support\Facades\Log;
 
 class AssignmentController extends Controller
 {
@@ -23,7 +26,7 @@ class AssignmentController extends Controller
             $submission = FormSubmission::with('form')
                 ->findOrFail($submissionId);
 
-            if (!$submission->form) {
+            if (! $submission->form) {
 
                 return response()->json([
                     'step' => 'form',
@@ -35,38 +38,29 @@ class AssignmentController extends Controller
 
                 return response()->json([
                     'step' => 'assigned',
-                    'message' => 'Response sudah ditugaskan'
+                    'message' => 'Response sudah ditugaskan',
                 ], 422);
             }
 
             $validated = $request->validate([
 
-                'division_id' =>
-                'required|exists:divisions,id',
+                'division_id' => 'required|exists:divisions,id',
 
-                'workspace_id' =>
-                'required|exists:workspaces,id',
+                'workspace_id' => 'required|exists:workspaces,id',
 
-                'campaign_id' =>
-                'required|exists:campaigns,id',
+                'campaign_id' => 'required|exists:campaigns,id',
 
-                'designer_id' =>
-                'nullable|exists:users,id',
+                'designer_id' => 'nullable|exists:users,id',
 
-                'coordinator_id' =>
-                'nullable|exists:users,id',
+                'coordinator_id' => 'nullable|exists:users,id',
 
-                'deadline' =>
-                'nullable|date',
+                'deadline' => 'nullable|date',
 
-                'estimated_hours' =>
-                'nullable|integer|min:1',
+                'estimated_hours' => 'nullable|integer|min:1',
 
-                'priority' =>
-                'nullable|in:low,medium,high,urgent',
+                'priority' => 'nullable|in:low,medium,high,urgent',
 
-                'notes' =>
-                'nullable|string|max:2000',
+                'notes' => 'nullable|string|max:2000',
             ]);
 
             $campaign = Campaign::query()
@@ -74,11 +68,11 @@ class AssignmentController extends Controller
                 ->where('workspace_id', $validated['workspace_id'])
                 ->first();
 
-            if (!$campaign) {
+            if (! $campaign) {
 
                 return response()->json([
                     'step' => 'campaign',
-                    'message' => 'Campaign tidak berada pada workspace yang dipilih'
+                    'message' => 'Campaign tidak berada pada workspace yang dipilih',
                 ], 422);
             }
 
@@ -89,19 +83,52 @@ class AssignmentController extends Controller
                 $validated
             );
 
+            if ($assignment->designer_id && $assignment->card_id) {
+                try {
+                    SendCardAssignedEmailJob::dispatch(
+                        $assignment->card_id,
+                        $assignment->designer_id,
+                        $validated['assigned_by']
+                    );
+
+                    Notification::create([
+                        'user_id' => $assignment->designer_id,
+                        'type' => 'task_assigned',
+                        'title' => 'Task Assigned',
+                        'body' => "Task '{$assignment->card->title}' telah diassign kepada Anda",
+                        'data' => [
+                            'card_id' => $assignment->card_id,
+                            'board_id' => $assignment->board_id,
+                            'campaign_id' => $assignment->campaign_id,
+                            'assigned_by' => $validated['assigned_by'],
+                            'submission_id' => $submission->id,
+                        ],
+                        'is_read' => false,
+                    ]);
+                } catch (\Throwable $notificationException) {
+                    Log::error('FORM ASSIGN EMAIL/NOTIFICATION ERROR', [
+                        'assignment_id' => $assignment->id,
+                        'submission_id' => $submission->id,
+                        'card_id' => $assignment->card_id,
+                        'user_id' => $assignment->designer_id,
+                        'message' => $notificationException->getMessage(),
+                    ]);
+                }
+            }
+
             ActivityLogService::log(
                 auth()->user(),
                 'form_submission',
                 $submission->id,
                 'assigned',
                 "Menugaskan response form submission ID {$submission->id} ke campaign '{$campaign->name}'",
-                ['submission_id' => $submission->id, 'campaign_id' => $campaign->id]    
+                ['submission_id' => $submission->id, 'campaign_id' => $campaign->id]
             );
 
             return response()->json([
                 'step' => 'success',
                 'message' => 'Assignment berhasil dibuat',
-                'data' => $assignment
+                'data' => $assignment,
             ], 201);
         } catch (\Throwable $e) {
 
