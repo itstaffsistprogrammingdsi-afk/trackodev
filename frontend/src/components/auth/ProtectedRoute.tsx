@@ -8,8 +8,6 @@ export default function ProtectedRoute({
 }) {
   const token = localStorage.getItem("token");
 
-  console.log("PROTECTED ROUTE TOKEN:", token);
-
   if (!token) {
     console.log("REDIRECT TO SIGNIN");
 
