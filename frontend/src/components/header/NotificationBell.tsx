@@ -3,7 +3,9 @@ import {
   Bell,
   CheckCheck,
   Inbox,
+  Loader2,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import {
   getNotifications,
@@ -23,6 +25,7 @@ interface Notification {
 
 export default function NotificationBell() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState<
     Notification[]
@@ -30,6 +33,7 @@ export default function NotificationBell() {
 
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const dropdownRef =
     useRef<HTMLDivElement>(null);
@@ -186,6 +190,7 @@ export default function NotificationBell() {
   const handleMarkAllRead =
     async () => {
       try {
+        setMarkingAllRead(true);
         await markAllNotificationsRead();
 
         setNotifications((prev) =>
@@ -196,6 +201,8 @@ export default function NotificationBell() {
         );
       } catch (error) {
         console.error(error);
+      } finally {
+        setMarkingAllRead(false);
       }
     };
 
@@ -251,10 +258,17 @@ export default function NotificationBell() {
                 onClick={
                   handleMarkAllRead
                 }
-                className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 sm:gap-2 sm:text-sm"
+                disabled={markingAllRead}
+                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-60 dark:hover:bg-indigo-950/40 sm:gap-2 sm:text-sm"
               >
-                <CheckCheck size={16} />
-                Mark all read
+                {markingAllRead ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <CheckCheck size={16} />
+                )}
+                <span className="hidden xsm:inline">
+                  {markingAllRead ? "Memproses..." : "Tandai semua dibaca"}
+                </span>
               </button>
             )}
           </div>
@@ -330,8 +344,15 @@ export default function NotificationBell() {
 
           {/* Footer */}
           <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-800">
-            <button className="w-full text-center text-sm font-medium text-indigo-600 hover:text-indigo-700">
-              View all notifications
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                navigate("/notifications");
+              }}
+              className="w-full rounded-lg py-1.5 text-center text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/40"
+            >
+              Lihat semua notifikasi
             </button>
           </div>
         </div>
