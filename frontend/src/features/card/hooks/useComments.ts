@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
 
 import { CardComment } from "../types";
 
 import { addComment } from "../api/card.api";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 interface ReturnType {
   comments: CardComment[];
@@ -25,6 +26,7 @@ export default function useComments(
   isOpen?: boolean,
   onUpdated?: () => void,
 ): ReturnType {
+  const realtimeRevision = useRealtimeRevision(["CardComment"]);
   const [comments, setComments] =
     useState<CardComment[]>([]);
 
@@ -33,6 +35,11 @@ export default function useComments(
 
   const [sending, setSending] =
     useState(false);
+  const onUpdatedRef = useRef(onUpdated);
+
+  useEffect(() => {
+    onUpdatedRef.current = onUpdated;
+  }, [onUpdated]);
 
   // =========================================
   // FETCH COMMENTS
@@ -47,7 +54,7 @@ export default function useComments(
         );
 
         setComments(res.data.data || []);
-        onUpdated?.();
+        onUpdatedRef.current?.();
       } catch (err) {
         console.error(
           "FAILED FETCH COMMENTS",
@@ -59,7 +66,7 @@ export default function useComments(
     if (isOpen && cardId) {
       fetchComments();
     }
-  }, [cardId, isOpen]);
+  }, [cardId, isOpen, realtimeRevision]);
 
   // =========================================
   // ADD COMMENT

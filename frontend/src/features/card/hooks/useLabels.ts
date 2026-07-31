@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   attachLabel,
@@ -8,6 +8,7 @@ import {
 } from "../api/card.api";
 
 import { Card, Label } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 interface Props {
   detail: Card | null;
@@ -21,6 +22,7 @@ export default function useLabels({
   detail,
   setDetail,
 }: Props) {
+  const realtimeRevision = useRealtimeRevision(["ActivityLog", "Label"]);
   const [labels, setLabels] = useState<
     Label[]
   >([]);
@@ -31,11 +33,7 @@ export default function useLabels({
   const [newColor, setNewColor] =
     useState("#3b82f6");
 
-  useEffect(() => {
-    fetchLabels();
-  }, []);
-
-  async function fetchLabels() {
+  const fetchLabels = useCallback(async () => {
     try {
       const data = await getLabels();
 
@@ -43,7 +41,11 @@ export default function useLabels({
     } catch (err) {
       console.error(err);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    void fetchLabels();
+  }, [fetchLabels, realtimeRevision]);
 
   async function handleCreateLabel() {
     if (!newLabel.trim()) return;

@@ -9,8 +9,8 @@ import { getBoardSortableId, isBoardOrderLocked } from "../utils/boardOrder";
 
 type Props = {
   board: Board;
-  onCardCreated?: () => void;
-  onRefresh?: () => void;
+  onCardCreated?: () => void | Promise<unknown>;
+  onRefresh?: () => void | Promise<unknown>;
   onOpenCard?: (card: Card) => void;
   onEdit?: () => void;
   onDelete?: () => void;

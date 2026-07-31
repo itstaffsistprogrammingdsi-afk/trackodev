@@ -30,6 +30,7 @@ import DivisionMemberMentionInput
 import {
   getUserRole,
 } from "../../utils/getUserRole";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type Props = {
   divisionId: string;
@@ -38,6 +39,7 @@ type Props = {
 export default function DivisionMembers({
   divisionId,
 }: Props) {
+  const realtimeRevision = useRealtimeRevision(["ActivityLog", "Division", "User"]);
   const [members, setMembers] =
     useState<DivisionMember[]>([]);
 
@@ -75,7 +77,7 @@ export default function DivisionMembers({
 
   useEffect(() => {
     fetchMembers();
-  }, [fetchMembers]);
+  }, [fetchMembers, realtimeRevision]);
 
   const handleAdd =
     async (user: User) => {

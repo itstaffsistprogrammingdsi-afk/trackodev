@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ActivityLog } from "../types";
 import { getCardActivities } from "../api/card.api";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type ActivityResponse = {
   success: boolean;
@@ -13,6 +14,7 @@ export default function useCardActivities(
   cardId?: string,
   isOpen?: boolean
 ) {
+  const realtimeRevision = useRealtimeRevision(["ActivityLog"]);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +24,7 @@ export default function useCardActivities(
 
   const limit = 8;
 
-  const fetchActivities = async (newPage = 1) => {
+  const fetchActivities = useCallback(async (newPage = 1) => {
     if (!cardId) return;
 
     try {
@@ -51,14 +53,14 @@ export default function useCardActivities(
     } finally {
       setLoading(false);
     }
-  };
+  }, [cardId]);
 
   useEffect(() => {
     if (!isOpen || !cardId) return;
 
     setPage(1);
     fetchActivities(1);
-  }, [cardId, isOpen]);
+  }, [cardId, fetchActivities, isOpen, realtimeRevision]);
 
   const loadMore = () => {
     const nextPage = page + 1;

@@ -17,6 +17,7 @@ use App\Models\FormField;
 use App\Models\FormSubmission;
 use App\Models\Label;
 use App\Models\Message;
+use App\Models\Notification;
 use App\Models\ResultDescriptionTemplate;
 use App\Models\Subtask;
 use App\Models\Task;
@@ -67,9 +68,11 @@ class AppServiceProvider extends ServiceProvider
             FormSubmission::class,
             Label::class,
             Message::class,
+            Notification::class,
             ResultDescriptionTemplate::class,
             Subtask::class,
             Task::class,
+            User::class,
             Workspace::class,
         ];
 

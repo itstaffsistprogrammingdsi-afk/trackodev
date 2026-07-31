@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { getMembers, addMember, removeMember } from "../api/campaign.api"
 import { User } from "../types"
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision"
 
 type Props = {
   campaignId: string
@@ -9,6 +10,7 @@ type Props = {
 export default function CampaignMember({ campaignId }: Props) {
   const [members, setMembers] = useState<User[]>([])
   const [userId, setUserId] = useState("")
+  const realtimeRevision = useRealtimeRevision(["ActivityLog", "Campaign"])
 
   const fetchMembers = useCallback(async () => {
     const data = await getMembers(campaignId)
@@ -17,7 +19,7 @@ export default function CampaignMember({ campaignId }: Props) {
 
   useEffect(() => {
     fetchMembers()
-  }, [fetchMembers])
+  }, [fetchMembers, realtimeRevision])
 
   const handleAdd = async () => {
     if (!userId) return

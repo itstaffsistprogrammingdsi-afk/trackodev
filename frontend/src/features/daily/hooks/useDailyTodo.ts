@@ -5,6 +5,7 @@ import {
 } from "react";
 
 import { getDailyTodo } from "../api/dailyTodo.api";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 import type {
   DailyTodoFilter,
@@ -22,6 +23,9 @@ export const useDailyTodo = (
 
   const [filter, setFilter] =
     useState(initialFilter);
+  const realtimeRevision = useRealtimeRevision([
+    "ActivityLog", "Assignment", "Card", "Task",
+  ]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -38,7 +42,7 @@ export const useDailyTodo = (
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, realtimeRevision]);
 
   
   return {

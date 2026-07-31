@@ -19,8 +19,8 @@ type Priority = "low" | "medium" | "high" | "urgent";
 
 type Props = {
   board: Board;
-  onCardCreated?: () => void;
-  onRefresh?: () => void;
+  onCardCreated?: () => void | Promise<unknown>;
+  onRefresh?: () => void | Promise<unknown>;
   onOpenCard?: (card: Card) => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -167,8 +167,11 @@ export default function BoardColumn({
       resetForm();
       setIsAdding(false);
 
-      onCardCreated?.();
-      onRefresh?.();
+      if (onCardCreated) {
+        await onCardCreated();
+      } else {
+        await onRefresh?.();
+      }
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Gagal membuat task baru.";

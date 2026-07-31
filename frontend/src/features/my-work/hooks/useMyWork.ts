@@ -12,6 +12,7 @@ import type {
   ActivityRange,
   ActivityResponse,
 } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 export const useMyWork = () => {
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,9 @@ export const useMyWork = () => {
 
   const [range, setRange] = useState<ActivityRange>("week");
   const [activities, setActivities] = useState<ActivityResponse | null>(null);
+  const realtimeRevision = useRealtimeRevision([
+    "ActivityLog", "Assignment", "Card", "CardAttachment", "Task",
+  ]);
 
   const loadActivities = useCallback(async (selectedRange: ActivityRange) => {
     try {
@@ -42,7 +46,7 @@ export const useMyWork = () => {
 
   useEffect(() => {
     loadActivities(range);
-  }, [loadActivities, range]);
+  }, [loadActivities, range, realtimeRevision]);
 
   const reload = useCallback(
     () => loadActivities(range),

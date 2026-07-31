@@ -13,6 +13,7 @@ import BoardProgress from "../components/BoardProgress";
 import CampaignGantt from "../components/CampaignGantt";
 import OverdueTasks from "../components/OverdueTasks";
 import { useAuth } from "@/context/AuthContext";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 export default function CampaignDetailPage() {
   const { can } = useAuth();
@@ -20,6 +21,7 @@ export default function CampaignDetailPage() {
   const navigate = useNavigate();
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const realtimeRevision = useRealtimeRevision(["Campaign"]);
 
   useEffect(() => {
     const fetchCampaign = async () => {
@@ -36,7 +38,7 @@ export default function CampaignDetailPage() {
     if (campaignId) {
       fetchCampaign();
     }
-  }, [campaignId, navigate]);
+  }, [campaignId, navigate, realtimeRevision]);
 
   if (!campaign) {
     return <div className="p-6">Loading...</div>;

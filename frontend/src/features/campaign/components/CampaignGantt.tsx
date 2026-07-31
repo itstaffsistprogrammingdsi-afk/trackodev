@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getCampaignGantt } from "../api/campaign.api";
 import type { GanttTask } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type Props = {
   campaignId: string;
@@ -10,6 +11,9 @@ export default function CampaignGantt({ campaignId }: Props) {
   const [tasks, setTasks] = useState<GanttTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalDays, setTotalDays] = useState(30);
+  const realtimeRevision = useRealtimeRevision([
+    "Board", "Card", "Subtask", "Task",
+  ]);
 
   useEffect(() => {
     const fetchGantt = async () => {
@@ -33,7 +37,7 @@ export default function CampaignGantt({ campaignId }: Props) {
     };
 
     fetchGantt();
-  }, [campaignId]);
+  }, [campaignId, realtimeRevision]);
 
   const days = useMemo(() => {
     return Array.from(

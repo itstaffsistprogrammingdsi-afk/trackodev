@@ -5,6 +5,7 @@ import api from "@/lib/axios";
 import { Brand, Card, User } from "../types";
 
 import { getUsers } from "@/features/user/api/user.api";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 import {
   attachBrand,
@@ -57,6 +58,9 @@ export function useCardDetail(
   card: Card | null,
   isOpen: boolean,
 ): ReturnType {
+  const realtimeRevision = useRealtimeRevision([
+    "ActivityLog", "Assignment", "Brand", "Card", "Label", "User",
+  ]);
   // =========================================
   // STATE
   // =========================================
@@ -222,6 +226,7 @@ export function useCardDetail(
     isOpen,
     fetchUsers,
     fetchBrands,
+    realtimeRevision,
   ]);
 
   // =========================================
@@ -236,6 +241,7 @@ export function useCardDetail(
     card?.id,
     isOpen,
     fetchDetail,
+    realtimeRevision,
   ]);
 
   // =========================================

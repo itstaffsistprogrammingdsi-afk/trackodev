@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getForm, createField, deleteField } from "../api/form.api";
 import type { Form, FormField } from "../types";
 import { useAuth } from "@/context/AuthContext";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 export default function FormBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const { can } = useAuth();
   const canCreateField = can('form.field.create') || can('form.update');
   const canDeleteField = can('form.field.delete') || can('form.update');
+  const realtimeRevision = useRealtimeRevision(["Form", "FormField"]);
 
   const [form, setForm] = useState<Form | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function FormBuilderPage() {
   const [allowOther, setAllowOther] = useState(false);
   const [otherLabel, setOtherLabel] = useState("");
 
-  const fetchForm = async () => {
+  const fetchForm = useCallback(async () => {
     if (!id) return;
 
     try {
@@ -36,7 +38,7 @@ export default function FormBuilderPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const generateFieldName = (text: string) =>
     text.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, "");
@@ -102,7 +104,7 @@ export default function FormBuilderPage() {
 
   useEffect(() => {
     fetchForm();
-  }, [id]);
+  }, [fetchForm, id, realtimeRevision]);
 
   if (loading) return <div className="p-6">Loading builder...</div>;
   if (!form) return <div className="p-6 text-red-500">Form not found</div>;

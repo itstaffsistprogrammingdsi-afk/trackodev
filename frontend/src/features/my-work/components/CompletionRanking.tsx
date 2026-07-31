@@ -13,6 +13,7 @@ import type {
   CompletionRankingResponse,
   RankingPeriod,
 } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 const PERIODS: { value: RankingPeriod; label: string }[] = [
   { value: "day", label: "Hari" },
@@ -59,6 +60,7 @@ export default function CompletionRanking() {
   const [data, setData] = useState<CompletionRankingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const realtimeRevision = useRealtimeRevision(["ActivityLog", "Card"]);
 
   const loadRanking = useCallback(async (selectedPeriod: RankingPeriod) => {
     try {
@@ -74,7 +76,7 @@ export default function CompletionRanking() {
 
   useEffect(() => {
     void loadRanking(period);
-  }, [loadRanking, period]);
+  }, [loadRanking, period, realtimeRevision]);
 
   return (
     <section
