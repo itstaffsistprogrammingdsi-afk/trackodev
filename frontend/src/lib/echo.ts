@@ -65,6 +65,14 @@ export const createEcho = (): Echo<"reverb"> | null => {
   return echoInstance;
 };
 
-export const disconnectEcho = (): void => {
+export const disconnectEcho = (
+  expectedInstance?: Echo<"reverb">,
+): boolean => {
+  if (expectedInstance && echoInstance !== expectedInstance) {
+    return false;
+  }
+
   disconnectCurrentEcho();
+
+  return true;
 };

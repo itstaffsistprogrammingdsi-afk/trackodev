@@ -27,7 +27,24 @@ export default function RealtimeSync() {
     let refreshTimer: number | undefined;
     const removeConnectionListener = echo.connector.onConnectionChange((status) => {
       document.documentElement.dataset.realtimeStatus = status;
+
+      if (status === "connected") {
+        delete document.documentElement.dataset.realtimeError;
+      }
     });
+
+    const pusherConnection = echo.connector.pusher.connection;
+    const handleConnectionError = (error: unknown) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : JSON.stringify(error)?.slice(0, 500) || "Unknown connection error";
+
+      document.documentElement.dataset.realtimeError = message;
+      console.error("Reverb connection failed", error);
+    };
+
+    pusherConnection.bind("error", handleConnectionError);
 
     echo.private(channelName)
       .listen(".data.changed", (event: ApplicationDataChanged) => {
@@ -56,10 +73,14 @@ export default function RealtimeSync() {
     return () => {
       window.clearTimeout(refreshTimer);
       removeConnectionListener();
+      pusherConnection.unbind("error", handleConnectionError);
       echo.leave(channelName);
-      disconnectEcho();
-      delete document.documentElement.dataset.realtimeStatus;
-      delete document.documentElement.dataset.realtimeChannel;
+      const disconnected = disconnectEcho(echo);
+
+      if (disconnected) {
+        delete document.documentElement.dataset.realtimeStatus;
+        delete document.documentElement.dataset.realtimeChannel;
+      }
     };
   }, [queryClient, user?.id]);
 
