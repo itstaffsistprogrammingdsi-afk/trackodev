@@ -1,8 +1,23 @@
 <?php
 
 $allowedOrigins = array_values(array_filter(array_map(
-    'trim',
-    explode(',', (string) env('REVERB_ALLOWED_ORIGINS', '*'))
+    static function (string $origin): string {
+        $origin = trim($origin);
+
+        if ($origin === '' || $origin === '*') {
+            return $origin;
+        }
+
+        // Reverb compares this value with the hostname extracted from the
+        // browser Origin header. Accept both "example.com" and a full URL.
+        $host = parse_url(
+            str_contains($origin, '://') ? $origin : "https://{$origin}",
+            PHP_URL_HOST,
+        );
+
+        return is_string($host) && $host !== '' ? $host : $origin;
+    },
+    explode(',', (string) env('REVERB_ALLOWED_ORIGINS', '*')),
 )));
 
 return [
