@@ -6,6 +6,7 @@ use App\Mail\CardDueReminderMail;
 use App\Models\Card;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
-class SendDueReminderJob implements ShouldQueue
+class SendDueReminderJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
@@ -21,11 +22,22 @@ class SendDueReminderJob implements ShouldQueue
 
     public int $timeout = 60;
 
+    public int $uniqueFor = 3600;
+
     public function __construct(
         public string $cardId,
         public string $assigneeId,
         public string $stage
     ) {}
+
+    public function uniqueId(): string
+    {
+        return implode(':', [
+            $this->cardId,
+            $this->assigneeId,
+            $this->stage,
+        ]);
+    }
 
     public function handle(): void
     {
@@ -42,7 +54,10 @@ class SendDueReminderJob implements ShouldQueue
 
         $assignee = User::find($this->assigneeId);
 
-        if (!$card || !$assignee) {
+        if (! $card || ! $assignee) {
+            if ($card) {
+                $card->update(['due_reminder_lock_until' => null]);
+            }
 
             Log::warning('SEND DUE REMINDER DATA NOT FOUND', [
                 'card_exists' => (bool) $card,
@@ -60,6 +75,14 @@ class SendDueReminderJob implements ShouldQueue
             )
         );
 
+        Card::query()
+            ->whereKey($card->id)
+            ->update([
+                'due_reminder_stage' => $this->stage,
+                'due_reminder_last_sent_at' => now(),
+                'due_reminder_lock_until' => null,
+            ]);
+
         Log::info('SEND DUE REMINDER SUCCESS', [
             'email' => $assignee->email,
             'card' => $card->title,
@@ -74,6 +97,10 @@ class SendDueReminderJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
+        Card::query()
+            ->whereKey($this->cardId)
+            ->update(['due_reminder_lock_until' => null]);
+
         Log::error('SEND DUE REMINDER JOB FAILED', [
             'card_id' => $this->cardId,
             'assignee_id' => $this->assigneeId,

@@ -18,12 +18,12 @@ class CardDueReminderMail extends Mailable
         public string $stage
     ) {}
 
-    public function build()
+    public function build(): self
     {
         $subject = match ($this->stage) {
-            'h1'      => '🚨 Task Due Besok',
-            'overdue' => '❌ Task Overdue',
-            default   => 'Task Reminder',
+            'h1' => '[Traco] Task jatuh tempo besok',
+            'overdue' => '[Traco] Task telah overdue',
+            default => '[Traco] Pengingat task',
         };
 
         return $this
