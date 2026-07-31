@@ -4,6 +4,7 @@ import { SidebarProvider, useSidebar } from "../context/SidebarContext";
 import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
 import Backdrop from "./Backdrop";
+import RealtimeSync from "../components/realtime/RealtimeSync";
 
 /* -------------------------------------------------------------------------- */
 /*                               LAYOUT CONTENT                               */
@@ -55,6 +56,7 @@ const LayoutContent: React.FC = () => {
 const AppLayout: React.FC = () => {
   return (
     <SidebarProvider>
+      <RealtimeSync />
       <LayoutContent />
     </SidebarProvider>
   );

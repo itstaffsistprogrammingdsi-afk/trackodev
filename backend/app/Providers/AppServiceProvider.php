@@ -2,15 +2,31 @@
 
 namespace App\Providers;
 
+use App\Models\ActivityLog;
+use App\Models\Assignment;
+use App\Models\Board;
+use App\Models\Brand;
+use App\Models\Campaign;
+use App\Models\Card;
+use App\Models\CardAttachment;
+use App\Models\CardBriefAttachment;
+use App\Models\CardComment;
+use App\Models\Division;
+use App\Models\Form;
+use App\Models\FormField;
+use App\Models\FormSubmission;
+use App\Models\Label;
+use App\Models\Message;
+use App\Models\ResultDescriptionTemplate;
+use App\Models\Subtask;
+use App\Models\Task;
 use App\Models\User;
-
+use App\Models\Workspace;
+use App\Observers\ApplicationDataObserver;
 use App\Observers\UserObserver;
-
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
-
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +51,32 @@ class AppServiceProvider extends ServiceProvider
             UserObserver::class
         );
 
+        $realtimeModels = [
+            ActivityLog::class,
+            Assignment::class,
+            Board::class,
+            Brand::class,
+            Campaign::class,
+            Card::class,
+            CardAttachment::class,
+            CardBriefAttachment::class,
+            CardComment::class,
+            Division::class,
+            Form::class,
+            FormField::class,
+            FormSubmission::class,
+            Label::class,
+            Message::class,
+            ResultDescriptionTemplate::class,
+            Subtask::class,
+            Task::class,
+            Workspace::class,
+        ];
+
+        foreach ($realtimeModels as $model) {
+            $model::observe(ApplicationDataObserver::class);
+        }
+
         // ============================================
         // SUPER ADMIN BYPASS
         // ============================================
@@ -56,7 +98,7 @@ class AppServiceProvider extends ServiceProvider
         // ============================================
 
         app()[
-            \Spatie\Permission\PermissionRegistrar::class
+            PermissionRegistrar::class
         ]->forgetCachedPermissions();
     }
 }

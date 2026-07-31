@@ -6,3 +6,7 @@ use Illuminate\Support\Facades\Broadcast;
 Broadcast::channel('users.{userId}', function (User $user, string $userId): bool {
     return (string) $user->getKey() === $userId;
 });
+
+Broadcast::channel('app.updates', function (User $user): bool {
+    return $user->exists;
+});
