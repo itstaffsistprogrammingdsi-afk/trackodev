@@ -69,8 +69,6 @@ Broadcast::routes([
     'middleware' => ['auth:sanctum'],
 ]);
 
-require __DIR__.'/channels.php';
-
 // ============================================
 // AUTH
 // ============================================
