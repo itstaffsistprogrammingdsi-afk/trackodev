@@ -672,14 +672,14 @@ Route::middleware([
     )->middleware('permission:notification.view');
 
     Route::patch(
-        'notifications/{notification}/read',
-        [NotificationController::class, 'markRead']
-    )->middleware('permission:notification.read');
-
-    Route::patch(
         'notifications/read-all',
         [NotificationController::class, 'markAllRead']
     )->middleware('permission:notification.read_all');
+
+    Route::patch(
+        'notifications/{notification}/read',
+        [NotificationController::class, 'markRead']
+    )->middleware('permission:notification.read');
 
     Route::delete(
         'notifications/{notification}',

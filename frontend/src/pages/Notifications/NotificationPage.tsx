@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bell, CheckCheck, Inbox, Trash2 } from "lucide-react";
+import { Bell, CheckCheck, Inbox, Loader2, Trash2 } from "lucide-react";
 
 import {
   deleteNotification,
@@ -28,6 +28,7 @@ export default function NotificationPage() {
   const realtimeRevision = useRealtimeRevision(["Notification"]);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -59,10 +60,15 @@ export default function NotificationPage() {
   };
 
   const markAllRead = async () => {
-    await markAllNotificationsRead();
-    setItems((current) =>
-      current.map((item) => ({ ...item, is_read: true })),
-    );
+    try {
+      setMarkingAllRead(true);
+      await markAllNotificationsRead();
+      setItems((current) =>
+        current.map((item) => ({ ...item, is_read: true })),
+      );
+    } finally {
+      setMarkingAllRead(false);
+    }
   };
 
   const remove = async (id: string) => {
@@ -89,10 +95,15 @@ export default function NotificationPage() {
           <button
             type="button"
             onClick={() => void markAllRead()}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            disabled={markingAllRead}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-70"
           >
-            <CheckCheck size={17} />
-            Tandai semua dibaca
+            {markingAllRead ? (
+              <Loader2 size={17} className="animate-spin" />
+            ) : (
+              <CheckCheck size={17} />
+            )}
+            {markingAllRead ? "Memproses..." : "Tandai semua dibaca"}
           </button>
         )}
       </header>
