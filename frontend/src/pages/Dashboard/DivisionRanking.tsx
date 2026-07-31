@@ -15,6 +15,7 @@ import {
 import axios from "../../lib/axios";
 import { toDashboardParams } from "./dashboard.types";
 import type { DashboardFilter, DashboardFilterPayload } from "./dashboard.types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type RankingUser = {
   id: string;
@@ -82,6 +83,9 @@ export default function DivisionRankingSection({
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(3);
+  const realtimeRevision = useRealtimeRevision([
+    "ActivityLog", "Card", "Division", "User",
+  ]);
 
   const loadRanking = useCallback(async () => {
     try {
@@ -101,7 +105,7 @@ export default function DivisionRankingSection({
 
   useEffect(() => {
     void loadRanking();
-  }, [loadRanking, refreshKey]);
+  }, [loadRanking, refreshKey, realtimeRevision]);
 
   useEffect(() => {
     const updatePageSize = () => {

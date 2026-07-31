@@ -7,6 +7,7 @@ import type {
   AttachmentItem,
   ExportPeriodType,
 } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i).reverse();
@@ -48,6 +49,7 @@ export default function AttachmentPanel() {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const realtimeRevision = useRealtimeRevision(["CardAttachment"]);
 
   const MAX_VISIBLE = 5;
   const monthlyRangeInvalid = type === "monthly" && startDate > endDate;
@@ -96,7 +98,15 @@ export default function AttachmentPanel() {
     return () => {
       cancelled = true;
     };
-  }, [type, selectedDate, startDate, endDate, year, monthlyRangeInvalid]);
+  }, [
+    type,
+    selectedDate,
+    startDate,
+    endDate,
+    year,
+    monthlyRangeInvalid,
+    realtimeRevision,
+  ]);
 
   const visibleAttachments = expanded
     ? attachments

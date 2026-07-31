@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { calendarApi } from "../api/calendar.api";
 import { CalendarMonthResponse, GridDayCell } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 export function useCalendar() {
   const [currentMonth, setCurrentMonth] = useState<string>(() => {
@@ -10,6 +11,7 @@ export function useCalendar() {
 
   const [data, setData] = useState<CalendarMonthResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const realtimeRevision = useRealtimeRevision(["Board", "Card"]);
 
   // Bungkus fungsi fetch ke dalam useCallback agar bisa dipanggil berulang kali
   const fetchCalendarData = useCallback((monthStr: string) => {
@@ -29,7 +31,7 @@ export function useCalendar() {
 
   useEffect(() => {
     fetchCalendarData(currentMonth);
-  }, [currentMonth, fetchCalendarData]);
+  }, [currentMonth, fetchCalendarData, realtimeRevision]);
 
   const nextMonth = () => {
     const [year, month] = currentMonth.split("-").map(Number);

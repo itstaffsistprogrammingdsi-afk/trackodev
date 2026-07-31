@@ -8,6 +8,7 @@ import {
 
 import { getBoardProgress } from "../api/campaign.api";
 import type { BoardProgressData } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type Props = {
   campaignId: string;
@@ -16,6 +17,9 @@ type Props = {
 export default function BoardProgress({ campaignId }: Props) {
   const [data, setData] = useState<BoardProgressData | null>(null);
   const [loading, setLoading] = useState(true);
+  const realtimeRevision = useRealtimeRevision([
+    "ActivityLog", "Assignment", "Board", "Card", "Subtask", "Task",
+  ]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -31,7 +35,7 @@ export default function BoardProgress({ campaignId }: Props) {
     };
 
     if (campaignId) fetch();
-  }, [campaignId]);
+  }, [campaignId, realtimeRevision]);
 
   if (loading) {
     return (

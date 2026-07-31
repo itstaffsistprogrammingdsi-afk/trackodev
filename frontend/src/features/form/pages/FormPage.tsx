@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getForms, deleteForm } from "../api/form.api";
 import type { Form } from "../types";
 import { useAuth } from '../../../context/AuthContext';
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 export default function FormPage() {
   const navigate = useNavigate();
@@ -11,8 +12,11 @@ export default function FormPage() {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const realtimeRevision = useRealtimeRevision([
+    "Form", "FormField", "FormSubmission",
+  ]);
 
-  const fetchForms = async () => {
+  const fetchForms = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -25,7 +29,7 @@ export default function FormPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleDelete = async (id: string) => {
     const confirmed = window.confirm("Hapus form ini?");
@@ -62,7 +66,7 @@ export default function FormPage() {
 
   useEffect(() => {
     fetchForms();
-  }, []);
+  }, [fetchForms, realtimeRevision]);
 
   return (
     <div className="space-y-6">

@@ -15,6 +15,7 @@ import type {
 } from "../types";
 
 import useExpandedRows from "./useExpandedRows";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 import { exportSubmissionPDF }
 from "../components/export/exportSubmissionPDF";
@@ -22,6 +23,9 @@ from "../components/export/exportSubmissionPDF";
 export function useFormResponses(
   id?: string
 ) {
+  const realtimeRevision = useRealtimeRevision([
+    "Assignment", "Form", "FormField", "FormSubmission",
+  ]);
   const [form, setForm] =
     useState<Form | null>(
       null
@@ -118,7 +122,7 @@ export function useFormResponses(
 
     fetchData();
 
-  }, [id]);
+  }, [id, realtimeRevision]);
 
   /*
   |--------------------------------------------------------------------------

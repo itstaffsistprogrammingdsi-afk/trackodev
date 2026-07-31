@@ -4,7 +4,12 @@ import { User, Card, FilterParams, MasterFilterOptions } from '../types';
 import api from '@/lib/axios';
 
 import { getDownloadFileName } from '@/lib/exportSecurity';
+import { useRealtimeRevision } from '@/hooks/useRealtimeRevision';
 export const useReport = () => {
+  const realtimeRevision = useRealtimeRevision([
+    'ActivityLog', 'Assignment', 'Brand', 'Card', 'CardAttachment',
+    'Division', 'Label', 'User', 'Workspace',
+  ]);
   const [users, setUsers] = useState<User[]>([]);
   const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -53,7 +58,7 @@ export const useReport = () => {
       }
     };
     fetchOptions();
-  }, []);
+  }, [realtimeRevision]);
 
   // 2. Fetch Users
   const fetchUsers = useCallback(async () => {
@@ -87,7 +92,7 @@ export const useReport = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, [fetchUsers, realtimeRevision]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -95,7 +100,7 @@ export const useReport = () => {
     } else {
       setCards([]);
     }
-  }, [selectedUser, fetchUserCards]);
+  }, [selectedUser, fetchUserCards, realtimeRevision]);
 
   const updateFilter = (newFilters: Partial<FilterParams>) => {
     setFilters((prev) => ({ ...prev, ...newFilters, page: newFilters.page ?? 1 }));

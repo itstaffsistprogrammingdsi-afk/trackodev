@@ -11,6 +11,7 @@ import {
 } from "@/features/notification/api/notification.api";
 import { useAuth } from "@/context/AuthContext";
 import { createEcho } from "@/lib/echo";
+import { REALTIME_DATA_CHANGED_EVENT } from "@/lib/realtimeEvents";
 
 interface Notification {
   id: string;
@@ -77,12 +78,38 @@ export default function NotificationBell() {
       }
     ).error((error: unknown) => {
       console.error("Notification channel authorization failed", error);
+    }).subscribed(() => {
+      void loadNotifications();
     });
 
     return () => {
       echo.leave(channelName);
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    let refreshTimer: number | undefined;
+
+    const refreshAfterApplicationChange = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        void loadNotifications();
+      }, 5_000);
+    };
+
+    window.addEventListener(
+      REALTIME_DATA_CHANGED_EVENT,
+      refreshAfterApplicationChange,
+    );
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+      window.removeEventListener(
+        REALTIME_DATA_CHANGED_EVENT,
+        refreshAfterApplicationChange,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     const refreshWhenVisible = () => {

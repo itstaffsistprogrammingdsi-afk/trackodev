@@ -22,6 +22,7 @@ import {
   ChevronRight,
   LucideIcon,
 } from "lucide-react";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 // ============================================
 // TYPES (Sesuai dengan JSON Laravel)
@@ -80,6 +81,7 @@ const initialFilterPayload: DashboardFilterPayload = {
 // ============================================
 
 export default function Home() {
+  const realtimeRevision = useRealtimeRevision();
   const [data, setData] = useState<DashboardResponse>({
     filter: initialFilterPayload,
     stats: {
@@ -128,7 +130,7 @@ export default function Home() {
 
   useEffect(() => {
     void loadDashboard();
-  }, [loadDashboard]);
+  }, [loadDashboard, realtimeRevision]);
 
   // ============================================
   // RENDER

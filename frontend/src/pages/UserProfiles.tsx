@@ -30,6 +30,7 @@ import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import api from "../lib/axios";
 import UserPermissionModal from '../features/user/components/UserPermissionModal';
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 // ============================================
 // TYPES
@@ -164,6 +165,7 @@ const getUserRole = (
 // ============================================
 
 export default function UserProfiles() {
+  const realtimeRevision = useRealtimeRevision(["ActivityLog", "User"]);
   const navigate = useNavigate();
 
   // ============================================
@@ -320,7 +322,7 @@ export default function UserProfiles() {
 
     return () =>
       clearTimeout(delay);
-  }, [fetchUsers]);
+  }, [fetchUsers, realtimeRevision]);
 
   // ============================================
   // RESET FORM

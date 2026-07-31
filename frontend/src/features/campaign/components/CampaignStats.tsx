@@ -8,6 +8,7 @@ import {
 
 import { getCampaignStats } from "../api/campaign.api";
 import type { CampaignStatsData } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type Props = {
   campaignId: string;
@@ -21,6 +22,9 @@ export default function CampaignStats({
 
   const [loading, setLoading] =
     useState(true);
+  const realtimeRevision = useRealtimeRevision([
+    "Board", "Card", "Subtask", "Task",
+  ]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -44,7 +48,7 @@ export default function CampaignStats({
     if (!campaignId) return;
 
     fetch();
-  }, [campaignId]);
+  }, [campaignId, realtimeRevision]);
 
   if (loading) {
     return (

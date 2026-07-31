@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 export interface Attachment {
   id: string;
@@ -25,16 +26,22 @@ export default function useAttachments(
   isOpen?: boolean,
   onUpdated?: () => void,
 ) {
+  const realtimeRevision = useRealtimeRevision(["CardAttachment"]);
   const [attachments, setAttachments] =
     useState<Attachment[]>([]);
 
   const [loading, setLoading] =
     useState(false);
+  const onUpdatedRef = useRef(onUpdated);
+
+  useEffect(() => {
+    onUpdatedRef.current = onUpdated;
+  }, [onUpdated]);
 
   // =========================================
   // FETCH ATTACHMENTS
   // =========================================
-  const fetchAttachments =
+  const fetchAttachments = useCallback(
     async () => {
       if (!cardId) return;
 
@@ -49,7 +56,7 @@ export default function useAttachments(
           res.data.data || [],
         );
 
-        onUpdated?.();
+        onUpdatedRef.current?.();
       } catch (err) {
         console.error(
           "FAILED FETCH ATTACHMENTS",
@@ -58,13 +65,15 @@ export default function useAttachments(
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [cardId],
+  );
 
   useEffect(() => {
     if (isOpen && cardId) {
       fetchAttachments();
     }
-  }, [cardId, isOpen]);
+  }, [cardId, fetchAttachments, isOpen, realtimeRevision]);
 
   return {
     attachments,

@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays } from "lucide-react";
 
 import { getOverdueTasks } from "../api/campaign.api";
 import type { OverdueTask } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type Props = {
   campaignId: string;
@@ -11,6 +12,7 @@ type Props = {
 export default function OverdueTasks({ campaignId }: Props) {
   const [data, setData] = useState<OverdueTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const realtimeRevision = useRealtimeRevision(["Board", "Card", "Task"]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -28,7 +30,7 @@ export default function OverdueTasks({ campaignId }: Props) {
     if (!campaignId) return;
 
     fetch();
-  }, [campaignId]);
+  }, [campaignId, realtimeRevision]);
 
   if (loading) {
     return (

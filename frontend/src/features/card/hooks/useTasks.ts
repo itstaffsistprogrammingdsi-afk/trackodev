@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/axios";
 
 import { CardTask } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 interface ReturnType {
   tasks: CardTask[];
@@ -32,6 +33,7 @@ export default function useTasks(
 
   onUpdated?: () => void,
 ): ReturnType {
+  const realtimeRevision = useRealtimeRevision(["Subtask", "Task"]);
   const [tasks, setTasks] =
     useState<CardTask[]>([]);
 
@@ -59,7 +61,7 @@ export default function useTasks(
     if (isOpen && cardId) {
       fetchTasks();
     }
-  }, [cardId, isOpen]);
+  }, [cardId, isOpen, realtimeRevision]);
 
   // =========================================
   // ADD TASK

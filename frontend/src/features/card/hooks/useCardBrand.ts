@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { Brand, Card } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 interface UseCardBrandReturn {
   brands: Brand[];
@@ -16,6 +17,7 @@ export function useCardBrand(
   isOpen: boolean,
   setDetail?: React.Dispatch<React.SetStateAction<Card | null>>
 ): UseCardBrandReturn {
+  const realtimeRevision = useRealtimeRevision(["ActivityLog", "Brand"]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -117,7 +119,7 @@ export function useCardBrand(
   // =========================================
   useEffect(() => {
     if (isOpen) fetchBrands();
-  }, [isOpen, fetchBrands]);
+  }, [isOpen, fetchBrands, realtimeRevision]);
 
   return {
     brands,

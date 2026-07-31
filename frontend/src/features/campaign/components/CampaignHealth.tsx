@@ -8,6 +8,7 @@ import {
 
 import { getCampaignHealth } from "../api/campaign.api";
 import type { CampaignHealthData } from "../types";
+import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type Props = {
   campaignId: string;
@@ -20,6 +21,9 @@ export default function CampaignHealth({
     useState<CampaignHealthData | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const realtimeRevision = useRealtimeRevision([
+    "Assignment", "Board", "Campaign", "Card", "Task",
+  ]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -40,7 +44,7 @@ export default function CampaignHealth({
     if (campaignId) {
       fetch();
     }
-  }, [campaignId]);
+  }, [campaignId, realtimeRevision]);
 
   if (loading) {
     return (
