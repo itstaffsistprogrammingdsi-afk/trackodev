@@ -75,11 +75,12 @@ export default function NotificationBell() {
           ...current.filter((item) => item.id !== incoming.id),
         ]);
       }
-    );
+    ).error((error: unknown) => {
+      console.error("Notification channel authorization failed", error);
+    });
 
     return () => {
       echo.leave(channelName);
-      echo.disconnect();
     };
   }, [user?.id]);
 
