@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('app:sync-hris-users')->everyMinute();
 
 Schedule::command('reminder:due-date')
-    ->everyFifteenMinutes()
-    ->withoutOverlapping(14)
+    ->everyFiveMinutes()
+    ->withoutOverlapping(4)
     ->onOneServer();
 
 Artisan::command('inspire', function () {
