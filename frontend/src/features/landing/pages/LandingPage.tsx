@@ -1,18 +1,24 @@
-import Navbar from "../components/Navbar";
-import Hero from "../components/Hero";
-import FormList from "../components/FormList";
 import Footer from "../components/Footer";
-import { useLanding } from "../hooks/useLanding"; // 🔥 Perbaikan: Import hook yang sudah dibuat
+import FormList from "../components/FormList";
+import Hero from "../components/Hero";
+import Navbar from "../components/Navbar";
+import { useLanding } from "../hooks/useLanding";
 
 export default function LandingPage() {
-  // 🔥 Perbaikan: Panggil hook di sini agar variabelnya tersedia
-  const { forms, isLoading, error } = useLanding(); 
+  const { forms, isLoading, error, reload } = useLanding();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col overflow-x-hidden bg-slate-50">
       <Navbar />
-      <Hero />
-      <FormList forms={forms} isLoading={isLoading} error={error}/>
+      <main className="flex-1">
+        <Hero />
+        <FormList
+          forms={forms}
+          isLoading={isLoading}
+          error={error}
+          onRetry={reload}
+        />
+      </main>
       <Footer />
     </div>
   );

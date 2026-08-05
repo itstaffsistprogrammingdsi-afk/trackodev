@@ -10,6 +10,25 @@ use Tests\TestCase;
 
 class EncryptedExportServiceTest extends TestCase
 {
+    public function test_pdf_can_be_downloaded_without_password(): void
+    {
+        $source = Pdf::loadHTML('<h1>Open report</h1>')
+            ->setPaper('a4')
+            ->output();
+
+        $response = app(EncryptedExportService::class)->downloadPdf(
+            $source,
+            'report.pdf'
+        );
+
+        $this->assertSame('NONE', $response->headers->get('X-Export-Encryption'));
+        $this->assertSame($source, $response->getContent());
+        $this->assertDoesNotMatchRegularExpression(
+            '/\/Encrypt\s+\d+\s+0\s+R/',
+            $response->getContent()
+        );
+    }
+
     public function test_pdf_is_downloaded_directly_with_aes_256_password_protection(): void
     {
         $source = Pdf::loadHTML('<h1>Confidential report</h1><p>Protected content</p>')
@@ -61,5 +80,27 @@ class EncryptedExportServiceTest extends TestCase
         $this->assertStringNotContainsString('xl/workbook.xml', $encrypted);
         $this->assertStringContainsString('cipherAlgorithm="AES"', $encrypted);
         $this->assertStringContainsString('keyBits="256"', $encrypted);
+    }
+
+    public function test_excel_can_be_downloaded_without_password(): void
+    {
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getActiveSheet()->setCellValue('A1', 'Open report');
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'trackodev-test-xlsx-');
+        $this->assertNotFalse($temporaryPath);
+
+        (new Xlsx($spreadsheet))->save($temporaryPath);
+        $source = file_get_contents($temporaryPath);
+        @unlink($temporaryPath);
+        $spreadsheet->disconnectWorksheets();
+
+        $response = app(EncryptedExportService::class)->downloadSpreadsheet(
+            $source,
+            'report.xlsx'
+        );
+
+        $this->assertSame('NONE', $response->headers->get('X-Export-Encryption'));
+        $this->assertSame($source, $response->getContent());
+        $this->assertStringStartsWith('PK', $response->getContent());
     }
 }

@@ -38,7 +38,7 @@ export interface CompletionRankingResponse {
   export interface ExportLogParams {
     type: ExportPeriodType;
     format: ExportFormat;
-    export_password: string;
+    export_password?: string;
     date?: string;   // dipakai saat type = "daily", format: YYYY-MM-DD
     month?: number;  // dipakai saat type = "monthly", 1-12
     year?: number;   // dipakai saat type = "monthly" | "yearly"

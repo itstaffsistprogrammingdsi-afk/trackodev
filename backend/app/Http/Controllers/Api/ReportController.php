@@ -426,12 +426,13 @@ public function previewPdf(Request $request): JsonResponse
     {
         $this->validateReportFilters($request);
 
+        $password = trim((string) $request->header('X-Export-Password'));
         $request->merge([
-            'export_password' => (string) $request->header('X-Export-Password'),
+            'export_password' => $password === '' ? null : $password,
         ]);
 
         $validated = $request->validate([
-            'export_password' => 'required|string|min:12|max:128',
+            'export_password' => 'nullable|string|min:12|max:128',
         ]);
 
         try {
@@ -456,7 +457,7 @@ public function previewPdf(Request $request): JsonResponse
             return $encryptedExport->downloadPdf(
                 $pdf->output(),
                 $fileName,
-                $validated['export_password']
+                $validated['export_password'] ?? null
             );
         } catch (\Exception $e) {
             Log::error('Export PDF error: ' . $e->getMessage());
@@ -471,12 +472,13 @@ public function previewPdf(Request $request): JsonResponse
     {
         $this->validateReportFilters($request);
 
+        $password = trim((string) $request->header('X-Export-Password'));
         $request->merge([
-            'export_password' => (string) $request->header('X-Export-Password'),
+            'export_password' => $password === '' ? null : $password,
         ]);
 
         $validated = $request->validate([
-            'export_password' => 'required|string|min:12|max:128',
+            'export_password' => 'nullable|string|min:12|max:128',
         ]);
 
         try {
@@ -495,7 +497,7 @@ public function previewPdf(Request $request): JsonResponse
             return $encryptedExport->downloadSpreadsheet(
                 $contents,
                 $fileName,
-                $validated['export_password']
+                $validated['export_password'] ?? null
             );
         } catch (\Exception $e) {
             Log::error('Export Excel error: ' . $e->getMessage());

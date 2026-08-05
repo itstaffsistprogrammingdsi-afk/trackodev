@@ -1,5 +1,7 @@
+import { getApiBaseUrl } from "./mobileConfig";
+
 const getBackendUrl = () => {
-  const apiBase = import.meta.env.VITE_API_URL || "/api";
+  const apiBase = getApiBaseUrl();
   const backendUrl = new URL(apiBase, window.location.origin);
 
   backendUrl.search = "";

@@ -1,12 +1,19 @@
 import axios from "axios";
+import { getApiBaseUrl, saveMobileApiUrl } from "./mobileConfig";
 
 const api = axios.create({
   // 🔥 Support Vite env var agar fleksibel (fallback ke "/api" jika env tidak diset)
-  baseURL: import.meta.env.VITE_API_URL || "/api", 
+  baseURL: getApiBaseUrl(),
   headers: {
     Accept: "application/json",
   },
 });
+
+export const updateMobileApiUrl = (value: string): string => {
+  const normalizedUrl = saveMobileApiUrl(value);
+  api.defaults.baseURL = normalizedUrl;
+  return normalizedUrl;
+};
 
 // 🔥 otomatis kirim token terbaru
 api.interceptors.request.use((config) => {

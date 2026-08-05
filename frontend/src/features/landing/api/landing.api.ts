@@ -1,14 +1,19 @@
-import api from '@/lib/axios';
-import { FormItem } from '../types';
+import api from "@/lib/axios";
 
-// Fungsi sebelumnya (get all forms)
-export const getAvailableForms = async (): Promise<FormItem[]> => {
-  const response = await api.get('/public/forms'); // <-- Sesuaikan dengan url rute publik di backend kamu
-  return response.data;
+import type { FormDetail, FormItem } from "../types";
+
+export const getAvailableForms = async (
+  signal?: AbortSignal,
+): Promise<FormItem[]> => {
+  const response = await api.get<FormItem[]>("/public/forms", { signal });
+
+  return Array.isArray(response.data) ? response.data : [];
 };
 
-// 🔥 Fungsi baru untuk mengambil 1 form spesifik berdasarkan slug
-export const getPublicFormBySlug = async (slug: string) => {
-  const response = await api.get(`/public/forms/${slug}`);
+export const getPublicFormBySlug = async (
+  slug: string,
+): Promise<FormDetail> => {
+  const response = await api.get<FormDetail>(`/public/forms/${slug}`);
+
   return response.data;
 };

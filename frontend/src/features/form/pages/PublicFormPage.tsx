@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import api from "@/lib/axios";
@@ -40,28 +40,42 @@ export default function PublicFormPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const [error, setError] = useState<string | null>(null);
+
   // =========================
   // FETCH
   // =========================
-  const fetchForm = async () => {
+  const fetchForm = useCallback(async (signal?: AbortSignal) => {
+    if (!slug) {
+      setError("Tautan formulir tidak valid.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError(null);
 
-      const res = await api.get(`/public/forms/${slug}`);
+      const res = await api.get(`/public/forms/${slug}`, { signal });
 
       setForm(res.data);
     } catch (error) {
-      console.error(error);
+      if (signal?.aborted) return;
 
-      alert("Form tidak ditemukan");
+      console.error(error);
+      setForm(null);
+      setError("Formulir tidak dapat dimuat. Periksa koneksi lalu coba lagi.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  };
+  }, [slug]);
 
   useEffect(() => {
-    fetchForm();
-  }, [slug]);
+    const controller = new AbortController();
+    void fetchForm(controller.signal);
+
+    return () => controller.abort();
+  }, [fetchForm]);
 
   // =========================
   // CHANGE
@@ -73,6 +87,25 @@ export default function PublicFormPage() {
     }));
   };
 
+  const isFieldVisible = (fieldId: string) => {
+    const field = form?.fields?.find((item) => item.id === fieldId);
+
+    if (!field?.depends_on_field_id) return true;
+
+    const dependency = form?.fields?.find(
+      (item) => item.id === field.depends_on_field_id,
+    );
+
+    if (!dependency) return true;
+
+    const dependencyValue = values[dependency.name];
+    const expectedValue = String(field.depends_on_value ?? "");
+
+    return Array.isArray(dependencyValue)
+      ? dependencyValue.map(String).includes(expectedValue)
+      : String(dependencyValue ?? "") === expectedValue;
+  };
+
   // =========================
   // VALIDATE
   // =========================
@@ -80,6 +113,8 @@ export default function PublicFormPage() {
     if (!form) return false;
 
     for (const field of form.fields || []) {
+      if (!isFieldVisible(field.id)) continue;
+
       const value = values[field.name];
 
       if (field.type === "file" && field.is_required) {
@@ -140,8 +175,15 @@ export default function PublicFormPage() {
       setSubmitting(true);
 
       const formData = new FormData();
+      const visibleFieldNames = new Set(
+        (form.fields || [])
+          .filter((field) => isFieldVisible(field.id))
+          .map((field) => field.name),
+      );
 
       for (const key in values) {
+        if (!visibleFieldNames.has(key)) continue;
+
         let value = values[key];
 
         if (Array.isArray(value)) {
@@ -164,6 +206,8 @@ export default function PublicFormPage() {
       }
 
       for (const key in fileValues) {
+        if (!visibleFieldNames.has(key)) continue;
+
         const file = fileValues[key];
 
         if (file) {
@@ -171,11 +215,7 @@ export default function PublicFormPage() {
         }
       }
 
-      await api.post(`/public/forms/${slug}/submit`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      await api.post(`/public/forms/${slug}/submit`, formData);
 
       alert("Form berhasil dikirim");
 
@@ -228,12 +268,22 @@ export default function PublicFormPage() {
           <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-500" />
 
           <h2 className="text-xl font-semibold text-slate-900">
-            Form tidak ditemukan
+            Formulir tidak tersedia
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            Link form mungkin sudah tidak tersedia.
+            {error || "Tautan formulir mungkin sudah tidak tersedia."}
           </p>
+
+          {error && (
+            <button
+              type="button"
+              onClick={() => void fetchForm()}
+              className="mt-5 min-h-11 rounded-lg bg-[#673ab7] px-5 py-2 text-sm font-medium text-white"
+            >
+              Coba lagi
+            </button>
+          )}
         </div>
       </div>
     );
@@ -267,7 +317,7 @@ export default function PublicFormPage() {
               Public Form
             </div>
 
-            <h1 className="mt-3 text-3xl font-normal text-[#202124]">
+            <h1 className="mt-3 break-words text-2xl font-normal text-[#202124] sm:text-3xl">
               {form.name}
             </h1>
 
@@ -299,13 +349,15 @@ export default function PublicFormPage() {
 
           {/* FIELDS */}
           <div className="space-y-4 px-3 pb-6 pt-2 sm:px-4 sm:pb-8">
-            {form.fields?.map((field) => (
+            {form.fields
+              ?.filter((field) => isFieldVisible(field.id))
+              .map((field) => (
               <div
                 key={field.id}
                 className="rounded-2xl border border-[#dadce0] bg-white px-5 py-6 shadow-sm transition hover:shadow-md sm:px-6"
               >
                 {/* LABEL */}
-                <label className="mb-4 block">
+                <label htmlFor={`field-${field.id}`} className="mb-4 block">
                   <div className="flex flex-wrap items-center gap-1">
                     <span className="text-[15px] font-normal text-[#202124]">
                       {field.label}
@@ -320,6 +372,7 @@ export default function PublicFormPage() {
                 {/* TEXT */}
                 {field.type === "text" && (
                   <input
+                    id={`field-${field.id}`}
                     type="text"
                     value={String(values[field.name] || "")}
                     onChange={(e) => handleChange(field.name, e.target.value)}
@@ -331,6 +384,7 @@ export default function PublicFormPage() {
                 {/* TEXTAREA */}
                 {field.type === "textarea" && (
                   <textarea
+                    id={`field-${field.id}`}
                     rows={4}
                     value={String(values[field.name] || "")}
                     onChange={(e) => handleChange(field.name, e.target.value)}
@@ -342,11 +396,16 @@ export default function PublicFormPage() {
                 {/* NUMBER */}
                 {field.type === "number" && (
                   <input
+                    id={`field-${field.id}`}
                     type="number"
                     value={String(values[field.name] || "")}
-                    onChange={(e) =>
-                      handleChange(field.name, Number(e.target.value))
-                    }
+                    onChange={(e) => {
+                      const rawValue = e.target.value;
+                      handleChange(
+                        field.name,
+                        rawValue === "" ? "" : Number(rawValue),
+                      );
+                    }}
                     className="h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none transition focus:border-[#673ab7] focus:ring-0"
                     placeholder="Jawaban Anda"
                   />
@@ -358,6 +417,7 @@ export default function PublicFormPage() {
                     <Calendar className="pointer-events-none absolute left-0 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
                     <DatePicker
+                      id={`field-${field.id}`}
                       selected={
                         values[field.name]
                           ? new Date(String(values[field.name]))
@@ -408,6 +468,7 @@ export default function PublicFormPage() {
                       </span>
 
                       <input
+                        id={`field-${field.id}`}
                         type="file"
                         className="hidden"
                         onChange={(e) => {
@@ -432,7 +493,10 @@ export default function PublicFormPage() {
                 {/* CHECKBOX */}
                 {field.type === "checkbox" && (
                   <div className="space-y-3">
-                    {field.options?.map((option, index) => {
+                    {[
+                      ...(field.options || []),
+                      ...(field.allow_other ? ["__other__"] : []),
+                    ].map((option, index) => {
                       const currentValues = Array.isArray(values[field.name])
                         ? (values[field.name] as string[])
                         : [];
@@ -464,11 +528,73 @@ export default function PublicFormPage() {
                           />
 
                           <span className="text-sm text-slate-700">
-                            {option}
+                            {option === "__other__"
+                              ? field.other_label || "Lainnya"
+                              : option}
                           </span>
                         </label>
                       );
                     })}
+
+                    {Array.isArray(values[field.name]) &&
+                      (values[field.name] as string[]).includes("__other__") && (
+                        <input
+                          type="text"
+                          value={otherValues[field.name] || ""}
+                          onChange={(e) =>
+                            setOtherValues((prev) => ({
+                              ...prev,
+                              [field.name]: e.target.value,
+                            }))
+                          }
+                          className="h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none focus:border-[#673ab7]"
+                          placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
+                        />
+                      )}
+                  </div>
+                )}
+
+                {/* RADIO */}
+                {field.type === "radio" && (
+                  <div className="space-y-3">
+                    {[
+                      ...(field.options || []),
+                      ...(field.allow_other ? ["__other__"] : []),
+                    ].map((option, index) => (
+                      <label
+                        key={`${option}-${index}`}
+                        className="flex min-h-11 items-center gap-3"
+                      >
+                        <input
+                          type="radio"
+                          name={field.name}
+                          value={option}
+                          checked={values[field.name] === option}
+                          onChange={() => handleChange(field.name, option)}
+                          className="h-5 w-5 shrink-0"
+                        />
+                        <span className="text-sm text-slate-700">
+                          {option === "__other__"
+                            ? field.other_label || "Lainnya"
+                            : option}
+                        </span>
+                      </label>
+                    ))}
+
+                    {values[field.name] === "__other__" && (
+                      <input
+                        type="text"
+                        value={otherValues[field.name] || ""}
+                        onChange={(e) =>
+                          setOtherValues((prev) => ({
+                            ...prev,
+                            [field.name]: e.target.value,
+                          }))
+                        }
+                        className="h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none focus:border-[#673ab7]"
+                        placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -476,6 +602,7 @@ export default function PublicFormPage() {
                 {field.type === "select" && (
                   <div className="relative">
                     <select
+                      id={`field-${field.id}`}
                       value={String(values[field.name] || "")}
                       onChange={(e) => handleChange(field.name, e.target.value)}
                       className="h-11 w-full appearance-none border-0 border-b border-[#dadce0] bg-transparent px-0 pr-8 text-sm outline-none transition focus:border-[#673ab7] focus:ring-0"
@@ -487,9 +614,30 @@ export default function PublicFormPage() {
                           {option}
                         </option>
                       ))}
+
+                      {field.allow_other && (
+                        <option value="__other__">
+                          {field.other_label || "Lainnya"}
+                        </option>
+                      )}
                     </select>
 
                     <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                    {values[field.name] === "__other__" && (
+                      <input
+                        type="text"
+                        value={otherValues[field.name] || ""}
+                        onChange={(e) =>
+                          setOtherValues((prev) => ({
+                            ...prev,
+                            [field.name]: e.target.value,
+                          }))
+                        }
+                        className="mt-3 h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none focus:border-[#673ab7]"
+                        placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -498,6 +646,7 @@ export default function PublicFormPage() {
             {/* SUBMIT */}
             <div className="px-2 pt-2">
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
                 className="flex h-11 items-center justify-center rounded-lg bg-[#673ab7] px-6 text-sm font-medium text-white transition hover:bg-[#5e35b1] disabled:cursor-not-allowed disabled:opacity-70"

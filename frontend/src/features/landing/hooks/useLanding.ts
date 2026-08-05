@@ -1,32 +1,49 @@
-import { useState, useEffect } from 'react';
-import { FormItem } from '../types';
-import { getAvailableForms } from '../api/landing.api';
+import { useCallback, useEffect, useState } from "react";
+
+import { getAvailableForms } from "../api/landing.api";
+import type { FormItem } from "../types";
 
 export const useLanding = () => {
   const [forms, setForms] = useState<FormItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchForms = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getAvailableForms();
+  const loadForms = useCallback(async (signal?: AbortSignal) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const data = await getAvailableForms(signal);
+
+      if (!signal?.aborted) {
         setForms(data);
-      } catch (err: unknown) { // 🔥 Perbaikan: Ubah 'any' menjadi 'unknown' atau hapus penanda tipenya
-        // 🔥 Perbaikan: Cek tipe error secara aman
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError('Terjadi kesalahan yang tidak diketahui');
-        }
-      } finally {
+      }
+    } catch (requestError: unknown) {
+      if (signal?.aborted) return;
+
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Terjadi kesalahan yang tidak diketahui",
+      );
+    } finally {
+      if (!signal?.aborted) {
         setIsLoading(false);
       }
-    };
-
-    fetchForms();
+    }
   }, []);
 
-  return { forms, isLoading, error };
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void loadForms(controller.signal);
+
+    return () => controller.abort();
+  }, [loadForms]);
+
+  const reload = useCallback(() => {
+    void loadForms();
+  }, [loadForms]);
+
+  return { forms, isLoading, error, reload };
 };

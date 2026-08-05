@@ -69,6 +69,9 @@ class NotificationRealtimeTest extends TestCase
 
     public function test_user_can_authenticate_only_their_own_private_channel(): void
     {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
         config([
             'broadcasting.default' => 'reverb',
             'broadcasting.connections.reverb.key' => 'test-key',
@@ -80,9 +83,6 @@ class NotificationRealtimeTest extends TestCase
             fn (User $authenticatedUser, string $userId): bool =>
                 (string) $authenticatedUser->getKey() === $userId
         );
-
-        $user = User::factory()->create();
-        $otherUser = User::factory()->create();
 
         Sanctum::actingAs($user);
 

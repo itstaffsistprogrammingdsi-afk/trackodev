@@ -4,7 +4,7 @@ $allowedOrigins = array_values(array_filter(array_map(
     'trim',
     explode(',', (string) env(
         'CORS_ALLOWED_ORIGINS',
-        'http://localhost:5173,http://localhost:4173,http://dev.tracko.dsicorp.id,https://dev.tracko.dsicorp.id'
+        'http://localhost:5173,http://localhost:4173,http://localhost,https://localhost,capacitor://localhost,http://dev.tracko.dsicorp.id,https://dev.tracko.dsicorp.id'
     ))
 )));
 

@@ -679,14 +679,15 @@ class MyActivityController extends Controller
 
     public function export(Request $request, EncryptedExportService $encryptedExport)
     {
+        $password = trim((string) $request->header('X-Export-Password'));
         $request->merge([
-            'export_password' => (string) $request->header('X-Export-Password'),
+            'export_password' => $password === '' ? null : $password,
         ]);
 
         $request->validate([
             'type' => 'nullable|in:daily,monthly,yearly',
             'format' => 'nullable|in:xlsx,pdf',
-            'export_password' => 'required|string|min:12|max:128',
+            'export_password' => 'nullable|string|min:12|max:128',
             'date' => 'nullable|date_format:Y-m-d',
             'start_date' => 'nullable|required_with:end_date|date_format:Y-m-d',
             'end_date' => 'nullable|required_with:start_date|date_format:Y-m-d|after_or_equal:start_date',
@@ -708,7 +709,7 @@ class MyActivityController extends Controller
 
         $data = $this->gatherExportData($type, $request);
 
-        $password = (string) $request->input('export_password');
+        $password = $request->input('export_password');
 
         return $format === 'pdf'
             ? $this->exportAsPdf($type, $data, $password, $encryptedExport)
@@ -799,7 +800,7 @@ class MyActivityController extends Controller
     private function exportAsExcel(
         string $type,
         array $data,
-        string $password,
+        ?string $password,
         EncryptedExportService $encryptedExport
     ) {
         $fileName = sprintf(
@@ -831,7 +832,7 @@ class MyActivityController extends Controller
     private function exportAsPdf(
         string $type,
         array $data,
-        string $password,
+        ?string $password,
         EncryptedExportService $encryptedExport
     ) {
         $fileName = sprintf(

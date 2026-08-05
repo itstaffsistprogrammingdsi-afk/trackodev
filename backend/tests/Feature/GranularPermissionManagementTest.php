@@ -237,8 +237,8 @@ class GranularPermissionManagementTest extends TestCase
 
         $this->getJson('/api/reports/preview/pdf')->assertOk();
         $this->getJson('/api/reports/export/pdf')
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('export_password');
+            ->assertOk()
+            ->assertHeader('X-Export-Encryption', 'NONE');
     }
 
     public function test_nested_form_permission_dependencies_are_added_automatically(): void

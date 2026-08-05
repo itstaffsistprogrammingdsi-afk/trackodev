@@ -158,9 +158,9 @@ export const useReport = () => {
   ) => {
     setExporting(true);
     try {
-      const exportParams: FilterParams & { export_password: string } = {
+      const exportParams: FilterParams & { export_password?: string } = {
         ...filters,
-        export_password: exportPassword,
+        ...(exportPassword ? { export_password: exportPassword } : {}),
       };
       delete exportParams.page;
 

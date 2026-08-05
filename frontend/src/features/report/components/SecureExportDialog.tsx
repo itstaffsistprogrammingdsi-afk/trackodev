@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Eye, EyeOff, Loader2, LockKeyhole, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { Copy, Download, Eye, EyeOff, Loader2, LockKeyhole, RefreshCw, ShieldCheck, X } from "lucide-react";
 
 import { EXPORT_PASSWORD_MIN_LENGTH } from "@/lib/exportSecurity";
 
@@ -26,7 +26,9 @@ export const SecureExportDialog = ({
 }: SecureExportDialogProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
-  const passwordValid = password.length >= EXPORT_PASSWORD_MIN_LENGTH;
+  const hasPassword = password.length > 0;
+  const passwordValid =
+    !hasPassword || password.length >= EXPORT_PASSWORD_MIN_LENGTH;
 
   useEffect(() => {
     if (open) {
@@ -38,6 +40,8 @@ export const SecureExportDialog = ({
   if (!open) return null;
 
   const copyPassword = async () => {
+    if (!hasPassword) return;
+
     await navigator.clipboard.writeText(password);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
@@ -53,8 +57,8 @@ export const SecureExportDialog = ({
             <ShieldCheck size={24} aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 id="secure-export-title" className="text-base font-bold text-slate-950">Kunci Laporan dengan Password</h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">File tetap berformat {format === "pdf" ? "PDF" : "Excel"} dan langsung meminta password saat dibuka.</p>
+            <h2 id="secure-export-title" className="text-base font-bold text-slate-950">Keamanan File Laporan</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">Kosongkan password agar file {format === "pdf" ? "PDF" : "Excel"} dapat langsung dibuka, atau isi untuk mengenkripsinya.</p>
           </div>
           <button type="button" onClick={onClose} disabled={loading} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50" aria-label="Tutup dialog">
             <X size={18} />
@@ -64,7 +68,7 @@ export const SecureExportDialog = ({
         <div className="space-y-4 px-5 py-5 sm:px-6">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-emerald-950">
-              <LockKeyhole size={15} /> Password Enkripsi
+              <LockKeyhole size={15} /> Password Enkripsi (Opsional)
             </div>
             <div className="flex min-w-0 overflow-hidden rounded-xl border border-emerald-200 bg-white focus-within:ring-2 focus-within:ring-emerald-500/20">
               <input
@@ -74,6 +78,7 @@ export const SecureExportDialog = ({
                 maxLength={128}
                 autoComplete="new-password"
                 spellCheck={false}
+                placeholder="Kosongkan untuk tanpa password"
                 onChange={(event) => {
                   onPasswordChange(event.target.value);
                   setCopied(false);
@@ -88,20 +93,34 @@ export const SecureExportDialog = ({
               <button type="button" onClick={onRegenerate} className="border-l border-slate-100 px-2.5 text-slate-500 transition hover:text-emerald-700" aria-label="Buat password baru">
                 <RefreshCw size={17} />
               </button>
-              <button type="button" onClick={copyPassword} className="border-l border-slate-100 px-2.5 text-slate-500 transition hover:text-emerald-700" aria-label="Salin password">
+              <button type="button" onClick={copyPassword} disabled={!hasPassword} className="border-l border-slate-100 px-2.5 text-slate-500 transition hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Salin password">
                 <Copy size={17} />
               </button>
             </div>
             <p className={`mt-2 text-[11px] ${passwordValid ? "text-emerald-800" : "text-red-600"}`}>
-              {copied ? "Password berhasil disalin." : passwordValid ? "Password tidak disimpan oleh sistem. Simpan sebelum menutup dialog." : `Password minimal ${EXPORT_PASSWORD_MIN_LENGTH} karakter.`}
+              {copied
+                ? "Password berhasil disalin."
+                : !hasPassword
+                  ? "File akan diunduh tanpa password."
+                  : passwordValid
+                    ? "File akan dienkripsi. Simpan password sebelum menutup dialog."
+                    : `Password minimal ${EXPORT_PASSWORD_MIN_LENGTH} karakter.`}
             </p>
           </div>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={onClose} disabled={loading} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50">Batal</button>
             <button type="button" onClick={onConfirm} disabled={loading || !passwordValid} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-              {loading ? <Loader2 size={17} className="animate-spin" /> : <ShieldCheck size={17} />}
-              {loading ? "Mengunci file..." : `Download ${format === "pdf" ? "PDF" : "Excel"} Terkunci`}
+              {loading ? (
+                <Loader2 size={17} className="animate-spin" />
+              ) : hasPassword ? (
+                <ShieldCheck size={17} />
+              ) : (
+                <Download size={17} />
+              )}
+              {loading
+                ? "Menyiapkan file..."
+                : `Download ${format === "pdf" ? "PDF" : "Excel"}${hasPassword ? " Terenkripsi" : ""}`}
             </button>
           </div>
         </div>

@@ -13,24 +13,47 @@ class EncryptedExportService
     public function downloadPdf(
         string $contents,
         string $fileName,
-        string $password
+        ?string $password = null
     ): Response {
         $safeFileName = $this->sanitizeFileName($fileName, 'pdf');
-        $encrypted = $this->encryptPdf($contents, $password);
+        $password = $this->normalizePassword($password);
+
+        if (! str_starts_with($contents, '%PDF-')) {
+            throw new RuntimeException('Dokumen PDF sumber tidak valid.');
+        }
+
+        $downloadContents = $password === null
+            ? $contents
+            : $this->encryptPdf($contents, $password);
 
         return $this->downloadResponse(
-            $encrypted,
+            $downloadContents,
             $safeFileName,
             'application/pdf',
-            'PDF-AES-256'
+            $password === null ? 'NONE' : 'PDF-AES-256'
         );
     }
 
     public function downloadSpreadsheet(
         string $contents,
         string $fileName,
-        string $password
+        ?string $password = null
     ): Response {
+        $password = $this->normalizePassword($password);
+
+        if ($password === null) {
+            if (! str_starts_with($contents, "PK")) {
+                throw new RuntimeException('Dokumen Excel sumber tidak valid.');
+            }
+
+            return $this->downloadResponse(
+                $contents,
+                $this->sanitizeFileName($fileName, 'xlsx'),
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'NONE'
+            );
+        }
+
         try {
             $encrypted = (new Encrypt(true))
                 ->input($contents)
@@ -134,5 +157,12 @@ class EncryptedExportService
         $safeName = preg_replace('/[^A-Za-z0-9._-]/', '_', $baseName) ?: 'laporan';
 
         return $safeName.'.'.$extension;
+    }
+
+    private function normalizePassword(?string $password): ?string
+    {
+        $password = $password === null ? '' : trim($password);
+
+        return $password === '' ? null : $password;
     }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getForm, updateForm } from "../api/form.api";
 
@@ -19,7 +19,7 @@ export default function EditFormPage() {
 
   const [headerImage, setHeaderImage] = useState<File | null>(null);
 
-  const fetchForm = async () => {
+  const fetchForm = useCallback(async () => {
     if (!id) return;
 
     try {
@@ -40,7 +40,7 @@ export default function EditFormPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const handleSubmit = async () => {
     if (!id) return;
@@ -72,8 +72,8 @@ export default function EditFormPage() {
   };
 
   useEffect(() => {
-    fetchForm();
-  }, [id]);
+    void fetchForm();
+  }, [fetchForm]);
 
   if (loading) {
     return <div className="p-6">Loading form...</div>;
