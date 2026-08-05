@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCampaign } from "../hooks/useCampaign";
 import CampaignCard from "../components/CampaignCard";

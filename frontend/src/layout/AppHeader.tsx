@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { ChevronRight, Menu } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";

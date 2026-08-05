@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useAccountQuery } from "../hooks/useAccount";
 import AvatarUploader from "../components/AvatarUploader";
 import ProfileCard from "../components/ProfileCard";

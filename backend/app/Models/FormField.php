@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
 
 class FormField extends Model
 {
@@ -12,6 +12,7 @@ class FormField extends Model
     protected $table = 'form_fields';
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -21,6 +22,8 @@ class FormField extends Model
         'type',
         'is_required',
         'options',
+        'allow_other',
+        'other_label',
         'order',
         'depends_on_field_id',
         'depends_on_value',
@@ -29,7 +32,8 @@ class FormField extends Model
     protected $casts = [
         'is_required' => 'boolean',
         'options' => 'array',
-        'due_date' => 'datetime'
+        'allow_other' => 'boolean',
+        'due_date' => 'datetime',
     ];
 
     /*

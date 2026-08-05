@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Trash2, FolderKanban, Pencil } from "lucide-react";
 
 import { Workspace } from "../types";

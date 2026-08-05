@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Card;
 use App\Models\Label;
 use App\Services\ActivityLogService;
+use App\Support\ResourceAccess;
 use Illuminate\Http\Request;
 
 class CardLabelController extends Controller
@@ -17,6 +18,8 @@ class CardLabelController extends Controller
         Request $request,
         Card $card
     ) {
+        abort_unless(ResourceAccess::card($request->user(), $card), 403, 'Unauthorized');
+
         $validated = $request->validate([
             'label_id' => [
                 'required',
@@ -48,9 +51,12 @@ class CardLabelController extends Controller
      * Detach label dari card
      */
     public function detach(
+        Request $request,
         Card $card,
         Label $label
     ) {
+        abort_unless(ResourceAccess::card($request->user(), $card), 403, 'Unauthorized');
+
         $card->labels()
             ->detach($label->id);
 
@@ -76,6 +82,8 @@ class CardLabelController extends Controller
         Request $request,
         Card $card
     ) {
+        abort_unless(ResourceAccess::card($request->user(), $card), 403, 'Unauthorized');
+
         $validated = $request->validate([
             'label_id' => [
                 'required',

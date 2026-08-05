@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { getPublicFormBySlug } from "../api/landing.api"; // Sesuaikan path jika berbeda
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";

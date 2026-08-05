@@ -3,7 +3,7 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { useAuth } from "../../context/AuthContext";
 import { logout } from "../../lib/auth.service";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 type UserDropdownProps = {
   compact?: boolean;
