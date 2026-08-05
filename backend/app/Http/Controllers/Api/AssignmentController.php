@@ -7,11 +7,17 @@ use App\Jobs\SendCardAssignedEmailJob;
 use App\Models\Campaign;
 use App\Models\FormSubmission;
 use App\Models\Notification;
+use App\Models\User;
+use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\AssignmentService;
+use App\Support\ResourceAccess;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class AssignmentController extends Controller
 {
@@ -25,6 +31,12 @@ class AssignmentController extends Controller
 
             $submission = FormSubmission::with('form')
                 ->findOrFail($submissionId);
+
+            abort_unless(
+                ResourceAccess::submission($request->user(), $submission),
+                403,
+                'Unauthorized'
+            );
 
             if (! $submission->form) {
 
@@ -63,6 +75,14 @@ class AssignmentController extends Controller
                 'notes' => 'nullable|string|max:2000',
             ]);
 
+            $workspace = Workspace::findOrFail($validated['workspace_id']);
+            if ($workspace->division_id !== $validated['division_id']) {
+                throw ValidationException::withMessages([
+                    'workspace_id' => 'Workspace tidak berada pada division yang dipilih.',
+                ]);
+            }
+            abort_unless($workspace->canBeAccessedBy($request->user()), 403, 'Unauthorized');
+
             $campaign = Campaign::query()
                 ->where('id', $validated['campaign_id'])
                 ->where('workspace_id', $validated['workspace_id'])
@@ -74,6 +94,28 @@ class AssignmentController extends Controller
                     'step' => 'campaign',
                     'message' => 'Campaign tidak berada pada workspace yang dipilih',
                 ], 422);
+            }
+
+            abort_unless($campaign->canBeAccessedBy($request->user()), 403, 'Unauthorized');
+
+            foreach (['designer_id', 'coordinator_id'] as $userField) {
+                if (empty($validated[$userField])) {
+                    continue;
+                }
+
+                $belongsToDivision = User::query()
+                    ->whereKey($validated[$userField])
+                    ->whereHas('divisions', fn ($query) => $query->where(
+                        'divisions.id',
+                        $validated['division_id']
+                    ))
+                    ->exists();
+
+                if (! $belongsToDivision) {
+                    throw ValidationException::withMessages([
+                        $userField => 'User harus menjadi anggota division yang dipilih.',
+                    ]);
+                }
             }
 
             $validated['assigned_by'] = auth()->id();
@@ -130,13 +172,19 @@ class AssignmentController extends Controller
                 'message' => 'Assignment berhasil dibuat',
                 'data' => $assignment,
             ], 201);
+        } catch (ValidationException|ModelNotFoundException|HttpExceptionInterface $e) {
+            throw $e;
         } catch (\Throwable $e) {
+
+            Log::error('FORM ASSIGNMENT ERROR', [
+                'submission_id' => $submissionId,
+                'actor_id' => $request->user()?->id,
+                'message' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'step' => 'exception',
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'message' => 'Assignment gagal diproses.',
             ], 500);
         }
     }

@@ -3,30 +3,48 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Form;
 use App\Models\FormField;
+use App\Support\ResourceAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class FormFieldController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $request, Form $form)
     {
-        $request->validate([
-            'form_id' => 'required|uuid|exists:forms,id',
+        abort_unless(ResourceAccess::form($request->user(), $form), 403, 'Unauthorized');
+
+        $validated = $request->validate([
             'label' => 'required|string|max:255',
-            'type' => 'required|string|max:50',
+            'type' => ['required', Rule::in($this->allowedTypes())],
+            'is_required' => 'nullable|boolean',
+            'options' => 'nullable|array|max:100',
+            'options.*' => 'string|max:255|distinct',
+            'allow_other' => 'nullable|boolean',
+            'other_label' => 'nullable|string|max:255',
+            'order' => 'nullable|integer|min:0',
+            'depends_on_field_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('form_fields', 'id')->where('form_id', $form->id),
+            ],
+            'depends_on_value' => 'nullable|string|max:255',
         ]);
 
         $field = FormField::create([
-            'form_id' => $request->form_id,
-            'label' => $request->label,
-            'name' => Str::slug($request->label, '_'),
-            'type' => $request->type,
+            'form_id' => $form->id,
+            'label' => $validated['label'],
+            'name' => $this->uniqueName($form, $validated['label']),
+            'type' => $validated['type'],
             'is_required' => $request->boolean('is_required'),
-            'options' => $request->options,
-            'order' => $request->order ?? 0,
-            'depends_on_field_id' => $request->depends_on_field_id,
-            'depends_on_value' => $request->depends_on_value,
+            'options' => $validated['options'] ?? null,
+            'allow_other' => $request->boolean('allow_other'),
+            'other_label' => $validated['other_label'] ?? null,
+            'order' => $validated['order'] ?? 0,
+            'depends_on_field_id' => $validated['depends_on_field_id'] ?? null,
+            'depends_on_value' => $validated['depends_on_value'] ?? null,
         ]);
 
         return response()->json($field, 201);
@@ -35,20 +53,70 @@ class FormFieldController extends Controller
     public function update(Request $request, $id)
     {
         $field = FormField::findOrFail($id);
+        abort_unless(ResourceAccess::form($request->user(), $field->form), 403, 'Unauthorized');
 
-        $field->update($request->all());
+        $validated = $request->validate([
+            'label' => 'sometimes|required|string|max:255',
+            'type' => ['sometimes', Rule::in($this->allowedTypes())],
+            'is_required' => 'sometimes|boolean',
+            'options' => 'sometimes|nullable|array|max:100',
+            'options.*' => 'string|max:255|distinct',
+            'allow_other' => 'sometimes|boolean',
+            'other_label' => 'sometimes|nullable|string|max:255',
+            'order' => 'sometimes|integer|min:0',
+            'depends_on_field_id' => [
+                'sometimes',
+                'nullable',
+                'uuid',
+                Rule::notIn([$field->id]),
+                Rule::exists('form_fields', 'id')->where('form_id', $field->form_id),
+            ],
+            'depends_on_value' => 'sometimes|nullable|string|max:255',
+        ]);
+
+        if (isset($validated['label'])) {
+            $validated['name'] = $this->uniqueName(
+                $field->form,
+                $validated['label'],
+                $field->id
+            );
+        }
+
+        $field->update($validated);
 
         return response()->json($field);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $field = FormField::findOrFail($id);
+        abort_unless(ResourceAccess::form($request->user(), $field->form), 403, 'Unauthorized');
 
         $field->delete();
 
         return response()->json([
-            'message' => 'Field deleted successfully'
+            'message' => 'Field deleted successfully',
         ]);
+    }
+
+    private function allowedTypes(): array
+    {
+        return ['text', 'textarea', 'number', 'date', 'file', 'checkbox', 'select', 'radio'];
+    }
+
+    private function uniqueName(Form $form, string $label, ?string $ignoreId = null): string
+    {
+        $base = Str::slug($label, '_') ?: 'field';
+        $name = $base;
+        $counter = 2;
+
+        while ($form->fields()
+            ->where('name', $name)
+            ->when($ignoreId, fn ($query) => $query->where('form_fields.id', '!=', $ignoreId))
+            ->exists()) {
+            $name = $base.'_'.$counter++;
+        }
+
+        return $name;
     }
 }

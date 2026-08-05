@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { getForms, deleteForm } from "../api/form.api";
 import type { Form } from "../types";
 import { useAuth } from '../../../context/AuthContext';

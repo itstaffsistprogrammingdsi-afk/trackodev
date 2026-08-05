@@ -7,11 +7,12 @@ use App\Models\Form;
 use App\Models\FormSubmission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PublicFormController extends Controller
 {
-
-// =========================
+    // =========================
     // LIST PUBLIC FORMS
     // =========================
     public function index()
@@ -26,15 +27,15 @@ class PublicFormController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('Public form index error', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
-                'message' => 'Server error'
+                'message' => 'Server error',
             ], 500);
         }
     }
-    
+
     // =========================
     // SHOW PUBLIC FORM
     // =========================
@@ -46,10 +47,10 @@ class PublicFormController extends Controller
                 ->where('is_active', true)
                 ->first();
 
-            if (!$form) {
+            if (! $form) {
                 return response()->json([
                     'message' => 'Form not found',
-                    'slug' => $slug
+                    'slug' => $slug,
                 ], 404);
             }
 
@@ -59,11 +60,11 @@ class PublicFormController extends Controller
 
             Log::error('Public form show error', [
                 'slug' => $slug,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
-                'message' => 'Server error'
+                'message' => 'Server error',
             ], 500);
         }
     }
@@ -79,22 +80,63 @@ class PublicFormController extends Controller
                 ->where('is_active', true)
                 ->first();
 
-            if (!$form) {
+            if (! $form) {
                 return response()->json([
-                    'message' => 'Form not found'
+                    'message' => 'Form not found',
                 ], 404);
             }
 
+            $rules = [];
+            $visibleFields = $form->fields
+                ->filter(fn ($field) => $this->isFieldVisible($form, $field, $request));
+
+            foreach ($visibleFields as $field) {
+                $presence = $field->is_required ? 'required' : 'nullable';
+
+                $rules[$field->name] = match ($field->type) {
+                    'number' => [$presence, 'numeric'],
+                    'date' => [$presence, 'date_format:Y-m-d'],
+                    'file' => [
+                        $presence,
+                        'file',
+                        'max:11254',
+                        'mimes:pdf,png,jpg,jpeg,gif,webp,doc,docx,xls,xlsx,ppt,pptx,csv,txt,zip',
+                    ],
+                    'checkbox' => [$presence, 'array', 'max:100'],
+                    'select', 'radio' => [
+                        $presence,
+                        'string',
+                        'max:255',
+                        ...($field->allow_other
+                            ? []
+                            : [Rule::in($field->options ?? [])]),
+                    ],
+                    'textarea' => [$presence, 'string', 'max:10000'],
+                    default => [$presence, 'string', 'max:2000'],
+                };
+
+                if ($field->type === 'checkbox') {
+                    $rules[$field->name.'.*'] = [
+                        'string',
+                        'max:255',
+                        ...($field->allow_other
+                            ? []
+                            : [Rule::in($field->options ?? [])]),
+                    ];
+                }
+            }
+
+            $request->validate($rules);
             $answers = [];
 
-            foreach ($form->fields as $field) {
+            foreach ($visibleFields as $field) {
 
                 $name = $field->name;
 
                 // =========================
                 // FILE UPLOAD
                 // =========================
-                if ($request->hasFile($name)) {
+                if ($field->type === 'file' && $request->hasFile($name)) {
 
                     $file = $request->file($name);
 
@@ -131,18 +173,41 @@ class PublicFormController extends Controller
             return response()->json([
                 'message' => 'Submitted successfully',
                 'submission' => $submission,
-            ]);
+            ], 201);
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
 
             Log::error('Public form submit error', [
                 'slug' => $slug,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
-                'message' => 'Server error'
+                'message' => 'Server error',
             ], 500);
         }
+    }
+
+    private function isFieldVisible(Form $form, $field, Request $request): bool
+    {
+        if (! $field->depends_on_field_id) {
+            return true;
+        }
+
+        $dependency = $form->fields->firstWhere('id', $field->depends_on_field_id);
+        if (! $dependency) {
+            return false;
+        }
+
+        $value = $request->input($dependency->name);
+        $expected = (string) ($field->depends_on_value ?? '');
+
+        if (is_array($value)) {
+            return in_array($expected, array_map('strval', $value), true);
+        }
+
+        return (string) ($value ?? '') === $expected;
     }
 }

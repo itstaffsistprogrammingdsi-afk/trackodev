@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class FormResponseAssignmentNotificationTest extends TestCase
@@ -29,6 +30,8 @@ class FormResponseAssignmentNotificationTest extends TestCase
 
         $assigner = User::factory()->create();
         $designer = User::factory()->create();
+        $assigner->assignRole(Role::findOrCreate(User::ROLE_ADMIN, 'web'));
+        $designer->assignRole(Role::findOrCreate(User::ROLE_USER, 'web'));
         $assigner->givePermissionTo(
             Permission::findOrCreate('form.submission.assign', 'web')
         );
@@ -42,12 +45,18 @@ class FormResponseAssignmentNotificationTest extends TestCase
             'division_id' => $division->id,
             'name' => 'Client Workspace',
         ]);
+        $division->users()->attach([
+            $assigner->id => ['role' => 'admin'],
+            $designer->id => ['role' => 'member'],
+        ]);
+        $workspace->members()->attach([$assigner->id, $designer->id]);
         $campaign = Campaign::create([
             'workspace_id' => $workspace->id,
             'created_by' => $assigner->id,
             'name' => 'Demo Campaign',
             'type' => 'group',
         ]);
+        $campaign->members()->attach([$assigner->id, $designer->id]);
         Board::create([
             'campaign_id' => $campaign->id,
             'name' => 'By Request',

@@ -23,7 +23,7 @@ class DivisionResource extends JsonResource
 
             'description' => $this->description,
 
-            'users' => $this->users->map(
+            'users' => $this->whenLoaded('users', fn () => $this->users->map(
                 function ($user) {
 
                     return [
@@ -38,16 +38,14 @@ class DivisionResource extends JsonResource
 
                         'division_id' => $this->id,
 
-                        'division_role' =>
-                            $user->pivot?->role,
+                        'division_role' => $user->pivot?->role,
 
                     ];
                 }
-            ),
+            )),
 
-            'created_at' =>
-                $this->created_at
-                    ?->toDateTimeString(),
+            'created_at' => $this->created_at
+                ?->toDateTimeString(),
         ];
     }
 }

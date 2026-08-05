@@ -8,6 +8,7 @@ use App\Http\Resources\UserResource;
 use App\Models\Division;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use App\Support\ResourceAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -16,107 +17,127 @@ class DivisionController extends Controller
 {
     public function index(): JsonResponse
     {
-$divisions = Division::with('users')->get();
+        $user = auth()->user();
+        $query = Division::query();
+
+        if ($user->isSuperAdmin()) {
+            $divisions = $query->with('users')->get();
+        } else {
+            $divisions = $query
+                ->where(function ($query) use ($user) {
+                    $query
+                        ->whereHas('users', fn ($q) => $q->where('users.id', $user->id))
+                        ->orWhereHas('workspaces.members', fn ($q) => $q->where('users.id', $user->id));
+                })
+                ->get();
+
+            $divisionIds = $user->divisions()->pluck('divisions.id');
+            $divisions->each(function (Division $division) use ($divisionIds) {
+                if ($divisionIds->contains($division->id)) {
+                    $division->load('users');
+                }
+            });
+        }
 
         return response()->json([
-            'data' => DivisionResource::collection($divisions)
+            'data' => DivisionResource::collection($divisions),
         ]);
     }
 
-public function store(Request $request): JsonResponse
-{
-    $validated = $request->validate([
+    public function store(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403, 'Hanya Super Admin yang dapat membuat divisi.');
 
-        'name' => [
-            'required',
-            'string',
-            'max:255'
-        ],
+        $validated = $request->validate([
 
-        'code' => [
-            'nullable',
-            'string',
-            'max:10',
-            'unique:divisions,code'
-        ],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+            ],
 
-        'description' => [
-            'nullable',
-            'string'
-        ],
+            'code' => [
+                'nullable',
+                'string',
+                'max:10',
+                'unique:divisions,code',
+            ],
 
-        'admin_ids' => [
-            'array'
-        ],
+            'description' => [
+                'nullable',
+                'string',
+            ],
 
-        'admin_ids.*' => [
-            'uuid',
-            'exists:users,id'
-        ],
+            'admin_ids' => [
+                'array',
+            ],
 
-        'member_ids' => [
-            'array'
-        ],
+            'admin_ids.*' => [
+                'uuid',
+                'exists:users,id',
+            ],
 
-        'member_ids.*' => [
-            'uuid',
-            'exists:users,id'
-        ],
-    ]);
+            'member_ids' => [
+                'array',
+            ],
 
-    $division = Division::create([
-        'name' => $validated['name'],
-        'code' => $validated['code'] ?? null,
-        'slug' => Str::slug($validated['name']) . '-' . Str::random(4),
-        'description' => $validated['description'] ?? null,
-    ]);
-    
+            'member_ids.*' => [
+                'uuid',
+                'exists:users,id',
+            ],
+        ]);
 
-    $syncData = [];
+        $division = Division::create([
+            'name' => $validated['name'],
+            'code' => $validated['code'] ?? null,
+            'slug' => Str::slug($validated['name']).'-'.Str::random(4),
+            'description' => $validated['description'] ?? null,
+        ]);
 
-    foreach ($validated['admin_ids'] ?? [] as $userId) {
-        $syncData[$userId] = [
-            'role' => 'admin'
-        ];
-    }
+        $syncData = [];
 
-    foreach ($validated['member_ids'] ?? [] as $userId) {
-
-        if (!isset($syncData[$userId])) {
-
+        foreach ($validated['admin_ids'] ?? [] as $userId) {
             $syncData[$userId] = [
-                'role' => 'member'
+                'role' => 'admin',
             ];
         }
+
+        foreach ($validated['member_ids'] ?? [] as $userId) {
+
+            if (! isset($syncData[$userId])) {
+
+                $syncData[$userId] = [
+                    'role' => 'member',
+                ];
+            }
+        }
+
+        if (! empty($syncData)) {
+            $division->users()->sync($syncData);
+        }
+
+        ActivityLogService::log(
+            user: auth()->user(),
+            action: 'division.created',
+            entityType: 'division',
+            entityId: (string) $division->id,
+            description: 'Membuat divisi '.$division->name,
+            meta: [
+                'name' => $division->name,
+                'code' => $division->code,
+                'admin_ids' => $validated['admin_ids'] ?? [],
+                'member_ids' => $validated['member_ids'] ?? [],
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Divisi berhasil dibuat.',
+            'data' => new DivisionResource(
+                $division->load('users')
+            ),
+        ], 201);
+
     }
-
-    if (!empty($syncData)) {
-        $division->users()->sync($syncData);
-    }
-
-    ActivityLogService::log(
-    user: auth()->user(),
-    action: 'division.created',
-    entityType: 'division',
-    entityId: (string) $division->id,
-    description: 'Membuat divisi ' . $division->name,
-    meta: [
-        'name' => $division->name,
-        'code' => $division->code,
-        'admin_ids' => $validated['admin_ids'] ?? [],
-        'member_ids' => $validated['member_ids'] ?? [],
-    ]
-);
-
-    return response()->json([
-        'message' => 'Divisi berhasil dibuat.',
-        'data' => new DivisionResource(
-            $division->load('users')
-        ),
-    ], 201);
-
-
-}
 
     public function show(
         Division $division
@@ -139,7 +160,7 @@ public function store(Request $request): JsonResponse
         }
 
         return response()->json([
-            'data' => new DivisionResource($division)
+            'data' => new DivisionResource($division),
         ]);
     }
 
@@ -164,7 +185,7 @@ public function store(Request $request): JsonResponse
     {
         $user = auth()->user();
 
-        if ($user->isSuperAdmin() || $user->can('division.view')) {
+        if ($user->isSuperAdmin()) {
             return 'full';
         }
 
@@ -205,7 +226,7 @@ public function store(Request $request): JsonResponse
             ->get();
 
         return response()->json([
-            'data' => DivisionResource::collection($divisions)
+            'data' => DivisionResource::collection($divisions),
         ]);
     }
 
@@ -213,37 +234,36 @@ public function store(Request $request): JsonResponse
         Request $request,
         Division $division
     ): JsonResponse {
+        abort_unless(ResourceAccess::manageDivision($request->user(), $division), 403, 'Unauthorized');
 
         $validated = $request->validate([
 
             'name' => [
                 'sometimes',
                 'string',
-                'max:255'
+                'max:255',
             ],
 
             'code' => [
                 'nullable',
                 'string',
                 'max:10',
-                'unique:divisions,code,' . $division->id
+                'unique:divisions,code,'.$division->id,
             ],
 
             'description' => [
                 'nullable',
-                'string'
+                'string',
             ],
 
         ]);
 
         $updateData = [
 
-            'code' =>
-                $validated['code']
+            'code' => $validated['code']
                 ?? $division->code,
 
-            'description' =>
-                $validated['description']
+            'description' => $validated['description']
                 ?? $division->description,
 
         ];
@@ -262,22 +282,23 @@ public function store(Request $request): JsonResponse
             $updateData['slug'] =
                 Str::slug(
                     $validated['name']
-                ) . '-' . Str::random(4);
+                ).'-'.Str::random(4);
         }
 
         $division->update(
             $updateData
         );
 
-            ActivityLogService::log(
-                user: auth()->user(),
-                
-                entityType: 'division',
-                entityId: (string) $division->id,
-                action: 'division.updated',
-                description: 'Memperbarui divisi ' . $division->name,
-                meta: $updateData
-            );
+        ActivityLogService::log(
+            user: auth()->user(),
+
+            entityType: 'division',
+            entityId: (string) $division->id,
+            action: 'division.updated',
+            description: 'Memperbarui divisi '.$division->name,
+            meta: $updateData
+        );
+
         return response()->json([
             'message' => 'Divisi berhasil diupdate.',
             'data' => new DivisionResource(
@@ -285,30 +306,31 @@ public function store(Request $request): JsonResponse
             ),
         ]);
 
-
     }
 
     public function destroy(
+        Request $request,
         Division $division
     ): JsonResponse {
+        abort_unless(ResourceAccess::manageDivision($request->user(), $division), 403, 'Unauthorized');
 
         $division->delete();
 
         ActivityLogService::log(
-    user: auth()->user(),
-    
-    entityType: 'division',
-    entityId: (string) $division->id,
-    action: 'division.deleted',
-    description: 'Menghapus divisi ' . $division->name,
-    meta: [
-        'name' => $division->name,
-        'code' => $division->code,
-    ]
-);
+            user: auth()->user(),
+
+            entityType: 'division',
+            entityId: (string) $division->id,
+            action: 'division.deleted',
+            description: 'Menghapus divisi '.$division->name,
+            meta: [
+                'name' => $division->name,
+                'code' => $division->code,
+            ]
+        );
 
         return response()->json([
-            'message' => 'Divisi berhasil dihapus.'
+            'message' => 'Divisi berhasil dihapus.',
         ]);
     }
 
@@ -328,10 +350,9 @@ public function store(Request $request): JsonResponse
             ->get();
 
         return response()->json([
-            'data' =>
-                UserResource::collection(
-                    $members
-                )
+            'data' => UserResource::collection(
+                $members
+            ),
         ]);
     }
 
@@ -339,19 +360,20 @@ public function store(Request $request): JsonResponse
         Request $request,
         Division $division
     ): JsonResponse {
+        abort_unless(ResourceAccess::manageDivision($request->user(), $division), 403, 'Unauthorized');
 
         $request->validate([
 
             'user_id' => [
                 'required',
                 'uuid',
-                'exists:users,id'
+                'exists:users,id',
             ],
 
             'role' => [
                 'required',
-                'in:admin,member'
-            ]
+                'in:admin,member',
+            ],
 
         ]);
 
@@ -360,27 +382,26 @@ public function store(Request $request): JsonResponse
             ->syncWithoutDetaching([
 
                 $request->user_id => [
-                    'role' =>
-                    $request->role
-                ]
+                    'role' => $request->role,
+                ],
 
             ]);
 
-            ActivityLogService::log(
-                user: auth()->user(),
-                
-                entityType: 'division',
-                entityId: (string) $division->id,
-                action: 'division.member_added',
-                description: 'Menambahkan member ke divisi ' . $division->name,
-                meta: [
-                    'user_id' => (string) $request->user_id,
-                    'role' => (string) $request->role,
-                ]
-            );
+        ActivityLogService::log(
+            user: auth()->user(),
+
+            entityType: 'division',
+            entityId: (string) $division->id,
+            action: 'division.member_added',
+            description: 'Menambahkan member ke divisi '.$division->name,
+            meta: [
+                'user_id' => (string) $request->user_id,
+                'role' => (string) $request->role,
+            ]
+        );
+
         return response()->json([
-            'message' =>
-                'Member berhasil ditambahkan.'
+            'message' => 'Member berhasil ditambahkan.',
         ]);
     }
 
@@ -389,12 +410,13 @@ public function store(Request $request): JsonResponse
         Division $division,
         User $user
     ): JsonResponse {
+        abort_unless(ResourceAccess::manageDivision($request->user(), $division), 403, 'Unauthorized');
 
         $request->validate([
             'role' => [
                 'required',
-                'in:admin,member'
-            ]
+                'in:admin,member',
+            ],
         ]);
 
         $division
@@ -402,32 +424,33 @@ public function store(Request $request): JsonResponse
             ->updateExistingPivot(
                 $user->id,
                 [
-                    'role' =>
-                    $request->role
+                    'role' => $request->role,
                 ]
             );
-                ActivityLogService::log(
-                    user: auth()->user(),
-                    
-                    entityType: 'division',
-                    entityId: (string) $division->id,
-                    action: 'division.member_updated',
-                    description: 'Memperbarui peran member di divisi ' . $division->name,
-                    meta: [
-                        'user_id' => (string) $user->id,
-                        'role' => (string) $request->role,
-                    ]
-                );
+        ActivityLogService::log(
+            user: auth()->user(),
+
+            entityType: 'division',
+            entityId: (string) $division->id,
+            action: 'division.member_updated',
+            description: 'Memperbarui peran member di divisi '.$division->name,
+            meta: [
+                'user_id' => (string) $user->id,
+                'role' => (string) $request->role,
+            ]
+        );
+
         return response()->json([
-            'message' =>
-                'Role member berhasil diupdate.'
+            'message' => 'Role member berhasil diupdate.',
         ]);
     }
 
     public function removeMember(
+        Request $request,
         Division $division,
         User $user
     ): JsonResponse {
+        abort_unless(ResourceAccess::manageDivision($request->user(), $division), 403, 'Unauthorized');
 
         $division
             ->users()
@@ -435,20 +458,20 @@ public function store(Request $request): JsonResponse
                 $user->id
             );
 
-                ActivityLogService::log(
-                    user: auth()->user(),
-                    
-                    entityType: 'division',
-                    entityId: (string) $division->id,
-                    action: 'division.member_removed',
-                    description: 'Mengeluarkan member dari divisi ' . $division->name,
-                    meta: [
-                        'user_id' => (string) $user->id,
-                    ]
-                );
+        ActivityLogService::log(
+            user: auth()->user(),
+
+            entityType: 'division',
+            entityId: (string) $division->id,
+            action: 'division.member_removed',
+            description: 'Mengeluarkan member dari divisi '.$division->name,
+            meta: [
+                'user_id' => (string) $user->id,
+            ]
+        );
+
         return response()->json([
-            'message' =>
-                'Member berhasil dikeluarkan dari divisi.'
+            'message' => 'Member berhasil dikeluarkan dari divisi.',
         ]);
     }
 }

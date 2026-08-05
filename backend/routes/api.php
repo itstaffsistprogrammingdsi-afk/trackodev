@@ -39,17 +39,17 @@ use Illuminate\Support\Facades\Route;
 Route::get(
     '/public/forms',
     [PublicFormController::class, 'index'] // Buat method 'index' di controller untuk return form yang aktif
-);
+)->middleware('throttle:60,1');
 
 Route::get(
     '/public/forms/{slug}',
     [PublicFormController::class, 'show']
-);
+)->middleware('throttle:60,1');
 
 Route::post(
     '/public/forms/{slug}/submit',
     [PublicFormController::class, 'submit']
-);
+)->middleware('throttle:10,1');
 
 // ============================================
 // HEALTH CHECK
@@ -78,7 +78,7 @@ Route::prefix('auth')->group(function () {
     Route::post(
         '/login',
         [AuthController::class, 'login']
-    );
+    )->middleware('throttle:10,1');
 
     Route::middleware('auth:sanctum')->group(function () {
 
