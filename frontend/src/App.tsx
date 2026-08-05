@@ -110,6 +110,7 @@ export default function App() {
       <Routes>
         {/* ================= PUBLIC ================= */}
         <Route path="/" element={<RootRoute />} />
+        <Route path="/landing" element={<LandingPage />} />
 
         <Route
           path="/public/forms/:slug"

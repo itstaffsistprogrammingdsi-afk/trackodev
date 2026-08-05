@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 import api from "@/lib/axios";
 import { resolveStorageUrl } from "@/lib/storageUrl";
@@ -10,6 +10,7 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import {
   AlertCircle,
+  ArrowLeft,
   Calendar,
   ChevronDown,
   FileText,
@@ -24,6 +25,25 @@ import type {
   OtherValues,
   FileValues,
 } from "../types";
+
+function PublicFormTopBar() {
+  return (
+    <nav
+      aria-label="Navigasi formulir publik"
+      className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur"
+    >
+      <div className="mx-auto flex w-full max-w-3xl px-3 sm:px-4">
+        <Link
+          to="/landing"
+          className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-[#673ab7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#673ab7] focus-visible:ring-offset-2"
+        >
+          <ArrowLeft aria-hidden="true" className="h-5 w-5 shrink-0" />
+          <span>Kembali ke landing page</span>
+        </Link>
+      </div>
+    </nav>
+  );
+}
 
 export default function PublicFormPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -248,11 +268,14 @@ export default function PublicFormPage() {
   // =========================
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="flex items-center gap-3 text-slate-600">
-          <Loader2 className="h-5 w-5 animate-spin" />
+      <div className="min-h-screen bg-slate-50">
+        <PublicFormTopBar />
+        <div className="flex min-h-[calc(100vh-3rem)] items-center justify-center px-4">
+          <div className="flex items-center gap-3 text-slate-600">
+            <Loader2 className="h-5 w-5 animate-spin" />
 
-          <span className="text-sm">Loading form...</span>
+            <span className="text-sm">Loading form...</span>
+          </div>
         </div>
       </div>
     );
@@ -263,27 +286,30 @@ export default function PublicFormPage() {
   // =========================
   if (!form) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-500" />
+      <div className="min-h-screen bg-slate-50">
+        <PublicFormTopBar />
+        <div className="flex min-h-[calc(100vh-3rem)] items-center justify-center px-4 py-8">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-500" />
 
-          <h2 className="text-xl font-semibold text-slate-900">
-            Formulir tidak tersedia
-          </h2>
+            <h2 className="text-xl font-semibold text-slate-900">
+              Formulir tidak tersedia
+            </h2>
 
-          <p className="mt-2 text-sm text-slate-500">
-            {error || "Tautan formulir mungkin sudah tidak tersedia."}
-          </p>
+            <p className="mt-2 text-sm text-slate-500">
+              {error || "Tautan formulir mungkin sudah tidak tersedia."}
+            </p>
 
-          {error && (
-            <button
-              type="button"
-              onClick={() => void fetchForm()}
-              className="mt-5 min-h-11 rounded-lg bg-[#673ab7] px-5 py-2 text-sm font-medium text-white"
-            >
-              Coba lagi
-            </button>
-          )}
+            {error && (
+              <button
+                type="button"
+                onClick={() => void fetchForm()}
+                className="mt-5 min-h-11 rounded-lg bg-[#673ab7] px-5 py-2 text-sm font-medium text-white"
+              >
+                Coba lagi
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -293,8 +319,9 @@ export default function PublicFormPage() {
   // RENDER
   // =========================
   return (
-    <div className="min-h-screen bg-[#f0ebf8] py-6 sm:py-10">
-      <div className="mx-auto w-full max-w-3xl px-3 sm:px-4">
+    <div className="min-h-screen bg-[#f0ebf8]">
+      <PublicFormTopBar />
+      <div className="mx-auto w-full max-w-3xl px-3 py-6 sm:px-4 sm:py-10">
         {/* HEADER IMAGE */}
         <div className="overflow-hidden rounded-t-3xl border border-b-0 border-[#dadce0] bg-white shadow-sm">
           {form.header_image ? (
