@@ -1,7 +1,7 @@
 import api from '@/lib/axios';
 import { User, Card, PaginatedResponse, FilterParams, MasterFilterOptions } from '../types';
 
-type SecureExportParams = FilterParams & { export_password: string };
+type SecureExportParams = FilterParams & { export_password?: string };
 
 export const reportApi = {
   // Ambil opsi filter dinamis dari database
@@ -42,9 +42,9 @@ export const reportApi = {
     const response = await api.get('/reports/export/pdf', {
       params: queryParams,
       responseType: 'blob',
-      headers: {
-        'X-Export-Password': export_password,
-      },
+      headers: export_password
+        ? { 'X-Export-Password': export_password }
+        : undefined,
     });
     return response;
   },
@@ -55,9 +55,9 @@ export const reportApi = {
     const response = await api.get('/reports/export/excel', {
       params: queryParams,
       responseType: 'blob',
-      headers: {
-        'X-Export-Password': export_password,
-      },
+      headers: export_password
+        ? { 'X-Export-Password': export_password }
+        : undefined,
     });
     return response;
   },

@@ -13,6 +13,8 @@ import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 
 import { login } from "../../lib/auth.service";
+import { updateMobileApiUrl } from "../../lib/axios";
+import { getMobileApiUrl, isAndroidApp } from "../../lib/mobileConfig";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SignInForm() {
@@ -24,12 +26,21 @@ export default function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [apiUrl, setApiUrl] = useState(getMobileApiUrl);
+  const [loginError, setLoginError] = useState("");
+  const androidApp = isAndroidApp();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
+      setLoginError("");
       setLoading(true);
+
+      if (androidApp) {
+        const normalizedUrl = updateMobileApiUrl(apiUrl);
+        setApiUrl(normalizedUrl);
+      }
 
       // 1. Panggil API login
       await login(email, password);
@@ -71,7 +82,11 @@ export default function SignInForm() {
       }
     } catch (err: unknown) {
       console.error("LOGIN ERROR:", err);
-      alert("Email atau password salah");
+      const message =
+        err instanceof Error && /network|fetch|connect/i.test(err.message)
+          ? "Server tidak dapat dijangkau. Periksa alamat server dan jaringan."
+          : "Email atau password salah.";
+      setLoginError(message);
     } finally {
       setLoading(false);
     }
@@ -92,14 +107,34 @@ export default function SignInForm() {
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
         <div>
           <div className="mb-5">
-            <h1 className="mb-2 font-semibold text-title-sm">Sign In</h1>
+            <h1 className="mb-2 font-semibold text-title-sm">Masuk ke Tracko</h1>
             <p className="text-sm text-gray-500">
-              Enter your email and password to sign in!
+              Gunakan akun Tracko Anda untuk melanjutkan.
             </p>
           </div>
 
           <form onSubmit={handleLogin}>
             <div className="space-y-6">
+              {androidApp && (
+                <div className="rounded-xl border border-brand-100 bg-brand-25 p-4 dark:border-brand-800 dark:bg-brand-950/40">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <Label>Alamat server</Label>
+                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-200">
+                      Android
+                    </span>
+                  </div>
+                  <Input
+                    type="url"
+                    placeholder="https://dev.tracko.dsicorp.id/api"
+                    value={apiUrl}
+                    onChange={(e) => setApiUrl(e.target.value)}
+                  />
+                  <p className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                    Server utama sudah terisi. Ubah hanya jika memakai deployment Tracko lain.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <Label>Email *</Label>
                 <Input
@@ -145,9 +180,18 @@ export default function SignInForm() {
                   type="submit"
                   disabled={loading}
                 >
-                  {loading ? "Signing in..." : "Sign in"}
+                  {loading ? "Sedang masuk..." : "Masuk"}
                 </Button>
               </div>
+
+              {loginError && (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-300"
+                >
+                  {loginError}
+                </p>
+              )}
             </div>
           </form>
 

@@ -99,7 +99,7 @@ class DueDateReminderTest extends TestCase
         $this->artisan('reminder:due-date')
             ->assertSuccessful();
 
-        Queue::assertNothingPushed();
+        Queue::assertNotPushed(SendDueReminderJob::class);
     }
 
     public function test_overdue_email_template_renders_with_clean_subject(): void

@@ -30,7 +30,7 @@ export const ReportPage: React.FC = () => {
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [pendingExport, setPendingExport] = useState<{ format: 'pdf' | 'excel'; userId?: string | number } | null>(null);
-  const [exportPassword, setExportPassword] = useState(() => generateExportPassword());
+  const [exportPassword, setExportPassword] = useState("");
 
 
   const handlePreviewClick = async (userId?: string | number) => {
@@ -41,7 +41,7 @@ export const ReportPage: React.FC = () => {
   };
 
   const requestSecureExport = (format: 'pdf' | 'excel', userId?: string | number) => {
-    setExportPassword(generateExportPassword());
+    setExportPassword("");
     setPendingExport({ format, userId });
   };
 

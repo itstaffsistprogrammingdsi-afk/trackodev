@@ -70,9 +70,9 @@ export const exportMyWorkLog = async (
   const res = await axios.get("/my-activities/export", {
     params: queryParams,
     responseType: "blob",
-    headers: {
-      "X-Export-Password": export_password,
-    },
+    headers: export_password
+      ? { "X-Export-Password": export_password }
+      : undefined,
   });
 
   const disposition = res.headers["content-disposition"];

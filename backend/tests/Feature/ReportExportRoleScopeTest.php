@@ -55,18 +55,14 @@ class ReportExportRoleScopeTest extends TestCase
         $this->assertStringNotContainsString($superAdmin->name, $adminHtml);
 
         foreach (['pdf', 'excel'] as $format) {
-            $expectedEncryption = $format === 'pdf'
-                ? 'PDF-AES-256'
-                : 'OOXML-Agile-AES-256';
-
             $this
-                ->withHeader('X-Export-Password', 'SecureReport!2026')
+                ->withHeader('X-Export-Password', '')
                 ->get('/api/reports/export/'.$format.'?search=Own%20Division%20Export%20User')
                 ->assertOk()
-                ->assertHeader('X-Export-Encryption', $expectedEncryption);
+                ->assertHeader('X-Export-Encryption', 'NONE');
 
             $this
-                ->withHeader('X-Export-Password', 'SecureReport!2026')
+                ->withHeader('X-Export-Password', '')
                 ->getJson('/api/reports/export/'.$format.'?search=Other%20Division%20Export%20User')
                 ->assertNotFound();
         }
@@ -81,13 +77,10 @@ class ReportExportRoleScopeTest extends TestCase
 
         foreach (['pdf', 'excel'] as $format) {
             $this
-                ->withHeader('X-Export-Password', 'SecureReport!2026')
+                ->withHeader('X-Export-Password', '')
                 ->get('/api/reports/export/'.$format.'?search=Other%20Division%20Export%20User')
                 ->assertOk()
-                ->assertHeader(
-                    'X-Export-Encryption',
-                    $format === 'pdf' ? 'PDF-AES-256' : 'OOXML-Agile-AES-256'
-                );
+                ->assertHeader('X-Export-Encryption', 'NONE');
         }
     }
 }

@@ -24,16 +24,18 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
         $this->seed(PermissionSeeder::class);
     }
 
-    public function test_report_exports_require_a_strong_password(): void
+    public function test_report_export_password_is_optional_but_must_be_strong_when_provided(): void
     {
         $manager = User::factory()->create();
         $manager->assignRole('super_admin');
         Sanctum::actingAs($manager);
 
         foreach (['pdf', 'excel'] as $format) {
-            $this->getJson('/api/reports/export/'.$format)
-                ->assertUnprocessable()
-                ->assertJsonValidationErrors('export_password');
+            $this
+                ->withHeader('X-Export-Password', '')
+                ->getJson('/api/reports/export/'.$format)
+                ->assertOk()
+                ->assertHeader('X-Export-Encryption', 'NONE');
 
             $this
                 ->withHeader('X-Export-Password', 'too-short')
@@ -112,6 +114,23 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
             $exportUrl =
                 '/api/reports/export/'.$format
                 .'?user_id='.$reportUser->id;
+
+            $plainResponse = $this
+                ->withHeader('X-Export-Password', '')
+                ->get($exportUrl)
+                ->assertOk()
+                ->assertHeader('X-Export-Encryption', 'NONE');
+
+            $plainContents = $plainResponse->getContent();
+            if ($format === 'pdf') {
+                $this->assertStringStartsWith('%PDF-', $plainContents);
+                $this->assertDoesNotMatchRegularExpression(
+                    '/\/Encrypt\s+\d+\s+0\s+R/',
+                    $plainContents
+                );
+            } else {
+                $this->assertStringStartsWith("PK", $plainContents);
+            }
 
             $exportResponse = $this
                 ->withHeader('X-Export-Password', 'SecureReport!2026')

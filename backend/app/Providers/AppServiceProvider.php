@@ -27,7 +27,6 @@ use App\Observers\ApplicationDataObserver;
 use App\Observers\UserObserver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
-use Spatie\Permission\PermissionRegistrar;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -96,12 +95,9 @@ class AppServiceProvider extends ServiceProvider
                 : null;
         });
 
-        // ============================================
-        // SPATIE CACHE RESET (OPTIONAL)
-        // ============================================
-
-        app()[
-            PermissionRegistrar::class
-        ]->forgetCachedPermissions();
+        // Spatie invalidates its permission cache when roles or permissions
+        // change. Clearing it on every application boot makes CLI commands and
+        // tests depend on the configured database before PHPUnit can switch to
+        // its isolated SQLite connection.
     }
 }

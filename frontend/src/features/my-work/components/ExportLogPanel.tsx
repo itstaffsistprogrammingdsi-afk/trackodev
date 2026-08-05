@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Copy,
+  Download,
   Eye,
   EyeOff,
   FileText,
@@ -47,7 +48,7 @@ export default function ExportLogPanel() {
 
   const [type, setType] = useState<ExportPeriodType>("daily");
   const [format, setFormat] = useState<ExportFormat>("xlsx");
-  const [exportPassword, setExportPassword] = useState(() => generateExportPassword());
+  const [exportPassword, setExportPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [passwordCopied, setPasswordCopied] = useState(false);
 
@@ -67,6 +68,8 @@ export default function ExportLogPanel() {
   const monthlyRangeInvalid = type === "monthly" && startDate > endDate;
 
   const copyPassword = async () => {
+    if (!exportPassword) return;
+
     await navigator.clipboard.writeText(exportPassword);
     setPasswordCopied(true);
     window.setTimeout(() => setPasswordCopied(false), 2000);
@@ -79,7 +82,10 @@ export default function ExportLogPanel() {
 
   const handleExport = async () => {
     setError(null);
-    if (exportPassword.length < EXPORT_PASSWORD_MIN_LENGTH) {
+    if (
+      exportPassword.length > 0 &&
+      exportPassword.length < EXPORT_PASSWORD_MIN_LENGTH
+    ) {
       setError(`Password minimal ${EXPORT_PASSWORD_MIN_LENGTH} karakter.`);
       return;
     }
@@ -91,7 +97,7 @@ export default function ExportLogPanel() {
         type,
         format,
         ...(type === "daily" ? { date: selectedDate } : {}),
-        export_password: exportPassword,
+        ...(exportPassword ? { export_password: exportPassword } : {}),
         ...(type === "monthly"
           ? { start_date: startDate, end_date: endDate }
           : {}),
@@ -233,8 +239,8 @@ export default function ExportLogPanel() {
               <ShieldCheck size={17} aria-hidden="true" />
             </span>
             <div>
-              <label htmlFor="my-work-export-password" className="text-xs font-semibold text-emerald-950">Password Enkripsi</label>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">File tetap berupa PDF atau Excel dan akan meminta password saat dibuka.</p>
+              <label htmlFor="my-work-export-password" className="text-xs font-semibold text-emerald-950">Password Enkripsi (Opsional)</label>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">Kosongkan agar file dapat langsung dibuka, atau isi password untuk mengenkripsinya.</p>
             </div>
           </div>
 
@@ -247,6 +253,7 @@ export default function ExportLogPanel() {
               maxLength={128}
               autoComplete="new-password"
               spellCheck={false}
+              placeholder="Kosongkan untuk tanpa password"
               onChange={(event) => {
                 setExportPassword(event.target.value);
                 setPasswordCopied(false);
@@ -273,14 +280,19 @@ export default function ExportLogPanel() {
             <button
               type="button"
               onClick={copyPassword}
-              className="border-l border-gray-100 px-2.5 text-gray-500 transition hover:text-emerald-700"
+              disabled={!exportPassword}
+              className="border-l border-gray-100 px-2.5 text-gray-500 transition hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Salin password"
             >
               <Copy size={16} />
             </button>
           </div>
           <p id="my-work-export-password-help" className="mt-2 text-[11px] text-emerald-800">
-            {passwordCopied ? "Password berhasil disalin." : "Minimal 12 karakter dan tidak disimpan oleh sistem."}
+            {passwordCopied
+              ? "Password berhasil disalin."
+              : exportPassword
+                ? `Jika diisi, password minimal ${EXPORT_PASSWORD_MIN_LENGTH} karakter dan tidak disimpan sistem.`
+                : "File akan diunduh tanpa password."}
           </p>
         </div>
 
@@ -297,11 +309,11 @@ export default function ExportLogPanel() {
           {loading ? (
             <Loader2 size={16} className="animate-spin" />
           ) : (
-            <ShieldCheck size={16} />
+            exportPassword ? <ShieldCheck size={16} /> : <Download size={16} />
           )}
           {loading
             ? "Mengekspor..."
-            : `Export Aman ${format === "pdf" ? "PDF" : "Excel"}`}
+            : `Export ${format === "pdf" ? "PDF" : "Excel"}${exportPassword ? " Terenkripsi" : ""}`}
         </button>
       </div>
     </div>

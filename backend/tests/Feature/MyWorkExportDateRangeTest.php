@@ -137,11 +137,17 @@ class MyWorkExportDateRangeTest extends TestCase
     }
 
 
-    public function test_export_requires_a_strong_password(): void
+    public function test_export_password_is_optional_but_must_be_strong_when_provided(): void
     {
         $this->actingAsWithPermission('my_work.export');
 
         $this->getJson('/api/my-activities/export?type=daily&format=pdf')
+            ->assertOk()
+            ->assertHeader('X-Export-Encryption', 'NONE');
+
+        $this
+            ->withHeader('X-Export-Password', 'too-short')
+            ->getJson('/api/my-activities/export?type=daily&format=pdf')
             ->assertUnprocessable()
             ->assertJsonValidationErrors('export_password');
     }

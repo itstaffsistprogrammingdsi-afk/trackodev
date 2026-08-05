@@ -27,6 +27,12 @@ export default function useCardDescription(
 
   const [saving, setSaving] = useState(false);
 
+  const onUpdatedRef = useRef(onUpdated);
+
+  useEffect(() => {
+    onUpdatedRef.current = onUpdated;
+  }, [onUpdated]);
+
   // =========================================
   // FIRST LOAD GUARD
   // =========================================
@@ -44,13 +50,11 @@ export default function useCardDescription(
     setDescription(detail.description || "");
 
     // DUE DATE
-setDueDate(
-  detail.due_date
-    ? detail.due_date
-        .replace(" ", "T")
-        .slice(0, 16)
-    : "",
-);
+    setDueDate(
+      detail.due_date
+        ? detail.due_date.replace(" ", "T").slice(0, 16)
+        : "",
+    );
 
     // RESET FIRST LOAD
     descriptionFirstLoad.current = true;
@@ -73,14 +77,14 @@ setDueDate(
       try {
         setSaving(true);
 
-await updateCard(detail.id, {
-  description,
-});
+        await updateCard(detail.id, {
+          description,
+        });
 
-onUpdated?.({
-  id: detail.id,
-  description,
-});
+        onUpdatedRef.current?.({
+          id: detail.id,
+          description,
+        });
       } catch (err) {
         console.error("FAILED SAVE DESCRIPTION", err);
       } finally {
@@ -107,14 +111,14 @@ onUpdated?.({
       try {
         setSaving(true);
 
-await updateCard(detail.id, {
-  due_date: dueDate,
-});
+        await updateCard(detail.id, {
+          due_date: dueDate,
+        });
 
-onUpdated?.({
-  id: detail.id,
-  due_date: dueDate,
-});
+        onUpdatedRef.current?.({
+          id: detail.id,
+          due_date: dueDate,
+        });
       } catch (err) {
         console.error("FAILED SAVE DUE DATE", err);
       } finally {

@@ -2,9 +2,9 @@ import Echo from "laravel-echo";
 import Pusher from "pusher-js";
 
 import { getToken } from "./authStore";
+import { getApiBaseUrl, isAndroidApp } from "./mobileConfig";
 
 const reverbKey = import.meta.env.VITE_REVERB_APP_KEY;
-const apiBaseUrl = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 const forceTls = (import.meta.env.VITE_REVERB_SCHEME || "https") === "https";
 
 let echoInstance: Echo<"reverb"> | null = null;
@@ -30,7 +30,11 @@ export const createEcho = (): Echo<"reverb"> | null => {
 
   disconnectCurrentEcho();
 
-  const wsHost = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
+  const apiBaseUrl = getApiBaseUrl().replace(/\/$/, "");
+  const backendUrl = new URL(apiBaseUrl, window.location.origin);
+  const wsHost = isAndroidApp()
+    ? backendUrl.hostname
+    : import.meta.env.VITE_REVERB_HOST || window.location.hostname;
   const wsPort = Number(import.meta.env.VITE_REVERB_PORT || 80);
   const wssPort = Number(import.meta.env.VITE_REVERB_PORT || 443);
   const authorizationHeaders = {

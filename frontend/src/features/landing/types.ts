@@ -1,5 +1,5 @@
 export interface FormItem {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   description: string | null;
@@ -9,15 +9,24 @@ export interface FormItem {
 }
 
 export interface FormField {
-  id: number;
+  id: string;
   name: string;
-  type: string; // misal: 'text', 'email', 'file', 'textarea'
+  type:
+    | "text"
+    | "textarea"
+    | "number"
+    | "date"
+    | "file"
+    | "checkbox"
+    | "select"
+    | "radio";
   label: string;
-  required: boolean;
+  is_required: boolean;
+  options?: string[];
 }
 
 export interface FormDetail {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   description: string | null;
