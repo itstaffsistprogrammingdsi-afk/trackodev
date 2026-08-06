@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Brand;
+use App\Models\Division;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -52,5 +55,53 @@ class LabelBrandPermissionTest extends TestCase
         $this->postJson('/api/brands', [
             'name' => 'Restricted brand',
         ])->assertForbidden();
+    }
+
+    public function test_board_card_payload_includes_attached_brands(): void
+    {
+        $this->seed(PermissionSeeder::class);
+
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $division = Division::create([
+            'name' => 'Brand Division',
+            'slug' => 'brand-division-'.Str::lower(Str::random(6)),
+        ]);
+        $workspace = $division->workspaces()->create(['name' => 'Brand Workspace']);
+        $campaign = $workspace->campaigns()->create([
+            'name' => 'Brand Campaign',
+            'created_by' => $user->id,
+        ]);
+        $board = $campaign->boards()->create([
+            'name' => 'To Do',
+            'type' => 'todo',
+            'order' => 1,
+        ]);
+        $card = $board->cards()->create([
+            'title' => 'Mobile brand card',
+            'created_by' => $user->id,
+            'order' => 1,
+            'status' => 'todo',
+        ]);
+        $brand = Brand::create([
+            'campaign_id' => $campaign->id,
+            'name' => 'Priority Client',
+            'color' => '#2563eb',
+        ]);
+        $card->brands()->attach($brand->id);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/boards/{$board->id}/cards")
+            ->assertOk()
+            ->assertJsonPath('data.0.brands.0.id', $brand->id)
+            ->assertJsonPath('data.0.brands.0.name', 'Priority Client')
+            ->assertJsonPath('data.0.brands.0.color', '#2563eb');
+
+        $this->getJson("/api/campaigns/{$campaign->id}/boards")
+            ->assertOk()
+            ->assertJsonPath('data.0.cards.0.brands.0.id', $brand->id)
+            ->assertJsonPath('data.0.cards.0.brands.0.name', 'Priority Client');
     }
 }

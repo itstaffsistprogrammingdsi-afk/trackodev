@@ -26,6 +26,8 @@ export default function BrandSection({
     detachBrand,
     createAndAttach,
     loading,
+    error,
+    fetchBrands,
   } = useCardBrand(card, isOpen, setDetail);
 
   // ============================================
@@ -130,25 +132,15 @@ export default function BrandSection({
   // ============================================
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-700 dark:bg-slate-900/60">
       {/* CREATE */}
 
       {can('brand.create') && <div className="space-y-2">
         {/* BRAND NAME INPUT */}
 
         <input
-          className="
-            w-full
-            h-9
-            border
-            rounded
-            px-2
-            text-sm
-            outline-none
-            focus:ring-2
-            focus:ring-blue-500
-          "
-          placeholder="Add brand..."
+          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          placeholder="Nama brand baru"
           value={name}
           onChange={(e) =>
             setName(e.target.value)
@@ -168,15 +160,8 @@ export default function BrandSection({
               onClick={() =>
                 setOpenPicker(!openPicker)
               }
-              className="
-                w-10
-                h-9
-                rounded
-                border
-                shadow-sm
-                transition
-                hover:scale-105
-              "
+              className="h-11 w-12 rounded-xl border border-slate-200 shadow-sm transition active:scale-95 dark:border-slate-700"
+              aria-label="Pilih warna brand"
               style={{
                 backgroundColor: color,
               }}
@@ -188,7 +173,7 @@ export default function BrandSection({
               <div
                 className="
                   absolute
-                  top-11
+                  top-12
                   left-0
                   z-50
                   bg-white
@@ -197,7 +182,7 @@ export default function BrandSection({
                   shadow-2xl
                   p-3
                   space-y-3
-                  w-[240px]
+                  w-[min(240px,calc(100vw-3rem))]
                 "
               >
                 {/* PICKER UI */}
@@ -262,17 +247,7 @@ export default function BrandSection({
           <button
             disabled={loading}
             onClick={handleCreate}
-            className="
-              flex-1
-              h-9
-              bg-blue-500
-              hover:bg-blue-600
-              disabled:opacity-50
-              text-white
-              rounded
-              text-sm
-              transition
-            "
+            className="h-11 flex-1 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50"
           >
             {loading
               ? "Adding..."
@@ -283,7 +258,25 @@ export default function BrandSection({
 
       {/* LIST */}
 
-      <div className="space-y-2 max-h-64 overflow-y-auto">
+      {error ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => void fetchBrands()}
+            className="mt-2 min-h-9 font-semibold underline underline-offset-2"
+          >
+            Coba lagi
+          </button>
+        </div>
+      ) : null}
+
+      <div className="max-h-72 space-y-2 overflow-y-auto overscroll-contain">
+        {loading && brands.length === 0 ? (
+          <div className="py-5 text-center text-xs text-slate-500">
+            Memuat brand...
+          </div>
+        ) : null}
         {brands.length === 0 && (
           <div className="text-xs text-gray-400">
             No brands available
@@ -296,15 +289,7 @@ export default function BrandSection({
           return (
             <div
               key={b.id}
-              className="
-                flex
-                items-center
-                justify-between
-                p-2
-                rounded
-                hover:bg-gray-100
-                transition
-              "
+              className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800"
             >
               {/* LEFT */}
 
@@ -317,7 +302,7 @@ export default function BrandSection({
                   }}
                 />
 
-                <span className="text-sm">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   {b.name}
                 </span>
               </div>
@@ -329,11 +314,7 @@ export default function BrandSection({
                   onClick={() =>
                     detachBrand(b.id)
                   }
-                  className="
-                    text-red-500
-                    text-xs
-                    hover:underline
-                  "
+                  className="min-h-9 rounded-lg bg-rose-50 px-3 text-xs font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
                 >
                   remove
                 </button>
@@ -342,11 +323,7 @@ export default function BrandSection({
                   onClick={() =>
                     attachBrand(b.id)
                   }
-                  className="
-                    text-blue-500
-                    text-xs
-                    hover:underline
-                  "
+                  className="min-h-9 rounded-lg bg-blue-50 px-3 text-xs font-semibold text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
                 >
                   add
                 </button>

@@ -127,6 +127,26 @@ export default function CardDetailSidebar({
   };
   const dueStatus = getDueDateStatus(card.due_date);
   const deleteDisabled = card.is_overdue === true || isCardOverdue(card.due_date);
+  const dueDateValue = dueDate.slice(0, 10);
+  const dueTimeValue = dueDate.slice(11, 16) || "17:00";
+
+  const setDueDatePart = (date: string) => {
+    setDueDate(date ? `${date}T${dueTimeValue}` : "");
+  };
+
+  const setDueTimePart = (time: string) => {
+    if (!dueDateValue) return;
+    setDueDate(`${dueDateValue}T${time || "17:00"}`);
+  };
+
+  const setQuickDueDate = (daysFromToday: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + daysFromToday);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    setDueDate(`${year}-${month}-${day}T17:00`);
+  };
 
   return (
     <div className="w-full space-y-6">
@@ -138,13 +158,14 @@ export default function CardDetailSidebar({
           Add to card
         </h3>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2 xl:block xl:space-y-2">
           {/* MEMBERS */}
-          <div>
+          <div className={showMembers ? "col-span-2" : "min-w-0"}>
             <SidebarButton
               icon={<Users size={16} />}
               label="Members"
               onClick={toggleMembers}
+              active={showMembers}
             />
             {showMembers && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -161,11 +182,12 @@ export default function CardDetailSidebar({
           </div>
 
                     {/* BRANDS */}
-          {can('brand.view') && <div>
+          {can('brand.view') && <div className={showBrands ? "col-span-2" : "min-w-0"}>
             <SidebarButton
               icon={<Layers size={16} />}
               label="Brand"
               onClick={toggleBrands}
+              active={showBrands}
             />
             {showBrands && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -179,11 +201,12 @@ export default function CardDetailSidebar({
           </div>}
 
           {/* LABELS */}
-          {can('label.view') && <div>
+          {can('label.view') && <div className={showLabels ? "col-span-2" : "min-w-0"}>
             <SidebarButton
               icon={<Tag size={16} />}
               label="Labels"
               onClick={toggleLabels}
+              active={showLabels}
             />
             {showLabels && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -195,11 +218,12 @@ export default function CardDetailSidebar({
 
 
           {/* DUE DATE */}
-          <div>
+          <div className={showDueDate ? "col-span-2" : "min-w-0"}>
             <SidebarButton
               icon={<Clock3 size={16} />}
               label="Due Date"
               onClick={toggleDueDate}
+              active={showDueDate}
               badge={
                 dueStatus !== "none" ? (
                   <span
@@ -215,31 +239,79 @@ export default function CardDetailSidebar({
               }
             />
             {showDueDate && (
-              <div className="mt-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
-                <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Select Due Date
-                </label>
-                <input
-                  type="datetime-local"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="
-                    h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium 
-                    text-slate-800 outline-none transition-all duration-200 
-                    focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 
-                    dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400
-                  "
-                />
+              <div className="mt-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    Atur tenggat
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    Pilih cepat atau tentukan tanggal dan jam.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Hari ini", days: 0 },
+                    { label: "Besok", days: 1 },
+                    { label: "+7 hari", days: 7 },
+                  ].map((option) => (
+                    <button
+                      key={option.label}
+                      type="button"
+                      onClick={() => setQuickDueDate(option.days)}
+                      className="min-h-10 rounded-xl border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 transition active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2">
+                  <label className="min-w-0">
+                    <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Tanggal
+                    </span>
+                    <input
+                      type="date"
+                      value={dueDateValue}
+                      onChange={(event) => setDueDatePart(event.target.value)}
+                      className="h-12 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </label>
+                  <label>
+                    <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Jam
+                    </span>
+                    <input
+                      type="time"
+                      value={dueTimeValue}
+                      disabled={!dueDateValue}
+                      onChange={(event) => setDueTimePart(event.target.value)}
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-white px-2 text-sm font-medium text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </label>
+                </div>
+
+                {dueDate ? (
+                  <button
+                    type="button"
+                    onClick={() => setDueDate("")}
+                    className="mt-3 min-h-10 w-full rounded-xl text-xs font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                  >
+                    Hapus tenggat
+                  </button>
+                ) : null}
               </div>
             )}
           </div>
 
           {/* RESULT ATTACHMENTS */}
-          <div>
+          <div className={showResult ? "col-span-2" : "min-w-0"}>
             <SidebarButton
               icon={<Paperclip size={16} />}
               label="Result Attachment"
               onClick={toggleResult}
+              active={showResult}
               badge={`${resultSummary.files} Files • ${resultSummary.links} Links`}
             />
             {showResult && (
@@ -261,11 +333,12 @@ export default function CardDetailSidebar({
           </div>
 
           {/* BRIEF ATTACHMENTS */}
-          <div>
+          <div className={showBrief ? "col-span-2" : "min-w-0"}>
             <SidebarButton
               icon={<Paperclip size={16} />}
               label="Brief Attachment"
               onClick={toggleBrief}
+              active={showBrief}
               badge={`${briefSummary.files} Files • ${briefSummary.links} Links`}
             />
             {showBrief && (

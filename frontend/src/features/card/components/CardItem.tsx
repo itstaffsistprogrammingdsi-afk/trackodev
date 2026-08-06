@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { ArrowRightLeft, CalendarClock } from "lucide-react";
 
 import { Card } from "../types";
 import {
@@ -78,6 +79,9 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   // =========================================
   const dueStatus = getDueDateStatus(card.due_date);
   const dueClasses = dueDateBadgeClasses[dueStatus];
+  const brands = card.brands ?? [];
+  const labels = card.labels ?? [];
+  const assignees = card.assignees ?? [];
 
   // =========================================
   // PRIORITY
@@ -147,7 +151,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   // RENDER
   // =========================================
   return (
-    <div
+    <article
       ref={setNodeRef}
       style={style}
       {...attributes}
@@ -155,132 +159,133 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      className="
-        relative
-        rounded-xl
-        border
-        border-gray-100
-        bg-white
-        p-3
-        shadow-sm
-        cursor-pointer
-        transition-all
-        hover:bg-gray-50
-        hover:shadow-md
-        active:scale-[0.98]
-      "
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.(card);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:scale-[0.99] dark:border-slate-700 dark:bg-slate-900"
     >
-      {/* PRIORITY */}
-      {card.priority && (
-        <span
-          className={`
-            absolute
-            top-2
-            right-2
-            inline-flex
-            rounded-sm
-            px-1.5
-            py-0.5
-            text-[9px]
-            font-semibold
-            uppercase
-            leading-none
-            mt-2
-            ${priorityBadgeClass(card.priority)}
-          `}
-        >
-          {card.priority}
-        </span>
-      )}
-
-      <div className="space-y-3">
-        {/* TITLE */}
-        <p
-          className="
-            pr-12
-            text-sm
-            font-semibold
-            leading-5
-            break-words
-            text-gray-800
-          "
-        >
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="min-w-0 flex-1 break-words text-[15px] font-bold leading-5 text-slate-800 dark:text-slate-100">
           {card.title}
-        </p>
+        </h3>
 
-        {/* FOOTER */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
-          {/* LEFT */}
-          <div className="min-w-0">
-            {formattedDate && (
-              <div className="mt-0.5 text-[10px] text-gray-400">
-                {formattedDate}
-              </div>
-            )}
+        {card.priority ? (
+          <span
+            className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${priorityBadgeClass(card.priority)}`}
+          >
+            {card.priority}
+          </span>
+        ) : null}
+      </div>
 
-            {card.created_by && (
-              <div className="truncate text-[11px] text-gray-500">
-                by{" "}
-                <span className="font-medium text-gray-700">
-                  {card.created_by.name}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* RIGHT */}
-          {formattedDueDate && (
-            <div
-              className={`
-                inline-flex
-                shrink-0
-                items-center
-                whitespace-nowrap
-                rounded-full
-                px-2.5
-                py-1
-                text-[10px]
-                font-semibold
-                ${dueClasses}
-              `}
+      {brands.length > 0 || labels.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {brands.slice(0, 2).map((brand) => (
+            <span
+              key={brand.id}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
-              {dueStatus === "overdue"
-                ? `Overdue · ${formattedDueDate}`
-                : `Due ${formattedDueDate}`}
-            </div>
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: brand.color || "#64748b" }}
+              />
+              <span className="truncate">{brand.name}</span>
+            </span>
+          ))}
+          {labels.slice(0, 2).map((label) => (
+            <span
+              key={label.id}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            >
+              <span
+                className="h-2 w-0.5 shrink-0 rounded-full"
+                style={{ backgroundColor: label.color || "#3b82f6" }}
+              />
+              <span className="truncate">{label.name}</span>
+            </span>
+          ))}
+          {brands.length + labels.length > 4 ? (
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-800">
+              +{brands.length + labels.length - 4}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="flex min-w-0 items-center">
+          {assignees.length > 0 ? (
+            <>
+              <div className="flex -space-x-2">
+                {assignees.slice(0, 3).map((user) => (
+                  <span
+                    key={user.id}
+                    title={user.name}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900"
+                  >
+                    {user.name.charAt(0).toUpperCase()}
+                  </span>
+                ))}
+              </div>
+              <span className="ml-2 truncate text-[10px] font-medium text-slate-500">
+                {assignees.length} member
+              </span>
+            </>
+          ) : (
+            <span className="text-[10px] text-slate-400">Belum ada member</span>
           )}
         </div>
 
-        {onMove && moveTargets.length > 0 && (
-          <div
-            className="border-t border-slate-100 pt-2 sm:hidden"
-            onPointerDown={(event) => event.stopPropagation()}
-            onMouseDown={(event) => event.stopPropagation()}
-            onMouseUp={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Pindah status
-            </label>
-            <select
-              value={card.board_id}
-              disabled={isMoving}
-              aria-label={`Pindahkan ${card.title} ke status lain`}
-              onChange={(event) => void handleMove(event.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60"
-            >
-              <option value={card.board_id}>
-                {isMoving ? "Memindahkan..." : "Pilih tujuan"}
-              </option>
-              {moveTargets.map((target) => (
-                <option key={target.id} value={target.id}>
-                  {target.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {formattedDueDate ? (
+          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold ${dueClasses}`}>
+            <CalendarClock size={12} />
+            {dueStatus === "overdue" ? "Terlambat" : formattedDueDate}
+          </span>
+        ) : null}
       </div>
-    </div>
+
+      {formattedDate || card.created_by ? (
+        <p className="mt-2 truncate text-[10px] text-slate-400">
+          {card.created_by ? `Dibuat oleh ${card.created_by.name}` : "Dibuat"}
+          {formattedDate ? ` � ${formattedDate}` : ""}
+        </p>
+      ) : null}
+
+      {onMove && moveTargets.length > 0 ? (
+        <div
+          className="mt-3 border-t border-slate-100 pt-3 sm:hidden dark:border-slate-800"
+          onPointerDown={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onMouseUp={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            <ArrowRightLeft size={12} />
+            Pindah status
+          </label>
+          <select
+            value={card.board_id}
+            disabled={isMoving}
+            aria-label={`Pindahkan ${card.title} ke status lain`}
+            onChange={(event) => void handleMove(event.target.value)}
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          >
+            <option value={card.board_id}>
+              {isMoving ? "Memindahkan..." : "Pilih tujuan"}
+            </option>
+            {moveTargets.map((target) => (
+              <option key={target.id} value={target.id}>
+                {target.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+    </article>
   );
 }
