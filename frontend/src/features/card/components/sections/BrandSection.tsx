@@ -132,14 +132,14 @@ export default function BrandSection({
   // ============================================
 
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-700 dark:bg-slate-900/60">
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 md:space-y-3 md:rounded-none md:border-0 md:bg-transparent md:p-0 dark:border-slate-700 dark:bg-slate-900/60 dark:md:bg-transparent">
       {/* CREATE */}
 
       {can('brand.create') && <div className="space-y-2">
         {/* BRAND NAME INPUT */}
 
         <input
-          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 md:h-9 md:rounded md:px-2 md:focus:ring-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           placeholder="Nama brand baru"
           value={name}
           onChange={(e) =>
@@ -160,7 +160,7 @@ export default function BrandSection({
               onClick={() =>
                 setOpenPicker(!openPicker)
               }
-              className="h-11 w-12 rounded-xl border border-slate-200 shadow-sm transition active:scale-95 dark:border-slate-700"
+              className="h-11 w-12 rounded-xl border border-slate-200 shadow-sm transition active:scale-95 md:h-9 md:w-10 md:rounded md:hover:scale-105 dark:border-slate-700"
               aria-label="Pilih warna brand"
               style={{
                 backgroundColor: color,
@@ -173,7 +173,7 @@ export default function BrandSection({
               <div
                 className="
                   absolute
-                  top-12
+                  top-12 md:top-11
                   left-0
                   z-50
                   bg-white
@@ -182,7 +182,7 @@ export default function BrandSection({
                   shadow-2xl
                   p-3
                   space-y-3
-                  w-[min(240px,calc(100vw-3rem))]
+                  w-[min(240px,calc(100vw-3rem))] md:w-[240px]
                 "
               >
                 {/* PICKER UI */}
@@ -247,7 +247,7 @@ export default function BrandSection({
           <button
             disabled={loading}
             onClick={handleCreate}
-            className="h-11 flex-1 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50"
+            className="h-11 flex-1 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 md:h-9 md:rounded md:bg-blue-500 md:font-normal md:hover:bg-blue-600 md:active:scale-100"
           >
             {loading
               ? "Adding..."
@@ -271,7 +271,7 @@ export default function BrandSection({
         </div>
       ) : null}
 
-      <div className="max-h-72 space-y-2 overflow-y-auto overscroll-contain">
+      <div className="max-h-72 space-y-2 overflow-y-auto overscroll-contain md:max-h-64">
         {loading && brands.length === 0 ? (
           <div className="py-5 text-center text-xs text-slate-500">
             Memuat brand...
@@ -289,7 +289,7 @@ export default function BrandSection({
           return (
             <div
               key={b.id}
-              className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+              className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 transition hover:border-slate-300 md:min-h-0 md:rounded md:border-0 md:bg-transparent md:p-2 md:hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:md:bg-transparent dark:md:hover:bg-slate-800"
             >
               {/* LEFT */}
 
@@ -302,7 +302,7 @@ export default function BrandSection({
                   }}
                 />
 
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                <span className="text-sm font-medium text-slate-700 md:font-normal dark:text-slate-200">
                   {b.name}
                 </span>
               </div>
@@ -314,7 +314,7 @@ export default function BrandSection({
                   onClick={() =>
                     detachBrand(b.id)
                   }
-                  className="min-h-9 rounded-lg bg-rose-50 px-3 text-xs font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
+                  className="min-h-9 rounded-lg bg-rose-50 px-3 text-xs font-semibold text-rose-600 md:min-h-0 md:rounded-none md:bg-transparent md:px-0 md:font-normal md:text-red-500 md:hover:underline dark:bg-rose-950/40 dark:text-rose-300 dark:md:bg-transparent"
                 >
                   remove
                 </button>
@@ -323,7 +323,7 @@ export default function BrandSection({
                   onClick={() =>
                     attachBrand(b.id)
                   }
-                  className="min-h-9 rounded-lg bg-blue-50 px-3 text-xs font-semibold text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+                  className="min-h-9 rounded-lg bg-blue-50 px-3 text-xs font-semibold text-blue-600 md:min-h-0 md:rounded-none md:bg-transparent md:px-0 md:font-normal md:text-blue-500 md:hover:underline dark:bg-blue-950/40 dark:text-blue-300 dark:md:bg-transparent"
                 >
                   add
                 </button>

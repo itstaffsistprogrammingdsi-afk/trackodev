@@ -80,7 +80,7 @@ export default function CardDetailHeader({
   };
 
   return (
-    <div className="w-full bg-white px-4 py-3.5 transition-colors sm:px-8 sm:py-5 dark:bg-slate-900">
+    <div className="w-full bg-white px-4 py-3.5 transition-colors md:border-b md:border-slate-200/80 md:px-8 md:py-6 dark:bg-slate-900 dark:md:border-slate-800">
       <div className="flex items-start justify-between gap-3 sm:gap-6">
         <div className="min-w-0 flex-1">
           {/* ========================================= */}
@@ -138,8 +138,14 @@ export default function CardDetailHeader({
                 </div>
               )}
 
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Detail card dan progres pekerjaan
+              <p className="mt-1 text-xs text-slate-500 md:text-sm dark:text-slate-400">
+                <span className="md:hidden">Detail card dan progres pekerjaan</span>
+                <span className="hidden md:inline">
+                  in list{" "}
+                  <span className="font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 dark:text-slate-200 dark:decoration-slate-700">
+                    Active Support Ticket
+                  </span>
+                </span>
               </p>
             </div>
           </div>
@@ -147,9 +153,9 @@ export default function CardDetailHeader({
           {/* ========================================= */}
           {/* METADATA SECTION (VERTICAL LAYOUT) */}
           {/* ========================================= */}
-          <div className="mt-4 grid grid-cols-2 gap-2.5 pl-0 sm:grid-cols-4 sm:pl-9">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 pl-0 md:mt-6 md:flex md:flex-col md:gap-5 md:pl-9">
             {/* MEMBERS */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex md:flex-col md:gap-1.5 md:rounded-none md:border-0 md:bg-transparent md:p-0 dark:border-slate-700 dark:bg-slate-800/60 dark:md:bg-transparent">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Members
               </span>
@@ -179,7 +185,7 @@ export default function CardDetailHeader({
             </div>
 
             {/* BRAND */}
-            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:col-span-2 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex md:flex-col md:gap-1.5 md:rounded-none md:border-0 md:bg-transparent md:p-0 dark:border-slate-700 dark:bg-slate-800/60 dark:md:bg-transparent">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Brand
               </span>
@@ -204,7 +210,7 @@ export default function CardDetailHeader({
             </div>
 
             {/* LABELS */}
-            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:col-span-2 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex md:flex-col md:gap-1.5 md:rounded-none md:border-0 md:bg-transparent md:p-0 dark:border-slate-700 dark:bg-slate-800/60 dark:md:bg-transparent">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Labels
               </span>
@@ -227,7 +233,7 @@ export default function CardDetailHeader({
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 md:space-y-0.5 md:rounded-none md:border-0 md:bg-transparent md:p-0 dark:border-slate-700 dark:bg-slate-800/60 dark:md:bg-transparent">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 Priority
               </span>
@@ -252,11 +258,11 @@ export default function CardDetailHeader({
             </div>
 
             {/* DUE DATE */}
-            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:col-span-1 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex md:flex-col md:gap-1.5 md:rounded-none md:border-0 md:bg-transparent md:p-0 dark:border-slate-700 dark:bg-slate-800/60 dark:md:bg-transparent">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Due Date
               </span>
-              <div className="mt-1.5 flex min-h-8 items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+              <div className="mt-1.5 flex min-h-8 items-center gap-2 text-xs font-medium text-slate-700 md:mt-0 md:min-h-0 md:w-max md:rounded-lg md:bg-slate-100 md:px-3 md:py-1.5 dark:text-slate-300 dark:md:bg-slate-800">
                 <Clock3
                   size={14}
                   className={
@@ -277,7 +283,7 @@ export default function CardDetailHeader({
         <button
           onClick={onClose}
           className="
-            flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400
+            flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 md:h-8 md:w-8 md:rounded-lg
             transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 
             dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300
           "

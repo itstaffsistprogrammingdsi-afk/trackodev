@@ -158,9 +158,9 @@ export default function CardDetailSidebar({
           Add to card
         </h3>
 
-        <div className="grid grid-cols-2 gap-2 xl:block xl:space-y-2">
+        <div className="grid grid-cols-2 gap-2 md:block md:space-y-2">
           {/* MEMBERS */}
-          <div className={showMembers ? "col-span-2" : "min-w-0"}>
+          <div className={showMembers ? "col-span-2 md:block" : "min-w-0 md:block"}>
             <SidebarButton
               icon={<Users size={16} />}
               label="Members"
@@ -182,7 +182,7 @@ export default function CardDetailSidebar({
           </div>
 
                     {/* BRANDS */}
-          {can('brand.view') && <div className={showBrands ? "col-span-2" : "min-w-0"}>
+          {can('brand.view') && <div className={showBrands ? "col-span-2 md:block" : "min-w-0 md:block"}>
             <SidebarButton
               icon={<Layers size={16} />}
               label="Brand"
@@ -201,7 +201,7 @@ export default function CardDetailSidebar({
           </div>}
 
           {/* LABELS */}
-          {can('label.view') && <div className={showLabels ? "col-span-2" : "min-w-0"}>
+          {can('label.view') && <div className={showLabels ? "col-span-2 md:block" : "min-w-0 md:block"}>
             <SidebarButton
               icon={<Tag size={16} />}
               label="Labels"
@@ -218,7 +218,7 @@ export default function CardDetailSidebar({
 
 
           {/* DUE DATE */}
-          <div className={showDueDate ? "col-span-2" : "min-w-0"}>
+          <div className={showDueDate ? "col-span-2 md:block" : "min-w-0 md:block"}>
             <SidebarButton
               icon={<Clock3 size={16} />}
               label="Due Date"
@@ -239,7 +239,7 @@ export default function CardDetailSidebar({
               }
             />
             {showDueDate && (
-              <div className="mt-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
+              <div className="mt-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm transition-all md:hidden dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
                 <div className="mb-3">
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     Atur tenggat
@@ -303,10 +303,23 @@ export default function CardDetailSidebar({
                 ) : null}
               </div>
             )}
+            {showDueDate && (
+              <div className="mt-2 hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 shadow-sm transition-all md:block dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Select Due Date
+                </label>
+                <input
+                  type="datetime-local"
+                  value={dueDate}
+                  onChange={(event) => setDueDate(event.target.value)}
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
+                />
+              </div>
+            )}
           </div>
 
           {/* RESULT ATTACHMENTS */}
-          <div className={showResult ? "col-span-2" : "min-w-0"}>
+          <div className={showResult ? "col-span-2 md:block" : "min-w-0 md:block"}>
             <SidebarButton
               icon={<Paperclip size={16} />}
               label="Result Attachment"
@@ -333,7 +346,7 @@ export default function CardDetailSidebar({
           </div>
 
           {/* BRIEF ATTACHMENTS */}
-          <div className={showBrief ? "col-span-2" : "min-w-0"}>
+          <div className={showBrief ? "col-span-2 md:block" : "min-w-0 md:block"}>
             <SidebarButton
               icon={<Paperclip size={16} />}
               label="Brief Attachment"

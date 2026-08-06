@@ -167,16 +167,16 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
       }}
       role="button"
       tabIndex={0}
-      className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:scale-[0.99] dark:border-slate-700 dark:bg-slate-900"
+      className="group relative cursor-pointer rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:scale-[0.99] md:rounded-xl md:border-gray-100 md:p-3 md:hover:translate-y-0 md:hover:bg-gray-50 md:active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 flex-1 break-words text-[15px] font-bold leading-5 text-slate-800 dark:text-slate-100">
+        <h3 className="min-w-0 flex-1 break-words text-[15px] font-bold leading-5 text-slate-800 md:pr-12 md:text-sm md:font-semibold md:text-gray-800 dark:text-slate-100">
           {card.title}
         </h3>
 
         {card.priority ? (
           <span
-            className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${priorityBadgeClass(card.priority)}`}
+            className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide md:absolute md:right-2 md:top-2 md:mt-2 md:rounded-sm md:px-1.5 md:py-0.5 md:font-semibold md:leading-none ${priorityBadgeClass(card.priority)}`}
           >
             {card.priority}
           </span>
@@ -184,7 +184,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
       </div>
 
       {brands.length > 0 || labels.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-1.5 md:hidden">
           {brands.slice(0, 2).map((brand) => (
             <span
               key={brand.id}
@@ -217,7 +217,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
         </div>
       ) : null}
 
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 md:hidden dark:border-slate-800">
         <div className="flex min-w-0 items-center">
           {assignees.length > 0 ? (
             <>
@@ -250,7 +250,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
       </div>
 
       {formattedDate || card.created_by ? (
-        <p className="mt-2 truncate text-[10px] text-slate-400">
+        <p className="mt-2 truncate text-[10px] text-slate-400 md:hidden">
           {card.created_by ? `Dibuat oleh ${card.created_by.name}` : "Dibuat"}
           {formattedDate ? ` � ${formattedDate}` : ""}
         </p>
@@ -258,7 +258,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
 
       {onMove && moveTargets.length > 0 ? (
         <div
-          className="mt-3 border-t border-slate-100 pt-3 sm:hidden dark:border-slate-800"
+          className="mt-3 border-t border-slate-100 pt-3 md:hidden dark:border-slate-800"
           onPointerDown={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
           onMouseUp={(event) => event.stopPropagation()}
@@ -286,6 +286,26 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
           </select>
         </div>
       ) : null}
+
+      <div className="mt-3 hidden flex-col gap-2 md:flex md:flex-row md:items-end md:justify-between md:gap-3">
+        <div className="min-w-0">
+          {formattedDate ? (
+            <div className="mt-0.5 text-[10px] text-gray-400">{formattedDate}</div>
+          ) : null}
+          {card.created_by ? (
+            <div className="truncate text-[11px] text-gray-500">
+              by <span className="font-medium text-gray-700">{card.created_by.name}</span>
+            </div>
+          ) : null}
+        </div>
+        {formattedDueDate ? (
+          <div className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold ${dueClasses}`}>
+            {dueStatus === "overdue"
+              ? `Overdue · ${formattedDueDate}`
+              : `Due ${formattedDueDate}`}
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }

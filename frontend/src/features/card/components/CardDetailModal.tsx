@@ -148,58 +148,65 @@ export default function CardDetailModal({
 
   if (!isOpen || !card) return null;
 
+  const cardHeader = (
+    <CardDetailHeader
+      cardId={detail?.id ?? card.id}
+      title={detail?.title ?? card.title}
+      assignees={detail?.assignees}
+      brands={detail?.brands ?? card.brands ?? []}
+      labels={detail?.labels ?? card.labels ?? []}
+      priority={detail?.priority ?? card.priority}
+      dueDate={
+        dueDate
+          ? new Date(dueDate).toLocaleString("id-ID", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })
+          : ""
+      }
+      setDetail={setDetail}
+      onUpdated={fetchDetail}
+      onClose={onClose}
+      onToggleMembers={() => setShowMembers((prev) => !prev)}
+    />
+  );
+
   return (
     <div
       onClick={onClose}
       className="
         fixed inset-0 z-[9999] flex items-center justify-center 
-        bg-slate-900/60 backdrop-blur-md overflow-hidden
+        bg-slate-900/60 backdrop-blur-md overflow-hidden md:overflow-y-auto
         p-0 md:p-4 lg:p-6 transition-all duration-300 animate-in fade-in
       "
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className="
-          relative flex h-[100dvh] w-full max-w-7xl flex-col md:my-auto md:h-[calc(100dvh-2rem)]
+          relative flex h-[100dvh] w-full max-w-7xl flex-col md:my-auto md:block md:h-auto md:min-h-0
           bg-slate-50 dark:bg-slate-950 rounded-none md:rounded-3xl 
           shadow-2xl border border-slate-200/80 dark:border-slate-800 
           overflow-hidden transition-all duration-300
         "
       >
-        <div className="relative z-20 shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90">
-          <CardDetailHeader
-            cardId={detail?.id ?? card.id}
-            title={detail?.title ?? card.title}
-            assignees={detail?.assignees}
-            brands={detail?.brands ?? card.brands ?? []}
-            labels={detail?.labels ?? card.labels ?? []}
-            priority={detail?.priority ?? card.priority}
-            dueDate={
-              dueDate
-                ? new Date(dueDate).toLocaleString("id-ID", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })
-                : ""
-            }
-            setDetail={setDetail}
-            onUpdated={fetchDetail}
-            onClose={onClose}
-            onToggleMembers={() => setShowMembers((prev) => !prev)}
-          />
+        <div className="relative z-20 shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl md:hidden dark:border-slate-800 dark:bg-slate-900/90">
+          {cardHeader}
         </div>
 
         {/* ========================================= */}
         {/* MAIN LAYOUT WRAPPER */}
         {/* ========================================= */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-none md:overflow-visible xl:flex-row">
           
           {/* ========================================= */}
           {/* LEFT CONTENT AREA */}
           {/* ========================================= */}
-          <div className="order-2 min-w-0 flex-1 xl:order-1 xl:overflow-y-auto">
+          <div className="order-2 min-w-0 flex-1 md:order-none">
+            <div className="sticky top-0 z-20 hidden border-b border-slate-200/80 bg-white/80 backdrop-blur-xl md:block dark:border-slate-800 dark:bg-slate-900/80">
+              {cardHeader}
+            </div>
             {/* INNER BODY CONTENT */}
-            <div className="space-y-4 p-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:p-6 lg:space-y-8 lg:p-8">
+            <div className="space-y-4 p-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] md:space-y-6 md:p-6 lg:space-y-8 lg:p-8">
               {loading ? (
                 <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
@@ -422,10 +429,10 @@ export default function CardDetailModal({
           {/* ========================================= */}
           <div
             className="
-              order-1 w-full shrink-0 xl:order-2 xl:w-[360px] xl:max-w-[360px]
-              border-b xl:border-b-0 xl:border-l border-slate-200/80 dark:border-slate-800
+              order-1 w-full shrink-0 md:order-none md:border-b-0 md:border-t xl:w-[340px] xl:max-w-[340px]
+              border-b xl:border-t-0 xl:border-l border-slate-200/80 dark:border-slate-800
               bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl 
-              xl:h-full xl:overflow-y-auto
+              xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto
             "
           >
             <div className="p-3 sm:p-5 lg:p-6">
