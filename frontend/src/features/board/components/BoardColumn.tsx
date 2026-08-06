@@ -22,6 +22,8 @@ type Props = {
   onCardCreated?: () => void | Promise<unknown>;
   onRefresh?: () => void | Promise<unknown>;
   onOpenCard?: (card: Card) => void;
+  moveTargets?: Array<{ id: string; name: string }>;
+  onMoveCard?: (card: Card, boardId: string) => Promise<void>;
   onEdit?: () => void;
   onDelete?: () => void;
   dragHandle?: ReactNode;
@@ -49,6 +51,8 @@ export default function BoardColumn({
   onCardCreated,
   onRefresh,
   onOpenCard,
+  moveTargets,
+  onMoveCard,
   onEdit,
   onDelete,
   dragHandle,
@@ -567,6 +571,8 @@ export default function BoardColumn({
                 card={card}
                 onRefresh={onRefresh}
                 onOpen={onOpenCard}
+                moveTargets={moveTargets}
+                onMove={onMoveCard}
               />
             ))}
           </div>

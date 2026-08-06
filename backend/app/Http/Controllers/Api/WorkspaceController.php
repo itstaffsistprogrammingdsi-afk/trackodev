@@ -41,15 +41,23 @@ public function index(
         ->where('divisions.id', $division->id)
         ->exists();
 
-    abort_unless(
-        $hasDivision,
-        403,
-        'Anda tidak memiliki akses ke division ini.'
-    );
+    $query = $division->workspaces();
+
+    if (! $hasDivision) {
+        $query->whereHas('members', function ($query) use ($user) {
+            $query->where('users.id', $user->id);
+        });
+
+        abort_unless(
+            (clone $query)->exists(),
+            403,
+            'Anda tidak memiliki akses ke division ini.'
+        );
+    }
 
     return response()->json([
         'data' => WorkspaceResource::collection(
-            $division->workspaces()->get()
+            $query->get()
         )
     ]);
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Bell,
   CheckCheck,
@@ -14,6 +15,10 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { createEcho } from "@/lib/echo";
 import { REALTIME_DATA_CHANGED_EVENT } from "@/lib/realtimeEvents";
+import {
+  APP_RESUMED_EVENT,
+  showNativeNotification,
+} from "@/lib/mobileApp";
 
 interface Notification {
   id: string;
@@ -36,6 +41,8 @@ export default function NotificationBell() {
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const dropdownRef =
+    useRef<HTMLDivElement>(null);
+  const panelRef =
     useRef<HTMLDivElement>(null);
 
   const loadNotifications = async () => {
@@ -79,6 +86,7 @@ export default function NotificationBell() {
           incoming,
           ...current.filter((item) => item.id !== incoming.id),
         ]);
+        void showNativeNotification(incoming);
       }
     ).error((error: unknown) => {
       console.error("Notification channel authorization failed", error);
@@ -123,9 +131,12 @@ export default function NotificationBell() {
     };
 
     document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener(APP_RESUMED_EVENT, loadNotifications);
 
-    return () =>
+    return () => {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener(APP_RESUMED_EVENT, loadNotifications);
+    };
   }, []);
 
   useEffect(() => {
@@ -135,6 +146,9 @@ export default function NotificationBell() {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(
+          event.target as Node
+        ) &&
+        !panelRef.current?.contains(
           event.target as Node
         )
       ) {
@@ -239,8 +253,12 @@ export default function NotificationBell() {
       </button>
 
       {/* Dropdown */}
-      {open && (
-        <div className="absolute -right-3 z-50 mt-3 flex max-h-[min(34rem,calc(100dvh-6rem))] w-[min(calc(100vw-1.5rem),26.25rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:right-0">
+      {open &&
+        createPortal(
+        <div
+          ref={panelRef}
+          className="fixed inset-x-0 bottom-0 z-[100] flex max-h-[min(80dvh,34rem)] w-auto flex-col overflow-hidden rounded-t-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-20 sm:w-[26.25rem] sm:rounded-2xl"
+        >
           {/* Header */}
           <div className="flex items-start justify-between gap-3 border-b border-gray-200 px-4 py-4 dark:border-gray-800 sm:items-center sm:px-5">
             <div>
@@ -303,7 +321,7 @@ export default function NotificationBell() {
                     key={
                       notification.id
                     }
-                    className={`w-full text-left px-5 py-4 transition hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 ${
+                    className={`w-full border-b border-gray-100 px-4 py-4 text-left transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800 sm:px-5 ${
                       !notification.is_read
                         ? "bg-indigo-50/60 dark:bg-indigo-900/10"
                         : ""
@@ -315,8 +333,8 @@ export default function NotificationBell() {
                       )}
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-3">
-                          <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                          <h4 className="break-words text-sm font-medium text-gray-900 dark:text-white sm:truncate">
                             {
                               notification.title
                             }
@@ -343,7 +361,7 @@ export default function NotificationBell() {
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-800">
+          <div className="border-t border-gray-200 px-5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 dark:border-gray-800 sm:py-3">
             <button
               type="button"
               onClick={() => {
@@ -355,7 +373,8 @@ export default function NotificationBell() {
               Lihat semua notifikasi
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

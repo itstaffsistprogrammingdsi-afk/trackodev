@@ -419,9 +419,6 @@ const handleLeaveImpersonation = async () => {
       role = currentUser.role.name;
     }
 
-    console.log("RESTORE ADMIN :", currentUser);
-    console.log("ROLE :", role);
-
     /**
      * Beri waktu AuthContext membaca token baru
      * sebelum berpindah halaman.

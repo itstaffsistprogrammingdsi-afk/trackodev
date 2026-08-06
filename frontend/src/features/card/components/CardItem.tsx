@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -16,9 +16,12 @@ interface Props {
   card: Card;
   onRefresh?: () => void;
   onOpen?: (card: Card) => void;
+  moveTargets?: Array<{ id: string; name: string }>;
+  onMove?: (card: Card, boardId: string) => Promise<void>;
 }
 
-export default function CardItem({ card, onOpen }: Props) {
+export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Props) {
+  const [isMoving, setIsMoving] = useState(false);
   const {
     attributes,
     listeners,
@@ -126,6 +129,20 @@ export default function CardItem({ card, onOpen }: Props) {
     }
   };
 
+  const handleMove = async (boardId: string) => {
+    if (!boardId || boardId === card.board_id || !onMove) return;
+
+    try {
+      setIsMoving(true);
+      await onMove(card, boardId);
+    } catch (error) {
+      console.error("Move card failed", error);
+      alert("Card gagal dipindahkan. Silakan coba lagi.");
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
   // =========================================
   // RENDER
   // =========================================
@@ -192,7 +209,7 @@ export default function CardItem({ card, onOpen }: Props) {
         </p>
 
         {/* FOOTER */}
-        <div className="flex items-end justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
           {/* LEFT */}
           <div className="min-w-0">
             {formattedDate && (
@@ -233,6 +250,36 @@ export default function CardItem({ card, onOpen }: Props) {
             </div>
           )}
         </div>
+
+        {onMove && moveTargets.length > 0 && (
+          <div
+            className="border-t border-slate-100 pt-2 sm:hidden"
+            onPointerDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onMouseUp={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              Pindah status
+            </label>
+            <select
+              value={card.board_id}
+              disabled={isMoving}
+              aria-label={`Pindahkan ${card.title} ke status lain`}
+              onChange={(event) => void handleMove(event.target.value)}
+              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60"
+            >
+              <option value={card.board_id}>
+                {isMoving ? "Memindahkan..." : "Pilih tujuan"}
+              </option>
+              {moveTargets.map((target) => (
+                <option key={target.id} value={target.id}>
+                  {target.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
     </div>
   );

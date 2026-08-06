@@ -219,11 +219,19 @@ class DivisionController extends Controller
         $user = auth()->user();
 
         $divisions = Division::query()
-            ->whereHas('users', function ($query) use ($user) {
-                $query->where('users.id', $user->id);
+            ->where(function ($query) use ($user) {
+                $query
+                    ->whereHas('users', fn ($members) => $members->where('users.id', $user->id))
+                    ->orWhereHas('workspaces.members', fn ($members) => $members->where('users.id', $user->id));
             })
-            ->with('users')
             ->get();
+
+        $directDivisionIds = $user->divisions()->pluck('divisions.id');
+        $divisions->each(function (Division $division) use ($directDivisionIds) {
+            if ($directDivisionIds->contains($division->id)) {
+                $division->load('users');
+            }
+        });
 
         return response()->json([
             'data' => DivisionResource::collection($divisions),

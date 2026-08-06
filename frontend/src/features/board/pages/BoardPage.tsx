@@ -154,6 +154,39 @@ export default function BoardPage() {
     return null;
   };
 
+  const handleSelectMove = async (card: Card, targetBoardId: string) => {
+    if (card.board_id === targetBoardId) return;
+
+    const source = findCard(card.id);
+    const target = boards.find((board) => board.id === targetBoardId);
+    if (!source || !target) return;
+
+    setBoards((current) =>
+      current.map((board) => {
+        if (board.id === source.board.id) {
+          return { ...board, cards: board.cards.filter((item) => item.id !== card.id) };
+        }
+
+        if (board.id === targetBoardId) {
+          return {
+            ...board,
+            cards: [...board.cards, { ...card, board_id: targetBoardId }],
+          };
+        }
+
+        return board;
+      }),
+    );
+
+    try {
+      await moveCard(card.id, targetBoardId);
+      await refetch();
+    } catch (error) {
+      await refetch();
+      throw error;
+    }
+  };
+
   // =========================================
   // DRAG START
   // =========================================
@@ -521,6 +554,10 @@ export default function BoardPage() {
               onOpenCard={setSelectedCard}
               onEdit={() => setEditingBoard(board)}
               onDelete={() => setDeletingBoard(board)}
+              moveTargets={boards
+                .filter((target) => target.id !== board.id)
+                .map((target) => ({ id: target.id, name: target.name }))}
+              onMoveCard={handleSelectMove}
             />
           ))}
         </div>

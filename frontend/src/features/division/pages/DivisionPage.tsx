@@ -10,8 +10,9 @@ import ManageDivisionMembersModal
   import { useAuth } from '@/context/AuthContext';
 
 export default function DivisionPage() {
-  const { data, isLoading } = useDivisions()
-  const { can } = useAuth();
+  const { can, hasRole } = useAuth();
+  const ownOnly = !hasRole("super_admin") && !can("division.view");
+  const { data, isLoading } = useDivisions(ownOnly)
   const [open, setOpen] = useState(false)
   const [selectedDivision, setSelectedDivision] = useState<Division | null>(null)
   const [
