@@ -232,6 +232,19 @@ export default function CardDetailSidebar({
                 />
               </div>
             )}
+            {showDueDate && (
+              <div className="mt-2 hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 shadow-sm transition-all md:block dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Select Due Date
+                </label>
+                <input
+                  type="datetime-local"
+                  value={dueDate}
+                  onChange={(event) => setDueDate(event.target.value)}
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
+                />
+              </div>
+            )}
           </div>
 
           {/* RESULT ATTACHMENTS */}

@@ -148,6 +148,29 @@ export default function CardDetailModal({
 
   if (!isOpen || !card) return null;
 
+  const cardHeader = (
+    <CardDetailHeader
+      cardId={detail?.id ?? card.id}
+      title={detail?.title ?? card.title}
+      assignees={detail?.assignees}
+      brands={detail?.brands ?? card.brands ?? []}
+      labels={detail?.labels ?? card.labels ?? []}
+      priority={detail?.priority ?? card.priority}
+      dueDate={
+        dueDate
+          ? new Date(dueDate).toLocaleString("id-ID", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })
+          : ""
+      }
+      setDetail={setDetail}
+      onUpdated={fetchDetail}
+      onClose={onClose}
+      onToggleMembers={() => setShowMembers((prev) => !prev)}
+    />
+  );
+
   return (
     <div
       onClick={onClose}
