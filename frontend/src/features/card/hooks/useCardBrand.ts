@@ -30,14 +30,15 @@ export function useCardBrand(
   const fetchBrands = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get("/brands", {
-        params: campaignId ? { campaign_id: campaignId } : undefined,
-      });
+      // brand.view adalah akses read-only ke katalog. Jangan menyaring katalog
+      // berdasarkan card di sini karena brand dari campaign lain tetap perlu
+      // terlihat; BrandSection yang menentukan mana yang dapat di-attach.
+      const res = await api.get("/brands");
       setBrands(res.data?.data ?? res.data ?? []);
     } finally {
       setLoading(false);
     }
-  }, [campaignId]);
+  }, []);
 
   // =========================================
   // CREATE + ATTACH

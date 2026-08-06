@@ -292,7 +292,6 @@ export default function BrandSection({
 
         {paginatedBrands.map((b) => {
           const active = isAttached(b.id);
-
           return (
             <div
               key={b.id}

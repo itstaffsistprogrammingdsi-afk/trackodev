@@ -149,24 +149,34 @@ class SystemNegativeFlowTest extends TestCase
         ]);
     }
 
-    public function test_brand_from_another_campaign_cannot_be_attached_to_an_accessible_card(): void
+    public function test_brand_from_another_users_division_can_be_attached_to_an_accessible_card(): void
     {
-        $user = $this->userWithRole(User::ROLE_USER);
-        $first = $this->createProject($user, 'First');
-        $second = $this->createProject($user, 'Second');
+        $brandOwner = $this->userWithRole(User::ROLE_USER);
+        $cardOwner = $this->userWithRole(User::ROLE_USER);
+        $source = $this->createProject($brandOwner, 'Brand source');
+        $target = $this->createProject($cardOwner, 'Card target');
         $foreignBrand = Brand::create([
-            'campaign_id' => $second['campaign']->id,
+            'campaign_id' => $source['campaign']->id,
             'name' => 'Foreign brand',
         ]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($cardOwner);
 
         $this->postJson(
-            '/api/cards/'.$first['card']->id.'/brands/'.$foreignBrand->id.'/attach'
-        )->assertUnprocessable();
+            '/api/cards/'.$target['card']->id.'/brands/'.$foreignBrand->id.'/attach'
+        )->assertOk();
+
+        $this->assertDatabaseHas('brand_card', [
+            'card_id' => $target['card']->id,
+            'brand_id' => $foreignBrand->id,
+        ]);
+
+        $this->deleteJson(
+            '/api/cards/'.$target['card']->id.'/brands/'.$foreignBrand->id.'/detach'
+        )->assertOk();
 
         $this->assertDatabaseMissing('brand_card', [
-            'card_id' => $first['card']->id,
+            'card_id' => $target['card']->id,
             'brand_id' => $foreignBrand->id,
         ]);
     }

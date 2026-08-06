@@ -126,6 +126,7 @@ export type Brand = {
   id: string;
   name: string;
   color: string;
+  campaign_id?: string;
 };
 
 
