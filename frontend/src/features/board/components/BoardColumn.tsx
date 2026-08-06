@@ -210,7 +210,7 @@ export default function BoardColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`flex max-h-full w-full sm:w-80 shrink-0 flex-col rounded-2xl border bg-slate-50/70 shadow-sm backdrop-blur-xs transition-all duration-200 ${
+      className={`flex max-h-none w-full shrink-0 flex-col rounded-2xl border bg-slate-50/70 shadow-sm backdrop-blur-xs transition-all duration-200 md:max-h-full md:w-80 ${
         isOver
           ? "border-blue-400 bg-blue-50/30 ring-4 ring-blue-100"
           : "border-slate-200/80 hover:border-slate-300"
@@ -244,7 +244,7 @@ export default function BoardColumn({
                 aria-label="Column options"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-700 focus:outline-none"
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-700 focus:outline-none md:h-auto md:w-auto md:rounded-lg md:p-1.5"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="12" cy="5" r="1.75" />
@@ -317,7 +317,7 @@ export default function BoardColumn({
           <button
             type="button"
             onClick={() => setIsAdding(true)}
-            className="group flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-300/80 bg-white/60 px-3 py-2 text-xs font-semibold text-slate-500 shadow-xs transition-all duration-150 hover:border-blue-400 hover:bg-white hover:text-blue-600 hover:shadow-md active:scale-[0.99]"
+            className="group flex min-h-12 w-full items-center gap-2 rounded-xl border border-dashed border-slate-300/80 bg-white/60 px-3 py-2 text-sm font-semibold text-slate-500 shadow-xs transition-all duration-150 hover:border-blue-400 hover:bg-white hover:text-blue-600 hover:shadow-md active:scale-[0.99] md:min-h-0 md:text-xs"
           >
             <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-slate-100 transition-colors group-hover:bg-blue-50 group-hover:text-blue-600">
               <svg
@@ -347,7 +347,7 @@ export default function BoardColumn({
                     resetForm();
                     setIsAdding(false);
                   }}
-                  className="rounded-lg px-2.5 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-700"
+                  className="min-h-10 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-700 md:min-h-0"
                 >
                   Batal
                 </button>
@@ -356,7 +356,7 @@ export default function BoardColumn({
                   type="button"
                   onClick={handleCreate}
                   disabled={loading || !title.trim()}
-                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-xs transition-all hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                  className="flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-xs transition-all hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none md:min-h-0"
                 >
                   {loading && (
                     <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -390,7 +390,7 @@ export default function BoardColumn({
               {/* DATE PICKER */}
               <div
                 onClick={handleOpenDatePicker}
-                className="relative flex h-8 cursor-pointer items-center rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 transition-colors hover:border-slate-300 hover:bg-slate-100"
+                className="relative flex h-11 flex-1 cursor-pointer items-center rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 transition-colors hover:border-slate-300 hover:bg-slate-100 md:h-8 md:flex-none md:rounded-lg"
               >
                 <svg
                   className="mr-1.5 h-3.5 w-3.5 shrink-0 text-slate-400"
@@ -419,7 +419,7 @@ export default function BoardColumn({
                 <button
                   type="button"
                   onClick={() => setOpenPriority((v) => !v)}
-                  className="flex h-8 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="flex h-11 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 md:h-8 md:rounded-lg"
                 >
                   <div className="flex items-center gap-1.5">
                     <span className={`h-2 w-2 rounded-full ${PRIORITY_CONFIG[priority].dot}`} />
@@ -480,7 +480,7 @@ export default function BoardColumn({
               <button
                 type="button"
                 onClick={() => setShowMembers((v) => !v)}
-                className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                className={`flex h-11 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-medium transition-colors md:h-8 md:rounded-lg ${
                   showMembers || selectedUsers.length > 0
                     ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
                     : "border-slate-200 bg-slate-50/80 text-slate-600 hover:border-slate-300 hover:bg-slate-100"
@@ -553,7 +553,7 @@ export default function BoardColumn({
       </div>
 
       {/* CARDS CONTAINER (SCROLLABLE) */}
-      <div className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar">
+      <div className="flex-none overflow-visible px-3 pb-3 md:flex-1 md:overflow-y-auto custom-scrollbar">
         <SortableContext
           items={board.cards.map((c) => c.id)}
           strategy={verticalListSortingStrategy}

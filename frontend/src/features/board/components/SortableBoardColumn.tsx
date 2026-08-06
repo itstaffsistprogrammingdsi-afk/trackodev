@@ -16,9 +16,16 @@ type Props = {
   onMoveCard?: (card: Card, boardId: string) => Promise<void>;
   onEdit?: () => void;
   onDelete?: () => void;
+  disableDrag?: boolean;
+  fullWidth?: boolean;
 };
 
-export default function SortableBoardColumn({ board, ...columnProps }: Props) {
+export default function SortableBoardColumn({
+  board,
+  disableDrag = false,
+  fullWidth = false,
+  ...columnProps
+}: Props) {
   const isLocked = isBoardOrderLocked(board);
   const {
     attributes,
@@ -30,14 +37,18 @@ export default function SortableBoardColumn({ board, ...columnProps }: Props) {
   } = useSortable({
     id: getBoardSortableId(board.id),
     data: { entityType: "board", board },
-    disabled: isLocked,
+    disabled: isLocked || disableDrag,
   });
 
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`w-[85vw] max-w-[320px] shrink-0 sm:w-[320px] sm:max-w-none ${
+      className={`${
+        fullWidth
+          ? "w-full max-w-none"
+          : "w-[85vw] max-w-[320px] shrink-0 sm:w-[320px] sm:max-w-none"
+      } ${
         isDragging ? "z-20 opacity-40" : ""
       }`}
     >
@@ -45,7 +56,7 @@ export default function SortableBoardColumn({ board, ...columnProps }: Props) {
         board={board}
         {...columnProps}
         dragHandle={
-          isLocked ? (
+          disableDrag ? undefined : isLocked ? (
             <span
               title="Posisi column ini dikunci"
               aria-label={`Column ${board.name} tidak dapat dipindahkan`}
