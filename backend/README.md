@@ -66,3 +66,27 @@ php artisan app:sync-hris-users
 
 php artisan schedule:work
 php artisan queue:work
+
+## Deployment dan clear cache server
+
+Perubahan API/backend harus ikut di-upload; meng-upload folder `frontend/dist`
+saja hanya memperbarui tampilan frontend. Setelah file backend terbaru berada di
+server, jalankan dari folder `backend`:
+
+```bash
+php artisan optimize:clear
+php artisan permission:cache-reset
+php artisan queue:restart
+```
+
+Jika production memang memakai cache konfigurasi dan route, bangun kembali
+cache setelah perintah di atas:
+
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+Upload seluruh isi `frontend/dist` (termasuk `index.html` dan folder `assets`),
+lalu lakukan hard refresh browser agar `index.html` lama tidak dipakai lagi.

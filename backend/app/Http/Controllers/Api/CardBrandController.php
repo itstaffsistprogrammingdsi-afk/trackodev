@@ -13,7 +13,7 @@ class CardBrandController extends Controller
 {
     public function attach(Request $request, Card $card, Brand $brand)
     {
-        $this->authorizePair($request, $card, $brand);
+        $this->authorizeCard($request, $card);
         $card->brands()->syncWithoutDetaching([
             $brand->id,
         ]);
@@ -35,7 +35,7 @@ class CardBrandController extends Controller
 
     public function detach(Request $request, Card $card, Brand $brand)
     {
-        $this->authorizePair($request, $card, $brand);
+        $this->authorizeCard($request, $card);
         $card->brands()->detach($brand->id);
 
         ActivityLogService::log(
@@ -53,19 +53,12 @@ class CardBrandController extends Controller
         ]);
     }
 
-    private function authorizePair(Request $request, Card $card, Brand $brand): void
+    private function authorizeCard(Request $request, Card $card): void
     {
         abort_unless(
-            ResourceAccess::card($request->user(), $card)
-                && ResourceAccess::brand($request->user(), $brand),
+            ResourceAccess::card($request->user(), $card),
             403,
             'Unauthorized'
-        );
-
-        abort_unless(
-            $card->board?->campaign_id === $brand->campaign_id,
-            422,
-            'Brand harus berasal dari campaign yang sama dengan card.'
         );
     }
 }
