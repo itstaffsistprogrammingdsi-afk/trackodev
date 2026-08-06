@@ -120,7 +120,11 @@ class SystemNegativeFlowTest extends TestCase
         $this->deleteJson('/api/tasks/'.$task->id)->assertForbidden();
         $this->putJson('/api/subtasks/'.$subtask->id, ['title' => 'Stolen'])->assertForbidden();
         $this->getJson('/api/cards/'.$project['card']->id.'/activities')->assertForbidden();
-        $this->getJson('/api/brands/'.$brand->id)->assertForbidden();
+        // brand.view memang memberi akses read-only ke katalog. Mutation dan
+        // attach tetap harus mengikuti akses card/campaign di bawah ini.
+        $this->getJson('/api/brands/'.$brand->id)
+            ->assertOk()
+            ->assertJsonPath('id', $brand->id);
         $this->getJson('/api/attachments/'.$attachment->id.'/download')->assertForbidden();
         $this->deleteJson('/api/attachments/'.$attachment->id)->assertForbidden();
         $this->postJson('/api/cards/'.$project['card']->id.'/labels', [

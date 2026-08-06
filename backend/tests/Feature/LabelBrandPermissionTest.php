@@ -137,7 +137,7 @@ class LabelBrandPermissionTest extends TestCase
             ->assertJsonPath('id', $brand->id);
     }
 
-    public function test_user_only_sees_brands_from_campaigns_they_can_access(): void
+    public function test_brand_view_permission_can_read_catalog_without_campaign_membership(): void
     {
         $this->seed(PermissionSeeder::class);
 
@@ -148,18 +148,21 @@ class LabelBrandPermissionTest extends TestCase
 
         [$allowedCampaign, $allowedBrand] = $this->createCampaignBrand($owner, 'Allowed Brand');
         [$hiddenCampaign, $hiddenBrand] = $this->createCampaignBrand($owner, 'Hidden Brand');
-        $allowedCampaign->members()->attach($user->id);
-
         Sanctum::actingAs($user);
 
         $this->getJson('/api/brands')
             ->assertOk()
             ->assertJsonFragment(['id' => $allowedBrand->id])
-            ->assertJsonMissing(['id' => $hiddenBrand->id]);
+            ->assertJsonFragment(['id' => $hiddenBrand->id]);
 
         $this->getJson("/api/brands?campaign_id={$hiddenCampaign->id}")
             ->assertOk()
-            ->assertJsonCount(0);
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $hiddenBrand->id);
+
+        $this->getJson("/api/brands/{$allowedBrand->id}")
+            ->assertOk()
+            ->assertJsonPath('id', $allowedBrand->id);
     }
 
     private function createCampaignBrand(User $owner, string $brandName): array
