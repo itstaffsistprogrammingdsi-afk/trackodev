@@ -439,10 +439,6 @@ const AppSidebar: React.FC = () => {
                         name: "My Divisions",
                         path: "/divisions",
                       },
-                      ...(accessibleDivisions ?? []).map((division) => ({
-                        name: division.name,
-                        path: `/divisions/${division.id}`,
-                      })),
                     ]),
                 {
                   name: "Workspace",
@@ -547,7 +543,7 @@ const AppSidebar: React.FC = () => {
         },
       ];
     }
-  }, [accessibleDivisions, divisionId, workspaceId, campaignId, can, isSuperAdmin]);
+  }, [divisionId, workspaceId, campaignId, can, isSuperAdmin]);
 
   /* ---------------------------------------------------------------------- */
   /*                             ACTIVE MATCHER                             */

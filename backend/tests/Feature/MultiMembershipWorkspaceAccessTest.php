@@ -67,6 +67,17 @@ class MultiMembershipWorkspaceAccessTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['id' => $joinedWorkspace->id])
             ->assertJsonMissing(['id' => $otherWorkspace->id]);
+
+        $this->getJson("/api/workspaces/{$directWorkspaceA->id}")
+            ->assertOk()
+            ->assertJsonFragment(['id' => $directWorkspaceA->id]);
+
+        $this->getJson("/api/workspaces/{$joinedWorkspace->id}")
+            ->assertOk()
+            ->assertJsonFragment(['id' => $joinedWorkspace->id]);
+
+        $this->getJson("/api/workspaces/{$otherWorkspace->id}")
+            ->assertForbidden();
     }
 
     public function test_user_cannot_list_workspaces_without_any_membership(): void
