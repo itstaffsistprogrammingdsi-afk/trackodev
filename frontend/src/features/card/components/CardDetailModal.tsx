@@ -176,37 +176,54 @@ export default function CardDetailModal({
       onClick={onClose}
       className="
         fixed inset-0 z-[9999] flex items-center justify-center 
-        bg-slate-900/60 backdrop-blur-md overflow-hidden md:overflow-y-auto
+        bg-slate-900/60 backdrop-blur-md overflow-y-auto 
         p-0 md:p-4 lg:p-6 transition-all duration-300 animate-in fade-in
       "
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className="
-          relative flex h-[100dvh] w-full max-w-7xl flex-col md:my-auto md:block md:h-auto md:min-h-0
+          relative min-h-screen md:min-h-0 my-0 md:my-auto w-full max-w-7xl 
           bg-slate-50 dark:bg-slate-950 rounded-none md:rounded-3xl 
           shadow-2xl border border-slate-200/80 dark:border-slate-800 
           overflow-hidden transition-all duration-300
         "
       >
-        <div className="relative z-20 shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl md:hidden dark:border-slate-800 dark:bg-slate-900/90">
-          {cardHeader}
-        </div>
-
         {/* ========================================= */}
         {/* MAIN LAYOUT WRAPPER */}
         {/* ========================================= */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-none md:overflow-visible xl:flex-row">
+        <div className="flex flex-col xl:flex-row">
           
           {/* ========================================= */}
           {/* LEFT CONTENT AREA */}
           {/* ========================================= */}
-          <div className="order-2 min-w-0 flex-1 md:order-none">
-            <div className="sticky top-0 z-20 hidden border-b border-slate-200/80 bg-white/80 backdrop-blur-xl md:block dark:border-slate-800 dark:bg-slate-900/80">
-              {cardHeader}
+          <div className="flex-1 min-w-0">
+            {/* STICKY HEADER */}
+            <div className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800">
+              <CardDetailHeader
+                cardId={detail?.id ?? card.id}
+                title={detail?.title ?? card.title}
+                assignees={detail?.assignees}
+                brands={detail?.brands ?? card.brands ?? []}
+                labels={detail?.labels ?? card.labels ?? []}
+                priority={detail?.priority ?? card.priority}
+                dueDate={
+                  dueDate
+                    ? new Date(dueDate).toLocaleString("id-ID", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })
+                    : ""
+                }
+                setDetail={setDetail}
+                onUpdated={fetchDetail}
+                onClose={onClose}
+                onToggleMembers={() => setShowMembers((prev) => !prev)}
+              />
             </div>
+
             {/* INNER BODY CONTENT */}
-            <div className="space-y-4 p-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] md:space-y-6 md:p-6 lg:space-y-8 lg:p-8">
+            <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
               {loading ? (
                 <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
@@ -217,7 +234,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* DESCRIPTION SECTION */}
                   {/* ========================================= */}
-                  <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl sm:p-6">
+                  <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm transition-all">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
                         <AlignLeft size={18} />
@@ -245,7 +262,7 @@ export default function CardDetailModal({
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Add a detailed description..."
                       className="
-                        w-full min-h-[112px] sm:min-h-[160px] rounded-2xl border border-slate-200 dark:border-slate-700/80
+                        w-full min-h-[160px] rounded-2xl border border-slate-200 dark:border-slate-700/80 
                         bg-slate-50/50 dark:bg-slate-800/40 p-4 text-sm text-slate-800 dark:text-slate-100 
                         placeholder-slate-400 resize-y transition-all duration-200 
                         focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400
@@ -429,13 +446,13 @@ export default function CardDetailModal({
           {/* ========================================= */}
           <div
             className="
-              order-1 w-full shrink-0 md:order-none md:border-b-0 md:border-t xl:w-[340px] xl:max-w-[340px]
-              border-b xl:border-t-0 xl:border-l border-slate-200/80 dark:border-slate-800
+              w-full xl:w-[340px] xl:max-w-[340px] shrink-0 
+              border-t xl:border-t-0 xl:border-l border-slate-200/80 dark:border-slate-800 
               bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl 
-              xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto
+              xl:sticky xl:top-0 xl:h-screen overflow-y-auto
             "
           >
-            <div className="p-3 sm:p-5 lg:p-6">
+            <div className="p-4 sm:p-5 lg:p-6">
               <CardDetailSidebar
                 card={detail || card}
                 users={users}
