@@ -4,10 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Workspace extends Model
 {
@@ -82,11 +81,9 @@ class Workspace extends Model
     |--------------------------------------------------------------------------
     | ACCESS CONTROL
     |--------------------------------------------------------------------------
-    | Cross-division invite direstui bebas: seorang user bisa jadi member
-    | workspace ini meski divisi utamanya berbeda (tersync otomatis saat
-    | diundang ke salah satu campaign di workspace ini). Karena itu, akses
-    | User & fallback Admin dicek lewat membership workspace, bukan hanya
-    | lewat kecocokan division_id.
+    | Member langsung division pemilik boleh melihat semua workspace di
+    | division tersebut. Untuk undangan lintas division, akses tetap dibatasi
+    | hanya pada workspace tempat user tercatat sebagai member.
     |--------------------------------------------------------------------------
     */
 
@@ -96,26 +93,15 @@ class Workspace extends Model
             return true;
         }
 
-        if ($user->isAdmin()) {
+        $belongsToOwningDivision = $user->divisions()
+            ->where('divisions.id', $this->division_id)
+            ->exists();
 
-            // Admin di divisi pemilik workspace ini punya akses penuh
-            $ownsDivision = $user->divisions()
-                ->where('divisions.id', $this->division_id)
-                ->exists();
-
-            if ($ownsDivision) {
-                return true;
-            }
-
-            // Admin juga bisa jadi member lintas divisi (mis. diundang ke
-            // campaign di workspace ini), jadi tetap dicek sebagai member
-            return $this->members()
-                ->where('users.id', $user->id)
-                ->exists();
+        if ($belongsToOwningDivision) {
+            return true;
         }
 
-        // USER: akses berdasarkan keanggotaan workspace, termasuk hasil
-        // undangan lintas divisi
+        // Undangan lintas division harus memiliki membership workspace.
         return $this->members()
             ->where('users.id', $user->id)
             ->exists();
