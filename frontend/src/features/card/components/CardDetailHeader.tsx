@@ -80,7 +80,7 @@ export default function CardDetailHeader({
   };
 
   return (
-    <div className="w-full bg-white px-4 py-3.5 transition-colors sm:px-8 sm:py-5 dark:bg-slate-900">
+    <div className="w-full border-b border-slate-200/80 bg-white px-4 py-5 transition-colors sm:px-8 sm:py-6 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-start justify-between gap-3 sm:gap-6">
         <div className="min-w-0 flex-1">
           {/* ========================================= */}
@@ -138,8 +138,11 @@ export default function CardDetailHeader({
                 </div>
               )}
 
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Detail card dan progres pekerjaan
+              <p className="mt-1 text-xs text-slate-500 sm:text-sm dark:text-slate-400">
+                in list{" "}
+                <span className="font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 dark:text-slate-200 dark:decoration-slate-700">
+                  Active Support Ticket
+                </span>
               </p>
             </div>
           </div>
@@ -147,9 +150,9 @@ export default function CardDetailHeader({
           {/* ========================================= */}
           {/* METADATA SECTION (VERTICAL LAYOUT) */}
           {/* ========================================= */}
-          <div className="mt-4 grid grid-cols-2 gap-2.5 pl-0 sm:grid-cols-4 sm:pl-9">
+          <div className="mt-6 flex flex-col gap-5 pl-0 sm:pl-9">
             {/* MEMBERS */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Members
               </span>
@@ -179,7 +182,7 @@ export default function CardDetailHeader({
             </div>
 
             {/* BRAND */}
-            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:col-span-2 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Brand
               </span>
@@ -204,7 +207,7 @@ export default function CardDetailHeader({
             </div>
 
             {/* LABELS */}
-            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:col-span-2 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Labels
               </span>
@@ -227,36 +230,39 @@ export default function CardDetailHeader({
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                Priority
-              </span>
+<div className="space-y-0.5">
+  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+    Priority
+  </span>
 
-              <div className="mt-1 w-fit origin-left scale-90">
-                <PrioritySection
-                  priority={priority}
-                  onChange={async (newPriority) => {
-                    try {
-                      const updated = await updateCard(cardId, {
-                        priority: newPriority,
-                      });
+  <div className="w-fit scale-90 origin-left">
+    <PrioritySection
+      priority={priority}
+      onChange={async (newPriority) => {
+        try {
+          const updated = await updateCard(cardId, {
+            priority: newPriority,
+          });
 
-                      setDetail(updated);
-                      await onUpdated();
-                    } catch (error) {
-                      console.error("Failed to update priority:", error);
-                    }
-                  }}
-                />
-              </div>
-            </div>
+          setDetail(updated);
+          await onUpdated();
+        } catch (error) {
+          console.error(
+            "Failed to update priority:",
+            error
+          );
+        }
+      }}
+    />
+  </div>
+</div>
 
             {/* DUE DATE */}
-            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:col-span-1 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Due Date
               </span>
-              <div className="mt-1.5 flex min-h-8 items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+              <div className="inline-flex w-max items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 <Clock3
                   size={14}
                   className={
@@ -277,7 +283,7 @@ export default function CardDetailHeader({
         <button
           onClick={onClose}
           className="
-            flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400
+            flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 
             transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 
             dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300
           "
