@@ -6,6 +6,8 @@ import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 interface UseCardBrandReturn {
   brands: Brand[];
   loading: boolean;
+  error: string;
+  fetchBrands: () => Promise<void>;
 
   attachBrand: (brandId: string) => Promise<void>;
   detachBrand: (brandId: string) => Promise<void>;
@@ -20,6 +22,9 @@ export function useCardBrand(
   const realtimeRevision = useRealtimeRevision(["ActivityLog", "Brand"]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const campaignId =
+    card?.campaign_id ?? card?.board?.campaign_id ?? card?.campaign?.id;
 
   // =========================================
   // FETCH ALL BRANDS
@@ -27,12 +32,18 @@ export function useCardBrand(
   const fetchBrands = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get("/brands");
+      setError("");
+      const res = await api.get("/brands", {
+        params: campaignId ? { campaign_id: campaignId } : undefined,
+      });
       setBrands(res.data?.data ?? res.data ?? []);
+    } catch {
+      setBrands([]);
+      setError("Brand gagal dimuat. Periksa koneksi lalu coba lagi.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [campaignId]);
 
   // =========================================
   // CREATE + ATTACH
@@ -40,7 +51,6 @@ export function useCardBrand(
   const createAndAttach = async (name: string, color: string) => {
     if (!card) return;
 
-    const campaignId = card?.board?.campaign_id;
     if (!campaignId) {
       console.error("campaign_id tidak ditemukan");
       return;
@@ -124,6 +134,8 @@ export function useCardBrand(
   return {
     brands,
     loading,
+    error,
+    fetchBrands,
     attachBrand,
     detachBrand,
     createAndAttach,
