@@ -15,11 +15,6 @@ class BrandController extends Controller
     {
         $user = $request->user();
         $query = Brand::query()->latest();
-        $campaignId = $request->query('campaign_id');
-
-        if (is_string($campaignId) && $campaignId !== '') {
-            $query->where('campaign_id', $campaignId);
-        }
 
         if (! $user->isSuperAdmin()) {
             $query->whereIn(

@@ -11,7 +11,7 @@ class Board extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['campaign_id', 'name', 'type', 'color', 'order'];
+    protected $fillable = ['campaign_id', 'name','type', 'color', 'order'];
 
     public function campaign(): BelongsTo
     {
@@ -20,26 +20,21 @@ class Board extends Model
 
     public function cards(): HasMany
     {
-        return $this->hasMany(Card::class)
-            ->with([
-                'creator',
-                'assignees',
-                'labels',
-                'brands',
-            ])
-            ->orderBy('order');
+        return $this->hasMany(Card::class)->orderBy('order');
     }
 
     public function assignments()
-    {
-        return $this->hasMany(Assignment::class, 'board_id');
-    }
-
-    public function canBeAccessedBy(
-        User $user
-    ): bool {
-
-        return $this->campaign
-            ->canBeAccessedBy($user);
-    }
+{
+    return $this->hasMany(Assignment::class, 'board_id');
 }
+
+public function canBeAccessedBy(
+    User $user
+): bool {
+
+    return $this->campaign
+        ->canBeAccessedBy($user);
+}
+
+}
+
