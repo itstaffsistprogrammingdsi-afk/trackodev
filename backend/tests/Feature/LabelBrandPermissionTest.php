@@ -106,8 +106,80 @@ class LabelBrandPermissionTest extends TestCase
 
         $this->getJson("/api/cards/{$card->id}")
             ->assertOk()
+            ->assertJsonPath('data.campaign_id', $campaign->id)
             ->assertJsonPath('data.brands.0.id', $brand->id)
             ->assertJsonPath('data.brands.0.name', 'Priority Client')
             ->assertJsonPath('data.brands.0.color', '#2563eb');
+    }
+
+    public function test_cross_division_admin_can_view_brand_from_direct_campaign_membership(): void
+    {
+        $this->seed(PermissionSeeder::class);
+
+        $owner = User::factory()->create();
+        $owner->assignRole('super_admin');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        [$campaign, $brand] = $this->createCampaignBrand($owner, 'Admin Brand');
+        $campaign->members()->attach($admin->id);
+        $campaign->workspace->members()->attach($admin->id);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson("/api/brands?campaign_id={$campaign->id}")
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $brand->id);
+
+        $this->getJson("/api/brands/{$brand->id}")
+            ->assertOk()
+            ->assertJsonPath('id', $brand->id);
+    }
+
+    public function test_user_only_sees_brands_from_campaigns_they_can_access(): void
+    {
+        $this->seed(PermissionSeeder::class);
+
+        $owner = User::factory()->create();
+        $owner->assignRole('super_admin');
+        $user = User::factory()->create();
+        $user->assignRole('user');
+
+        [$allowedCampaign, $allowedBrand] = $this->createCampaignBrand($owner, 'Allowed Brand');
+        [$hiddenCampaign, $hiddenBrand] = $this->createCampaignBrand($owner, 'Hidden Brand');
+        $allowedCampaign->members()->attach($user->id);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/brands')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $allowedBrand->id])
+            ->assertJsonMissing(['id' => $hiddenBrand->id]);
+
+        $this->getJson("/api/brands?campaign_id={$hiddenCampaign->id}")
+            ->assertOk()
+            ->assertJsonCount(0);
+    }
+
+    private function createCampaignBrand(User $owner, string $brandName): array
+    {
+        $suffix = Str::lower(Str::random(8));
+        $division = Division::create([
+            'name' => "Division {$suffix}",
+            'slug' => "division-{$suffix}",
+        ]);
+        $workspace = $division->workspaces()->create(['name' => "Workspace {$suffix}"]);
+        $campaign = $workspace->campaigns()->create([
+            'name' => "Campaign {$suffix}",
+            'created_by' => $owner->id,
+        ]);
+        $brand = Brand::create([
+            'campaign_id' => $campaign->id,
+            'name' => $brandName,
+            'color' => '#2563eb',
+        ]);
+
+        return [$campaign, $brand];
     }
 }

@@ -74,8 +74,13 @@ public function canBeAccessedBy(
         return true;
     }
 
-    if ($user->isAdmin()) {
+    if ($this->created_by === $user->id || $this->members()
+        ->where('users.id', $user->id)
+        ->exists()) {
+        return true;
+    }
 
+    if ($user->isAdmin()) {
         return $user->divisions()
             ->where(
                 'divisions.id',
@@ -84,12 +89,7 @@ public function canBeAccessedBy(
             ->exists();
     }
 
-    return $this->members()
-        ->where(
-            'users.id',
-            $user->id
-        )
-        ->exists();
+    return false;
 }
 
 public function cards(): HasMany

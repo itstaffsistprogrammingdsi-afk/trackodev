@@ -232,75 +232,40 @@ class User extends Authenticatable
 
 public function accessibleCampaigns()
 {
-    // ========================================
-    // SUPER ADMIN
-    // ========================================
-
-    if ($this->isSuperAdmin()) {
-
-        return Campaign::query()
-            ->with([
-                'workspace',
-                'workspace.division',
-                'members',
-                'cards',
-                // 'cards.members',
-
-            ]);
-    }
-
-    // ========================================
-    // ADMIN
-    // ========================================
-
-    if ($this->isAdmin()) {
-
-        $divisionIds = $this->divisions()
-            ->pluck('divisions.id');
-
-        return Campaign::query()
-            ->with([
-                'workspace',
-                'workspace.division',
-                'members',
-                'cards',
-                'cards.members',
-                'cards.assignees',
-            ])
-            ->whereHas(
-                'workspace',
-                function ($query) use ($divisionIds) {
-
-                    $query->whereIn(
-                        'division_id',
-                        $divisionIds
-                    );
-                }
-            );
-    }
-
-    // ========================================
-    // USER
-    // ========================================
-
-    return Campaign::query()
+    $query = Campaign::query()
         ->with([
             'workspace',
             'workspace.division',
             'members',
             'cards',
-            'cards.members',
-        ])
-        ->whereHas(
-            'members',
-            function ($query) {
+            'cards.assignees',
+        ]);
 
-                $query->where(
-                    'users.id',
-                    $this->id
-                );
-            }
-        );
+    if ($this->isSuperAdmin()) {
+        return $query;
+    }
+
+    $userId = $this->id;
+    $divisionIds = $this->isAdmin()
+        ? $this->divisions()->pluck('divisions.id')
+        : collect();
+
+    return $query->where(function ($campaignQuery) use ($userId, $divisionIds) {
+        // Membership langsung tetap berlaku untuk semua role. Sebelumnya role
+        // admin hanya diperiksa lewat division sehingga undangan lintas division
+        // tidak pernah memperoleh brand/campaign yang memang ditugaskan kepadanya.
+        $campaignQuery
+            ->where('created_by', $userId)
+            ->orWhereHas('members', function ($memberQuery) use ($userId) {
+                $memberQuery->where('users.id', $userId);
+            });
+
+        if ($divisionIds->isNotEmpty()) {
+            $campaignQuery->orWhereHas('workspace', function ($workspaceQuery) use ($divisionIds) {
+                $workspaceQuery->whereIn('division_id', $divisionIds);
+            });
+        }
+    });
 }
 
 public function workspaces(): BelongsToMany

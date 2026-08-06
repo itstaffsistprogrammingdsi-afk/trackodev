@@ -14,7 +14,8 @@ class CardResource extends JsonResource
         return [
             'id'           => $this->id,
             'board_id'     => $this->board_id,
-            'campaign_id'  => $this->campaign_id,
+            'campaign_id'  => $this->campaign_id
+                ?? ($this->relationLoaded('board') ? $this->board?->campaign_id : null),
             'title'        => $this->title,
             'description'  => $this->description,
             'priority'     => $this->priority,
