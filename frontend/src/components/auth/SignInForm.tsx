@@ -26,7 +26,6 @@ export default function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [apiUrl, setApiUrl] = useState(getMobileApiUrl);
   const [loginError, setLoginError] = useState("");
   const androidApp = isAndroidApp();
 
@@ -38,8 +37,7 @@ export default function SignInForm() {
       setLoading(true);
 
       if (androidApp) {
-        const normalizedUrl = updateMobileApiUrl(apiUrl);
-        setApiUrl(normalizedUrl);
+        updateMobileApiUrl(getMobileApiUrl());
       }
 
       // 1. Panggil API login
@@ -115,26 +113,6 @@ export default function SignInForm() {
 
           <form onSubmit={handleLogin}>
             <div className="space-y-6">
-              {androidApp && (
-                <div className="rounded-xl border border-brand-100 bg-brand-25 p-4 dark:border-brand-800 dark:bg-brand-950/40">
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <Label>Alamat server</Label>
-                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-200">
-                      Android
-                    </span>
-                  </div>
-                  <Input
-                    type="url"
-                    placeholder="https://dev.tracko.dsicorp.id/api"
-                    value={apiUrl}
-                    onChange={(e) => setApiUrl(e.target.value)}
-                  />
-                  <p className="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                    Server utama sudah terisi. Ubah hanya jika memakai deployment Tracko lain.
-                  </p>
-                </div>
-              )}
-
               <div>
                 <Label>Email *</Label>
                 <Input
@@ -154,12 +132,15 @@ export default function SignInForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
-                  <span
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    aria-pressed={showPassword}
+                    className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:hover:bg-gray-800 dark:hover:text-gray-300"
                   >
                     {showPassword ? <EyeIcon /> : <EyeCloseIcon />}
-                  </span>
+                  </button>
                 </div>
               </div>
 
