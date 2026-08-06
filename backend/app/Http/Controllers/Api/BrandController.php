@@ -13,19 +13,11 @@ class BrandController extends Controller
 {
     public function index(Request $request)
     {
-        $user = $request->user();
         $query = Brand::query()->latest();
         $campaignId = $request->query('campaign_id');
 
         if (is_string($campaignId) && $campaignId !== '') {
             $query->where('campaign_id', $campaignId);
-        }
-
-        if (! $user->isSuperAdmin()) {
-            $query->whereIn(
-                'campaign_id',
-                $user->accessibleCampaigns()->select('campaigns.id')
-            );
         }
 
         return $query->get();
@@ -57,12 +49,9 @@ class BrandController extends Controller
         return response()->json($brand, 201);
     }
 
-    public function show(Request $request, string $id)
+    public function show(string $id)
     {
-        $brand = Brand::findOrFail($id);
-        abort_unless(ResourceAccess::brand($request->user(), $brand), 403, 'Unauthorized');
-
-        return response()->json($brand);
+        return response()->json(Brand::findOrFail($id));
     }
 
     public function update(Request $request, string $id)
