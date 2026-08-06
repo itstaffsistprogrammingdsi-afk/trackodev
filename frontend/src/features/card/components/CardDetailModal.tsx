@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Card } from "../types";
 
 import useDeleteCard from "../hooks/useDeleteCard";
@@ -19,7 +19,14 @@ import AttachmentSection from "./sections/AttachmentSection";
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
 
-import { AlignLeft, Clock3, Loader2, Sparkles } from "lucide-react";
+import {
+  AlignLeft,
+  Clock3,
+  Loader2,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from "lucide-react";
 
 interface Props {
   card: Card | null;
@@ -46,6 +53,14 @@ export default function CardDetailModal({
 
   const [showLabels, setShowLabels] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const closeModal = useCallback(() => {
+    setMobileSidebarOpen(false);
+    onClose();
+  }, [onClose]);
+
+  const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
 
   // =========================================
   // CARD DESCRIPTION
@@ -117,7 +132,7 @@ export default function CardDetailModal({
   // =========================================
   useEscape({
     isOpen,
-    onClose,
+    onClose: mobileSidebarOpen ? closeMobileSidebar : closeModal,
   });
 
   // =========================================
@@ -134,7 +149,7 @@ export default function CardDetailModal({
   // =========================================
   const { handleDelete } = useDeleteCard({
     cardId: card?.id,
-    onClose,
+    onClose: closeModal,
     onDeleted,
   });
 
@@ -148,35 +163,72 @@ export default function CardDetailModal({
 
   if (!isOpen || !card) return null;
 
+  const sidebarProps = {
+    card: detail || card,
+    users,
+    assignees: detail?.assignees,
+    brands: detail?.brands ?? [],
+    dueDate,
+    setDueDate,
+    showMembers,
+    setShowMembers,
+    showDueDate,
+    setShowDueDate,
+    memberSearch,
+    setMemberSearch,
+    handleAssign,
+    handleUnassign,
+    handleDelete,
+    setDetail,
+    showBrands,
+    setShowBrands,
+    showLabels,
+    setShowLabels,
+    attachments,
+    setAttachments,
+    attachmentLoading,
+    fetchAttachments,
+    briefAttachments,
+    setBriefAttachments,
+    briefLoading,
+    fetchBriefAttachments,
+    showResult,
+    setShowResult,
+    showBrief,
+    setShowBrief,
+  };
+
   return (
     <div
-      onClick={onClose}
+      onClick={closeModal}
       className="
-        fixed inset-0 z-[9999] flex items-center justify-center 
-        bg-slate-900/60 backdrop-blur-md overflow-y-auto 
-        p-0 md:p-4 lg:p-6 transition-all duration-300 animate-in fade-in
+        fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70
+        p-0 backdrop-blur-md transition-all duration-300 animate-in fade-in sm:p-4 lg:p-6
       "
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Detail card ${detail?.title ?? card.title}`}
         className="
-          relative min-h-screen md:min-h-0 my-0 md:my-auto w-full max-w-7xl 
-          bg-slate-50 dark:bg-slate-950 rounded-none md:rounded-3xl 
-          shadow-2xl border border-slate-200/80 dark:border-slate-800 
-          overflow-hidden transition-all duration-300
+          relative flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden
+          border-slate-200/80 bg-slate-50 shadow-2xl transition-all duration-300
+          sm:h-[calc(100dvh-2rem)] sm:rounded-3xl sm:border
+          lg:h-[calc(100dvh-3rem)] dark:border-slate-800 dark:bg-slate-950
         "
       >
         {/* ========================================= */}
         {/* MAIN LAYOUT WRAPPER */}
         {/* ========================================= */}
-        <div className="flex flex-col xl:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
           
           {/* ========================================= */}
           {/* LEFT CONTENT AREA */}
           {/* ========================================= */}
-          <div className="flex-1 min-w-0">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {/* STICKY HEADER */}
-            <div className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800">
+            <div className="z-20 shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90">
               <CardDetailHeader
                 cardId={detail?.id ?? card.id}
                 title={detail?.title ?? card.title}
@@ -194,13 +246,16 @@ export default function CardDetailModal({
                 }
                 setDetail={setDetail}
                 onUpdated={fetchDetail}
-                onClose={onClose}
-                onToggleMembers={() => setShowMembers((prev) => !prev)}
+                onClose={closeModal}
+                onToggleMembers={() => {
+                  setShowMembers(true);
+                  setMobileSidebarOpen(true);
+                }}
               />
             </div>
 
             {/* INNER BODY CONTENT */}
-            <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
+            <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-28 sm:space-y-6 sm:p-6 sm:pb-28 lg:space-y-8 lg:p-8 lg:pb-28 xl:pb-8">
               {loading ? (
                 <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
@@ -421,53 +476,60 @@ export default function CardDetailModal({
           {/* ========================================= */}
           {/* RIGHT SIDEBAR PANEL */}
           {/* ========================================= */}
-          <div
-            className="
-              w-full xl:w-[340px] xl:max-w-[340px] shrink-0 
-              border-t xl:border-t-0 xl:border-l border-slate-200/80 dark:border-slate-800 
-              bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl 
-              xl:sticky xl:top-0 xl:h-screen overflow-y-auto
-            "
-          >
-            <div className="p-4 sm:p-5 lg:p-6">
-              <CardDetailSidebar
-                card={detail || card}
-                users={users}
-                assignees={detail?.assignees}
-                brands={detail?.brands ?? []}
-                dueDate={dueDate}
-                setDueDate={setDueDate}
-                showMembers={showMembers}
-                setShowMembers={setShowMembers}
-                showDueDate={showDueDate}
-                setShowDueDate={setShowDueDate}
-                memberSearch={memberSearch}
-                setMemberSearch={setMemberSearch}
-                handleAssign={handleAssign}
-                handleUnassign={handleUnassign}
-                handleDelete={handleDelete}
-                setDetail={setDetail}
-                showBrands={showBrands}
-                setShowBrands={setShowBrands}
-                showLabels={showLabels}
-                setShowLabels={setShowLabels}
-                attachments={attachments}
-                setAttachments={setAttachments}
-                attachmentLoading={attachmentLoading}
-                fetchAttachments={fetchAttachments}
-                briefAttachments={briefAttachments}
-                setBriefAttachments={setBriefAttachments}
-                briefLoading={briefLoading}
-                fetchBriefAttachments={fetchBriefAttachments}
-                showResult={showResult}
-                setShowResult={setShowResult}
-                showBrief={showBrief}
-                setShowBrief={setShowBrief}
-              />
+          <div className="hidden w-[340px] max-w-[340px] shrink-0 overflow-y-auto border-l border-slate-200/80 bg-white/70 backdrop-blur-xl xl:block dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="p-6">
+              <CardDetailSidebar {...sidebarProps} />
             </div>
           </div>
 
         </div>
+        <div className="absolute inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl xl:hidden dark:border-slate-800 dark:bg-slate-900/95">
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="flex h-12 w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-blue-500/20"
+          >
+            <SlidersHorizontal size={18} />
+            Card tools
+          </button>
+        </div>
+
+        {mobileSidebarOpen ? (
+          <div className="absolute inset-0 z-40 flex items-end xl:hidden">
+            <button
+              type="button"
+              aria-label="Tutup card tools"
+              onClick={closeMobileSidebar}
+              className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]"
+            />
+
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-label="Card tools"
+              className="relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border-t border-slate-200 bg-slate-50 shadow-2xl animate-in slide-in-from-bottom duration-300 dark:border-slate-700 dark:bg-slate-950"
+            >
+              <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-800">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">Card tools</h2>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Kelola member, label, deadline, dan lampiran</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMobileSidebar}
+                  aria-label="Tutup card tools"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="overflow-y-auto overscroll-contain px-4 py-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+                <CardDetailSidebar {...sidebarProps} />
+              </div>
+            </section>
+          </div>
+        ) : null}
       </div>
     </div>
   );

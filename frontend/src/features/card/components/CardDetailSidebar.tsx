@@ -129,22 +129,23 @@ export default function CardDetailSidebar({
   const deleteDisabled = card.is_overdue === true || isCardOverdue(card.due_date);
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-5 pb-2">
       {/* ========================================= */}
       {/* NAVIGATION / ADD TO CARD */}
       {/* ========================================= */}
       <div>
         <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Add to card
+          Card tools
         </h3>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {/* MEMBERS */}
           <div>
             <SidebarButton
               icon={<Users size={16} />}
               label="Members"
               onClick={toggleMembers}
+              expanded={showMembers}
             />
             {showMembers && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -160,12 +161,13 @@ export default function CardDetailSidebar({
             )}
           </div>
 
-                    {/* BRANDS */}
+          {/* BRANDS */}
           {can('brand.view') && <div>
             <SidebarButton
               icon={<Layers size={16} />}
               label="Brand"
               onClick={toggleBrands}
+              expanded={showBrands}
             />
             {showBrands && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -184,6 +186,7 @@ export default function CardDetailSidebar({
               icon={<Tag size={16} />}
               label="Labels"
               onClick={toggleLabels}
+              expanded={showLabels}
             />
             {showLabels && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -200,6 +203,7 @@ export default function CardDetailSidebar({
               icon={<Clock3 size={16} />}
               label="Due Date"
               onClick={toggleDueDate}
+              expanded={showDueDate}
               badge={
                 dueStatus !== "none" ? (
                   <span
@@ -232,19 +236,6 @@ export default function CardDetailSidebar({
                 />
               </div>
             )}
-            {showDueDate && (
-              <div className="mt-2 hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 shadow-sm transition-all md:block dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
-                <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Select Due Date
-                </label>
-                <input
-                  type="datetime-local"
-                  value={dueDate}
-                  onChange={(event) => setDueDate(event.target.value)}
-                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
-                />
-              </div>
-            )}
           </div>
 
           {/* RESULT ATTACHMENTS */}
@@ -254,6 +245,7 @@ export default function CardDetailSidebar({
               label="Result Attachment"
               onClick={toggleResult}
               badge={`${resultSummary.files} Files • ${resultSummary.links} Links`}
+              expanded={showResult}
             />
             {showResult && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -280,6 +272,7 @@ export default function CardDetailSidebar({
               label="Brief Attachment"
               onClick={toggleBrief}
               badge={`${briefSummary.files} Files • ${briefSummary.links} Links`}
+              expanded={showBrief}
             />
             {showBrief && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -303,7 +296,7 @@ export default function CardDetailSidebar({
       {/* ========================================= */}
       {/* ACTIONS */}
       {/* ========================================= */}
-      <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800">
+      <div className="border-t border-slate-200/80 pt-4 dark:border-slate-800">
         <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           Actions
         </h3>
