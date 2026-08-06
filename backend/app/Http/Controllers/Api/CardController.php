@@ -131,6 +131,7 @@ class CardController extends Controller
                 'assignees',
                 'tasks.subtasks',
                 'labels',
+                'brands',
                 'board',
                 'attachments',
                 'comments',

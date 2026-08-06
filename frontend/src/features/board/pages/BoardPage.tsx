@@ -29,6 +29,7 @@ import CardDetailModal from "@/features/card/components/CardDetailModal";
 
 import { moveCard, reorderCards } from "@/features/card/api/card.api";
 import { reorderBoards } from "../api/board.api";
+import { isAndroidApp } from "@/lib/mobileConfig";
 
 import { Board } from "../types";
 import { Card } from "@/features/card/types";
@@ -76,6 +77,8 @@ export default function BoardPage() {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [activeBoard, setActiveBoard] = useState<Board | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [mobileBoardId, setMobileBoardId] = useState("");
+  const androidApp = isAndroidApp();
 
   // =========================================
   // SYNC DATA
@@ -85,6 +88,14 @@ export default function BoardPage() {
       setBoards(data);
     }
   }, [data]);
+
+  useEffect(() => {
+    if (!androidApp || boards.length === 0) return;
+
+    setMobileBoardId((current) =>
+      boards.some((board) => board.id === current) ? current : boards[0].id,
+    );
+  }, [androidApp, boards]);
 
   // =========================================
   // KEEP MODAL UPDATED
@@ -430,6 +441,11 @@ export default function BoardPage() {
     );
   }
 
+  const visibleKanbanBoards =
+    androidApp && mobileBoardId
+      ? boards.filter((board) => board.id === mobileBoardId)
+      : boards;
+
   return (
     <DndContext
       sensors={sensors}
@@ -496,6 +512,28 @@ export default function BoardPage() {
         </button>
       </div>
 
+      {androidApp && viewMode === "kanban" && boards.length > 0 ? (
+        <label className="block w-full sm:w-auto">
+          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+            Status yang ditampilkan
+          </span>
+          <select
+            value={mobileBoardId}
+            onChange={(event) => setMobileBoardId(event.target.value)}
+            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          >
+            {boards.map((board) => (
+              <option key={board.id} value={board.id}>
+                {board.name} ({board.cards.length})
+              </option>
+            ))}
+          </select>
+          <span className="mt-1.5 block text-[11px] text-slate-500 dark:text-slate-400">
+            Pindahkan task melalui pilihan status di setiap card.
+          </span>
+        </label>
+      ) : null}
+
       {/* RIGHT SIDE: TASK STATS BADGE (MODERN) */}
       <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-slate-50 px-2.5 py-1.5 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50">
@@ -538,14 +576,18 @@ export default function BoardPage() {
     ) : viewMode === "kanban" ? (
       /* KANBAN BOARD VIEW */
       <SortableContext
-        items={boards.map((board) => getBoardSortableId(board.id))}
+        items={visibleKanbanBoards.map((board) => getBoardSortableId(board.id))}
         strategy={horizontalListSortingStrategy}
       >
         <div
-          className="flex w-full gap-4 overflow-x-auto overflow-y-hidden pb-6 custom-scrollbar"
+          className={
+            androidApp
+              ? "block w-full pb-6"
+              : "flex w-full gap-4 overflow-x-auto overflow-y-hidden pb-6 custom-scrollbar"
+          }
           style={{ touchAction: "pan-x" }}
         >
-          {boards.map((board) => (
+          {visibleKanbanBoards.map((board) => (
             <SortableBoardColumn
               key={board.id}
               board={board}
@@ -558,6 +600,8 @@ export default function BoardPage() {
                 .filter((target) => target.id !== board.id)
                 .map((target) => ({ id: target.id, name: target.name }))}
               onMoveCard={handleSelectMove}
+              disableDrag={androidApp}
+              fullWidth={androidApp}
             />
           ))}
         </div>

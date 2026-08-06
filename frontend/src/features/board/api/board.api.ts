@@ -1,4 +1,6 @@
 import api from "@/lib/axios";
+import { isAndroidApp } from "@/lib/mobileConfig";
+import type { Card } from "@/features/card/types";
 import { Board, CreateBoardPayload, ReorderBoardPayload } from "../types";
 
 interface ApiEnvelope<T> {
@@ -6,12 +8,65 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
+const ANDROID_CARD_HYDRATION_CONCURRENCY = 6;
+
+const hydrateAndroidCardMetadata = async (boards: Board[]): Promise<Board[]> => {
+  if (!isAndroidApp()) return boards;
+
+  const cardsMissingBrands = boards
+    .flatMap((board) => board.cards)
+    .filter((card) => !Array.isArray(card.brands));
+
+  if (cardsMissingBrands.length === 0) return boards;
+
+  const hydratedCards = new Map<string, Card>();
+  let nextIndex = 0;
+
+  const hydrateNext = async (): Promise<void> => {
+    while (nextIndex < cardsMissingBrands.length) {
+      const card = cardsMissingBrands[nextIndex++];
+
+      try {
+        const response = await api.get<ApiEnvelope<Card>>(`/cards/${card.id}`);
+        hydratedCards.set(card.id, response.data.data);
+      } catch (error) {
+        console.warn("Android card metadata hydration failed", {
+          cardId: card.id,
+          error,
+        });
+      }
+    }
+  };
+
+  const workerCount = Math.min(
+    ANDROID_CARD_HYDRATION_CONCURRENCY,
+    cardsMissingBrands.length,
+  );
+
+  await Promise.all(Array.from({ length: workerCount }, hydrateNext));
+
+  return boards.map((board) => ({
+    ...board,
+    cards: board.cards.map((card) => {
+      const hydrated = hydratedCards.get(card.id);
+
+      return hydrated
+        ? {
+            ...card,
+            ...hydrated,
+            board_id: hydrated.board_id ?? card.board_id,
+          }
+        : card;
+    }),
+  }));
+};
+
 export const getBoards = async (campaignId: string): Promise<Board[]> => {
   const res = await api.get<ApiEnvelope<Board[]>>(
     `/campaigns/${campaignId}/boards`,
   );
 
-  return res.data.data;
+  return hydrateAndroidCardMetadata(res.data.data);
 };
 
 export const createBoard = async (
