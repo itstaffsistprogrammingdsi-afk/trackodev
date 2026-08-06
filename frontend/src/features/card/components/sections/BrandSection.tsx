@@ -81,6 +81,10 @@ export default function BrandSection({
   const isAttached = (id: string) =>
     card.brands?.some((b) => b.id === id);
 
+  const campaignId = card.campaign_id
+    ?? card.campaign?.id
+    ?? card.board?.campaign_id;
+
   const paginatedBrands = brands.slice(
     0,
     page * PAGE_SIZE
@@ -292,6 +296,9 @@ export default function BrandSection({
 
         {paginatedBrands.map((b) => {
           const active = isAttached(b.id);
+          const belongsToCurrentCampaign = !b.campaign_id
+            || !campaignId
+            || b.campaign_id === campaignId;
 
           return (
             <div
@@ -337,7 +344,7 @@ export default function BrandSection({
                 >
                   remove
                 </button>
-              ) : (can('brand.attach') &&
+              ) : (can('brand.attach') && belongsToCurrentCampaign ?
                 <button
                   onClick={() =>
                     attachBrand(b.id)
@@ -350,7 +357,11 @@ export default function BrandSection({
                 >
                   add
                 </button>
-              )}
+                : !belongsToCurrentCampaign && (
+                  <span className="text-[10px] text-gray-400">
+                    campaign lain
+                  </span>
+                ))}
             </div>
           );
         })}
