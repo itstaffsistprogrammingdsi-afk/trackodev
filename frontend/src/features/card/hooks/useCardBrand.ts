@@ -20,6 +20,9 @@ export function useCardBrand(
   const realtimeRevision = useRealtimeRevision(["ActivityLog", "Brand"]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
+  const campaignId = card?.campaign_id
+    ?? card?.campaign?.id
+    ?? card?.board?.campaign_id;
 
   // =========================================
   // FETCH ALL BRANDS
@@ -27,12 +30,14 @@ export function useCardBrand(
   const fetchBrands = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get("/brands");
+      const res = await api.get("/brands", {
+        params: campaignId ? { campaign_id: campaignId } : undefined,
+      });
       setBrands(res.data?.data ?? res.data ?? []);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [campaignId]);
 
   // =========================================
   // CREATE + ATTACH
@@ -40,7 +45,6 @@ export function useCardBrand(
   const createAndAttach = async (name: string, color: string) => {
     if (!card) return;
 
-    const campaignId = card?.board?.campaign_id;
     if (!campaignId) {
       console.error("campaign_id tidak ditemukan");
       return;

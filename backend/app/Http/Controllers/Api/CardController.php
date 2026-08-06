@@ -36,39 +36,7 @@ class CardController extends Controller
     {
         $user = auth()->user();
 
-        if (!$user) {
-            return false;
-        }
-
-        // ========================================
-        // SUPER ADMIN
-        // ========================================
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
-
-        // ========================================
-        // ADMIN
-        // ========================================
-        if ($user->isAdmin()) {
-
-            $divisionId = $campaign->workspace?->division_id;
-
-            if (!$divisionId) {
-                return false;
-            }
-
-            return $user->divisions()
-                ->whereKey($divisionId)
-                ->exists();
-        }
-
-        // ========================================
-        // USER
-        // ========================================
-        return $campaign->members()
-            ->whereKey($user->id)
-            ->exists();
+        return $user !== null && $campaign->canBeAccessedBy($user);
     }
 
     protected function authorizeBoard(Board $board): void
