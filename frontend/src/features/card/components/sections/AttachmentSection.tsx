@@ -20,6 +20,7 @@ import {
   Download,
   File,
   X,
+  Camera,
 } from "lucide-react";
 
 import { Attachment } from "../../types";
@@ -473,6 +474,24 @@ space-y-6
                 </div>
 
                 <input type="file" className="hidden" onChange={handleUpload} />
+              </label>
+              <label className="group flex min-h-24 cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-blue-200 bg-blue-50/60 px-4 py-3 text-blue-700 transition hover:border-blue-400 hover:bg-blue-50 active:scale-[0.99] sm:hidden">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
+                  <Camera size={21} />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold">Ambil dari Kamera</span>
+                  <span className="mt-0.5 block text-xs text-blue-600/80">
+                    Foto langsung untuk attachment
+                  </span>
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleUpload}
+                />
               </label>
               {/* SELECTED FILE PREVIEW */}
               {selectedFile && (

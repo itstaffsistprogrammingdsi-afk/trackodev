@@ -9,8 +9,6 @@ export default function ProtectedRoute({
   const token = localStorage.getItem("token");
 
   if (!token) {
-    console.log("REDIRECT TO SIGNIN");
-
     return <Navigate to="/signin" replace />;
   }
 

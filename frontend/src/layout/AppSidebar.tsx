@@ -15,7 +15,7 @@ import {
 
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "@/context/AuthContext";
-import { getMyDivisions } from "@/features/division/api/division.api";
+import { useDivisions } from "@/features/division/hooks/useDivisions";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -75,7 +75,10 @@ function startsWithRoute(pathname: string, prefix: string) {
 /*                            PERSIST LAST PARAMS                             */
 /* -------------------------------------------------------------------------- */
 
-function usePersistedRouteParams(isSuperAdmin: boolean) {
+function usePersistedRouteParams(
+  isSuperAdmin: boolean,
+  accessibleDivisions: Array<{ id: string }> | undefined,
+) {
   const location = useLocation();
 
   const [divisionId, setDivisionId] = useState<string | null>(() =>
@@ -95,6 +98,12 @@ function usePersistedRouteParams(isSuperAdmin: boolean) {
     const divisionMatch = location.pathname.match(/^\/divisions\/([^/]+)/);
     if (divisionMatch?.[1]) {
       const id = divisionMatch[1];
+      if (id !== divisionId) {
+        setWorkspaceId(null);
+        setCampaignId(null);
+        localStorage.removeItem("lastWorkspaceId");
+        localStorage.removeItem("lastCampaignId");
+      }
       setDivisionId(id);
       localStorage.setItem("lastDivisionId", id);
     }
@@ -114,31 +123,29 @@ function usePersistedRouteParams(isSuperAdmin: boolean) {
       setCampaignId(id);
       localStorage.setItem("lastCampaignId", id);
     }
-  }, [location.pathname]);
+  }, [divisionId, location.pathname]);
 
   // Auto-discover divisionId untuk non-superadmin jika localStorage masih kosong
   useEffect(() => {
-    if (isSuperAdmin || divisionId) return;
+    if (isSuperAdmin || accessibleDivisions === undefined) return;
+    if (divisionId && accessibleDivisions.some((division) => division.id === divisionId)) {
+      return;
+    }
 
-    let mounted = true;
+    const first = accessibleDivisions[0];
+    if (first?.id) {
+      setDivisionId(first.id);
+      localStorage.setItem("lastDivisionId", first.id);
+      return;
+    }
 
-    getMyDivisions()
-      .then((divisions) => {
-        if (!mounted) return;
-        const first = divisions[0];
-        if (first?.id) {
-          setDivisionId(first.id);
-          localStorage.setItem("lastDivisionId", first.id);
-        }
-      })
-      .catch(() => {
-        // Ignored
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [isSuperAdmin, divisionId]);
+    setDivisionId(null);
+    setWorkspaceId(null);
+    setCampaignId(null);
+    localStorage.removeItem("lastDivisionId");
+    localStorage.removeItem("lastWorkspaceId");
+    localStorage.removeItem("lastCampaignId");
+  }, [accessibleDivisions, divisionId, isSuperAdmin]);
 
   // Validasi ID tersimpan ke server untuk menghindari ID invalid (4xx errors)
   useEffect(() => {
@@ -371,8 +378,9 @@ const AppSidebar: React.FC = () => {
     }
   }, [auth]);
 
+  const { data: accessibleDivisions } = useDivisions(true, !isSuperAdmin);
   const { divisionId, workspaceId, campaignId } =
-    usePersistedRouteParams(isSuperAdmin);
+    usePersistedRouteParams(isSuperAdmin, accessibleDivisions);
 
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
 
@@ -426,7 +434,16 @@ const AppSidebar: React.FC = () => {
                         path: "/divisions",
                       },
                     ]
-                  : []),
+                  : [
+                      {
+                        name: "My Divisions",
+                        path: "/divisions",
+                      },
+                      ...(accessibleDivisions ?? []).map((division) => ({
+                        name: division.name,
+                        path: `/divisions/${division.id}`,
+                      })),
+                    ]),
                 {
                   name: "Workspace",
                   path: divisionId
@@ -530,7 +547,7 @@ const AppSidebar: React.FC = () => {
         },
       ];
     }
-  }, [divisionId, workspaceId, campaignId, can, isSuperAdmin]);
+  }, [accessibleDivisions, divisionId, workspaceId, campaignId, can, isSuperAdmin]);
 
   /* ---------------------------------------------------------------------- */
   /*                             ACTIVE MATCHER                             */

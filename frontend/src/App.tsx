@@ -57,6 +57,8 @@ import RoleRoute from "./components/auth/RoleRoute";
 import LandingPage from "@/features/landing/pages/LandingPage";
 
 import EditAccountPage from "@/features/account/pages/EditAccountPage";
+import MobileAppBridge from "@/components/common/MobileAppBridge";
+import { getLastAppRoute, LAST_APP_ROUTE_KEY } from "@/lib/mobileApp";
 
 function isSuperAdminUser(auth: ReturnType<typeof useAuth>) {
   try {
@@ -73,7 +75,13 @@ function RootRoute() {
   const auth = useAuth();
 
   if (!token) {
+    localStorage.removeItem(LAST_APP_ROUTE_KEY);
     return <LandingPage />;
+  }
+
+  const lastRoute = getLastAppRoute();
+  if (lastRoute) {
+    return <Navigate to={lastRoute} replace />;
   }
 
   // Sama seperti gate di RoleRoute: /dashboard cuma untuk Super Admin.
@@ -105,6 +113,7 @@ function MyWorkRoute() {
 export default function App() {
   return (
     <Router>
+      <MobileAppBridge />
       <ScrollToTop />
 
       <Routes>
@@ -145,7 +154,7 @@ export default function App() {
           />
 
           {/* Task Management */}
-          <Route path="/divisions" element={<PermissionRoute permission="division.view"><DivisionPage /></PermissionRoute>} />
+          <Route path="/divisions" element={<DivisionPage />} />
 
           <Route
             path="/divisions/:id"

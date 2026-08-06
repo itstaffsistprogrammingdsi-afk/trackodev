@@ -77,8 +77,8 @@ export default function NotificationPage() {
   };
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <header className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+    <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
+      <header className="flex flex-col gap-4 border-b border-slate-200 px-4 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-5">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">
             <Bell size={21} />
@@ -124,7 +124,7 @@ export default function NotificationPage() {
           items.map((item) => (
             <article
               key={item.id}
-              className={`flex items-start gap-3 px-5 py-4 transition sm:px-7 ${
+              className={`flex min-w-0 items-start gap-2 px-4 py-4 transition sm:gap-3 sm:px-7 ${
                 item.is_read
                   ? "bg-white dark:bg-slate-900"
                   : "bg-indigo-50/60 dark:bg-indigo-950/20"
@@ -143,7 +143,7 @@ export default function NotificationPage() {
                     {item.title}
                   </h2>
                 </div>
-                <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                <p className="mt-1 break-words text-sm leading-6 text-slate-600 dark:text-slate-400">
                   {item.body}
                 </p>
                 <time className="mt-2 block text-xs text-slate-400">

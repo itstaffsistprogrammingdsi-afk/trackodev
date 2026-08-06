@@ -15,6 +15,8 @@ export const useWorkspaces = (divisionId: string) => {
     queryKey: ['workspaces', divisionId],
     queryFn: () => api.getWorkspaces(divisionId),
     enabled: !!divisionId,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   })
 }
 

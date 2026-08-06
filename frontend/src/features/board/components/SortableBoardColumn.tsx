@@ -12,6 +12,8 @@ type Props = {
   onCardCreated?: () => void | Promise<unknown>;
   onRefresh?: () => void | Promise<unknown>;
   onOpenCard?: (card: Card) => void;
+  moveTargets?: Array<{ id: string; name: string }>;
+  onMoveCard?: (card: Card, boardId: string) => Promise<void>;
   onEdit?: () => void;
   onDelete?: () => void;
 };

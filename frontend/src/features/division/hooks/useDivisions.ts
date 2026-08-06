@@ -21,14 +21,16 @@ import {
 |--------------------------------------------------------------------------
 */
 
-export const useDivisions = () => {
+export const useDivisions = (ownOnly = false, enabled = true) => {
 
   return useQuery<Division[]>({
 
-    queryKey: ['divisions'],
+    queryKey: ['divisions', ownOnly ? 'mine' : 'all'],
 
-    queryFn:
-      api.getDivisions
+    queryFn: ownOnly ? api.getMyDivisions : api.getDivisions,
+    enabled,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
 
   })
 }
