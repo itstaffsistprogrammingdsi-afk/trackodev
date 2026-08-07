@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 .android-sdk/
+.mobile-update-keys/
+.mobile-update-output/
 
 # Editor directories and files
 .vscode/*

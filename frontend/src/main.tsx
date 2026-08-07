@@ -10,6 +10,7 @@ import { ThemeProvider } from "./context/ThemeContext.tsx";
 import { AuthProvider } from "./context/AuthContext";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import MobileLiveUpdate from "./components/common/MobileLiveUpdate";
 
 // 🔥 penting: buat di luar render supaya tidak recreate
 const queryClient = new QueryClient({
@@ -25,6 +26,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      <MobileLiveUpdate />
       <AuthProvider>
         <ThemeProvider>
           <AppWrapper>
