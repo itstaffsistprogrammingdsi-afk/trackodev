@@ -24,7 +24,6 @@ export interface Attachment {
 export default function useAttachments(
   cardId?: string,
   isOpen?: boolean,
-  onUpdated?: () => void,
 ) {
   const realtimeRevision = useRealtimeRevision(["CardAttachment"]);
   const [attachments, setAttachments] =
@@ -32,11 +31,8 @@ export default function useAttachments(
 
   const [loading, setLoading] =
     useState(false);
-  const onUpdatedRef = useRef(onUpdated);
-
-  useEffect(() => {
-    onUpdatedRef.current = onUpdated;
-  }, [onUpdated]);
+  const requestRef = useRef(0);
+  const activeCardIdRef = useRef<string | null>(null);
 
   // =========================================
   // FETCH ATTACHMENTS
@@ -44,6 +40,11 @@ export default function useAttachments(
   const fetchAttachments = useCallback(
     async () => {
       if (!cardId) return;
+      const requestId = ++requestRef.current;
+      if (activeCardIdRef.current !== cardId) {
+        activeCardIdRef.current = cardId;
+        setAttachments([]);
+      }
 
       try {
         setLoading(true);
@@ -52,18 +53,15 @@ export default function useAttachments(
           `/cards/${cardId}/attachments`,
         );
 
-        setAttachments(
-          res.data.data || [],
-        );
-
-        onUpdatedRef.current?.();
+        if (requestId === requestRef.current) {
+          setAttachments(res.data.data || []);
+        }
       } catch (err) {
-        console.error(
-          "FAILED FETCH ATTACHMENTS",
-          err,
-        );
+        if (requestId === requestRef.current) {
+          console.error("FAILED FETCH ATTACHMENTS", err);
+        }
       } finally {
-        setLoading(false);
+        if (requestId === requestRef.current) setLoading(false);
       }
     },
     [cardId],
@@ -73,6 +71,9 @@ export default function useAttachments(
     if (isOpen && cardId) {
       fetchAttachments();
     }
+    return () => {
+      requestRef.current += 1;
+    };
   }, [cardId, fetchAttachments, isOpen, realtimeRevision]);
 
   return {

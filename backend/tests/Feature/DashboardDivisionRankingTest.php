@@ -188,6 +188,41 @@ class DashboardDivisionRankingTest extends TestCase
             ->assertJsonPath('task_status.overdue', 1)
             ->assertJsonPath('task_status.due_soon', 1)
             ->assertJsonPath('task_status.completion_rate', 20)
+            ->assertJsonPath('insights.0.id', 'overdue-work')
+            ->assertJsonPath('insights.0.severity', 'critical')
+            ->assertJsonPath('insights.0.metric', '1 overdue')
+            ->assertJsonCount(18, 'insights')
+            ->assertJsonFragment(['id' => 'unassigned-work'])
+            ->assertJsonFragment(['id' => 'due-soon'])
+            ->assertJsonFragment(['id' => 'delay-risk'])
+            ->assertJsonFragment(['id' => 'stale-work'])
+            ->assertJsonFragment(['id' => 'completion-rate'])
+            ->assertJsonFragment(['id' => 'completion-trend'])
+            ->assertJsonFragment(['id' => 'on-time-delivery'])
+            ->assertJsonFragment(['id' => 'workload-balance'])
+            ->assertJsonFragment(['id' => 'campaign-deadline'])
+            ->assertJsonFragment(['id' => 'campaign-progress-risk'])
+            ->assertJsonFragment(['id' => 'form-pending-responses'])
+            ->assertJsonFragment(['id' => 'form-processing-rate'])
+            ->assertJsonFragment(['id' => 'qc-pending'])
+            ->assertJsonFragment(['id' => 'qc-quantity-mismatch'])
+            ->assertJsonFragment(['id' => 'storage-usage'])
+            ->assertJsonFragment(['id' => 'collaboration'])
+            ->assertJsonFragment(['id' => 'chat-engagement'])
+            ->assertJsonStructure([
+                'insights' => [
+                    '*' => [
+                        'id',
+                        'category',
+                        'severity',
+                        'title',
+                        'message',
+                        'metric',
+                        'action_label',
+                        'action_path',
+                    ],
+                ],
+            ])
             ->assertJsonMissingPath('activities')
             ->assertJsonMissingPath('trend');
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
@@ -16,9 +16,16 @@ export default function useBriefAttachments(
 
   const [loading, setLoading] =
     useState(false);
+  const requestRef = useRef(0);
+  const activeCardIdRef = useRef<string | null>(null);
 
   const fetchAttachments = useCallback(async () => {
     if (!cardId) return;
+    const requestId = ++requestRef.current;
+    if (activeCardIdRef.current !== cardId) {
+      activeCardIdRef.current = cardId;
+      setAttachments([]);
+    }
 
     try {
       setLoading(true);
@@ -27,16 +34,15 @@ export default function useBriefAttachments(
         `/cards/${cardId}/brief-attachments`
       );
 
-      setAttachments(
-        res.data.data ?? []
-      );
+      if (requestId === requestRef.current) {
+        setAttachments(res.data.data ?? []);
+      }
     } catch (err) {
-      console.error(
-        "FAILED FETCH BRIEF ATTACHMENTS",
-        err
-      );
+      if (requestId === requestRef.current) {
+        console.error("FAILED FETCH BRIEF ATTACHMENTS", err);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) setLoading(false);
     }
   }, [cardId]);
 
@@ -44,6 +50,9 @@ export default function useBriefAttachments(
     if (isOpen && cardId) {
       fetchAttachments();
     }
+    return () => {
+      requestRef.current += 1;
+    };
   }, [cardId, fetchAttachments, isOpen, realtimeRevision]);
 
   return {

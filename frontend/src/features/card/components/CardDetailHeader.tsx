@@ -7,13 +7,14 @@ import PrioritySection from "./sections/PrioritySection";
 interface Props {
   cardId: string;
   title: string;
+  listName?: string;
   assignees?: User[];
   brands?: Brand[];
   labels?: Label[];
   priority?: CardPriority;
   dueDate: string;
   setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
-  onUpdated: () => Promise<void>;
+  onUpdated: (updated?: Partial<Card>) => Promise<void> | void;
   onClose: () => void;
   onToggleMembers: () => void;
 }
@@ -21,6 +22,7 @@ interface Props {
 export default function CardDetailHeader({
   cardId,
   title,
+  listName,
   assignees,
   brands,
   labels,
@@ -37,6 +39,7 @@ export default function CardDetailHeader({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(title);
   const [savingTitle, setSavingTitle] = useState(false);
+  const [actionError, setActionError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -67,13 +70,15 @@ export default function CardDetailHeader({
 
     try {
       setSavingTitle(true);
+      setActionError("");
       const updated = await updateCard(cardId, { title: value });
       setDetail(updated);
-      await onUpdated();
+      await onUpdated(updated);
       setEditingTitle(false);
     } catch (error) {
       console.error("Failed to update title:", error);
       setTitleValue(title);
+      setActionError("Perubahan card gagal disimpan.");
     } finally {
       setSavingTitle(false);
     }
@@ -143,7 +148,7 @@ export default function CardDetailHeader({
                 <span className="hidden md:inline">
                   in list{" "}
                   <span className="font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 dark:text-slate-200 dark:decoration-slate-700">
-                    Active Support Ticket
+                    {listName || "Unknown list"}
                   </span>
                 </span>
               </p>
@@ -243,14 +248,16 @@ export default function CardDetailHeader({
                   priority={priority}
                   onChange={async (newPriority) => {
                     try {
+                      setActionError("");
                       const updated = await updateCard(cardId, {
                         priority: newPriority,
                       });
 
                       setDetail(updated);
-                      await onUpdated();
+                      await onUpdated(updated);
                     } catch (error) {
                       console.error("Failed to update priority:", error);
+                      setActionError("Priority gagal diperbarui.");
                     }
                   }}
                 />
@@ -277,13 +284,18 @@ export default function CardDetailHeader({
               </div>
             </div>
           </div>
+          {actionError ? (
+            <p role="alert" className="mt-3 text-xs font-medium text-rose-600 md:pl-9 dark:text-rose-400">
+              {actionError}
+            </p>
+          ) : null}
         </div>
 
         {/* CLOSE BUTTON */}
         <button
           onClick={onClose}
           className="
-            flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 md:h-8 md:w-8 md:rounded-lg
+            flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 md:h-8 md:w-8 md:rounded-lg xl:hidden
             transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 
             dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300
           "

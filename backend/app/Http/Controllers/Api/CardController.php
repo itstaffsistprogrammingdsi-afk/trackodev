@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 // use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CardController extends Controller
 {
@@ -359,7 +360,11 @@ class CardController extends Controller
                 (string) $card->id,
                 'title_updated',
                 "Mengubah judul card dari '{$oldTitle}' menjadi '{$card->title}'",
-                ['card_id' => $card->id]
+                [
+                    'card_id' => $card->id,
+                    'old_value' => $oldTitle,
+                    'new_value' => $card->title,
+                ]
             );
         }
 
@@ -368,7 +373,7 @@ class CardController extends Controller
             $request->has('description') &&
             $oldDescription !== $card->description
         ) {
-            ActivityLogService::log(
+            ActivityLogService::logCoalesced(
                 $request->user(),
                 'card',
                 (string) $card->id,
@@ -389,7 +394,11 @@ class CardController extends Controller
                 (string) $card->id,
                 'priority_updated',
                 "Mengubah prioritas dari '{$oldPriority}' menjadi '{$card->priority}'",
-                ['card_id' => $card->id]
+                [
+                    'card_id' => $card->id,
+                    'old_value' => $oldPriority,
+                    'new_value' => $card->priority,
+                ]
             );
         }
 
@@ -399,14 +408,26 @@ class CardController extends Controller
             $oldDueDate?->format('Y-m-d H:i:s')
             !== $card->due_date?->format('Y-m-d H:i:s')
         ) {
+            $dueDateAction = $oldDueDate === null
+                ? 'due_date_added'
+                : ($card->due_date === null ? 'due_date_removed' : 'due_date_updated');
+            $dueDateDescription = match ($dueDateAction) {
+                'due_date_added' => 'Menambahkan due date ' . $card->due_date?->format('d M Y H:i'),
+                'due_date_removed' => 'Menghapus due date',
+                default => 'Mengubah due date menjadi ' . $card->due_date?->format('d M Y H:i'),
+            };
+
             ActivityLogService::log(
                 $request->user(),
                 'card',
                 (string) $card->id,
-                'due_date_updated',
-                "Mengubah due date menjadi " .
-                    optional($card->due_date)->format('d M Y H:i'),
-                ['card_id' => $card->id]
+                $dueDateAction,
+                $dueDateDescription,
+                [
+                    'card_id' => $card->id,
+                    'old_value' => $oldDueDate?->format('d M Y H:i'),
+                    'new_value' => $card->due_date?->format('d M Y H:i'),
+                ]
             );
         }
 
@@ -886,11 +907,12 @@ class CardController extends Controller
             $request->user(),
             'card',
             (string) $card->id,
-            'assigned',
+            'member_assigned',
             "Menambahkan member '{$assignedUser->name}' ke card '{$card->title}' di board '{$card->board->name}'",
             [
                 'card_id' => $card->id,
                 'assigned_user_id' => $assignedUser->id,
+                'member_name' => $assignedUser->name,
             ]
         );
 
@@ -989,11 +1011,12 @@ class CardController extends Controller
             auth()->user(),
             'card',
             (string) $card->id,
-            'unassigned',
+            'member_unassigned',
             "Menghapus member '{$user->name}' dari card '{$card->title}' di board '{$card->board->name}'",
             [
                 'card_id' => $card->id,
                 'unassigned_user_id' => $user->id,
+                'member_name' => $user->name,
             ]
         );
 
@@ -1108,6 +1131,7 @@ class CardController extends Controller
             [
                 'card_id' => $card->id,
                 'attachment_id' => $attachment->id,
+                'attachment_name' => $attachment->file_name ?: $attachment->link_url,
             ]
         );
 
@@ -1154,6 +1178,7 @@ class CardController extends Controller
             [
                 'card_id' => $card->id,
                 'attachment_id' => $attachment->id,
+                'attachment_name' => $fileName,
             ]
         );
         return response()->json([
@@ -1246,7 +1271,12 @@ class CardController extends Controller
             'card_comment',
             (string) $comment->id,
             'created',
-            "Menambahkan komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+            "Menambahkan komentar di card '{$card->title}'",
+            [
+                'card_id' => $card->id,
+                'comment_id' => $comment->id,
+                'comment_preview' => Str::limit($comment->content, 80),
+            ]
         );
 
         return response()->json([
@@ -1278,7 +1308,12 @@ class CardController extends Controller
             'card_comment',
             (string) $comment->id,
             'updated',
-            "Mengupdate komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+            "Memperbarui komentar di card '{$card->title}'",
+            [
+                'card_id' => $card->id,
+                'comment_id' => $comment->id,
+                'comment_preview' => Str::limit($comment->content, 80),
+            ]
         );
 
         return response()->json([
@@ -1301,7 +1336,12 @@ class CardController extends Controller
             'card_comment',
             (string) $comment->id,
             'deleted',
-            "Menghapus komentar '{$comment->content}' di card '{$card->title}' di board '{$card->board->name}'"
+            "Menghapus komentar di card '{$card->title}'",
+            [
+                'card_id' => $card->id,
+                'comment_id' => $comment->id,
+                'comment_preview' => Str::limit($comment->content, 80),
+            ]
         );
 
         return response()->json([
@@ -1335,6 +1375,7 @@ class CardController extends Controller
             [
                 'card_id' => $card->id,
                 'attachment_id' => $attachment->id,
+                'attachment_name' => $attachment->file_name,
                 'qc_quantity' => $attachment->qc_quantity,
                 'qc_note' => $attachment->qc_note,
             ]

@@ -16,6 +16,7 @@ interface Props {
   progress: number;
   total: number;
   done: number;
+  error?: string;
 
   handleAddTask: (title: string) => void;
 
@@ -29,6 +30,7 @@ export default function TaskSection({
   progress,
   total,
   done,
+  error,
   handleAddTask,
   toggleTask,
   deleteTask,
@@ -71,7 +73,7 @@ export default function TaskSection({
           className="text-gray-600"
         />
 
-        <h2 className="font-semibold text-lg">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
           Tasks
         </h2>
       </div>
@@ -79,7 +81,7 @@ export default function TaskSection({
       {/* PROGRESS */}
 
       <div className="flex items-center gap-3 mb-5">
-        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="flex-1 h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
           <div
             className="
               h-full
@@ -97,6 +99,11 @@ export default function TaskSection({
           {done}/{total}
         </span>
       </div>
+      {error ? (
+        <p role="alert" className="mb-3 text-xs font-medium text-rose-600 dark:text-rose-400">
+          {error}
+        </p>
+      ) : null}
 
       {/* TASK LIST */}
 
@@ -122,8 +129,8 @@ export default function TaskSection({
             key={t.id}
             className="
               group
-              bg-white
-              border
+              bg-white dark:bg-slate-800/50
+              border border-slate-200 dark:border-slate-700
               rounded-2xl
               px-4
               py-3
@@ -137,6 +144,9 @@ export default function TaskSection({
             {/* CHECKBOX */}
 
             <button
+              type="button"
+              aria-label={t.is_completed ? `Tandai ${t.title} belum selesai` : `Tandai ${t.title} selesai`}
+              aria-pressed={t.is_completed}
               onClick={() =>
                 toggleTask(t.id)
               }
@@ -152,7 +162,7 @@ export default function TaskSection({
                 ${
                   t.is_completed
                     ? "bg-blue-500 border-blue-500"
-                    : "border-gray-300"
+                    : "border-gray-300 dark:border-slate-500"
                 }
               `}
             >
@@ -174,7 +184,7 @@ export default function TaskSection({
                 ${
                   t.is_completed
                     ? "line-through text-gray-400"
-                    : "text-gray-700"
+                    : "text-gray-700 dark:text-slate-200"
                 }
               `}
             >
@@ -184,12 +194,14 @@ export default function TaskSection({
             {/* DELETE */}
 
             <button
+              type="button"
+              aria-label={`Hapus task ${t.title}`}
               onClick={() =>
                 deleteTask(t.id)
               }
               className="
                 opacity-0
-                group-hover:opacity-100
+                group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100
                 transition
                 text-gray-400
                 hover:text-red-500
@@ -206,6 +218,7 @@ export default function TaskSection({
       <div className="mt-5">
         {!showForm ? (
           <button
+            type="button"
             onClick={() =>
               setShowForm(true)
             }
@@ -228,7 +241,7 @@ export default function TaskSection({
               border
               rounded-2xl
               p-3
-              bg-gray-50
+              bg-gray-50 dark:bg-slate-800/50 dark:border-slate-700
               space-y-3
             "
           >
@@ -257,7 +270,8 @@ export default function TaskSection({
                 w-full
                 h-11
                 rounded-xl
-                border
+                border border-slate-200 dark:border-slate-700
+                bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100
                 px-3
                 text-sm
                 outline-none
@@ -270,6 +284,7 @@ export default function TaskSection({
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={submit}
                 className="
                   h-10
@@ -287,6 +302,8 @@ export default function TaskSection({
               </button>
 
               <button
+                type="button"
+                aria-label="Batalkan tambah task"
                 onClick={() => {
                   setShowForm(false);
 

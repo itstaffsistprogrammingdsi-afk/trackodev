@@ -36,6 +36,7 @@ interface Props {
   fetchAttachments: () => Promise<void>;
 
   showUploader?: boolean;
+  showList?: boolean;
 
   title?: string;
 
@@ -54,6 +55,7 @@ export default function AttachmentSection({
   loading,
   fetchAttachments,
   showUploader = false,
+  showList = true,
   title = "Attachment",
   uploadEndpoint,
   deleteEndpoint,
@@ -138,6 +140,11 @@ export default function AttachmentSection({
   );
   const previewRequestRef = useRef(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [visibleCount, setVisibleCount] = useState(20);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [attachments.length]);
 
   // =========================================
   // FETCH
@@ -397,6 +404,8 @@ export default function AttachmentSection({
       console.error(err);
     }
   };
+
+  const visibleAttachments = attachments.slice(0, visibleCount);
 
   return (
     <>
@@ -690,10 +699,10 @@ space-y-6
 
         {/* LIST */}
         {/* ATTACHMENT LIST */}
-        <div className="space-y-3">
+        {showList ? <div className="space-y-3">
           {/* LOADING */}
           {loading && (
-            <div className="flex items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-6 text-sm text-gray-500 shadow-sm">
+            <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-6 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
               <Loader2 size={18} className="animate-spin" />
 
               <span>Loading attachments...</span>
@@ -702,16 +711,16 @@ space-y-6
 
           {/* EMPTY */}
           {!loading && attachments.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-10 text-center shadow-sm">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-700">
                 <Paperclip size={24} />
               </div>
 
-              <h3 className="text-sm font-semibold text-gray-700">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 Belum ada attachment
               </h3>
 
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Upload file atau tambahkan link
               </p>
             </div>
@@ -719,7 +728,7 @@ space-y-6
 
           {/* LIST */}
           {!loading &&
-            attachments.map((item) => {
+            visibleAttachments.map((item) => {
               const fileUrl = getFileUrl(item);
 
               const clickable = item.attachment_type === "file";
@@ -727,7 +736,7 @@ space-y-6
               return (
                 <div
                   key={item.id}
-                  className="group overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all hover:border-gray-300 hover:shadow-md"
+                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-slate-600"
                 >
                   <div className="flex items-start gap-4 p-4">
                     {/* ========================================= */}
@@ -735,6 +744,15 @@ space-y-6
                     {/* ========================================= */}
                     <div
                       onClick={() => clickable && openPreview(item)}
+                      onKeyDown={(event) => {
+                        if (clickable && (event.key === "Enter" || event.key === " ")) {
+                          event.preventDefault();
+                          void openPreview(item);
+                        }
+                      }}
+                      role={clickable ? "button" : undefined}
+                      tabIndex={clickable ? 0 : undefined}
+                      aria-label={clickable ? `Preview ${item.file_name || "attachment"}` : undefined}
                       className={`relative h-[84px] w-[120px] shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 ${
                         clickable ? "cursor-pointer" : ""
                       }`}
@@ -746,6 +764,8 @@ space-y-6
                           <img
                             src={fileUrl}
                             alt={item.file_name}
+                            loading="lazy"
+                            decoding="async"
                             onError={() =>
                               setFailedThumbnailIds((current) =>
                                 new Set(current).add(item.id),
@@ -814,8 +834,9 @@ space-y-6
                         </a>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => openPreview(item)}
-                          className="max-w-full truncate text-left text-sm font-semibold text-gray-800 transition hover:text-blue-600 hover:underline"
+                          className="max-w-full truncate text-left text-sm font-semibold text-slate-800 transition hover:text-blue-600 hover:underline dark:text-slate-100"
                         >
                           {item.file_name}
                         </button>
@@ -832,7 +853,7 @@ space-y-6
 
                         {/* TYPE */}
                         {item.file_type && (
-                          <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
                             {item.file_type}
                           </span>
                         )}
@@ -848,7 +869,7 @@ space-y-6
                           {item.attachment_type}
                         </span>
                         {item.quantity !== undefined && (
-                          <div className="mt-2 text-xs text-gray-600">
+                          <div className="mt-2 text-xs text-slate-600 dark:text-slate-300">
                             Quantity:{" "}
                             <span className="font-semibold">
                               {item.quantity}
@@ -857,7 +878,7 @@ space-y-6
                         )}
 
                         {item.result_description && (
-                          <div className="mt-1 text-sm text-gray-700">
+                          <div className="mt-1 text-sm text-slate-700 dark:text-slate-200">
                             {item.result_description}
                           </div>
                         )}
@@ -868,6 +889,8 @@ space-y-6
                     {/* ACTION */}
                     {/* ========================================= */}
                     <button
+                      type="button"
+                      aria-label={`Hapus ${item.file_name || item.link_url || "attachment"}`}
                       onClick={() => handleDelete(item.id)}
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-red-500 transition hover:bg-red-50 hover:text-red-600"
                     >
@@ -877,7 +900,16 @@ space-y-6
                 </div>
               );
             })}
-        </div>
+          {visibleCount < attachments.length ? (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((current) => current + 20)}
+              className="w-full rounded-xl border border-slate-200 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 dark:border-slate-700 dark:text-blue-400 dark:hover:bg-slate-800"
+            >
+              Muat {Math.min(20, attachments.length - visibleCount)} attachment lagi
+            </button>
+          ) : null}
+        </div> : null}
       </section>
 
       {/* ===================================== */}

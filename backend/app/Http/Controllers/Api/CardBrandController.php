@@ -23,9 +23,9 @@ class CardBrandController extends Controller
 
             'card',
             (string) $card->id,
-            'attached',
-            "Melampirkan brand ke card '{$card->title}'",
-            ['card_id' => (string) $card->id, 'brand_id' => (string) $brand->id]
+            'brand_attached',
+            "Menambahkan brand '{$brand->name}' ke card '{$card->title}'",
+            ['card_id' => (string) $card->id, 'brand_id' => (string) $brand->id, 'brand_name' => $brand->name]
         );
 
         return response()->json([
@@ -43,9 +43,9 @@ class CardBrandController extends Controller
 
             'card',
             (string) $card->id,
-            'detached',
-            "Melepas brand dari card '{$card->title}'",
-            ['card_id' => (string) $card->id, 'brand_id' => (string) $brand->id]
+            'brand_detached',
+            "Menghapus brand '{$brand->name}' dari card '{$card->title}'",
+            ['card_id' => (string) $card->id, 'brand_id' => (string) $brand->id, 'brand_name' => $brand->name]
         );
 
         return response()->json([

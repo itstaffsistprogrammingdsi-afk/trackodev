@@ -31,15 +31,16 @@ class CardLabelController extends Controller
             ->syncWithoutDetaching([
                 $validated['label_id'],
             ]);
+        $label = Label::findOrFail($validated['label_id']);
 
         ActivityLogService::log(
             auth()->user(),
 
             'card',
             (string) $card->id,
-            'attached',
-            "Melampirkan label ke card '{$card->title}'",
-            ['card_id' => (string) $card->id, 'label_id' => (string) $validated['label_id']]
+            'label_attached',
+            "Menambahkan label '{$label->name}' ke card '{$card->title}'",
+            ['card_id' => (string) $card->id, 'label_id' => (string) $label->id, 'label_name' => $label->name]
         );
 
         return response()->json(
@@ -65,9 +66,9 @@ class CardLabelController extends Controller
 
             'card',
             (string) $card->id,
-            'detached',
-            "Melepas label dari card '{$card->title}'",
-            ['card_id' => (string) $card->id, 'label_id' => (string) $label->id]
+            'label_detached',
+            "Menghapus label '{$label->name}' dari card '{$card->title}'",
+            ['card_id' => (string) $card->id, 'label_id' => (string) $label->id, 'label_name' => $label->name]
         );
 
         return response()->json(
@@ -92,6 +93,7 @@ class CardLabelController extends Controller
         ]);
 
         $labelId = $validated['label_id'];
+        $label = Label::findOrFail($labelId);
 
         $exists = $card->labels()
             ->where('labels.id', $labelId)
@@ -118,9 +120,11 @@ class CardLabelController extends Controller
 
             'card',
             (string) $card->id,
-            'toggled',
-            "Mengalihkan label pada card '{$card->title}'",
-            ['card_id' => (string) $card->id, 'label_id' => (string) $labelId]
+            $exists ? 'label_detached' : 'label_attached',
+            $exists
+                ? "Menghapus label '{$label->name}' dari card '{$card->title}'"
+                : "Menambahkan label '{$label->name}' ke card '{$card->title}'",
+            ['card_id' => (string) $card->id, 'label_id' => (string) $labelId, 'label_name' => $label->name]
         );
 
         return response()->json(

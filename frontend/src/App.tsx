@@ -1,64 +1,50 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
+import { lazy, Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
-
-import SignIn from "./pages/AuthPages/SignIn";
-import SignUp from "./pages/AuthPages/SignUp";
-import NotFound from "./pages/OtherPage/NotFound";
-
-import UserProfiles from "./pages/UserProfiles";
-import Videos from "./pages/UiElements/Videos";
-import Images from "./pages/UiElements/Images";
-import Alerts from "./pages/UiElements/Alerts";
-import Badges from "./pages/UiElements/Badges";
-import Avatars from "./pages/UiElements/Avatars";
-import Buttons from "./pages/UiElements/Buttons";
-
-import LineChart from "./pages/Charts/LineChart";
-import BarChart from "./pages/Charts/BarChart";
-
-import CalendarPage from "./features/calendar/pages/CalendarPage";
-import BasicTables from "./pages/Tables/BasicTables";
-import FormElements from "./pages/Forms/FormElements";
-import Blank from "./pages/Blank";
 
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
-
-import Home from "./pages/Dashboard/Home";
-import TestConnection from "./pages/TestConnection";
-
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-
-import DivisionPage from "@/features/division/pages/DivisionPage";
-import WorkspacePage from "@/features/workspace/pages/WorkspacePage";
-import BoardPage from "@/features/board/pages/BoardPage";
-import CampaignListPage from "./features/campaign/pages/CampaignListPage";
-
-import FormPage from "@/features/form/pages/FormPage";
-import CreateFormPage from "@/features/form/pages/CreateFormPage";
-import FormBuilderPage from "@/features/form/pages/FormBuilderPage";
-import FormResponsesPage from "@/features/form/pages/FormResponsesPage";
-import EditFormPage from "@/features/form/pages/EditFormPage";
-import PublicFormPage from "@/features/form/pages/PublicFormPage";
-
-import ChatPage from "./pages/Chats/ChatPage";
-import ReportPage from "./features/report/pages/ReportPage";
-import CampaignDetailPage from "./features/campaign/pages/CampaignDetailPage";
-
-import NotificationPage from "./pages/Notifications/NotificationPage";
-
-// import DailyTodoPage from "@/features/daily/components/DailyTodoSidebar";
-
-import MyWorkPage from "@/features/my-work/pages/MyWorkPage";
-
 import PermissionRoute from "./components/auth/PermissionRoute";
 import RoleRoute from "./components/auth/RoleRoute";
-
-import LandingPage from "@/features/landing/pages/LandingPage";
-
-import EditAccountPage from "@/features/account/pages/EditAccountPage";
 import MobileAppBridge from "@/components/common/MobileAppBridge";
 import { getLastAppRoute, LAST_APP_ROUTE_KEY } from "@/lib/mobileApp";
+
+const SignIn = lazy(() => import("./pages/AuthPages/SignIn"));
+const SignUp = lazy(() => import("./pages/AuthPages/SignUp"));
+const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
+const UserProfiles = lazy(() => import("./pages/UserProfiles"));
+const Videos = lazy(() => import("./pages/UiElements/Videos"));
+const Images = lazy(() => import("./pages/UiElements/Images"));
+const Alerts = lazy(() => import("./pages/UiElements/Alerts"));
+const Badges = lazy(() => import("./pages/UiElements/Badges"));
+const Avatars = lazy(() => import("./pages/UiElements/Avatars"));
+const Buttons = lazy(() => import("./pages/UiElements/Buttons"));
+const LineChart = lazy(() => import("./pages/Charts/LineChart"));
+const BarChart = lazy(() => import("./pages/Charts/BarChart"));
+const CalendarPage = lazy(() => import("./features/calendar/pages/CalendarPage"));
+const BasicTables = lazy(() => import("./pages/Tables/BasicTables"));
+const FormElements = lazy(() => import("./pages/Forms/FormElements"));
+const Blank = lazy(() => import("./pages/Blank"));
+const Home = lazy(() => import("./pages/Dashboard/Home"));
+const TestConnection = lazy(() => import("./pages/TestConnection"));
+const DivisionPage = lazy(() => import("@/features/division/pages/DivisionPage"));
+const WorkspacePage = lazy(() => import("@/features/workspace/pages/WorkspacePage"));
+const BoardPage = lazy(() => import("@/features/board/pages/BoardPage"));
+const CampaignListPage = lazy(() => import("./features/campaign/pages/CampaignListPage"));
+const FormPage = lazy(() => import("@/features/form/pages/FormPage"));
+const CreateFormPage = lazy(() => import("@/features/form/pages/CreateFormPage"));
+const FormBuilderPage = lazy(() => import("@/features/form/pages/FormBuilderPage"));
+const FormResponsesPage = lazy(() => import("@/features/form/pages/FormResponsesPage"));
+const EditFormPage = lazy(() => import("@/features/form/pages/EditFormPage"));
+const PublicFormPage = lazy(() => import("@/features/form/pages/PublicFormPage"));
+const ChatPage = lazy(() => import("./pages/Chats/ChatPage"));
+const ReportPage = lazy(() => import("./features/report/pages/ReportPage"));
+const CampaignDetailPage = lazy(() => import("./features/campaign/pages/CampaignDetailPage"));
+const NotificationPage = lazy(() => import("./pages/Notifications/NotificationPage"));
+const MyWorkPage = lazy(() => import("@/features/my-work/pages/MyWorkPage"));
+const LandingPage = lazy(() => import("@/features/landing/pages/LandingPage"));
+const EditAccountPage = lazy(() => import("@/features/account/pages/EditAccountPage"));
 
 function isSuperAdminUser(auth: ReturnType<typeof useAuth>) {
   try {
@@ -116,6 +102,13 @@ export default function App() {
       <MobileAppBridge />
       <ScrollToTop />
 
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-medium text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            Loading page...
+          </div>
+        }
+      >
       <Routes>
         {/* ================= PUBLIC ================= */}
         <Route path="/" element={<RootRoute />} />
@@ -289,6 +282,7 @@ export default function App() {
         {/* ================= FALLBACK ================= */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
 
       {/* WIDGET CHAT GLOBAL 
           Diletakkan di luar <Routes> agar tidak ikut unmount ketika ganti halaman 

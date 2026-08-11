@@ -29,7 +29,7 @@ import CardDetailModal from "@/features/card/components/CardDetailModal";
 
 import { moveCard, reorderCards } from "@/features/card/api/card.api";
 import { reorderBoards } from "../api/board.api";
-import { isAndroidApp } from "@/lib/mobileConfig";
+import { isMobileApp } from "@/lib/mobileConfig";
 
 import { Board } from "../types";
 import { Card } from "@/features/card/types";
@@ -78,7 +78,7 @@ export default function BoardPage() {
   const [activeBoard, setActiveBoard] = useState<Board | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [mobileBoardId, setMobileBoardId] = useState("");
-  const androidApp = isAndroidApp();
+  const mobileApp = isMobileApp();
 
   // =========================================
   // SYNC DATA
@@ -90,12 +90,12 @@ export default function BoardPage() {
   }, [data]);
 
   useEffect(() => {
-    if (!androidApp || boards.length === 0) return;
+    if (!mobileApp || boards.length === 0) return;
 
     setMobileBoardId((current) =>
       boards.some((board) => board.id === current) ? current : boards[0].id,
     );
-  }, [androidApp, boards]);
+  }, [mobileApp, boards]);
 
   // =========================================
   // KEEP MODAL UPDATED
@@ -442,7 +442,7 @@ export default function BoardPage() {
   }
 
   const visibleKanbanBoards =
-    androidApp && mobileBoardId
+    mobileApp && mobileBoardId
       ? boards.filter((board) => board.id === mobileBoardId)
       : boards;
 
@@ -512,7 +512,7 @@ export default function BoardPage() {
         </button>
       </div>
 
-      {androidApp && viewMode === "kanban" && boards.length > 0 ? (
+      {mobileApp && viewMode === "kanban" && boards.length > 0 ? (
         <label className="block w-full sm:w-auto">
           <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
             Status yang ditampilkan
@@ -581,7 +581,7 @@ export default function BoardPage() {
       >
         <div
           className={
-            androidApp
+            mobileApp
               ? "block w-full pb-6"
               : "flex w-full gap-4 overflow-x-auto overflow-y-hidden pb-6 custom-scrollbar"
           }
@@ -600,8 +600,8 @@ export default function BoardPage() {
                 .filter((target) => target.id !== board.id)
                 .map((target) => ({ id: target.id, name: target.name }))}
               onMoveCard={handleSelectMove}
-              disableDrag={androidApp}
-              fullWidth={androidApp}
+              disableDrag={mobileApp}
+              fullWidth={mobileApp}
             />
           ))}
         </div>
@@ -645,7 +645,23 @@ export default function BoardPage() {
         card={selectedCard}
         isOpen={!!selectedCard}
         onClose={() => setSelectedCard(null)}
-        onUpdated={async () => {
+        onUpdated={async (updated) => {
+          if (updated?.id) {
+            setBoards((current) =>
+              current.map((board) => ({
+                ...board,
+                cards: board.cards.map((item) =>
+                  item.id === updated.id ? { ...item, ...updated } : item,
+                ),
+              })),
+            );
+            setSelectedCard((current) =>
+              current?.id === updated.id
+                ? ({ ...current, ...updated } as Card)
+                : current,
+            );
+            return;
+          }
           await refetch();
         }}
         onDeleted={(deletedId) => {

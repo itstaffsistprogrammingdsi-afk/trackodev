@@ -1,11 +1,12 @@
-# Tracko Web, Android & Signed OTA Updates
+# Tracko Web, Android, iOS & Signed OTA Updates
 
-Frontend Tracko menggunakan React/Vite. Versi Android development dibungkus
-dengan Capacitor sehingga fitur web yang sama dapat dijalankan sebagai APK.
+Frontend Tracko menggunakan React/Vite. Aplikasi Android dan iOS dibungkus
+dengan Capacitor sehingga fitur yang sama dapat dijalankan sebagai APK/AAB
+atau aplikasi iPhone/iPad.
 
-Web dan APK memakai source yang sama, tetapi runtime tetap dipisahkan melalui
-`Capacitor.isNativePlatform()`. Komponen khusus Android tidak akan dirender di
-browser, sementara tampilan web tetap memakai komponen web yang sudah ada.
+Web dan aplikasi native memakai source yang sama, tetapi runtime tetap dipisahkan
+melalui `Capacitor.isNativePlatform()`. Komponen mobile tidak dirender di browser,
+sementara Android dan iOS memakai tampilan card serta navigasi mobile yang sama.
 
 ## Menjalankan web
 
@@ -19,14 +20,15 @@ adalah perintah deployment produksi: bundle web dibuat, dikompres, diberi
 checksum, ditandatangani RSA, lalu manifest OTA ditulis ke
 `dist/mobile-updates/latest.json`.
 
-## Konfigurasi backend Android
+## Konfigurasi backend mobile
 
-- APK memakai `https://dev.tracko.dsicorp.id/api` secara default.
-- Transport HTTP native Capacitor diaktifkan agar request API Android tidak
+- Android dan iOS memakai `https://dev.tracko.dsicorp.id/api` secara default.
+- Transport HTTP native Capacitor diaktifkan agar request API mobile tidak
   bergantung pada pembatasan CORS WebView.
 - Alamat server dapat diubah dari layar login. Android Emulator dapat memakai
   `http://10.0.2.2:8000/api`; HP fisik dapat memakai IP LAN komputer, misalnya
-  `http://192.168.1.10:8000/api`.
+  `http://192.168.1.10:8000/api`. iOS Simulator memakai `http://localhost:8000/api`
+  bila Laravel berjalan pada Mac yang sama.
 - Build produksi hanya menerima HTTPS. Untuk pengujian lokal HTTP di PowerShell,
   set `$env:CAPACITOR_ENV='development'` sebelum menjalankan `npm run android:sync`.
 - Jalankan Laravel agar dapat diakses jaringan:
@@ -53,10 +55,31 @@ APK dihasilkan pada:
 Build ini ditandatangani dengan debug key dan ditujukan untuk instalasi internal,
 bukan rilis resmi Play Store.
 
-## Update otomatis web ke APK
+## Build iOS development
 
-APK tidak memakai `server.url`. Konfigurasi tersebut hanya cocok untuk live
-reload development. APK selalu membawa bundle lokal sehingga tetap dapat dibuka
+Proyek Xcode berada di `ios/App/App.xcodeproj`. Apple mewajibkan build iOS
+dijalankan pada macOS dengan Xcode. Dari Mac yang sudah memiliki Node.js dan
+Xcode Command Line Tools:
+
+```bash
+npm ci
+npm run ios:sync
+npm run ios:open
+```
+
+Di Xcode, pilih target `App`, isi `Signing & Capabilities` dengan Apple Developer
+Team perusahaan, pastikan bundle identifier `id.dsicorp.tracko` tersedia, pilih
+iPhone/Simulator, lalu jalankan aplikasi. Versi iOS saat ini `1.0.0` dengan build
+number `7`, sama dengan Android agar pemeriksaan kompatibilitas OTA konsisten.
+
+Untuk perangkat fisik, HTTPS wajib digunakan. HTTP lokal hanya untuk development
+dan memerlukan pengecualian App Transport Security yang sengaja tidak disertakan
+dalam konfigurasi release.
+
+## Update otomatis web ke aplikasi mobile
+
+Android dan iOS tidak memakai `server.url`. Konfigurasi tersebut hanya cocok untuk
+live reload development. Aplikasi selalu membawa bundle lokal sehingga tetap dapat dibuka
 ketika server update atau jaringan tidak tersedia.
 
 Saat aplikasi dibuka, `MobileLiveUpdate` melakukan hal berikut:
@@ -67,13 +90,14 @@ Saat aplikasi dibuka, `MobileLiveUpdate` melakukan hal berikut:
 4. Memverifikasi checksum dan signature RSA sebelum memasang bundle.
 5. Memuat update pada startup. Jika update gagal, bundle lama tetap digunakan.
 
-Update OTA hanya untuk HTML, CSS, JavaScript, dan aset web. Perubahan plugin
-Capacitor, permission, Gradle, Kotlin, ikon, splash screen, atau native SDK wajib
-dirilis sebagai APK/AAB baru dengan `versionCode` lebih tinggi.
+Update OTA hanya untuk HTML, CSS, JavaScript, dan aset web. Perubahan plugin,
+permission, Gradle/Kotlin, Swift/Xcode, ikon, splash screen, atau native SDK wajib
+dirilis sebagai APK/AAB atau versi TestFlight/App Store baru dengan build number
+lebih tinggi.
 
 ### Kunci signing OTA
 
-Public key `mobile-update-public.pem` disertakan dalam APK. Private key berada di
+Public key `mobile-update-public.pem` disertakan dalam aplikasi Android dan iOS. Private key berada di
 `.mobile-update-keys/private.pem`, diabaikan Git, dan wajib dicadangkan ke secret
 manager perusahaan. Kehilangan private key berarti APK yang sudah beredar tidak
 dapat menerima bundle OTA baru.
@@ -129,3 +153,20 @@ npm run android:apk:release
 AAB digunakan untuk Google Play. APK release digunakan untuk distribusi langsung.
 Script akan berhenti sebelum Gradle dijalankan bila salah satu secret signing tidak
 tersedia, sehingga binary publik tidak mungkin terbuat tanpa tanda tangan resmi.
+
+## Distribusi iOS
+
+Release iOS memerlukan akun Apple Developer aktif, certificate distribution, dan
+provisioning profile yang dikelola melalui Xcode. Setelah `npm run ios:sync`:
+
+1. Buka proyek melalui `npm run ios:open` pada Mac.
+2. Pilih target `App` dan konfigurasi `Signing & Capabilities`.
+3. Pilih `Any iOS Device (arm64)`, lalu `Product > Archive`.
+4. Dari Organizer, jalankan `Distribute App` ke TestFlight/App Store atau ekspor
+   ad-hoc sesuai profil perusahaan.
+5. Uji login, notifikasi, realtime, perpindahan card, background/resume, serta OTA
+   pada iPhone fisik sebelum mengirim build ke client.
+
+Apple tidak mengizinkan pembuatan atau penandatanganan `.ipa` final dari Windows.
+Source dan proyek Xcode dapat disiapkan di platform mana pun, tetapi archive final
+harus dibuat oleh Xcode di macOS atau CI macOS.

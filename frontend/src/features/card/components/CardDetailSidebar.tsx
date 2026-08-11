@@ -255,6 +255,7 @@ export default function CardDetailSidebar({
                   loading={attachmentLoading}
                   fetchAttachments={fetchAttachments}
                   showUploader
+                  showList={false}
                   title="Result Attachment"
                   uploadEndpoint={`/cards/${card.id}/attachments`}
                   deleteEndpoint="/attachments"
@@ -282,6 +283,7 @@ export default function CardDetailSidebar({
                   loading={briefLoading}
                   fetchAttachments={fetchBriefAttachments}
                   showUploader
+                  showList={false}
                   title="Brief Attachment"
                   uploadEndpoint={`/cards/${card.id}/brief-attachments`}
                   deleteEndpoint="/brief-attachments"

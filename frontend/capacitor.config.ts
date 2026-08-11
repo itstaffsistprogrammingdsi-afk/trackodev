@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const developmentBuild = process.env.CAPACITOR_ENV === "development";
-// Public by design: APK uses this key only to verify bundles signed by the
+// Public by design: native apps use this key only to verify bundles signed by the
 // private key stored in the deployment secret manager.
 const liveUpdatePublicKey = `-----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAxIbowo9NRkmw+I+msXx+
@@ -25,12 +25,18 @@ const config: CapacitorConfig = {
   loggingBehavior: developmentBuild ? "debug" : "none",
   server: {
     androidScheme: "https",
+    iosScheme: "https",
     cleartext: developmentBuild,
   },
   android: {
     allowMixedContent: developmentBuild,
     backgroundColor: "#f8fafc",
     webContentsDebuggingEnabled: developmentBuild,
+  },
+  ios: {
+    backgroundColor: "#f8fafc",
+    contentInset: "automatic",
+    preferredContentMode: "mobile",
   },
   plugins: {
     CapacitorHttp: {

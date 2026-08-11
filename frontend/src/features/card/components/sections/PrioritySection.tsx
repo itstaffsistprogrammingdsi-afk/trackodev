@@ -64,10 +64,17 @@ export default function PrioritySection({
         setOpen(false);
       }
     };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
 
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
 
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [open]);
 
   const handleSelect = async (value: CardPriority) => {
@@ -93,6 +100,9 @@ export default function PrioritySection({
         type="button"
         disabled={disabled || loading || saving}
         onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Priority: ${current.label}`}
         className="
           inline-flex
           items-center
@@ -139,9 +149,9 @@ export default function PrioritySection({
         <div
           className="
 absolute
-left-full
-top-0
-ml-2
+left-0
+top-full
+mt-2
 z-50
 min-w-[180px]
 overflow-hidden
@@ -152,11 +162,15 @@ shadow-xl
 dark:border-slate-700
 dark:bg-slate-800
 "
+          role="listbox"
+          aria-label="Pilih priority"
         >
           {PRIORITIES.map((item) => (
             <button
               key={item.value}
               type="button"
+              role="option"
+              aria-selected={item.value === priority}
               onClick={() => void handleSelect(item.value)}
               className="
                 flex

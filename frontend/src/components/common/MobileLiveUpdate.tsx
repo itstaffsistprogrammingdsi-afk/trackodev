@@ -3,7 +3,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { LiveUpdate } from "@capawesome/capacitor-live-update";
 import { AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
 
-import { isAndroidApp } from "@/lib/mobileConfig";
+import { isMobileApp } from "@/lib/mobileConfig";
 
 const CHECK_INTERVAL_MS = 15 * 60 * 1000;
 
@@ -47,7 +47,7 @@ export default function MobileLiveUpdate() {
   const initialCheckRef = useRef(true);
 
   const checkForUpdate = useCallback(async (force = false) => {
-    if (!isAndroidApp() || checkingRef.current) return;
+    if (!isMobileApp() || checkingRef.current) return;
 
     const manifestUrl = import.meta.env.VITE_MOBILE_UPDATE_MANIFEST_URL?.trim();
     if (!manifestUrl) {
@@ -103,7 +103,7 @@ export default function MobileLiveUpdate() {
         setBlockingState({
           kind: "native-update",
           message:
-            "Versi aplikasi ini sudah tidak kompatibel. Instal versi APK terbaru untuk melanjutkan.",
+            "Versi aplikasi ini sudah tidak kompatibel. Instal versi aplikasi terbaru untuk melanjutkan.",
         });
         return;
       }
@@ -138,7 +138,7 @@ export default function MobileLiveUpdate() {
   }, []);
 
   useEffect(() => {
-    if (!isAndroidApp()) return;
+    if (!isMobileApp()) return;
 
     void LiveUpdate.ready()
       .catch((error) => console.warn("Unable to mark mobile bundle as ready", error))
@@ -153,7 +153,7 @@ export default function MobileLiveUpdate() {
     };
   }, [checkForUpdate]);
 
-  if (!isAndroidApp() || !blockingState) return null;
+  if (!isMobileApp() || !blockingState) return null;
 
   const maintenance = blockingState.kind === "maintenance";
 

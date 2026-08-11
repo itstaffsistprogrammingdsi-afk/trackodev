@@ -465,7 +465,18 @@ export const CalendarView: React.FC = () => {
         card={selectedCard}
         isOpen={selectedCard !== null}
         onClose={() => setSelectedCard(null)}
-        onUpdated={refresh}
+        onUpdated={(updated) => {
+          if (updated?.id) {
+            setSelectedCard((current) =>
+              current?.id === updated.id
+                ? ({ ...current, ...updated } as Card)
+                : current,
+            );
+            if ("due_date" in updated) refresh();
+            return;
+          }
+          refresh();
+        }}
         onDeleted={() => {
           setSelectedCard(null);
           refresh();
