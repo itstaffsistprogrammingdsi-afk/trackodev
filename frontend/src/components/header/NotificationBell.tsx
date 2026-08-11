@@ -13,7 +13,7 @@ import {
   markAllNotificationsRead,
 } from "@/features/notification/api/notification.api";
 import { useAuth } from "@/context/AuthContext";
-import { createEcho } from "@/lib/echo";
+import { acquireEcho, releaseEcho } from "@/lib/echo";
 import { REALTIME_DATA_CHANGED_EVENT } from "@/lib/realtimeEvents";
 import {
   APP_RESUMED_EVENT,
@@ -69,7 +69,7 @@ export default function NotificationBell() {
       return;
     }
 
-    const echo = createEcho();
+    const echo = acquireEcho();
 
     if (!echo) {
       return;
@@ -96,6 +96,7 @@ export default function NotificationBell() {
 
     return () => {
       echo.leave(channelName);
+      releaseEcho(echo);
     };
   }, [user?.id]);
 

@@ -11,7 +11,7 @@ export type CreateCardRequest = {
 
   priority?: CardPriority;
 
-  due_date?: string;
+  due_date?: string | null;
   assignees?: string[]
 };
 
@@ -138,6 +138,7 @@ export type Brand = {
 export interface Board {
   id: string;
   campaign_id: string;
+  name?: string;
 }
 
 export interface ActivityLog {
@@ -159,4 +160,15 @@ export interface ActivityLog {
     id: string;
     name: string;
   };
+}
+
+export interface ActivityInsight {
+  last_activity_at?: string | null;
+  dominant_category?: "changes" | "tasks" | "comments" | "files" | null;
+  dominant_count?: number;
+  most_active_user?: {
+    id: string;
+    name: string;
+    activity_count: number;
+  } | null;
 }

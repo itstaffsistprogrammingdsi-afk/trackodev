@@ -1,124 +1,77 @@
 import { useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
-
-import { CardComment } from "../types";
-
-import { addComment } from "../api/card.api";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
-
-interface ReturnType {
-  comments: CardComment[];
-
-  comment: string;
-
-  setComment: React.Dispatch<
-    React.SetStateAction<string>
-  >;
-
-  sending: boolean;
-
-  handleAddComment: () => Promise<void>;
-}
+import { addComment } from "../api/card.api";
+import type { CardComment } from "../types";
 
 export default function useComments(
   cardId?: number | string,
   isOpen?: boolean,
-  onUpdated?: () => void,
-): ReturnType {
+) {
   const realtimeRevision = useRealtimeRevision(["CardComment"]);
-  const [comments, setComments] =
-    useState<CardComment[]>([]);
-
-  const [comment, setComment] =
-    useState("");
-
-  const [sending, setSending] =
-    useState(false);
-  const onUpdatedRef = useRef(onUpdated);
+  const [comments, setComments] = useState<CardComment[]>([]);
+  const [comment, setComment] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const requestRef = useRef(0);
+  const activeCardIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    onUpdatedRef.current = onUpdated;
-  }, [onUpdated]);
-
-  // =========================================
-  // FETCH COMMENTS
-  // =========================================
-  useEffect(() => {
-    const fetchComments = async () => {
-      if (!cardId) return;
-
-      try {
-        const res = await api.get(
-          `/cards/${cardId}/comments`,
-        );
-
-        setComments(res.data.data || []);
-        onUpdatedRef.current?.();
-      } catch (err) {
-        console.error(
-          "FAILED FETCH COMMENTS",
-          err,
-        );
-      }
-    };
-
-    if (isOpen && cardId) {
-      fetchComments();
+    if (!isOpen || !cardId) return;
+    const requestId = ++requestRef.current;
+    if (activeCardIdRef.current !== String(cardId)) {
+      activeCardIdRef.current = String(cardId);
+      setComments([]);
     }
+    setError("");
+
+    void api.get(`/cards/${cardId}/comments`)
+      .then((response) => {
+        if (requestId === requestRef.current) {
+          setComments(response.data.data || []);
+          setError("");
+        }
+      })
+      .catch((fetchError) => {
+        if (requestId === requestRef.current) {
+          console.error("FAILED FETCH COMMENTS", fetchError);
+          setError("Komentar gagal dimuat.");
+        }
+      });
+
+    return () => {
+      requestRef.current += 1;
+    };
   }, [cardId, isOpen, realtimeRevision]);
 
-  // =========================================
-  // ADD COMMENT
-  // =========================================
   const handleAddComment = async () => {
-    if (!comment.trim()) return;
+    const content = comment.trim();
+    if (!content || !cardId || sending) return;
 
-    if (!cardId) return;
-
-    const temp: CardComment = {
-      id: Date.now().toString(),
-      content: comment,
-
-      user: {
-        id: "temp-user",
-        name: "You",
-        email: "",
-      },
-      
+    const temporaryId = `temp-${Date.now()}`;
+    const temporaryComment: CardComment = {
+      id: temporaryId,
+      content,
+      user: { id: "current-user", name: "You", email: "" },
     };
 
-    // 🔥 optimistic update
-    setComments((prev) => [temp, ...prev]);
-
-    const currentComment = comment;
-
+    setComments((current) => [temporaryComment, ...current]);
     setComment("");
+    setSending(true);
+    setError("");
 
     try {
-      setSending(true);
-
-      await addComment(
-        String(cardId),
-        currentComment,
+      await addComment(String(cardId), content);
+      const response = await api.get(`/cards/${cardId}/comments`);
+      setComments(response.data.data || []);
+    } catch (submitError) {
+      console.error("FAILED ADD COMMENT", submitError);
+      setComments((current) =>
+        current.filter((item) => item.id !== temporaryId),
       );
-
-      // 🔥 sync ulang dari backend
-      const res = await api.get(
-        `/cards/${cardId}/comments`,
-      );
-
-      setComments(res.data.data || []);
-    } catch (err) {
-      console.error(
-        "FAILED ADD COMMENT",
-        err,
-      );
-
-      // rollback
-      setComments((prev) =>
-        prev.filter((c) => c.id !== temp.id),
-      );
+      setComment((current) => current || content);
+      setError("Komentar gagal dikirim. Teks Anda dipulihkan.");
     } finally {
       setSending(false);
     }
@@ -126,13 +79,10 @@ export default function useComments(
 
   return {
     comments,
-
     comment,
-
     setComment,
-
     sending,
-
+    error,
     handleAddComment,
   };
 }

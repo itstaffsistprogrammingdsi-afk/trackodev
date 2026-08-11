@@ -35,7 +35,7 @@ class TaskController extends Controller
             (string) $task->id,
             'created',
             "Membuat task '{$task->title}' di card '{$card->title}' di board '{$card->board->name}'",
-            ['card_id' => $card->id, 'task_id' => $task->id]
+            ['card_id' => $card->id, 'task_id' => $task->id, 'task_title' => $task->title]
         );
 
         return response()->json(['message' => 'Task berhasil dibuat.', 'data' => new TaskResource($task)], 201);
@@ -45,6 +45,7 @@ class TaskController extends Controller
     {
         $this->authorizeTask($task);
         $request->validate(['title' => 'sometimes|string|max:255']);
+        $oldTitle = $task->title;
         $task->update($request->only(['title']));
         ActivityLogService::log(
             auth()->user(),
@@ -53,7 +54,13 @@ class TaskController extends Controller
             (string) $task->id,
             'updated',
             "Mengupdate task '{$task->title}' di card '{$task->card->title}' di board '{$task->card->board->name}'",
-            ['card_id' => $task->card->id, 'task_id' => $task->id]
+            [
+                'card_id' => $task->card->id,
+                'task_id' => $task->id,
+                'task_title' => $task->title,
+                'old_value' => $oldTitle,
+                'new_value' => $task->title,
+            ]
         );
 
         return response()->json(['message' => 'Task berhasil diupdate.', 'data' => new TaskResource($task)]);
@@ -68,9 +75,11 @@ class TaskController extends Controller
 
             'task',
             (string) $task->id,
-            'completed',
-            "Mengubah status task '{$task->title}' di card '{$task->card->title}' di board '{$task->card->board->name}'",
-            ['card_id' => $task->card->id, 'task_id' => $task->id]
+            $task->is_completed ? 'completed' : 'reopened',
+            $task->is_completed
+                ? "Menyelesaikan task '{$task->title}' di card '{$task->card->title}'"
+                : "Membuka kembali task '{$task->title}' di card '{$task->card->title}'",
+            ['card_id' => $task->card->id, 'task_id' => $task->id, 'task_title' => $task->title]
         );
 
         return response()->json(['message' => 'Status task berhasil diubah.', 'data' => new TaskResource($task)]);
@@ -130,7 +139,7 @@ class TaskController extends Controller
             (string) $task->id,
             'deleted',
             "Menghapus task '{$task->title}' di card '{$task->card->title}' di board '{$task->card->board->name}'",
-            ['card_id' => $task->card->id, 'task_id' => $task->id]
+            ['card_id' => $task->card->id, 'task_id' => $task->id, 'task_title' => $task->title]
         );
 
         return response()->json(['message' => 'Task berhasil dihapus.']);
@@ -156,8 +165,8 @@ class TaskController extends Controller
             'subtask',
             (string) $subtask->id,
             'created',
-            "Membuat subtask di task '{$task->title}' di card '{$task->card->title}' di board '{$task->card->board->name}'",
-            ['card_id' => $task->card->id, 'task_id' => $task->id, 'subtask_id' => $subtask->id]
+            "Membuat subtask '{$subtask->title}' di task '{$task->title}'",
+            ['card_id' => $task->card->id, 'task_id' => $task->id, 'subtask_id' => $subtask->id, 'subtask_title' => $subtask->title]
         );
 
         return response()->json(['message' => 'Subtask berhasil dibuat.', 'data' => $subtask], 201);
@@ -167,6 +176,7 @@ class TaskController extends Controller
     {
         $this->authorizeSubtask($subtask);
         $request->validate(['title' => 'sometimes|string|max:255']);
+        $oldTitle = $subtask->title;
         $subtask->update($request->only(['title']));
         ActivityLogService::log(
             auth()->user(),
@@ -174,8 +184,15 @@ class TaskController extends Controller
             'subtask',
             (string) $subtask->id,
             'updated',
-            "Mengupdate subtask di task '{$subtask->task->title}' di card '{$subtask->task->card->title}' di board '{$subtask->task->card->board->name}'",
-            ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id]
+            "Memperbarui subtask '{$subtask->title}' di task '{$subtask->task->title}'",
+            [
+                'card_id' => $subtask->task->card->id,
+                'task_id' => $subtask->task->id,
+                'subtask_id' => $subtask->id,
+                'subtask_title' => $subtask->title,
+                'old_value' => $oldTitle,
+                'new_value' => $subtask->title,
+            ]
         );
 
         return response()->json(['message' => 'Subtask berhasil diupdate.', 'data' => $subtask]);
@@ -190,9 +207,11 @@ class TaskController extends Controller
 
             'subtask',
             (string) $subtask->id,
-            'completed',
-            "Mengubah status subtask di task '{$subtask->task->title}' di card '{$subtask->task->card->title}' di board '{$subtask->task->card->board->name}'",
-            ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id]
+            $subtask->is_completed ? 'completed' : 'reopened',
+            $subtask->is_completed
+                ? "Menyelesaikan subtask '{$subtask->title}' di task '{$subtask->task->title}'"
+                : "Membuka kembali subtask '{$subtask->title}' di task '{$subtask->task->title}'",
+            ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id, 'subtask_title' => $subtask->title]
         );
 
         return response()->json(['message' => 'Status subtask berhasil diubah.', 'data' => $subtask]);
@@ -208,8 +227,8 @@ class TaskController extends Controller
             'subtask',
             (string) $subtask->id,
             'deleted',
-            "Menghapus subtask di task '{$subtask->task->title}' di card '{$subtask->task->card->title}' di board '{$subtask->task->card->board->name}'",
-            ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id]
+            "Menghapus subtask '{$subtask->title}' di task '{$subtask->task->title}'",
+            ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id, 'subtask_title' => $subtask->title]
         );
 
         return response()->json(['message' => 'Subtask berhasil dihapus.']);

@@ -1,16 +1,29 @@
 import { Capacitor } from "@capacitor/core";
 
 const MOBILE_API_URL_KEY = "tracko_mobile_api_url";
-const DEFAULT_ANDROID_API_URL = "https://dev.tracko.dsicorp.id/api";
+const DEFAULT_MOBILE_API_URL = "https://dev.tracko.dsicorp.id/api";
+
+export type NativePlatform = "android" | "ios";
+
+export const getNativePlatform = (): NativePlatform | null => {
+  if (!Capacitor.isNativePlatform()) return null;
+
+  const platform = Capacitor.getPlatform();
+  return platform === "android" || platform === "ios" ? platform : null;
+};
+
+export const isMobileApp = (): boolean => getNativePlatform() !== null;
 
 export const isAndroidApp = (): boolean =>
-  Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+  getNativePlatform() === "android";
+
+export const isIosApp = (): boolean => getNativePlatform() === "ios";
 
 export const normalizeApiUrl = (value: string): string => {
   let url = value.trim();
 
   if (!url) {
-    return DEFAULT_ANDROID_API_URL;
+    return DEFAULT_MOBILE_API_URL;
   }
 
   if (!/^https?:\/\//i.test(url)) {
@@ -27,7 +40,7 @@ export const normalizeApiUrl = (value: string): string => {
 };
 
 export const getApiBaseUrl = (): string => {
-  if (isAndroidApp()) {
+  if (isMobileApp()) {
     const savedUrl = localStorage.getItem(MOBILE_API_URL_KEY);
 
     if (savedUrl) {
@@ -35,7 +48,7 @@ export const getApiBaseUrl = (): string => {
     }
 
     return normalizeApiUrl(
-      import.meta.env.VITE_API_URL || DEFAULT_ANDROID_API_URL,
+      import.meta.env.VITE_API_URL || DEFAULT_MOBILE_API_URL,
     );
   }
 
@@ -49,4 +62,4 @@ export const saveMobileApiUrl = (value: string): string => {
 };
 
 export const getMobileApiUrl = (): string =>
-  isAndroidApp() ? getApiBaseUrl() : "";
+  isMobileApp() ? getApiBaseUrl() : "";

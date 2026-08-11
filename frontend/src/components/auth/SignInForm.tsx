@@ -14,7 +14,7 @@ import Button from "../ui/button/Button";
 
 import { login } from "../../lib/auth.service";
 import { updateMobileApiUrl } from "../../lib/axios";
-import { getMobileApiUrl, isAndroidApp } from "../../lib/mobileConfig";
+import { getMobileApiUrl, isMobileApp } from "../../lib/mobileConfig";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SignInForm() {
@@ -27,7 +27,7 @@ export default function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const androidApp = isAndroidApp();
+  const mobileApp = isMobileApp();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,7 +36,7 @@ export default function SignInForm() {
       setLoginError("");
       setLoading(true);
 
-      if (androidApp) {
+      if (mobileApp) {
         updateMobileApiUrl(getMobileApiUrl());
       }
 

@@ -10,7 +10,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
-import { isAndroidApp } from "@/lib/mobileConfig";
+import { isMobileApp } from "@/lib/mobileConfig";
 import { Card } from "../types";
 import NativeCardItem from "./NativeCardItem";
 import {
@@ -31,7 +31,7 @@ interface Props {
 
 export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Props) {
   const [isMoving, setIsMoving] = useState(false);
-  const androidApp = isAndroidApp();
+  const mobileApp = isMobileApp();
   const {
     attributes,
     listeners,
@@ -42,7 +42,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   } = useSortable({
     id: card.id,
     data: { card },
-    disabled: androidApp,
+    disabled: mobileApp,
   });
 
   // =========================================
@@ -160,7 +160,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   // =========================================
   // RENDER
   // =========================================
-  if (androidApp) {
+  if (mobileApp) {
     return (
       <NativeCardItem
         card={card}

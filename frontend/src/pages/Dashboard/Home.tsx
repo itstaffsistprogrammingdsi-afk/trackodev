@@ -3,6 +3,7 @@ import axios from "../../lib/axios";
 import DivisionRankingSection from "./DivisionRanking";
 import TaskStatusOverview from "./TaskStatusOverview";
 import DashboardPeriodFilter from "./DashboardPeriodFilter";
+import SystemInsights, { type SystemInsight } from "./SystemInsights";
 import {
   toDashboardParams,
   type DashboardFilter,
@@ -51,6 +52,7 @@ type DashboardResponse = {
   stats: DashboardStats;
   filter: DashboardFilterPayload;
   task_status: TaskStatus;
+  insights: SystemInsight[];
 };
 
 const today = new Date();
@@ -101,6 +103,7 @@ export default function Home() {
       due_soon: 0,
       completion_rate: 0,
     },
+    insights: [],
   });
 
   const [loading, setLoading] = useState<boolean>(true);
@@ -118,7 +121,10 @@ export default function Home() {
       const res = await axios.get("/dashboard", {
         params: { scope, ...toDashboardParams(dashboardFilter) },
       });
-      setData(res.data);
+      setData({
+        ...res.data,
+        insights: Array.isArray(res.data?.insights) ? res.data.insights : [],
+      });
     } catch (error) {
       console.error("Gagal load dashboard", error);
     } finally {
@@ -201,6 +207,11 @@ export default function Home() {
         value={dashboardFilter}
         onChange={setDashboardFilter}
         loading={isRefreshing || isUpdating}
+      />
+
+      <SystemInsights
+        insights={data.insights ?? []}
+        periodLabel={data.filter.label}
       />
 
       {/* KPI CARDS - GRID MODERN */}

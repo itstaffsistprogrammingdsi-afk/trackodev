@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import api from "@/lib/axios";
 
@@ -13,6 +13,7 @@ interface ReturnType {
   done: number;
 
   progress: number;
+  error: string;
 
   handleAddTask: (
     title: string,
@@ -36,6 +37,9 @@ export default function useTasks(
   const realtimeRevision = useRealtimeRevision(["Subtask", "Task"]);
   const [tasks, setTasks] =
     useState<CardTask[]>([]);
+  const [error, setError] = useState("");
+  const requestRef = useRef(0);
+  const activeCardIdRef = useRef<string | null>(null);
 
   // =========================================
   // FETCH TASKS
@@ -43,24 +47,35 @@ export default function useTasks(
   useEffect(() => {
     const fetchTasks = async () => {
       if (!cardId) return;
+      const requestId = ++requestRef.current;
+      if (activeCardIdRef.current !== String(cardId)) {
+        activeCardIdRef.current = String(cardId);
+        setTasks([]);
+      }
 
       try {
         const res = await api.get(
           `/cards/${cardId}/tasks`,
         );
 
-        setTasks(res.data.data || []);
+        if (requestId === requestRef.current) {
+          setTasks(res.data.data || []);
+          setError("");
+        }
       } catch (err) {
-        console.error(
-          "FAILED FETCH TASKS",
-          err,
-        );
+        if (requestId === requestRef.current) {
+          console.error("FAILED FETCH TASKS", err);
+          setError("Task gagal dimuat.");
+        }
       }
     };
 
     if (isOpen && cardId) {
       fetchTasks();
     }
+    return () => {
+      requestRef.current += 1;
+    };
   }, [cardId, isOpen, realtimeRevision]);
 
   // =========================================
@@ -104,6 +119,7 @@ export default function useTasks(
             : task,
         ),
       );
+      setError("Task gagal ditambahkan.");
     } catch (err) {
       console.error(
         "FAILED CREATE TASK",
@@ -155,6 +171,7 @@ export default function useTasks(
 
       // rollback
       setTasks(oldTasks);
+      setError("Status task gagal diperbarui.");
     }
   };
 
@@ -183,6 +200,7 @@ export default function useTasks(
 
       // rollback
       setTasks(oldTasks);
+      setError("Task gagal dihapus.");
     }
   };
 
@@ -218,6 +236,7 @@ export default function useTasks(
     done,
 
     progress,
+    error,
 
     handleAddTask,
 

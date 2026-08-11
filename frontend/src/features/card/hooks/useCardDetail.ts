@@ -1,291 +1,91 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
-
-import { Brand, Card, User } from "../types";
-
 import { getUsers } from "@/features/user/api/user.api";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
-
-import {
-  attachBrand,
-  detachBrand,
-  createBrand,
-  getBrands,
-} from "../api/card.api";
+import type { Card, User } from "../types";
 
 interface ReturnType {
   detail: Card | null;
-
   users: User[];
-
-  brands: Brand[];
-
   loading: boolean;
-
-  brandName: string;
-
-  brandColor: string;
-
-  setBrandName: React.Dispatch<
-    React.SetStateAction<string>
-  >;
-
-  setBrandColor: React.Dispatch<
-    React.SetStateAction<string>
-  >;
-
   fetchDetail: () => Promise<void>;
-
-  fetchBrands: () => Promise<void>;
-
-  handleAttachBrand: (
-    brandId: string,
-  ) => Promise<void>;
-
-  handleDetachBrand: (
-    brandId: string,
-  ) => Promise<void>;
-
-  handleCreateBrand: () => Promise<void>;
-
-  setDetail: React.Dispatch<
-    React.SetStateAction<Card | null>
-  >;
+  setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
 }
 
 export function useCardDetail(
   card: Card | null,
   isOpen: boolean,
+  loadUsers: boolean,
 ): ReturnType {
   const realtimeRevision = useRealtimeRevision([
-    "ActivityLog", "Assignment", "Brand", "Card", "Label", "User",
+    "Assignment",
+    "Brand",
+    "Card",
+    "Label",
   ]);
-  // =========================================
-  // STATE
-  // =========================================
-  const [detail, setDetail] =
-    useState<Card | null>(null);
+  const [detail, setDetail] = useState<Card | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const detailRequestRef = useRef(0);
+  const usersRequestRef = useRef(0);
+  const activeCardIdRef = useRef<string | null>(null);
 
-  const [users, setUsers] = useState<User[]>(
-    [],
-  );
-
-  const [brands, setBrands] = useState<
-    Brand[]
-  >([]);
-
-  const [brandName, setBrandName] =
-    useState("");
-
-  const [brandColor, setBrandColor] =
-    useState("#3b82f6");
-
-  const [loading, setLoading] =
-    useState(false);
-
-  // =========================================
-  // FETCH CARD DETAIL
-  // =========================================
   const fetchDetail = useCallback(async () => {
-    if (!card?.id) return;
+    if (!card?.id || !isOpen) return;
 
+    const requestId = ++detailRequestRef.current;
     setLoading(true);
 
     try {
-      const cardRes = await api.get(
-        `/cards/${card.id}`,
-      );
-
-      setDetail(cardRes.data.data);
-    } catch (err) {
-      console.error(
-        "FAILED FETCH CARD DETAIL",
-        err,
-      );
+      const cardRes = await api.get(`/cards/${card.id}`);
+      if (requestId === detailRequestRef.current) {
+        setDetail(cardRes.data.data);
+      }
+    } catch (error) {
+      if (requestId === detailRequestRef.current) {
+        console.error("FAILED FETCH CARD DETAIL", error);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === detailRequestRef.current) setLoading(false);
     }
-  }, [card?.id]);
+  }, [card?.id, isOpen]);
 
-  // =========================================
-  // FETCH USERS
-  // =========================================
-  const fetchUsers = useCallback(async () => {
-  try {
-    const users = await getUsers();
-
-    setUsers(users);
-  } catch (err) {
-    console.error(
-      "FAILED FETCH USERS",
-      err,
-    );
-  }
-}, []);
-
-  // =========================================
-  // FETCH BRANDS
-  // =========================================
-  const fetchBrands = useCallback(async () => {
-    try {
-      const data = await getBrands();
-
-      setBrands(data || []);
-    } catch (err) {
-      console.error(
-        "FAILED FETCH BRANDS",
-        err,
-      );
-    }
-  }, []);
-
-  // =========================================
-  // ATTACH BRAND
-  // =========================================
-  const handleAttachBrand = async (
-    brandId: string,
-  ) => {
-    if (!detail?.id) return;
-
-    try {
-      await attachBrand(detail.id, brandId);
-
-      await fetchDetail();
-    } catch (err) {
-      console.error(
-        "FAILED ATTACH BRAND",
-        err,
-      );
-    }
-  };
-
-  // =========================================
-  // DETACH BRAND
-  // =========================================
-  const handleDetachBrand = async (
-    brandId: string,
-  ) => {
-    if (!detail?.id) return;
-
-    try {
-      await detachBrand(detail.id, brandId);
-
-      await fetchDetail();
-    } catch (err) {
-      console.error(
-        "FAILED DETACH BRAND",
-        err,
-      );
-    }
-  };
-
-  // =========================================
-  // CREATE BRAND
-  // =========================================
-  const handleCreateBrand = async () => {
-    if (!brandName.trim()) return;
-
-    if (!detail?.campaign_id) {
-      console.error("CAMPAIGN ID NOT FOUND");
-
-      return;
-    }
-
-    try {
-      await createBrand(
-        detail.campaign_id,
-        brandName,
-        brandColor,
-      );
-
-      setBrandName("");
-
-      setBrandColor("#3b82f6");
-
-      await fetchBrands();
-    } catch (err) {
-      console.error(
-        "FAILED CREATE BRAND",
-        err,
-      );
-    }
-  };
-
-  // =========================================
-  // FETCH USERS + BRANDS
-  // ONLY WHEN MODAL OPEN
-  // =========================================
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !loadUsers) return;
 
-    fetchUsers();
+    const requestId = ++usersRequestRef.current;
+    void getUsers()
+      .then((data) => {
+        if (requestId === usersRequestRef.current) setUsers(data);
+      })
+      .catch((error) => {
+        if (requestId === usersRequestRef.current) {
+          console.error("FAILED FETCH USERS", error);
+        }
+      });
+  }, [isOpen, loadUsers]);
 
-    fetchBrands();
-  }, [
-    isOpen,
-    fetchUsers,
-    fetchBrands,
-    realtimeRevision,
-  ]);
-
-  // =========================================
-  // FETCH CARD DETAIL
-  // ONLY WHEN CARD ID CHANGED
-  // =========================================
   useEffect(() => {
     if (!card?.id || !isOpen) return;
+    if (activeCardIdRef.current !== card.id) {
+      activeCardIdRef.current = card.id;
+      setDetail(null);
+    }
+    void fetchDetail();
+    return () => {
+      detailRequestRef.current += 1;
+    };
+  }, [card?.id, fetchDetail, isOpen, realtimeRevision]);
 
-    fetchDetail();
-  }, [
-    card?.id,
-    isOpen,
-    fetchDetail,
-    realtimeRevision,
-  ]);
-
-  // =========================================
-  // RESET STATE WHEN MODAL CLOSED
-  // =========================================
   useEffect(() => {
     if (isOpen) return;
-
+    detailRequestRef.current += 1;
+    usersRequestRef.current += 1;
     setDetail(null);
-
+    activeCardIdRef.current = null;
     setLoading(false);
-
-    setBrandName("");
-
-    setBrandColor("#3b82f6");
   }, [isOpen]);
 
-  return {
-    detail,
-
-    users,
-
-    brands,
-
-    loading,
-
-    brandName,
-
-    brandColor,
-
-    setBrandName,
-
-    setBrandColor,
-
-    fetchDetail,
-
-    fetchBrands,
-
-    handleAttachBrand,
-
-    handleDetachBrand,
-
-    handleCreateBrand,
-
-    setDetail,
-  };
+  return { detail, users, loading, fetchDetail, setDetail };
 }

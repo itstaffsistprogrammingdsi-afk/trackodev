@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/AuthContext";
-import { createEcho, disconnectEcho } from "@/lib/echo";
+import { acquireEcho, releaseEcho } from "@/lib/echo";
 import {
   REALTIME_DATA_CHANGED_EVENT,
   type ApplicationDataChanged,
@@ -17,7 +17,7 @@ export default function RealtimeSync() {
       return;
     }
 
-    const echo = createEcho();
+    const echo = acquireEcho();
 
     if (!echo) {
       return;
@@ -75,7 +75,7 @@ export default function RealtimeSync() {
       removeConnectionListener();
       pusherConnection.unbind("error", handleConnectionError);
       echo.leave(channelName);
-      const disconnected = disconnectEcho(echo);
+      const disconnected = releaseEcho(echo);
 
       if (disconnected) {
         delete document.documentElement.dataset.realtimeStatus;

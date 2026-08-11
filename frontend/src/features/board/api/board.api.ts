@@ -1,5 +1,5 @@
 import api from "@/lib/axios";
-import { isAndroidApp } from "@/lib/mobileConfig";
+import { isMobileApp } from "@/lib/mobileConfig";
 import type { Card } from "@/features/card/types";
 import { Board, CreateBoardPayload, ReorderBoardPayload } from "../types";
 
@@ -8,10 +8,10 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-const ANDROID_CARD_HYDRATION_CONCURRENCY = 6;
+const MOBILE_CARD_HYDRATION_CONCURRENCY = 6;
 
-const hydrateAndroidCardMetadata = async (boards: Board[]): Promise<Board[]> => {
-  if (!isAndroidApp()) return boards;
+const hydrateMobileCardMetadata = async (boards: Board[]): Promise<Board[]> => {
+  if (!isMobileApp()) return boards;
 
   const cardsMissingBrands = boards
     .flatMap((board) => board.cards)
@@ -30,7 +30,7 @@ const hydrateAndroidCardMetadata = async (boards: Board[]): Promise<Board[]> => 
         const response = await api.get<ApiEnvelope<Card>>(`/cards/${card.id}`);
         hydratedCards.set(card.id, response.data.data);
       } catch (error) {
-        console.warn("Android card metadata hydration failed", {
+        console.warn("Mobile card metadata hydration failed", {
           cardId: card.id,
           error,
         });
@@ -39,7 +39,7 @@ const hydrateAndroidCardMetadata = async (boards: Board[]): Promise<Board[]> => 
   };
 
   const workerCount = Math.min(
-    ANDROID_CARD_HYDRATION_CONCURRENCY,
+    MOBILE_CARD_HYDRATION_CONCURRENCY,
     cardsMissingBrands.length,
   );
 
@@ -66,7 +66,7 @@ export const getBoards = async (campaignId: string): Promise<Board[]> => {
     `/campaigns/${campaignId}/boards`,
   );
 
-  return hydrateAndroidCardMetadata(res.data.data);
+  return hydrateMobileCardMetadata(res.data.data);
 };
 
 export const createBoard = async (

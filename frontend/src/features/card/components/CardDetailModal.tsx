@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card } from "../types";
 
 import useDeleteCard from "../hooks/useDeleteCard";
@@ -16,15 +16,14 @@ import useCardActivities from "../hooks/useCardActivities";
 import TaskSection from "./sections/TaskSection";
 import CommentSection from "./sections/CommentSection";
 import AttachmentSection from "./sections/AttachmentSection";
+import ActivitySection from "./sections/activitySection";
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
 
 import {
   AlignLeft,
-  Clock3,
   Loader2,
   SlidersHorizontal,
-  Sparkles,
   X,
 } from "lucide-react";
 
@@ -32,7 +31,7 @@ interface Props {
   card: Card | null;
   isOpen: boolean;
   onClose: () => void;
-  onUpdated?: () => void;
+  onUpdated?: (updated?: Partial<Card>) => void | Promise<void>;
   onDeleted?: (cardId: string) => void;
 }
 
@@ -43,71 +42,8 @@ export default function CardDetailModal({
   onUpdated,
   onDeleted,
 }: Props) {
-  // =========================================
-  // CARD DETAIL DATA
-  // =========================================
-  const { detail, users, loading, fetchDetail, setDetail } = useCardDetail(
-    card,
-    isOpen
-  );
-
   const [showLabels, setShowLabels] = useState(false);
-  const [showAllActivities, setShowAllActivities] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
-  const closeModal = useCallback(() => {
-    setMobileSidebarOpen(false);
-    onClose();
-  }, [onClose]);
-
-  const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
-
-  // =========================================
-  // CARD DESCRIPTION
-  // =========================================
-  const {
-    description,
-    setDescription,
-    dueDate,
-    setDueDate,
-    saving,
-  } = useCardDescription(detail, onUpdated);
-
-  // =========================================
-  // COMMENTS
-  // =========================================
-  const { comments, comment, setComment, sending, handleAddComment } =
-    useComments(card?.id, isOpen, onUpdated);
-
-  // =========================================
-  // TASKS
-  // =========================================
-  const {
-    tasks,
-    total,
-    done,
-    progress,
-    handleAddTask,
-    toggleTask,
-    deleteTask,
-  } = useTasks(card?.id, isOpen, onUpdated);
-
-  // =========================================
-  // ATTACHMENTS
-  // =========================================
-  const {
-    attachments,
-    setAttachments,
-    loading: attachmentLoading,
-    fetchAttachments,
-  } = useAttachments(card?.id, isOpen, onUpdated);
-
-  const {
-    attachments: briefAttachments,
-    setAttachments: setBriefAttachments,
-    loading: briefLoading,
-    fetchAttachments: fetchBriefAttachments,
-  } = useBriefAttachments(card?.id, isOpen);
 
   // =========================================
   // UI SIDEBAR STATE
@@ -126,6 +62,65 @@ export default function CardDetailModal({
     memberSearch,
     setMemberSearch,
   } = useCardSidebar();
+
+  const { detail, users, loading, fetchDetail, setDetail } = useCardDetail(
+    card,
+    isOpen,
+    showMembers,
+  );
+
+  const {
+    description,
+    setDescription,
+    dueDate,
+    setDueDate,
+    saving,
+    saveError,
+    flushPendingChanges,
+  } = useCardDescription(detail, onUpdated);
+
+  const closeModal = useCallback(async () => {
+    const saved = await flushPendingChanges();
+    if (!saved) return;
+    setMobileSidebarOpen(false);
+    onClose();
+  }, [flushPendingChanges, onClose]);
+
+  const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
+
+  const {
+    comments,
+    comment,
+    setComment,
+    sending,
+    error: commentError,
+    handleAddComment,
+  } = useComments(card?.id, isOpen);
+
+  const {
+    tasks,
+    total,
+    done,
+    progress,
+    error: taskError,
+    handleAddTask,
+    toggleTask,
+    deleteTask,
+  } = useTasks(card?.id, isOpen, onUpdated);
+
+  const {
+    attachments,
+    setAttachments,
+    loading: attachmentLoading,
+    fetchAttachments,
+  } = useAttachments(card?.id, isOpen);
+
+  const {
+    attachments: briefAttachments,
+    setAttachments: setBriefAttachments,
+    loading: briefLoading,
+    fetchAttachments: fetchBriefAttachments,
+  } = useBriefAttachments(card?.id, isOpen);
 
   // =========================================
   // ESC CLOSE HOOK
@@ -156,10 +151,63 @@ export default function CardDetailModal({
   // =========================================
   // ACTIVITIES LOG
   // =========================================
-  const { activities, loading: activityLoading } = useCardActivities(
+  const {
+    activities,
+    loading: activityLoading,
+    hasMore: hasMoreActivities,
+    total: totalActivities,
+    insight: activityInsight,
+    loadMore: loadMoreActivities,
+  } = useCardActivities(
     card?.id,
     isOpen
   );
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      dialogRef.current?.focus();
+    });
+
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", trapFocus);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", trapFocus);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [isOpen]);
 
   if (!isOpen || !card) return null;
 
@@ -207,6 +255,8 @@ export default function CardDetailModal({
       "
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -226,12 +276,13 @@ export default function CardDetailModal({
           {/* ========================================= */}
           {/* LEFT CONTENT AREA */}
           {/* ========================================= */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col xl:overflow-y-auto xl:overscroll-contain">
             {/* STICKY HEADER */}
             <div className="z-20 shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90">
               <CardDetailHeader
                 cardId={detail?.id ?? card.id}
                 title={detail?.title ?? card.title}
+                listName={detail?.board?.name ?? card.board?.name}
                 assignees={detail?.assignees}
                 brands={detail?.brands ?? card.brands ?? []}
                 labels={detail?.labels ?? card.labels ?? []}
@@ -245,7 +296,9 @@ export default function CardDetailModal({
                     : ""
                 }
                 setDetail={setDetail}
-                onUpdated={fetchDetail}
+                onUpdated={async (updated) => {
+                  if (updated) await onUpdated?.(updated);
+                }}
                 onClose={closeModal}
                 onToggleMembers={() => {
                   setShowMembers(true);
@@ -255,7 +308,7 @@ export default function CardDetailModal({
             </div>
 
             {/* INNER BODY CONTENT */}
-            <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-28 sm:space-y-6 sm:p-6 sm:pb-28 lg:space-y-8 lg:p-8 lg:pb-28 xl:pb-8">
+            <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-28 sm:space-y-6 sm:p-6 sm:pb-28 lg:space-y-8 lg:p-8 lg:pb-28 xl:flex-none xl:overflow-visible xl:overscroll-auto xl:pb-8">
               {loading ? (
                 <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
@@ -288,6 +341,11 @@ export default function CardDetailModal({
                         </div>
                       )}
                     </div>
+                    {saveError ? (
+                      <p role="alert" className="mb-3 text-xs font-medium text-rose-600 dark:text-rose-400">
+                        {saveError}
+                      </p>
+                    ) : null}
 
                     <textarea
                       value={description}
@@ -311,6 +369,7 @@ export default function CardDetailModal({
                       progress={progress}
                       total={total}
                       done={done}
+                      error={taskError}
                       handleAddTask={handleAddTask}
                       toggleTask={toggleTask}
                       deleteTask={deleteTask}
@@ -359,6 +418,7 @@ export default function CardDetailModal({
                       comments={comments}
                       comment={comment}
                       sending={sending}
+                      error={commentError}
                       setComment={setComment}
                       handleAddComment={handleAddComment}
                     />
@@ -367,107 +427,14 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* ACTIVITY TIMELINE */}
                   {/* ========================================= */}
-                  <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
-                        <Clock3 size={18} />
-                      </div>
-
-                      <div>
-                        <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
-                          Activity
-                        </h2>
-                        <p className="text-xs sm:text-sm text-slate-400">
-                          Timeline & changes history
-                        </p>
-                      </div>
-                    </div>
-
-                    {activityLoading ? (
-                      <div className="py-8 text-center text-sm text-slate-400">
-                        Loading activity...
-                      </div>
-                    ) : activities.length > 0 ? (
-                      <>
-                        <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-                          {(showAllActivities
-                            ? activities
-                            : activities.slice(0, 8)
-                          ).map((activity) => (
-                            <div
-                              key={activity.id}
-                              className="
-                                rounded-xl border border-slate-200/70 dark:border-slate-800 
-                                bg-slate-50/60 dark:bg-slate-800/40 p-3.5 text-sm 
-                                hover:bg-slate-100/80 dark:hover:bg-slate-800/70 transition-colors duration-200
-                              "
-                            >
-                              <div className="text-slate-800 dark:text-slate-200 font-medium leading-snug">
-                                {activity.description ??
-                                  activity.action ??
-                                  "Activity recorded"}
-                              </div>
-
-                              <div className="flex justify-between items-center mt-2 pt-1 border-t border-slate-200/40 dark:border-slate-700/40 text-xs">
-                                <span className="font-semibold text-slate-600 dark:text-slate-400">
-                                  {activity.user?.name ?? "System"}
-                                </span>
-
-                                <span className="text-slate-400 dark:text-slate-500">
-                                  {activity.created_at
-                                    ? new Date(
-                                        activity.created_at
-                                      ).toLocaleString("id-ID", {
-                                        dateStyle: "short",
-                                        timeStyle: "short",
-                                      })
-                                    : "-"}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
-                          <span className="text-xs text-slate-400">
-                            Showing{" "}
-                            {showAllActivities
-                              ? activities.length
-                              : Math.min(8, activities.length)}{" "}
-                            of {activities.length}
-                          </span>
-
-                          {activities.length > 8 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setShowAllActivities((prev) => !prev)
-                              }
-                              className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                            >
-                              {showAllActivities
-                                ? "Show less ←"
-                                : "View full activity →"}
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-10 text-center">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 text-slate-400">
-                          <Sparkles size={20} />
-                        </div>
-
-                        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                          No activity recorded yet
-                        </h3>
-
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Changes to this card will be tracked here
-                        </p>
-                      </div>
-                    )}
-                  </section>
+                  <ActivitySection
+                    activities={activities}
+                    loading={activityLoading}
+                    hasMore={hasMoreActivities}
+                    loadMore={loadMoreActivities}
+                    total={totalActivities}
+                    insight={activityInsight}
+                  />
                 </>
               )}
             </div>
@@ -476,8 +443,18 @@ export default function CardDetailModal({
           {/* ========================================= */}
           {/* RIGHT SIDEBAR PANEL */}
           {/* ========================================= */}
-          <div className="hidden w-[340px] max-w-[340px] shrink-0 overflow-y-auto border-l border-slate-200/80 bg-white/70 backdrop-blur-xl xl:block dark:border-slate-800 dark:bg-slate-900/70">
-            <div className="p-6">
+          <div className="hidden w-[340px] max-w-[340px] shrink-0 flex-col overflow-hidden border-l border-slate-200/80 bg-white/70 backdrop-blur-xl xl:flex dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="flex shrink-0 justify-end px-6 pt-5">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                aria-label="Close card detail"
+              >
+                <X size={18} strokeWidth={2.2} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pt-2">
               <CardDetailSidebar {...sidebarProps} />
             </div>
           </div>
