@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 
 import {
   DndContext,
@@ -59,8 +59,10 @@ function isCard(value: unknown): value is Card {
 }
 
 export default function BoardPage() {
-  const { campaignId } = useParams<{ campaignId: string }>();
+const { campaignId } = useParams<{ campaignId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const id = campaignId ?? "";
+  const requestedCardId = searchParams.get("card");
 
   const { data, isLoading, refetch } = useBoards(id);
 
@@ -96,6 +98,37 @@ export default function BoardPage() {
       boards.some((board) => board.id === current) ? current : boards[0].id,
     );
   }, [mobileApp, boards]);
+
+  // Open a specific card when arriving from a dashboard insight deep-link.
+  useEffect(() => {
+    if (
+      !requestedCardId ||
+      boards.length === 0 ||
+      selectedCard?.id === requestedCardId
+    ) {
+      return;
+    }
+
+    for (const board of boards) {
+      const requestedCard = board.cards.find((card) => card.id === requestedCardId);
+
+      if (requestedCard) {
+        setSelectedCard(requestedCard);
+        if (mobileApp) setMobileBoardId(board.id);
+        return;
+      }
+    }
+  }, [boards, mobileApp, requestedCardId, selectedCard?.id]);
+
+  const closeCardDetail = () => {
+    setSelectedCard(null);
+
+    if (requestedCardId) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("card");
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
 
   // =========================================
   // KEEP MODAL UPDATED
@@ -644,7 +677,7 @@ export default function BoardPage() {
       <CardDetailModal
         card={selectedCard}
         isOpen={!!selectedCard}
-        onClose={() => setSelectedCard(null)}
+        onClose={closeCardDetail}
         onUpdated={async (updated) => {
           if (updated?.id) {
             setBoards((current) =>

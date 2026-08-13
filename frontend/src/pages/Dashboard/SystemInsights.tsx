@@ -8,6 +8,16 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 
+export type SystemInsightDetail = {
+  id: string;
+  title: string;
+  context: string;
+  status?: string | null;
+  due_date?: string | null;
+  action_label?: string | null;
+  action_path?: string | null;
+};
+
 export type SystemInsight = {
   id: string;
   category: string;
@@ -15,8 +25,25 @@ export type SystemInsight = {
   title: string;
   message: string;
   metric: string;
+  details?: SystemInsightDetail[];
   action_label?: string | null;
   action_path?: string | null;
+};
+
+const statusLabels: Record<string, string> = {
+  todo: "Belum dimulai",
+  in_progress: "Sedang berjalan",
+  completed: "Selesai",
+};
+
+const formatDueDate = (dueDate?: string | null) => {
+  if (!dueDate) return "Tanpa tenggat";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${dueDate}T00:00:00`));
 };
 
 const severityStyles = {
@@ -151,6 +178,43 @@ export default function SystemInsights({
                   Kondisi aktual
                 </p>
                 <p className="mt-1 text-xs leading-5 text-slate-600">{insight.message}</p>
+                {insight.details && insight.details.length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      Card yang perlu ditangani ({insight.details.length})
+                    </p>
+                    <ul className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
+                      {insight.details.map((detail) => (
+                        <li key={detail.id}>
+                          {detail.action_path ? (
+                            <Link
+                              to={detail.action_path}
+                              className="block rounded-xl border border-white/80 bg-white/80 p-3 transition hover:border-indigo-200 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                              aria-label={`${detail.action_label ?? "Buka card"}: ${detail.title}`}
+                            >
+                              <span className="flex items-start justify-between gap-2">
+                                <span className="font-black text-slate-800">{detail.title}</span>
+                                <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-600" aria-hidden="true" />
+                              </span>
+                              <span className="mt-1 block text-[11px] leading-4 text-slate-500">
+                                {detail.context}
+                              </span>
+                              <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold text-slate-600">
+                                <span>{statusLabels[detail.status ?? ""] ?? detail.status ?? "Status tidak tersedia"}</span>
+                                <span>Jatuh tempo: {formatDueDate(detail.due_date)}</span>
+                              </span>
+                            </Link>
+                          ) : (
+                            <div className="rounded-xl border border-white/80 bg-white/80 p-3">
+                              <p className="font-black text-slate-800">{detail.title}</p>
+                              <p className="mt-1 text-[11px] leading-4 text-slate-500">{detail.context}</p>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
               {insight.action_path && insight.action_label ? (
                 <Link

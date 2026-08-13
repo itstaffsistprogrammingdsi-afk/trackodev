@@ -100,20 +100,54 @@ class DashboardController extends Controller
             ->where('status', '!=', 'completed');
         $this->applyPeriod($activeCards, $filter, 'cards.created_at');
 
-        $unassignedCards = (clone $activeCards)
+        $unassignedCardItems = (clone $activeCards)
             ->whereDoesntHave('assignees')
-            ->count();
+            ->with('board.campaign.workspace')
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->orderByDesc('created_at')
+            ->get();
+        $unassignedCards = $unassignedCardItems->count();
+        $unassignedDetails = $unassignedCardItems
+            ->map(function (Card $card) {
+                $board = $card->board;
+                $campaign = $board?->campaign;
+                $workspace = $campaign?->workspace;
+                $actionPath = $workspace && $campaign
+                    ? '/workspaces/'.$workspace->id.'/campaigns/'.$campaign->id.'/boards?card='.$card->id
+                    : '/divisions';
+                $location = collect([
+                    $workspace?->name,
+                    $campaign?->name,
+                    $board?->name,
+                ])->filter()->implode(' / ');
+
+                return [
+                    'id' => $card->id,
+                    'title' => $card->title,
+                    'context' => $location ?: 'Lokasi card tidak tersedia',
+                    'status' => $card->status,
+                    'due_date' => $card->due_date?->toDateString(),
+                    'action_label' => 'Atur PIC',
+                    'action_path' => $actionPath,
+                ];
+            })
+            ->values()
+            ->all();
+        $firstUnassignedPath = $unassignedDetails[0]['action_path'] ?? '/divisions';
+
         $insights->push([
             'id' => 'unassigned-work',
             'category' => 'Workload',
             'severity' => $unassignedCards > 0 ? 'critical' : 'success',
             'title' => $unassignedCards > 0 ? 'Pekerjaan belum memiliki PIC' : 'Seluruh card memiliki PIC',
             'message' => $unassignedCards > 0
-                ? $unassignedCards.' card aktif yang dibuat pada periode terpilih belum memiliki assignee atau PIC.'
+                ? $unassignedCards.' card aktif yang dibuat pada periode terpilih belum memiliki assignee atau PIC. Daftar card ditampilkan berdasarkan tenggat terdekat.'
                 : 'Semua card aktif yang dibuat pada periode terpilih sudah memiliki assignee atau PIC.',
             'metric' => $unassignedCards.' tanpa PIC',
-            'action_label' => 'Atur Assignment',
-            'action_path' => '/divisions',
+            'details' => $unassignedDetails,
+            'action_label' => $unassignedCards > 0 ? 'Atur PIC card pertama' : 'Buka Task Manager',
+            'action_path' => $unassignedCards > 0 ? $firstUnassignedPath : '/divisions',
             'priority' => $unassignedCards > 0 ? 96 : 34,
         ]);
 

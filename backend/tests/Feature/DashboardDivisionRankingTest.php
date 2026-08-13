@@ -191,6 +191,15 @@ class DashboardDivisionRankingTest extends TestCase
             ->assertJsonPath('insights.0.id', 'overdue-work')
             ->assertJsonPath('insights.0.severity', 'critical')
             ->assertJsonPath('insights.0.metric', '1 overdue')
+            ->assertJsonPath('insights.1.id', 'unassigned-work')
+            ->assertJsonCount(4, 'insights.1.details')
+            ->assertJsonPath('insights.1.details.0.title', 'Overdue')
+            ->assertJsonPath('insights.1.details.0.action_label', 'Atur PIC')
+            ->assertJsonPath(
+                'insights.1.details.0.action_path',
+                fn ($path) => str_starts_with($path, '/workspaces/')
+                    && str_contains($path, '/boards?card=')
+            )
             ->assertJsonCount(18, 'insights')
             ->assertJsonFragment(['id' => 'unassigned-work'])
             ->assertJsonFragment(['id' => 'due-soon'])
