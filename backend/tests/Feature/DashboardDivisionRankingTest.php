@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Board;
 use App\Models\Campaign;
 use App\Models\Card;
+use App\Models\CardAttachment;
 use App\Models\Division;
 use App\Models\User;
 use App\Models\Workspace;
@@ -162,7 +163,7 @@ class DashboardDivisionRankingTest extends TestCase
             'status' => 'todo',
             'due_date' => now()->addDays(30),
         ]);
-        Card::create([
+        $overdueCard = Card::create([
             'board_id' => $board->id,
             'created_by' => $superAdmin->id,
             'title' => 'Overdue',
@@ -175,6 +176,13 @@ class DashboardDivisionRankingTest extends TestCase
             'title' => 'Due soon',
             'status' => 'in_progress',
             'due_date' => now()->addDays(3),
+        ]);
+        CardAttachment::create([
+            'card_id' => $overdueCard->id,
+            'uploaded_by' => $superAdmin->id,
+            'file_name' => 'hasil-produksi.jpg',
+            'attachment_type' => 'file',
+            'quantity' => 12,
         ]);
 
         Sanctum::actingAs($superAdmin);
@@ -191,33 +199,32 @@ class DashboardDivisionRankingTest extends TestCase
             ->assertJsonPath('insights.0.id', 'overdue-work')
             ->assertJsonPath('insights.0.severity', 'critical')
             ->assertJsonPath('insights.0.metric', '1 overdue')
-            ->assertJsonPath('insights.1.id', 'unassigned-work')
-            ->assertJsonCount(4, 'insights.1.details')
-            ->assertJsonPath('insights.1.details.0.title', 'Overdue')
-            ->assertJsonPath('insights.1.details.0.action_label', 'Atur PIC')
+            ->assertJsonPath('insights.0.details_label', 'Card overdue')
+            ->assertJsonCount(1, 'insights.0.details')
+            ->assertJsonPath('insights.0.details.0.title', 'Overdue')
             ->assertJsonPath(
-                'insights.1.details.0.action_path',
+                'insights.0.details.0.action_path',
                 fn ($path) => str_starts_with($path, '/workspaces/')
                     && str_contains($path, '/boards?card=')
             )
-            ->assertJsonCount(18, 'insights')
-            ->assertJsonFragment(['id' => 'unassigned-work'])
-            ->assertJsonFragment(['id' => 'due-soon'])
-            ->assertJsonFragment(['id' => 'delay-risk'])
-            ->assertJsonFragment(['id' => 'stale-work'])
-            ->assertJsonFragment(['id' => 'completion-rate'])
-            ->assertJsonFragment(['id' => 'completion-trend'])
-            ->assertJsonFragment(['id' => 'on-time-delivery'])
-            ->assertJsonFragment(['id' => 'workload-balance'])
-            ->assertJsonFragment(['id' => 'campaign-deadline'])
-            ->assertJsonFragment(['id' => 'campaign-progress-risk'])
-            ->assertJsonFragment(['id' => 'form-pending-responses'])
-            ->assertJsonFragment(['id' => 'form-processing-rate'])
-            ->assertJsonFragment(['id' => 'qc-pending'])
-            ->assertJsonFragment(['id' => 'qc-quantity-mismatch'])
-            ->assertJsonFragment(['id' => 'storage-usage'])
-            ->assertJsonFragment(['id' => 'collaboration'])
-            ->assertJsonFragment(['id' => 'chat-engagement'])
+            ->assertJsonPath('insights.1.id', 'qc-pending')
+            ->assertJsonPath('insights.1.severity', 'warning')
+            ->assertJsonPath('insights.1.metric', '1 attachment')
+            ->assertJsonPath('insights.1.details_label', 'Attachment yang menunggu QC')
+            ->assertJsonCount(1, 'insights.1.details')
+            ->assertJsonPath('insights.1.details.0.title', 'hasil-produksi.jpg')
+            ->assertJsonPath('insights.1.details.0.quantity', 12)
+            ->assertJsonPath(
+                'insights.1.details.0.context',
+                fn ($context) => str_contains($context, 'Card: Overdue')
+                    && str_contains($context, 'Health Workspace')
+                    && str_contains($context, 'Health Campaign')
+                    && str_contains($context, 'Health')
+            )
+            ->assertJsonCount(2, 'insights')
+            ->assertJsonMissing(['id' => 'unassigned-work'])
+            ->assertJsonMissing(['id' => 'chat-engagement'])
+            ->assertJsonMissing(['id' => 'completion-rate'])
             ->assertJsonStructure([
                 'insights' => [
                     '*' => [
@@ -227,12 +234,13 @@ class DashboardDivisionRankingTest extends TestCase
                         'title',
                         'message',
                         'metric',
+                        'details_label',
+                        'details',
                         'action_label',
                         'action_path',
                     ],
                 ],
-            ])
-            ->assertJsonMissingPath('activities')
+            ])->assertJsonMissingPath('activities')
             ->assertJsonMissingPath('trend');
 
         $this->getJson('/api/dashboard?scope=me&period=month')
@@ -319,7 +327,7 @@ class DashboardDivisionRankingTest extends TestCase
             ->assertJsonPath('divisions.0.ranking.0.completed_tasks', 2);
     }
 
-    public function test_dashboard_explains_when_completion_rate_has_no_data(): void
+    public function test_dashboard_only_returns_overdue_and_qc_insights_when_there_is_no_data(): void
     {
         $dashboardPermission = Permission::firstOrCreate([
             'name' => 'dashboard.view',
@@ -335,19 +343,19 @@ class DashboardDivisionRankingTest extends TestCase
         $superAdmin->givePermissionTo($dashboardPermission);
         Sanctum::actingAs($superAdmin);
 
-        $response = $this->getJson('/api/dashboard?scope=global&period=month')
+        $this->getJson('/api/dashboard?scope=global&period=month')
             ->assertOk()
-            ->assertJsonPath('task_status.total', 0);
-
-        $completionInsight = collect($response->json('insights'))
-            ->firstWhere('id', 'completion-rate');
-
-        $this->assertSame('info', $completionInsight['severity']);
-        $this->assertSame('Completion rate belum dapat dinilai', $completionInsight['title']);
-        $this->assertSame(
-            'Belum ada card yang dibuat pada periode terpilih.',
-            $completionInsight['message']
-        );
+            ->assertJsonPath('task_status.total', 0)
+            ->assertJsonCount(2, 'insights')
+            ->assertJsonPath('insights.0.id', 'overdue-work')
+            ->assertJsonPath('insights.0.severity', 'success')
+            ->assertJsonPath('insights.0.title', 'Tidak ada card overdue')
+            ->assertJsonCount(0, 'insights.0.details')
+            ->assertJsonPath('insights.1.id', 'qc-pending')
+            ->assertJsonPath('insights.1.severity', 'success')
+            ->assertJsonPath('insights.1.title', 'Antrean QC selesai')
+            ->assertJsonCount(0, 'insights.1.details')
+            ->assertJsonMissing(['id' => 'completion-rate']);
     }
 
     public function test_non_super_admin_is_forbidden_even_with_dashboard_ranking_permission(): void

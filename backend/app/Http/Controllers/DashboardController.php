@@ -7,16 +7,11 @@ use App\Models\Board;
 use App\Models\Campaign;
 use App\Models\Card;
 use App\Models\CardAttachment;
-use App\Models\CardBriefAttachment;
 use App\Models\Division;
-use App\Models\Form;
-use App\Models\FormSubmission;
-use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -31,7 +26,7 @@ class DashboardController extends Controller
             'filter' => $this->periodPayload($filter),
             'stats' => $this->stats($user, $scope, $filter),
             'task_status' => $taskStatus,
-            'insights' => $this->systemInsights($user, $scope, $filter, $taskStatus),
+            'insights' => $this->systemInsights($user, $scope, $filter),
         ]);
     }
 
@@ -39,536 +34,138 @@ class DashboardController extends Controller
      * Insight lintas modul yang dapat langsung ditindaklanjuti.
      * Semua agregasi mengikuti scope dan periode dashboard agar angka konsisten.
      */
-    private function systemInsights($user, string $scope, array $filter, array $taskStatus): array
+    private function systemInsights($user, string $scope, array $filter): array
     {
         $isGlobal = $scope === 'global' && $user->isSuperAdmin();
-        $insights = collect();
 
-        $insights->push([
-            'id' => 'overdue-work',
-            'category' => 'Task & Calendar',
-            'severity' => $taskStatus['overdue'] > 0 ? 'critical' : 'success',
-            'title' => $taskStatus['overdue'] > 0
-                ? 'Pekerjaan melewati tenggat'
-                : 'Tidak ada card overdue',
-            'message' => $taskStatus['overdue'] > 0
-                ? $taskStatus['overdue'].' card aktif yang dibuat pada periode terpilih telah melewati due date dan perlu segera ditinjau.'
-                : 'Tidak ada card aktif dari periode terpilih yang telah melewati due date.',
-            'metric' => $taskStatus['overdue'].' overdue',
-            'action_label' => $user->can('calendar.view') ? 'Buka Calendar' : 'Buka Task Manager',
-            'action_path' => $user->can('calendar.view') ? '/calendar' : '/divisions',
-            'priority' => $taskStatus['overdue'] > 0 ? 100 : 40,
-        ]);
-
-        $insights->push([
-            'id' => 'due-soon',
-            'category' => 'Calendar',
-            'severity' => $taskStatus['due_soon'] > 0 ? 'warning' : 'success',
-            'title' => $taskStatus['due_soon'] > 0
-                ? 'Tenggat 7 hari ke depan'
-                : 'Tidak ada deadline dalam 7 hari',
-            'message' => $taskStatus['due_soon'] > 0
-                ? $taskStatus['due_soon'].' card aktif dari periode terpilih jatuh tempo dalam 7 hari ke depan; pastikan PIC dan progresnya jelas.'
-                : 'Tidak ada card aktif dari periode terpilih yang jatuh tempo dalam 7 hari ke depan.',
-            'metric' => $taskStatus['due_soon'].' card',
-            'action_label' => $user->can('calendar.view') ? 'Tinjau Calendar' : 'Tinjau Task',
-            'action_path' => $user->can('calendar.view') ? '/calendar' : '/divisions',
-            'priority' => $taskStatus['due_soon'] > 0 ? 90 : 38,
-        ]);
-
-        $insights->push([
-            'id' => 'completion-rate',
-            'category' => 'Task Management',
-            'severity' => $taskStatus['total'] === 0
-                ? 'info'
-                : ($taskStatus['completion_rate'] >= 75 ? 'success' : 'warning'),
-            'title' => $taskStatus['total'] === 0
-                ? 'Completion rate belum dapat dinilai'
-                : ($taskStatus['completion_rate'] >= 75
-                    ? 'Completion rate sehat'
-                    : 'Completion rate perlu ditingkatkan'),
-            'message' => $taskStatus['total'] === 0
-                ? 'Belum ada card yang dibuat pada periode terpilih.'
-                : $taskStatus['completed'].' dari '.$taskStatus['total'].' card yang dibuat pada periode terpilih saat ini berstatus selesai.',
-            'metric' => $taskStatus['completion_rate'].'%',
-            'action_label' => 'Buka Task Manager',
-            'action_path' => '/divisions',
-            'priority' => $taskStatus['total'] > 0 && $taskStatus['completion_rate'] < 50 ? 72 : 36,
-        ]);
-
-        $activeCards = $this->scopedCards($user, $isGlobal)
-            ->where('status', '!=', 'completed');
-        $this->applyPeriod($activeCards, $filter, 'cards.created_at');
-
-        $unassignedCardItems = (clone $activeCards)
-            ->whereDoesntHave('assignees')
+        $overdueQuery = $this->scopedCards($user, $isGlobal)
+            ->where('status', '!=', 'completed')
+            ->whereNotNull('due_date')
+            ->where('due_date', '<', now());
+        $this->applyPeriod($overdueQuery, $filter, 'cards.created_at');
+        $overdueCards = $overdueQuery
             ->with('board.campaign.workspace')
-            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
             ->orderBy('due_date')
-            ->orderByDesc('created_at')
             ->get();
-        $unassignedCards = $unassignedCardItems->count();
-        $unassignedDetails = $unassignedCardItems
-            ->map(function (Card $card) {
-                $board = $card->board;
-                $campaign = $board?->campaign;
-                $workspace = $campaign?->workspace;
-                $actionPath = $workspace && $campaign
-                    ? '/workspaces/'.$workspace->id.'/campaigns/'.$campaign->id.'/boards?card='.$card->id
-                    : '/divisions';
-                $location = collect([
-                    $workspace?->name,
-                    $campaign?->name,
-                    $board?->name,
-                ])->filter()->implode(' / ');
-
-                return [
-                    'id' => $card->id,
-                    'title' => $card->title,
-                    'context' => $location ?: 'Lokasi card tidak tersedia',
-                    'status' => $card->status,
-                    'due_date' => $card->due_date?->toDateString(),
-                    'action_label' => 'Atur PIC',
-                    'action_path' => $actionPath,
-                ];
-            })
+        $overdueDetails = $overdueCards
+            ->map(fn (Card $card) => [
+                'id' => $card->id,
+                'title' => $card->title,
+                'context' => $this->cardInsightLocation($card),
+                'status' => $card->status,
+                'due_date' => $card->due_date?->toDateString(),
+                'action_label' => 'Buka card overdue',
+                'action_path' => $this->cardInsightPath($card),
+            ])
             ->values()
             ->all();
-        $firstUnassignedPath = $unassignedDetails[0]['action_path'] ?? '/divisions';
+        $overdueCount = $overdueCards->count();
 
-        $insights->push([
-            'id' => 'unassigned-work',
-            'category' => 'Workload',
-            'severity' => $unassignedCards > 0 ? 'critical' : 'success',
-            'title' => $unassignedCards > 0 ? 'Pekerjaan belum memiliki PIC' : 'Seluruh card memiliki PIC',
-            'message' => $unassignedCards > 0
-                ? $unassignedCards.' card aktif yang dibuat pada periode terpilih belum memiliki assignee atau PIC. Daftar card ditampilkan berdasarkan tenggat terdekat.'
-                : 'Semua card aktif yang dibuat pada periode terpilih sudah memiliki assignee atau PIC.',
-            'metric' => $unassignedCards.' tanpa PIC',
-            'details' => $unassignedDetails,
-            'action_label' => $unassignedCards > 0 ? 'Atur PIC card pertama' : 'Buka Task Manager',
-            'action_path' => $unassignedCards > 0 ? $firstUnassignedPath : '/divisions',
-            'priority' => $unassignedCards > 0 ? 96 : 34,
-        ]);
-
-        $atRiskCards = (clone $activeCards)
-            ->whereBetween('due_date', [now(), now()->addDays(3)->endOfDay()])
-            ->where(function ($query) {
-                $query->where('status', 'todo')
-                    ->orWhereDoesntHave('assignees');
-            })
-            ->count();
-        $insights->push([
-            'id' => 'delay-risk',
-            'category' => 'Risk Forecast',
-            'severity' => $atRiskCards > 0 ? 'critical' : 'success',
-            'title' => $atRiskCards > 0 ? 'Card berisiko terlambat' : 'Risiko terlambat terkendali',
-            'message' => $atRiskCards > 0
-                ? $atRiskCards.' card jatuh tempo dalam 3 hari tetapi belum berjalan atau belum memiliki PIC.'
-                : 'Tidak ada card yang terindikasi terlambat dalam tiga hari ke depan.',
-            'metric' => $atRiskCards.' berisiko',
-            'action_label' => $user->can('calendar.view') ? 'Buka Calendar' : 'Buka Task Manager',
-            'action_path' => $user->can('calendar.view') ? '/calendar' : '/divisions',
-            'priority' => $atRiskCards > 0 ? 95 : 32,
-        ]);
-
-        $staleCards = (clone $activeCards)
-            ->where('updated_at', '<', now()->subDays(7))
-            ->count();
-        $insights->push([
-            'id' => 'stale-work',
-            'category' => 'Card Aging',
-            'severity' => $staleCards > 0 ? 'warning' : 'success',
-            'title' => $staleCards > 0 ? 'Pekerjaan tidak mengalami pembaruan' : 'Pembaruan card tetap aktif',
-            'message' => $staleCards > 0
-                ? $staleCards.' card aktif dari periode terpilih tidak mengalami pembaruan selama minimal 7 hari.'
-                : 'Tidak ada card aktif dari periode terpilih yang stagnan selama 7 hari atau lebih.',
-            'metric' => $staleCards.' stagnan',
-            'action_label' => 'Tinjau Card',
-            'action_path' => '/divisions',
-            'priority' => $staleCards > 0 ? 88 : 30,
-        ]);
-
-        $completedWithDeadline = $this->scopedCards($user, $isGlobal)
-            ->where('status', 'completed')
-            ->whereNotNull('completed_at')
-            ->whereNotNull('due_date');
-        $this->applyPeriod($completedWithDeadline, $filter, 'cards.completed_at');
-        $deliveryMetrics = (clone $completedWithDeadline)
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw('SUM(CASE WHEN completed_at <= due_date THEN 1 ELSE 0 END) as on_time')
-            ->first();
-        $deadlineCompletionCount = (int) $deliveryMetrics->total;
-        $onTimeCount = (int) $deliveryMetrics->on_time;
-        $onTimeRate = $deadlineCompletionCount > 0
-            ? round(($onTimeCount / $deadlineCompletionCount) * 100, 1)
-            : null;
-
-        $insights->push([
-            'id' => 'on-time-delivery',
-            'category' => 'Delivery Quality',
-            'severity' => $onTimeRate === null
-                ? 'info'
-                : ($onTimeRate >= 80 ? 'success' : ($onTimeRate >= 60 ? 'warning' : 'critical')),
-            'title' => $onTimeRate === null
-                ? 'Ketepatan waktu belum dapat dinilai'
-                : ($onTimeRate >= 80 ? 'Ketepatan waktu penyelesaian baik' : 'Ketepatan waktu perlu ditingkatkan'),
-            'message' => $onTimeRate === null
-                ? 'Belum ada card selesai yang memiliki due date pada periode ini.'
-                : $onTimeCount.' dari '.$deadlineCompletionCount.' card selesai sebelum atau tepat pada due date.',
-            'metric' => $onTimeRate === null ? 'Belum ada data' : $onTimeRate.'%',
-            'action_label' => $user->can('report.view') ? 'Buka Report' : null,
-            'action_path' => $user->can('report.view') ? '/reports' : null,
-            'priority' => $onTimeRate !== null && $onTimeRate < 60 ? 86 : 45,
-        ]);
-
-        if ($filter['start'] && $filter['end']) {
-            [$previousStart, $previousEnd] = match ($filter['period']) {
-                'day' => [
-                    $filter['start']->copy()->subDay()->startOfDay(),
-                    $filter['start']->copy()->subDay()->endOfDay(),
-                ],
-                'week' => [
-                    $filter['start']->copy()->subWeek()->startOfWeek()->startOfDay(),
-                    $filter['start']->copy()->subWeek()->endOfWeek()->endOfDay(),
-                ],
-                'month' => [
-                    $filter['start']->copy()->subMonthNoOverflow()->startOfMonth(),
-                    $filter['start']->copy()->subMonthNoOverflow()->endOfMonth(),
-                ],
-                default => [
-                    $filter['start']->copy()->subYear()->startOfYear(),
-                    $filter['start']->copy()->subYear()->endOfYear(),
-                ],
-            };
-            $completedScope = $this->scopedCards($user, $isGlobal)
-                ->where('status', 'completed')
-                ->whereNotNull('completed_at');
-            $trendMetrics = (clone $completedScope)
-                ->selectRaw(
-                    'SUM(CASE WHEN completed_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as current_total',
-                    [$filter['start'], $filter['end']]
-                )
-                ->selectRaw(
-                    'SUM(CASE WHEN completed_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as previous_total',
-                    [$previousStart, $previousEnd]
-                )
-                ->first();
-            $currentCompleted = (int) $trendMetrics->current_total;
-            $previousCompleted = (int) $trendMetrics->previous_total;
-            $completionChange = $previousCompleted > 0
-                ? round((($currentCompleted - $previousCompleted) / $previousCompleted) * 100, 1)
-                : ($currentCompleted > 0 ? 100.0 : 0.0);
-
-            $insights->push([
-                'id' => 'completion-trend',
-                'category' => 'Performance Trend',
-                'severity' => $completionChange < 0 ? 'warning' : ($completionChange > 0 ? 'success' : 'info'),
-                'title' => $completionChange > 0
-                    ? 'Penyelesaian meningkat'
-                    : ($completionChange < 0 ? 'Penyelesaian menurun' : 'Penyelesaian stabil'),
-                'message' => $currentCompleted.' card selesai pada periode ini dibanding '.$previousCompleted.' pada periode sebelumnya.',
-                'metric' => ($completionChange > 0 ? '+' : '').$completionChange.'%',
-                'action_label' => $user->can('report.view') ? 'Analisis Report' : null,
-                'action_path' => $user->can('report.view') ? '/reports' : null,
-                'priority' => $completionChange < 0 ? 82 : 35,
-            ]);
-        } else {
-            $insights->push([
-                'id' => 'completion-trend',
-                'category' => 'Performance Trend',
-                'severity' => 'info',
-                'title' => 'Tren memerlukan periode pembanding',
-                'message' => 'Pilih periode hari, minggu, bulan, atau tahun untuk membandingkan penyelesaian.',
-                'metric' => 'N/A',
-                'action_label' => $user->can('report.view') ? 'Analisis Report' : null,
-                'action_path' => $user->can('report.view') ? '/reports' : null,
-                'priority' => 35,
-            ]);
-        }
-
-        if ($isGlobal) {
-            $workloadQuery = DB::table('card_user')
-                ->join('cards', 'cards.id', '=', 'card_user.card_id')
-                ->join('users', 'users.id', '=', 'card_user.user_id')
-                ->where('cards.status', '!=', 'completed');
-            $this->applyPeriod($workloadQuery, $filter, 'cards.created_at');
-            $workloads = $workloadQuery
-                ->select(['users.id', 'users.name'])
-                ->selectRaw('COUNT(DISTINCT cards.id) as active_cards')
-                ->groupBy('users.id', 'users.name')
-                ->orderByDesc('active_cards')
-                ->get();
-
-            if ($workloads->isNotEmpty()) {
-                $highestWorkload = $workloads->first();
-                $averageWorkload = round((float) $workloads->avg('active_cards'), 1);
-                $isImbalanced = (int) $highestWorkload->active_cards >= 5
-                    && (float) $highestWorkload->active_cards > $averageWorkload * 1.5;
-                $insights->push([
-                    'id' => 'workload-balance',
-                    'category' => 'Team Workload',
-                    'severity' => $isImbalanced ? 'warning' : 'success',
-                    'title' => $isImbalanced ? 'Beban kerja belum merata' : 'Distribusi beban kerja terkendali',
-                    'message' => $highestWorkload->name.' memiliki beban tertinggi: '
-                        .$highestWorkload->active_cards.' card aktif; rata-rata tim '.$averageWorkload.'.',
-                    'metric' => $highestWorkload->active_cards.' card',
-                    'action_label' => $user->can('profile.view') ? 'Tinjau Tim' : 'Buka Task Manager',
-                    'action_path' => $user->can('profile.view') ? '/profile' : '/divisions',
-                    'priority' => $isImbalanced ? 84 : 30,
-                ]);
-            } else {
-                $insights->push([
-                    'id' => 'workload-balance',
-                    'category' => 'Team Workload',
-                    'severity' => 'info',
-                    'title' => 'Belum ada beban aktif',
-                    'message' => 'Belum ada card aktif yang ditugaskan kepada anggota pada periode ini.',
-                    'metric' => '0 card',
-                    'action_label' => $user->can('profile.view') ? 'Tinjau Tim' : 'Buka Task Manager',
-                    'action_path' => $user->can('profile.view') ? '/profile' : '/divisions',
-                    'priority' => 30,
-                ]);
-            }
-        }
-
-        $campaignQuery = Campaign::query();
-        if (! $isGlobal) {
-            $campaignQuery->where(function ($query) use ($user) {
-                $query->where('created_by', $user->id)
-                    ->orWhereHas('members', fn ($memberQuery) => $memberQuery->where('users.id', $user->id)
-                    );
-            });
-        }
-        $this->applyPeriod($campaignQuery, $filter, 'campaigns.created_at');
-        $campaignDueSoon = (clone $campaignQuery)
-            ->whereBetween('due_date', [now(), now()->addDays(14)->endOfDay()])
-            ->count();
-
-        $campaignsAtRisk = (clone $campaignQuery)
-            ->whereBetween('due_date', [now(), now()->addDays(30)->endOfDay()])
-            ->withCount([
-                'cards as total_cards',
-                'cards as completed_cards' => fn ($query) => $query->where('status', 'completed'),
-            ])
-            ->get()
-            ->filter(fn (Campaign $campaign) => $campaign->total_cards > 0
-                && ($campaign->completed_cards / $campaign->total_cards) < 0.5
-            )
-            ->count();
-
-        $insights->push([
-            'id' => 'campaign-deadline',
-            'category' => 'Campaign',
-            'severity' => $campaignDueSoon > 0 ? 'warning' : 'success',
-            'title' => $campaignDueSoon > 0 ? 'Campaign mendekati deadline' : 'Deadline campaign terkendali',
-            'message' => $campaignDueSoon > 0
-                ? $campaignDueSoon.' campaign jatuh tempo dalam 14 hari.'
-                : 'Tidak ada campaign yang jatuh tempo dalam 14 hari ke depan.',
-            'metric' => $campaignDueSoon.' campaign',
-            'action_label' => 'Tinjau Campaign',
-            'action_path' => '/divisions',
-            'priority' => $campaignDueSoon > 0 ? 80 : 28,
-        ]);
-
-        $insights->push([
-            'id' => 'campaign-progress-risk',
-            'category' => 'Campaign',
-            'severity' => $campaignsAtRisk > 0 ? 'critical' : 'success',
-            'title' => $campaignsAtRisk > 0 ? 'Progress campaign berisiko' : 'Progress campaign terkendali',
-            'message' => $campaignsAtRisk > 0
-                ? $campaignsAtRisk.' campaign jatuh tempo dalam 30 hari dengan progress di bawah 50%.'
-                : 'Tidak ada campaign mendekati deadline dengan progress di bawah 50%.',
-            'metric' => $campaignsAtRisk.' campaign',
-            'action_label' => 'Tinjau Campaign',
-            'action_path' => '/divisions',
-            'priority' => $campaignsAtRisk > 0 ? 92 : 26,
-        ]);
-
-        if ($isGlobal || $user->can('form.view')) {
-            $formQuery = Form::query();
-            $submissionQuery = FormSubmission::query();
-            if (! $isGlobal) {
-                $formQuery->where('created_by', $user->id);
-                $submissionQuery->whereHas(
-                    'form',
-                    fn ($query) => $query->where('created_by', $user->id)
-                );
-            }
-            $this->applyPeriod($formQuery, $filter, 'forms.created_at');
-            $this->applyPeriod($submissionQuery, $filter, 'form_submissions.created_at');
-            $activeForms = (clone $formQuery)->where('is_active', true)->count();
-            $submissionMetrics = (clone $submissionQuery)
-                ->selectRaw('COUNT(*) as total')
-                ->selectRaw("SUM(CASE WHEN status = 'submitted' THEN 1 ELSE 0 END) as pending")
-                ->selectRaw("SUM(CASE WHEN status IN ('forwarded', 'completed', 'exported') THEN 1 ELSE 0 END) as processed")
-                ->first();
-            $pendingSubmissions = (int) $submissionMetrics->pending;
-            $submissionCount = (int) $submissionMetrics->total;
-            $processedSubmissions = (int) $submissionMetrics->processed;
-            $formConversionRate = $submissionCount > 0
-                ? round(($processedSubmissions / $submissionCount) * 100, 1)
-                : 0;
-
-            $insights->push([
-                'id' => 'form-pending-responses',
-                'category' => 'Forms',
-                'severity' => $pendingSubmissions > 0 ? 'warning' : 'success',
-                'title' => $pendingSubmissions > 0
-                    ? 'Respons form menunggu tindak lanjut'
-                    : 'Tidak ada respons tertunda',
-                'message' => $pendingSubmissions > 0
-                    ? $pendingSubmissions.' dari '.$submissionCount.' respons masih berstatus submitted.'
-                    : ($submissionCount > 0
-                        ? 'Semua '.$submissionCount.' respons yang masuk pada periode terpilih sudah ditindaklanjuti.'
-                        : 'Belum ada respons form yang masuk pada periode terpilih.'),
-                'metric' => $pendingSubmissions.' tertunda',
-                'action_label' => 'Buka Forms',
-                'action_path' => '/forms',
-                'priority' => $pendingSubmissions > 0 ? 75 : 25,
-            ]);
-
-            $insights->push([
-                'id' => 'form-processing-rate',
-                'category' => 'Forms',
-                'severity' => $submissionCount === 0
-                    ? 'info'
-                    : ($formConversionRate >= 80 ? 'success' : ($formConversionRate >= 50 ? 'warning' : 'critical')),
-                'title' => $submissionCount === 0
-                    ? 'Processing rate belum dapat dinilai'
-                    : ($formConversionRate >= 80 ? 'Processing rate Form baik' : 'Processing rate Form perlu ditingkatkan'),
-                'message' => $submissionCount === 0
-                    ? $activeForms.' form aktif dan belum memiliki respons pada periode ini.'
-                    : $processedSubmissions.' dari '.$submissionCount.' respons telah diproses.',
-                'metric' => $formConversionRate.'%',
-                'action_label' => 'Buka Forms',
-                'action_path' => '/forms',
-                'priority' => $submissionCount > 0 && $formConversionRate < 50 ? 74 : 24,
-            ]);
-        }
-
-        $resultFiles = CardAttachment::query()->whereNotNull('file_path');
-        $briefFiles = CardBriefAttachment::query()->whereNotNull('file_path');
-        if (! $isGlobal) {
-            $resultFiles->where('uploaded_by', $user->id);
-            $briefFiles->where('uploaded_by', $user->id);
-        }
-        $this->applyPeriod($resultFiles, $filter, 'card_attachments.created_at');
-        $this->applyPeriod($briefFiles, $filter, 'card_brief_attachments.created_at');
-        $resultFileMetrics = (clone $resultFiles)
-            ->selectRaw('COUNT(*) as total, COALESCE(SUM(file_size), 0) as bytes')
-            ->first();
-        $briefFileMetrics = (clone $briefFiles)
-            ->selectRaw('COUNT(*) as total, COALESCE(SUM(file_size), 0) as bytes')
-            ->first();
-        $fileCount = (int) $resultFileMetrics->total + (int) $briefFileMetrics->total;
-        $storageBytes = (int) $resultFileMetrics->bytes + (int) $briefFileMetrics->bytes;
-
-        $insights->push([
-            'id' => 'storage-usage',
-            'category' => 'Files & Report',
-            'severity' => 'info',
-            'title' => 'Pemakaian file pada periode aktif',
-            'message' => $fileCount.' file tersimpan dan tersedia untuk kebutuhan laporan.',
-            'metric' => $this->formatBytes($storageBytes),
-            'action_label' => $user->can('report.view') ? 'Buka Report' : null,
-            'action_path' => $user->can('report.view') ? '/reports' : null,
-            'priority' => 20,
-        ]);
-
-        $qcQuery = CardAttachment::query()->whereNotNull('quantity');
+        $qcQuery = CardAttachment::query()
+            ->whereNotNull('quantity')
+            ->whereNull('qc_at');
         if (! $isGlobal) {
             $qcQuery->where('uploaded_by', $user->id);
         }
         $this->applyPeriod($qcQuery, $filter, 'card_attachments.created_at');
-        $qcMetrics = (clone $qcQuery)
-            ->selectRaw('SUM(CASE WHEN qc_at IS NULL THEN 1 ELSE 0 END) as pending')
-            ->selectRaw('SUM(CASE WHEN qc_quantity IS NOT NULL AND qc_quantity != quantity THEN 1 ELSE 0 END) as mismatch')
-            ->first();
-        $pendingQc = (int) $qcMetrics->pending;
-        $qcMismatch = (int) $qcMetrics->mismatch;
-        $insights->push([
-            'id' => 'qc-pending',
-            'category' => 'Quality Control',
-            'severity' => $pendingQc > 0 ? 'warning' : 'success',
-            'title' => $pendingQc > 0 ? 'Attachment menunggu QC' : 'Antrean QC selesai',
-            'message' => $pendingQc > 0
-                ? $pendingQc.' attachment ber-quantity belum diperiksa.'
-                : 'Tidak ada attachment ber-quantity yang menunggu pemeriksaan.',
-            'metric' => $pendingQc.' item',
-            'action_label' => $user->can('report.view') ? 'Tinjau Report' : 'Buka Task Manager',
-            'action_path' => $user->can('report.view') ? '/reports' : '/divisions',
-            'priority' => $pendingQc > 0 ? 78 : 22,
-        ]);
+        $pendingQcAttachments = $qcQuery
+            ->with('card.board.campaign.workspace')
+            ->oldest('created_at')
+            ->get();
+        $qcDetails = $pendingQcAttachments
+            ->map(function (CardAttachment $attachment) {
+                $card = $attachment->card;
+                $attachmentName = $attachment->file_name
+                    ?: $attachment->link_url
+                    ?: $attachment->result_description
+                    ?: 'Attachment tanpa nama';
+                $cardTitle = $card?->title ?: 'Card tidak tersedia';
 
-        $insights->push([
-            'id' => 'qc-quantity-mismatch',
-            'category' => 'Quality Control',
-            'severity' => $qcMismatch > 0 ? 'critical' : 'success',
-            'title' => $qcMismatch > 0 ? 'Ditemukan selisih hasil QC' : 'Quantity sesuai hasil QC',
-            'message' => $qcMismatch > 0
-                ? $qcMismatch.' attachment memiliki quantity yang tidak sesuai hasil QC.'
-                : 'Tidak ditemukan ketidaksesuaian quantity dengan hasil QC.',
-            'metric' => $qcMismatch.' item',
-            'action_label' => $user->can('report.view') ? 'Tinjau Report' : 'Buka Task Manager',
-            'action_path' => $user->can('report.view') ? '/reports' : '/divisions',
-            'priority' => $qcMismatch > 0 ? 94 : 21,
-        ]);
-
-        $activityQuery = ActivityLog::query()->whereNotNull('user_id');
-        if (! $isGlobal) {
-            $activityQuery->where('user_id', $user->id);
-        }
-        $this->applyPeriod($activityQuery, $filter, 'activity_logs.created_at');
-        $activityMetrics = (clone $activityQuery)
-            ->selectRaw('COUNT(*) as total, COUNT(DISTINCT user_id) as active_users')
-            ->first();
-        $activeUsers = (int) $activityMetrics->active_users;
-        $activityCount = (int) $activityMetrics->total;
-
-        $insights->push([
-            'id' => 'collaboration',
-            'category' => 'Collaboration',
-            'severity' => $activityCount > 0 ? 'info' : 'warning',
-            'title' => $activityCount > 0 ? 'Kolaborasi sistem aktif' : 'Belum ada aktivitas pada periode ini',
-            'message' => $activityCount > 0
-                ? $activeUsers.' pengguna menghasilkan '.$activityCount.' aktivitas yang tercatat pada periode terpilih.'
-                : 'Belum ada aktivitas yang tercatat pada periode terpilih; periksa filter atau dorong pembaruan pekerjaan.',
-            'metric' => $activeUsers.' pengguna aktif',
-            'action_label' => $user->can('profile.view') ? 'Lihat Pengguna' : null,
-            'action_path' => $user->can('profile.view') ? '/profile' : null,
-            'priority' => $activityCount > 0 ? 15 : 70,
-        ]);
-
-        if ($isGlobal || $user->can('chat.view')) {
-            $messageQuery = Message::query();
-            if (! $isGlobal) {
-                $messageQuery->where('user_id', $user->id);
-            }
-            $this->applyPeriod($messageQuery, $filter, 'messages.created_at');
-            $messageMetrics = (clone $messageQuery)
-                ->selectRaw('COUNT(*) as total, COUNT(DISTINCT chat_room_id) as active_rooms')
-                ->first();
-            $messageCount = (int) $messageMetrics->total;
-            $activeRooms = (int) $messageMetrics->active_rooms;
-            $insights->push([
-                'id' => 'chat-engagement',
-                'category' => 'Chat',
-                'severity' => $messageCount > 0 ? 'info' : 'warning',
-                'title' => $messageCount > 0 ? 'Komunikasi tim berlangsung aktif' : 'Tidak ada percakapan pada periode ini',
-                'message' => $messageCount.' pesan tercatat pada '.$activeRooms.' ruang chat.',
-                'metric' => $messageCount.' pesan',
-                'action_label' => 'Buka Chats',
-                'action_path' => '/chats',
-                'priority' => $messageCount > 0 ? 12 : 50,
-            ]);
-        }
-
-        return $insights
-            ->sortByDesc('priority')
+                return [
+                    'id' => $attachment->id,
+                    'title' => $attachmentName,
+                    'context' => 'Card: '.$cardTitle.' / '.$this->cardInsightLocation($card),
+                    'status' => $card?->status,
+                    'due_date' => $card?->due_date?->toDateString(),
+                    'quantity' => (int) $attachment->quantity,
+                    'action_label' => 'Lihat attachment pada card',
+                    'action_path' => $this->cardInsightPath($card),
+                ];
+            })
             ->values()
-            ->map(fn (array $insight) => collect($insight)->except('priority')->all())
             ->all();
+        $pendingQcCount = $pendingQcAttachments->count();
+
+        return [
+            [
+                'id' => 'overdue-work',
+                'category' => 'Deadline',
+                'severity' => $overdueCount > 0 ? 'critical' : 'success',
+                'title' => $overdueCount > 0
+                    ? 'Card melewati tenggat'
+                    : 'Tidak ada card overdue',
+                'message' => $overdueCount > 0
+                    ? $overdueCount.' card aktif telah melewati due date. Daftar diurutkan dari keterlambatan paling lama.'
+                    : 'Tidak ada card aktif dari periode terpilih yang telah melewati due date.',
+                'metric' => $overdueCount.' overdue',
+                'details_label' => 'Card overdue',
+                'details' => $overdueDetails,
+                'action_label' => $overdueCount > 0
+                    ? 'Buka card overdue pertama'
+                    : ($user->can('calendar.view') ? 'Buka Calendar' : 'Buka Task Manager'),
+                'action_path' => $overdueCount > 0
+                    ? $overdueDetails[0]['action_path']
+                    : ($user->can('calendar.view') ? '/calendar' : '/divisions'),
+            ],
+            [
+                'id' => 'qc-pending',
+                'category' => 'Quality Control',
+                'severity' => $pendingQcCount > 0 ? 'warning' : 'success',
+                'title' => $pendingQcCount > 0
+                    ? 'Attachment menunggu QC'
+                    : 'Antrean QC selesai',
+                'message' => $pendingQcCount > 0
+                    ? $pendingQcCount.' attachment ber-quantity belum diperiksa. Periksa nama attachment, card asal, dan quantity pada daftar berikut.'
+                    : 'Tidak ada attachment ber-quantity dari periode terpilih yang menunggu pemeriksaan.',
+                'metric' => $pendingQcCount.' attachment',
+                'details_label' => 'Attachment yang menunggu QC',
+                'details' => $qcDetails,
+                'action_label' => $pendingQcCount > 0
+                    ? ($user->can('report.view') ? 'Buka Report untuk QC' : 'Buka attachment pertama')
+                    : null,
+                'action_path' => $pendingQcCount > 0
+                    ? ($user->can('report.view') ? '/reports' : $qcDetails[0]['action_path'])
+                    : null,
+            ],
+        ];
+    }
+
+    private function cardInsightPath(?Card $card): string
+    {
+        $campaign = $card?->board?->campaign;
+        $workspace = $campaign?->workspace;
+
+        if (! $card || ! $campaign || ! $workspace) {
+            return '/divisions';
+        }
+
+        return '/workspaces/'.$workspace->id
+            .'/campaigns/'.$campaign->id
+            .'/boards?card='.$card->id;
+    }
+
+    private function cardInsightLocation(?Card $card): string
+    {
+        $board = $card?->board;
+        $campaign = $board?->campaign;
+        $workspace = $campaign?->workspace;
+        $location = collect([
+            $workspace?->name,
+            $campaign?->name,
+            $board?->name,
+        ])->filter()->implode(' / ');
+
+        return $location ?: 'Lokasi card tidak tersedia';
     }
 
     private function scopedCards($user, bool $isGlobal)
@@ -584,24 +181,6 @@ class DashboardController extends Controller
         }
 
         return $query;
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        if ($bytes < 1024) {
-            return $bytes.' B';
-        }
-
-        $units = ['KB', 'MB', 'GB', 'TB'];
-        $value = $bytes / 1024;
-        foreach ($units as $unit) {
-            if ($value < 1024 || $unit === 'TB') {
-                return round($value, 1).' '.$unit;
-            }
-            $value /= 1024;
-        }
-
-        return $bytes.' B';
     }
 
     /**

@@ -14,6 +14,7 @@ export type SystemInsightDetail = {
   context: string;
   status?: string | null;
   due_date?: string | null;
+  quantity?: number | null;
   action_label?: string | null;
   action_path?: string | null;
 };
@@ -25,6 +26,7 @@ export type SystemInsight = {
   title: string;
   message: string;
   metric: string;
+  details_label?: string | null;
   details?: SystemInsightDetail[];
   action_label?: string | null;
   action_path?: string | null;
@@ -148,12 +150,12 @@ export default function SystemInsights({
 
         <div className="mt-4 rounded-2xl border border-indigo-100 bg-white/80 px-4 py-3 text-xs leading-5 text-slate-500">
           <span className="font-black text-slate-700">Cara membaca:</span>{" "}
-          indikator diurutkan berdasarkan urgensi. Angka mengikuti scope dan filter periode aktif;
-          tenggat dihitung terhadap waktu saat ini, sedangkan tren membandingkan periode aktif dengan periode sebelumnya.
+          hanya deadline overdue dan attachment yang menunggu QC yang ditampilkan. Angka mengikuti scope dan filter periode aktif;
+          status overdue dihitung terhadap waktu saat ini.
         </div>
       </div>
 
-      <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-2">
         {insights.map((insight) => {
           const style = severityStyles[insight.severity] ?? severityStyles.info;
           const Icon = style.icon;
@@ -181,7 +183,7 @@ export default function SystemInsights({
                 {insight.details && insight.details.length > 0 ? (
                   <div className="mt-3">
                     <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                      Card yang perlu ditangani ({insight.details.length})
+                      {insight.details_label ?? "Item yang perlu ditangani"} ({insight.details.length})
                     </p>
                     <ul className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
                       {insight.details.map((detail) => (
@@ -202,6 +204,9 @@ export default function SystemInsights({
                               <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold text-slate-600">
                                 <span>{statusLabels[detail.status ?? ""] ?? detail.status ?? "Status tidak tersedia"}</span>
                                 <span>Jatuh tempo: {formatDueDate(detail.due_date)}</span>
+                                {detail.quantity !== undefined && detail.quantity !== null ? (
+                                  <span>Quantity: {detail.quantity.toLocaleString("id-ID")}</span>
+                                ) : null}
                               </span>
                             </Link>
                           ) : (
