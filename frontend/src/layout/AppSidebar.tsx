@@ -412,11 +412,11 @@ const AppSidebar: React.FC = () => {
   const navItems = useMemo<NavItem[]>(() => {
     try {
       return [
-        ...((isSuperAdmin && can("dashboard.view")) || (!isSuperAdmin && can("my_work.view"))
+        ...(can("dashboard.view") || can("my_work.view")
           ? [{
               icon: <GridIcon />,
               name: "Dashboard",
-              path: isSuperAdmin ? "/dashboard" : "/my-work",
+              path: can("dashboard.view") ? "/dashboard" : "/my-work",
             }]
           : []),
         {

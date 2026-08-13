@@ -24,6 +24,7 @@ import {
   LucideIcon,
 } from "lucide-react";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { useAuth } from "@/context/AuthContext";
 
 // ============================================
 // TYPES (Sesuai dengan JSON Laravel)
@@ -48,10 +49,18 @@ type TaskStatus = {
   completion_rate: number;
 };
 
+type InsightScope = {
+  type: "all_divisions" | "assigned_divisions";
+  label: string;
+  division_names: string[];
+  can_view: boolean;
+};
+
 type DashboardResponse = {
   stats: DashboardStats;
   filter: DashboardFilterPayload;
   task_status: TaskStatus;
+  insight_scope: InsightScope;
   insights: SystemInsight[];
 };
 
@@ -84,6 +93,8 @@ const initialFilterPayload: DashboardFilterPayload = {
 
 export default function Home() {
   const realtimeRevision = useRealtimeRevision();
+  const { can, hasRole } = useAuth();
+  const isSuperAdmin = hasRole("super_admin");
   const [data, setData] = useState<DashboardResponse>({
     filter: initialFilterPayload,
     stats: {
@@ -102,6 +113,12 @@ export default function Home() {
       overdue: 0,
       due_soon: 0,
       completion_rate: 0,
+    },
+    insight_scope: {
+      type: "assigned_divisions",
+      label: "divisi yang terhubung",
+      division_names: [],
+      can_view: false,
     },
     insights: [],
   });
@@ -123,6 +140,12 @@ export default function Home() {
       });
       setData({
         ...res.data,
+        insight_scope: res.data?.insight_scope ?? {
+          type: "assigned_divisions",
+          label: "divisi yang terhubung",
+          division_names: [],
+          can_view: false,
+        },
         insights: Array.isArray(res.data?.insights) ? res.data.insights : [],
       });
     } catch (error) {
@@ -161,10 +184,14 @@ export default function Home() {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div className="space-y-1">
           <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-indigo-800 to-slate-900 tracking-tight">
-            {scope === "global" ? "Global Dashboard" : "My Dashboard"}
+            {scope === "global"
+              ? (isSuperAdmin ? "Global Dashboard" : "Division Dashboard")
+              : "My Dashboard"}
           </h1>
           <p className="text-sm text-slate-500 font-medium">
-            Pantau dan kelola statistik dari {scope === "global" ? "seluruh sistem" : "ruang kerja Anda"}.
+            Pantau dan kelola statistik dari {scope === "global"
+              ? (isSuperAdmin ? "seluruh sistem" : data.insight_scope.label)
+              : "ruang kerja Anda"}.
           </p>
         </div>
 
@@ -183,7 +210,7 @@ export default function Home() {
               onChange={(e) => setScope(e.target.value as typeof scope)}
               className="appearance-none border border-slate-200 rounded-xl pl-9 pr-10 py-2.5 text-sm bg-white font-medium text-slate-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer shadow-sm"
             >
-              <option value="global">Global View</option>
+              <option value="global">{isSuperAdmin ? "Global View" : "Division View"}</option>
               <option value="me">My Workspace</option>
             </select>
             <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
@@ -263,8 +290,10 @@ export default function Home() {
         />
       </div>
 
-      {/* SUPER ADMIN LEADERBOARD */}
-      <DivisionRankingSection filter={dashboardFilter} refreshKey={refreshKey} />
+      {/* LEADERBOARD KHUSUS PEMILIK PERMISSION */}
+      {can("dashboard.division_ranking.view") ? (
+        <DivisionRankingSection filter={dashboardFilter} refreshKey={refreshKey} />
+      ) : null}
 
       <TaskStatusOverview status={taskStatus} periodLabel={data.filter.label} />
 
@@ -272,7 +301,7 @@ export default function Home() {
       <SystemInsights
         insights={data.insights ?? []}
         periodLabel={data.filter.label}
-        scopeLabel={scope === "global" ? "seluruh sistem" : "ruang kerja Anda"}
+        scopeLabel={data.insight_scope.label}
       />
     </div>
   );

@@ -40,6 +40,40 @@ class UserPermissionManagementTest extends TestCase
         $this->assertTrue($putri->fresh()->can('form.create'));
     }
 
+    public function test_system_insight_access_automatically_adds_dashboard_access(): void
+    {
+        foreach ([
+            'user.update',
+            'dashboard.view',
+            'dashboard.system_insights.view',
+        ] as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+        }
+
+        $superAdmin = Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
+        $superAdmin->givePermissionTo([
+            'user.update',
+            'dashboard.view',
+            'dashboard.system_insights.view',
+        ]);
+        $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
+        $actor = User::factory()->create();
+        $actor->assignRole($superAdmin);
+        $target = User::factory()->create();
+        $target->assignRole($userRole);
+        Sanctum::actingAs($actor);
+
+        $this->putJson('/api/users/'.$target->id.'/permissions', [
+            'permissions' => ['dashboard.system_insights.view'],
+        ])->assertOk()
+            ->assertJsonPath('data.direct_permissions.0', 'dashboard.system_insights.view')
+            ->assertJsonPath('data.direct_permissions.1', 'dashboard.view');
+
+        $freshTarget = $target->fresh();
+        $this->assertTrue($freshTarget->can('dashboard.view'));
+        $this->assertTrue($freshTarget->can('dashboard.system_insights.view'));
+    }
+
     public function test_admin_cannot_grant_a_permission_they_do_not_have(): void
     {
         Permission::firstOrCreate(['name' => 'user.update', 'guard_name' => 'web']);
