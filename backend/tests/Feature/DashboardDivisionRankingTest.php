@@ -358,6 +358,137 @@ class DashboardDivisionRankingTest extends TestCase
             ->assertJsonMissing(['id' => 'completion-rate']);
     }
 
+    public function test_division_admin_system_insights_are_limited_to_assigned_divisions(): void
+    {
+        foreach ([
+            'dashboard.view',
+            'dashboard.system_insights.view',
+        ] as $permission) {
+            Permission::firstOrCreate([
+                'name' => $permission,
+                'guard_name' => 'web',
+            ]);
+        }
+
+        $adminRole = Role::firstOrCreate([
+            'name' => User::ROLE_ADMIN,
+            'guard_name' => 'web',
+        ]);
+        $adminRole->givePermissionTo([
+            'dashboard.view',
+            'dashboard.system_insights.view',
+        ]);
+        $superAdminRole = Role::firstOrCreate([
+            'name' => User::ROLE_SUPER_ADMIN,
+            'guard_name' => 'web',
+        ]);
+
+        $creator = User::factory()->create();
+        $creator->assignRole($superAdminRole);
+        $divisionAdmin = User::factory()->create();
+        $divisionAdmin->assignRole($adminRole);
+
+        $assignedDivision = Division::create([
+            'name' => 'Creative',
+            'slug' => 'creative-insight-scope',
+        ]);
+        $otherDivision = Division::create([
+            'name' => 'Finance',
+            'slug' => 'finance-insight-scope',
+        ]);
+        $assignedDivision->users()->attach($divisionAdmin->id, ['role' => 'admin']);
+
+        $assignedBoard = $this->createBoard($assignedDivision, $creator, 'Creative');
+        $otherBoard = $this->createBoard($otherDivision, $creator, 'Finance');
+        $assignedCard = Card::create([
+            'board_id' => $assignedBoard->id,
+            'created_by' => $creator->id,
+            'title' => 'Creative overdue',
+            'status' => 'todo',
+            'due_date' => now()->subDay(),
+        ]);
+        $otherCard = Card::create([
+            'board_id' => $otherBoard->id,
+            'created_by' => $creator->id,
+            'title' => 'Finance overdue',
+            'status' => 'todo',
+            'due_date' => now()->subDay(),
+        ]);
+        CardAttachment::create([
+            'card_id' => $assignedCard->id,
+            'uploaded_by' => $creator->id,
+            'file_name' => 'creative-qc.jpg',
+            'attachment_type' => 'file',
+            'quantity' => 5,
+        ]);
+        CardAttachment::create([
+            'card_id' => $otherCard->id,
+            'uploaded_by' => $creator->id,
+            'file_name' => 'finance-qc.jpg',
+            'attachment_type' => 'file',
+            'quantity' => 9,
+        ]);
+
+        Sanctum::actingAs($divisionAdmin);
+
+        $this->getJson('/api/dashboard?scope=global&period=month')
+            ->assertOk()
+            ->assertJsonPath('insight_scope.type', 'assigned_divisions')
+            ->assertJsonPath('insight_scope.label', 'divisi Creative')
+            ->assertJsonPath('insight_scope.can_view', true)
+            ->assertJsonPath('stats.divisions', 1)
+            ->assertJsonPath('stats.cards', 1)
+            ->assertJsonPath('task_status.total', 1)
+            ->assertJsonPath('insights.0.metric', '1 overdue')
+            ->assertJsonPath('insights.0.details.0.title', 'Creative overdue')
+            ->assertJsonPath('insights.1.metric', '1 attachment')
+            ->assertJsonPath('insights.1.details.0.title', 'creative-qc.jpg')
+            ->assertJsonMissing(['title' => 'Finance overdue'])
+            ->assertJsonMissing(['title' => 'finance-qc.jpg']);
+    }
+
+    public function test_additional_access_dynamically_controls_system_insight_visibility(): void
+    {
+        foreach ([
+            'dashboard.view',
+            'dashboard.system_insights.view',
+        ] as $permission) {
+            Permission::firstOrCreate([
+                'name' => $permission,
+                'guard_name' => 'web',
+            ]);
+        }
+        $userRole = Role::firstOrCreate([
+            'name' => User::ROLE_USER,
+            'guard_name' => 'web',
+        ]);
+        $user = User::factory()->create();
+        $user->assignRole($userRole);
+        $division = Division::create([
+            'name' => 'Operations',
+            'slug' => 'operations-custom-insight-access',
+        ]);
+        $division->users()->attach($user->id);
+        $user->givePermissionTo([
+            'dashboard.view',
+            'dashboard.system_insights.view',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/dashboard?scope=global&period=month')
+            ->assertOk()
+            ->assertJsonPath('insight_scope.can_view', true)
+            ->assertJsonCount(2, 'insights');
+
+        $user->revokePermissionTo('dashboard.system_insights.view');
+
+        $this->getJson('/api/dashboard?scope=global&period=month')
+            ->assertOk()
+            ->assertJsonPath('insight_scope.can_view', false)
+            ->assertJsonCount(0, 'insights');
+    }
+
     public function test_non_super_admin_is_forbidden_even_with_dashboard_ranking_permission(): void
     {
         $permission = Permission::firstOrCreate([

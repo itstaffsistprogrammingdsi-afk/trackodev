@@ -6,7 +6,7 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PermissionRoute from "./components/auth/PermissionRoute";
-import RoleRoute from "./components/auth/RoleRoute";
+
 import MobileAppBridge from "@/components/common/MobileAppBridge";
 import { getLastAppRoute, LAST_APP_ROUTE_KEY } from "@/lib/mobileApp";
 
@@ -65,23 +65,28 @@ function RootRoute() {
     return <LandingPage />;
   }
 
+  if (auth.loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-medium text-slate-500">
+        Loading page...
+      </div>
+    );
+  }
+
   const lastRoute = getLastAppRoute();
   if (lastRoute) {
     return <Navigate to={lastRoute} replace />;
   }
 
-  // Sama seperti gate di RoleRoute: /dashboard cuma untuk Super Admin.
-  // Dicek di sini juga supaya admin/user langsung diarahkan ke /my-work,
-  // tidak muter dulu lewat /dashboard baru di-redirect ulang.
   return (
     <Navigate
-      to={isSuperAdminUser(auth) ? "/dashboard" : "/my-work"}
+      to={auth.can("dashboard.view") ? "/dashboard" : "/my-work"}
       replace
     />
   );
 }
 
-// Super Admin sudah punya dashboard sendiri di /dashboard dan tidak perlu
+// Super Admin tetap diarahkan ke dashboard dan tidak perlu
 // (juga tidak boleh) diarahkan ke /my-work sama sekali. RootRoute di atas
 // sudah menangani ini untuk redirect dari "/", tapi kalau /my-work diakses
 // langsung (ketik URL manual, link lama, dsb) belum ada yang menahan —
@@ -134,11 +139,9 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <RoleRoute role="super_admin" redirectTo="/my-work">
-                <PermissionRoute permission="dashboard.view">
-                  <Home />
-                </PermissionRoute>
-              </RoleRoute>
+              <PermissionRoute permission="dashboard.view">
+                <Home />
+              </PermissionRoute>
             }
           />
           <Route

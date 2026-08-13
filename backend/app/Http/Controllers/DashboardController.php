@@ -20,13 +20,31 @@ class DashboardController extends Controller
         $scope = $request->query('scope', 'global');
         $user = $request->user();
         $filter = $this->resolvePeriod($request);
-        $taskStatus = $this->taskStatus($user, $scope, $filter);
+        $insightScope = $this->systemInsightScope($user);
+        $canViewSystemInsights = $user->can('dashboard.system_insights.view');
+        $taskStatus = $this->taskStatus(
+            $user,
+            $scope,
+            $filter,
+            $insightScope['division_ids']
+        );
 
         return response()->json([
             'filter' => $this->periodPayload($filter),
-            'stats' => $this->stats($user, $scope, $filter),
+            'stats' => $this->stats(
+                $user,
+                $scope,
+                $filter,
+                $insightScope['division_ids']
+            ),
             'task_status' => $taskStatus,
-            'insights' => $this->systemInsights($user, $scope, $filter),
+            'insight_scope' => [
+                ...$insightScope['payload'],
+                'can_view' => $canViewSystemInsights,
+            ],
+            'insights' => $canViewSystemInsights
+                ? $this->systemInsights($user, $filter, $insightScope['division_ids'])
+                : [],
         ]);
     }
 
@@ -34,14 +52,17 @@ class DashboardController extends Controller
      * Insight lintas modul yang dapat langsung ditindaklanjuti.
      * Semua agregasi mengikuti scope dan periode dashboard agar angka konsisten.
      */
-    private function systemInsights($user, string $scope, array $filter): array
+    private function systemInsights($user, array $filter, ?array $divisionIds): array
     {
-        $isGlobal = $scope === 'global' && $user->isSuperAdmin();
-
-        $overdueQuery = $this->scopedCards($user, $isGlobal)
+        $overdueQuery = Card::query()
             ->where('status', '!=', 'completed')
             ->whereNotNull('due_date')
             ->where('due_date', '<', now());
+        $this->applyDivisionScope(
+            $overdueQuery,
+            $divisionIds,
+            'board.campaign.workspace'
+        );
         $this->applyPeriod($overdueQuery, $filter, 'cards.created_at');
         $overdueCards = $overdueQuery
             ->with('board.campaign.workspace')
@@ -64,9 +85,11 @@ class DashboardController extends Controller
         $qcQuery = CardAttachment::query()
             ->whereNotNull('quantity')
             ->whereNull('qc_at');
-        if (! $isGlobal) {
-            $qcQuery->where('uploaded_by', $user->id);
-        }
+        $this->applyDivisionScope(
+            $qcQuery,
+            $divisionIds,
+            'card.board.campaign.workspace'
+        );
         $this->applyPeriod($qcQuery, $filter, 'card_attachments.created_at');
         $pendingQcAttachments = $qcQuery
             ->with('card.board.campaign.workspace')
@@ -168,19 +191,50 @@ class DashboardController extends Controller
         return $location ?: 'Lokasi card tidak tersedia';
     }
 
-    private function scopedCards($user, bool $isGlobal)
+    private function systemInsightScope($user): array
     {
-        $query = Card::query();
-
-        if (! $isGlobal) {
-            $query->where(function ($cardQuery) use ($user) {
-                $cardQuery->where('created_by', $user->id)
-                    ->orWhereHas('assignees', fn ($assigneeQuery) => $assigneeQuery->where('users.id', $user->id)
-                    );
-            });
+        if ($user->isSuperAdmin()) {
+            return [
+                'division_ids' => null,
+                'payload' => [
+                    'type' => 'all_divisions',
+                    'label' => 'seluruh divisi',
+                    'division_names' => [],
+                ],
+            ];
         }
 
-        return $query;
+        $divisions = $user->divisions()
+            ->orderBy('divisions.name')
+            ->get(['divisions.id', 'divisions.name']);
+        $divisionNames = $divisions->pluck('name')->values();
+
+        return [
+            'division_ids' => $divisions->pluck('id')->values()->all(),
+            'payload' => [
+                'type' => 'assigned_divisions',
+                'label' => $divisionNames->isNotEmpty()
+                    ? 'divisi '.$divisionNames->implode(', ')
+                    : 'tidak ada divisi terhubung',
+                'division_names' => $divisionNames->all(),
+            ],
+        ];
+    }
+
+    private function applyDivisionScope(
+        $query,
+        ?array $divisionIds,
+        string $workspaceRelation
+    ): void {
+        if ($divisionIds === null) {
+            return;
+        }
+
+        $query->whereHas(
+            $workspaceRelation,
+            fn ($workspaceQuery) => $workspaceQuery
+                ->whereIn('division_id', $divisionIds)
+        );
     }
 
     /**
@@ -294,11 +348,13 @@ class DashboardController extends Controller
     /**
      * STATISTIK (SAFE UNTUK SUPER ADMIN & USER)
      */
-    private function stats($user, string $scope, array $filter): array
-    {
-        $isSuperAdmin = $user->isSuperAdmin();
-
-        if ($scope === 'global' && $isSuperAdmin) {
+    private function stats(
+        $user,
+        string $scope,
+        array $filter,
+        ?array $divisionIds
+    ): array {
+        if ($scope === 'global' && $user->isSuperAdmin()) {
             return [
                 'users' => $this->countWithinPeriod(
                     User::query(), $filter, 'users.created_at'
@@ -321,6 +377,55 @@ class DashboardController extends Controller
             ];
         }
 
+        if ($scope === 'global') {
+            $divisionIds ??= [];
+
+            return [
+                'users' => $this->countWithinPeriod(
+                    User::query()->whereHas(
+                        'divisions',
+                        fn ($query) => $query->whereIn('divisions.id', $divisionIds)
+                    ),
+                    $filter,
+                    'users.created_at'
+                ),
+                'divisions' => $this->countWithinPeriod(
+                    Division::query()->whereIn('id', $divisionIds),
+                    $filter,
+                    'divisions.created_at'
+                ),
+                'workspaces' => $this->countWithinPeriod(
+                    Workspace::query()->whereIn('division_id', $divisionIds),
+                    $filter,
+                    'workspaces.created_at'
+                ),
+                'campaigns' => $this->countWithinPeriod(
+                    Campaign::query()->whereHas(
+                        'workspace',
+                        fn ($query) => $query->whereIn('division_id', $divisionIds)
+                    ),
+                    $filter,
+                    'campaigns.created_at'
+                ),
+                'boards' => $this->countWithinPeriod(
+                    Board::query()->whereHas(
+                        'campaign.workspace',
+                        fn ($query) => $query->whereIn('division_id', $divisionIds)
+                    ),
+                    $filter,
+                    'boards.created_at'
+                ),
+                'cards' => $this->countWithinPeriod(
+                    Card::query()->whereHas(
+                        'board.campaign.workspace',
+                        fn ($query) => $query->whereIn('division_id', $divisionIds)
+                    ),
+                    $filter,
+                    'cards.created_at'
+                ),
+            ];
+        }
+
         $campaignIds = $user->campaigns()->pluck('campaigns.id');
 
         return [
@@ -337,13 +442,17 @@ class DashboardController extends Controller
                 $user->campaigns()->getQuery(), $filter, 'campaigns.created_at'
             ),
             'boards' => $this->countWithinPeriod(
-                Board::query()->whereHas('campaign', fn ($query) => $query->whereIn('campaigns.id', $campaignIds)
+                Board::query()->whereHas(
+                    'campaign',
+                    fn ($query) => $query->whereIn('campaigns.id', $campaignIds)
                 ),
                 $filter,
                 'boards.created_at'
             ),
             'cards' => $this->countWithinPeriod(
-                Card::query()->whereHas('board.campaign', fn ($query) => $query->whereIn('campaigns.id', $campaignIds)
+                Card::query()->whereHas(
+                    'board.campaign',
+                    fn ($query) => $query->whereIn('campaigns.id', $campaignIds)
                 ),
                 $filter,
                 'cards.created_at'
@@ -356,11 +465,21 @@ class DashboardController extends Controller
      * Overdue dipisahkan dari todo/in progress agar setiap card hanya masuk
      * ke satu kategori utama.
      */
-    private function taskStatus($user, string $scope, array $filter): array
-    {
+    private function taskStatus(
+        $user,
+        string $scope,
+        array $filter,
+        ?array $divisionIds
+    ): array {
         $query = Card::query();
 
-        if ($scope !== 'global' || ! $user->isSuperAdmin()) {
+        if ($scope === 'global') {
+            $this->applyDivisionScope(
+                $query,
+                $divisionIds,
+                'board.campaign.workspace'
+            );
+        } else {
             $query->where(function ($cardQuery) use ($user) {
                 $cardQuery
                     ->where('created_by', $user->id)

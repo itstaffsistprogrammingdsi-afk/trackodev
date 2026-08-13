@@ -144,6 +144,7 @@ final class PermissionCatalog
             ]),
             'dashboard' => self::module('Dashboard', 'Akses ringkasan dashboard manajemen.', [
                 'dashboard.view' => 'Lihat dashboard',
+                'dashboard.system_insights.view' => 'Lihat System Insights sesuai divisi yang diizinkan',
                 'dashboard.activities.view' => 'Lihat aktivitas dashboard',
                 'dashboard.division_ranking.view' => 'Lihat Top 3 user per divisi',
             ]),
@@ -257,8 +258,7 @@ final class PermissionCatalog
             'campaign' => ['campaign.view'],
             'board' => ['campaign.view', 'board.view'],
             'card' => ['campaign.view', 'board.view', 'card.view'],
-            'attachment', 'brief_attachment', 'comment', 'checklist', 'result_template'
-                => ['card.view'],
+            'attachment', 'brief_attachment', 'comment', 'checklist', 'result_template' => ['card.view'],
             'subtask' => ['card.view', 'checklist.view'],
             'form' => ['form.view'],
             'report' => ['report.view'],
@@ -267,6 +267,7 @@ final class PermissionCatalog
 
         return array_values(array_unique(array_merge($dependencies, $parentViews)));
     }
+
     public static function adminPermissions(): array
     {
         return array_values(array_diff(self::names(), [

@@ -57,6 +57,7 @@ const actionLabels: Record<string, string> = {
   download: 'Download file',
   complete: 'Tandai selesai',
   'division_ranking.view': 'Lihat Top 3 user per divisi',
+  'system_insights.view': 'Lihat System Insights sesuai divisi',
   'permissions.view': 'Lihat akses user',
   'permissions.update': 'Ubah akses user',
   'member.view': 'Lihat anggota',
