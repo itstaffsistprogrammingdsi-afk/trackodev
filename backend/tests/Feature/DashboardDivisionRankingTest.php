@@ -310,6 +310,37 @@ class DashboardDivisionRankingTest extends TestCase
             ->assertJsonPath('divisions.0.ranking.0.completed_tasks', 2);
     }
 
+    public function test_dashboard_explains_when_completion_rate_has_no_data(): void
+    {
+        $dashboardPermission = Permission::firstOrCreate([
+            'name' => 'dashboard.view',
+            'guard_name' => 'web',
+        ]);
+        $superAdminRole = Role::firstOrCreate([
+            'name' => User::ROLE_SUPER_ADMIN,
+            'guard_name' => 'web',
+        ]);
+
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole($superAdminRole);
+        $superAdmin->givePermissionTo($dashboardPermission);
+        Sanctum::actingAs($superAdmin);
+
+        $response = $this->getJson('/api/dashboard?scope=global&period=month')
+            ->assertOk()
+            ->assertJsonPath('task_status.total', 0);
+
+        $completionInsight = collect($response->json('insights'))
+            ->firstWhere('id', 'completion-rate');
+
+        $this->assertSame('info', $completionInsight['severity']);
+        $this->assertSame('Completion rate belum dapat dinilai', $completionInsight['title']);
+        $this->assertSame(
+            'Belum ada card yang dibuat pada periode terpilih.',
+            $completionInsight['message']
+        );
+    }
+
     public function test_non_super_admin_is_forbidden_even_with_dashboard_ranking_permission(): void
     {
         $permission = Permission::firstOrCreate([

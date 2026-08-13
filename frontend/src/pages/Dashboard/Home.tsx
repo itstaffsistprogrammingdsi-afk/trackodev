@@ -209,10 +209,6 @@ export default function Home() {
         loading={isRefreshing || isUpdating}
       />
 
-      <SystemInsights
-        insights={data.insights ?? []}
-        periodLabel={data.filter.label}
-      />
 
       {/* KPI CARDS - GRID MODERN */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4 lg:gap-5">
@@ -271,6 +267,13 @@ export default function Home() {
       <DivisionRankingSection filter={dashboardFilter} refreshKey={refreshKey} />
 
       <TaskStatusOverview status={taskStatus} periodLabel={data.filter.label} />
+
+      {/* SYSTEM INSIGHTS - ditempatkan terakhir sebagai rangkuman seluruh dashboard */}
+      <SystemInsights
+        insights={data.insights ?? []}
+        periodLabel={data.filter.label}
+        scopeLabel={scope === "global" ? "seluruh sistem" : "ruang kerja Anda"}
+      />
     </div>
   );
 }
