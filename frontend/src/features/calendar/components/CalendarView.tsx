@@ -6,6 +6,7 @@ import type { Card } from '@/features/card/types';
 import { useCalendar } from '../hooks/useCalendar';
 import { Task, User, DayData, GridDayCell } from '../types';
 import CalendarCardCreateModal from './CalendarCardCreateModal';
+import { isMobileApp } from '@/lib/mobileConfig';
 
 // --- CONSTANTS ---
 const WEEK_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -16,6 +17,7 @@ export const CalendarView: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const mobileApp = isMobileApp();
 
   // State untuk tooltip
   const [hoveredTask, setHoveredTask] = useState<{ task: Task; rect: DOMRect } | null>(null);
@@ -140,19 +142,19 @@ export const CalendarView: React.FC = () => {
       </div>
 
       {/* --- CALENDAR GRID --- */}
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className={`${mobileApp ? 'overflow-hidden' : 'overflow-x-auto'} rounded-2xl bg-white shadow-sm ring-1 ring-slate-200`}>
         
         {/* Header Hari */}
-        <div className="grid min-w-[760px] grid-cols-7 border-b border-slate-200 bg-slate-50/80">
+        <div className={`grid grid-cols-7 border-b border-slate-200 bg-slate-50/80 ${mobileApp ? 'min-w-0' : 'min-w-[760px]'}`}>
           {WEEK_DAYS.map((day) => (
-            <div key={day} className="text-right py-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-              {day}
+            <div key={day} className={mobileApp ? 'py-2 text-center text-[9px] font-bold uppercase tracking-tight text-slate-500' : 'py-3 pr-4 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500'}>
+              {mobileApp ? day.slice(0, 3) : day}
             </div>
           ))}
         </div>
 
         {/* Matriks Kotak */}
-        <div className="grid min-w-[760px] grid-cols-7 auto-rows-[160px] gap-px bg-slate-50">
+        <div className={`grid grid-cols-7 gap-px bg-slate-50 ${mobileApp ? 'min-w-0 auto-rows-[96px]' : 'min-w-[760px] auto-rows-[160px]'}`}>
           {gridDays.map((cell: GridDayCell, idx: number) => {
             const dayData = getDayData(cell.dateString);
             const tasks = dayData ? dayData.tasks : [];
@@ -163,14 +165,14 @@ export const CalendarView: React.FC = () => {
               <div 
                 key={`${cell.dateString}-${idx}`} 
                 onClick={() => setSelectedDate(cell.dateString)}
-                className={`relative flex h-[160px] cursor-pointer flex-col p-2.5 transition-colors ${
+                className={`relative flex cursor-pointer flex-col transition-colors ${mobileApp ? 'h-24 p-1.5' : 'h-[160px] p-2.5'} ${
                   cell.isCurrentMonth 
                     ? (isToday ? 'bg-indigo-50/30 hover:bg-indigo-50/60' : 'bg-white hover:bg-slate-50') 
                     : 'bg-slate-50/50 text-slate-400 hover:bg-slate-100/50'
                 } group`}
               >
                 {/* Tanggal */}
-                <div className="flex justify-between items-center mb-3">
+                <div className={`flex items-center justify-between ${mobileApp ? 'mb-1' : 'mb-3'}`}>
                   <span className="flex-1">
                     {canCreateCard && (
                       <button
@@ -179,7 +181,7 @@ export const CalendarView: React.FC = () => {
                           event.stopPropagation();
                           setCreateDate(cell.dateString);
                         }}
-                        className="flex size-7 items-center justify-center rounded-lg text-slate-400 opacity-0 transition hover:bg-indigo-100 hover:text-indigo-700 group-hover:opacity-100 focus:opacity-100"
+                        className={`${mobileApp ? 'hidden' : 'flex'} size-7 items-center justify-center rounded-lg text-slate-400 opacity-0 transition hover:bg-indigo-100 hover:text-indigo-700 group-hover:opacity-100 focus:opacity-100`}
                         title={`Buat card tanggal ${formatDateLabel(cell.dateString)}`}
                         aria-label={`Buat card tanggal ${formatDateLabel(cell.dateString)}`}
                       >
@@ -187,7 +189,7 @@ export const CalendarView: React.FC = () => {
                       </button>
                     )}
                   </span>
-                  <span className={`text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+                  <span className={`${mobileApp ? 'h-6 w-6 text-xs' : 'h-7 w-7 text-sm'} flex items-center justify-center rounded-full font-semibold transition-colors ${
                     isToday ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-700 group-hover:bg-slate-200'
                   } ${!cell.isCurrentMonth && !isToday && 'text-slate-400'}`}>
                     {cell.dayNumber}
@@ -195,7 +197,7 @@ export const CalendarView: React.FC = () => {
                 </div>
 
                 {/* List Tasks (maksimal 3) */}
-                <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-none">
+                <div className={mobileApp ? 'hidden' : 'flex-1 space-y-1.5 overflow-y-auto scrollbar-none'}>
                   {tasks.slice(0, 3).map((task: Task) => {
                     const isCompleted = task.status === 'completed' || task.status === 'done';
                     const creatorName = task.creator?.name || 'Tidak diketahui';
@@ -248,8 +250,14 @@ export const CalendarView: React.FC = () => {
                   })}
                 </div>
 
+                {mobileApp && totalTasksOnDay > 0 ? (
+                  <div className="mt-auto truncate rounded-md bg-indigo-50 px-1 py-1 text-center text-[9px] font-bold text-indigo-700">
+                    {totalTasksOnDay} task
+                  </div>
+                ) : null}
+
                 {/* Indikator Overflow */}
-                {totalTasksOnDay > 3 && (
+                {!mobileApp && totalTasksOnDay > 3 && (
                   <div className="mt-1 text-[10px] font-semibold text-slate-400 text-center pt-1 border-t border-slate-100">
                     +{totalTasksOnDay - 3} lainnya
                   </div>

@@ -34,6 +34,9 @@ export default function Navbar() {
           <a href="#formulir" className="transition hover:text-blue-600">
             Form Request
           </a>
+          <a href="#download-apk" className="transition hover:text-blue-600">
+            Download APK
+          </a>
           <a
             href="https://wa.me/6288806798349"
             target="_blank"
