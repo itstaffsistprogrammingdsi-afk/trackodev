@@ -1,4 +1,5 @@
 import Footer from "../components/Footer";
+import DownloadApp from "../components/DownloadApp";
 import FormList from "../components/FormList";
 import Hero from "../components/Hero";
 import Navbar from "../components/Navbar";
@@ -12,6 +13,7 @@ export default function LandingPage() {
       <Navbar />
       <main className="flex-1">
         <Hero />
+        <DownloadApp />
         <FormList
           forms={forms}
           isLoading={isLoading}
