@@ -165,7 +165,9 @@ const getUserRole = (
 // ============================================
 
 export default function UserProfiles() {
-  const realtimeRevision = useRealtimeRevision(["ActivityLog", "User"]);
+  // UserController@index mencatat aktivitas "viewed". Berlangganan ActivityLog
+  // di sini akan membuat loop GET /users -> ActivityLog -> GET /users.
+  const realtimeRevision = useRealtimeRevision(["User"]);
   const navigate = useNavigate();
 
   // ============================================

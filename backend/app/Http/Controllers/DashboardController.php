@@ -52,8 +52,8 @@ class DashboardController extends Controller
                 ? 'Pekerjaan melewati tenggat'
                 : 'Tidak ada card overdue',
             'message' => $taskStatus['overdue'] > 0
-                ? $taskStatus['overdue'].' card perlu ditinjau dan dijadwalkan ulang.'
-                : 'Seluruh card aktif masih berada dalam batas tenggat.',
+                ? $taskStatus['overdue'].' card aktif yang dibuat pada periode terpilih telah melewati due date dan perlu segera ditinjau.'
+                : 'Tidak ada card aktif dari periode terpilih yang telah melewati due date.',
             'metric' => $taskStatus['overdue'].' overdue',
             'action_label' => $user->can('calendar.view') ? 'Buka Calendar' : 'Buka Task Manager',
             'action_path' => $user->can('calendar.view') ? '/calendar' : '/divisions',
@@ -68,8 +68,8 @@ class DashboardController extends Controller
                 ? 'Tenggat 7 hari ke depan'
                 : 'Tidak ada deadline dalam 7 hari',
             'message' => $taskStatus['due_soon'] > 0
-                ? $taskStatus['due_soon'].' card perlu dipastikan memiliki PIC dan progres yang jelas.'
-                : 'Belum ada card aktif yang jatuh tempo dalam tujuh hari ke depan.',
+                ? $taskStatus['due_soon'].' card aktif dari periode terpilih jatuh tempo dalam 7 hari ke depan; pastikan PIC dan progresnya jelas.'
+                : 'Tidak ada card aktif dari periode terpilih yang jatuh tempo dalam 7 hari ke depan.',
             'metric' => $taskStatus['due_soon'].' card',
             'action_label' => $user->can('calendar.view') ? 'Tinjau Calendar' : 'Tinjau Task',
             'action_path' => $user->can('calendar.view') ? '/calendar' : '/divisions',
@@ -79,15 +79,21 @@ class DashboardController extends Controller
         $insights->push([
             'id' => 'completion-rate',
             'category' => 'Task Management',
-            'severity' => $taskStatus['completion_rate'] >= 75 ? 'success' : 'info',
-            'title' => $taskStatus['completion_rate'] >= 75
-                ? 'Completion rate sehat'
-                : 'Completion rate dapat ditingkatkan',
-            'message' => $taskStatus['completed'].' dari '.$taskStatus['total'].' card pada periode ini telah selesai.',
+            'severity' => $taskStatus['total'] === 0
+                ? 'info'
+                : ($taskStatus['completion_rate'] >= 75 ? 'success' : 'warning'),
+            'title' => $taskStatus['total'] === 0
+                ? 'Completion rate belum dapat dinilai'
+                : ($taskStatus['completion_rate'] >= 75
+                    ? 'Completion rate sehat'
+                    : 'Completion rate perlu ditingkatkan'),
+            'message' => $taskStatus['total'] === 0
+                ? 'Belum ada card yang dibuat pada periode terpilih.'
+                : $taskStatus['completed'].' dari '.$taskStatus['total'].' card yang dibuat pada periode terpilih saat ini berstatus selesai.',
             'metric' => $taskStatus['completion_rate'].'%',
             'action_label' => 'Buka Task Manager',
             'action_path' => '/divisions',
-            'priority' => $taskStatus['completion_rate'] < 50 ? 72 : 36,
+            'priority' => $taskStatus['total'] > 0 && $taskStatus['completion_rate'] < 50 ? 72 : 36,
         ]);
 
         $activeCards = $this->scopedCards($user, $isGlobal)
@@ -103,8 +109,8 @@ class DashboardController extends Controller
             'severity' => $unassignedCards > 0 ? 'critical' : 'success',
             'title' => $unassignedCards > 0 ? 'Pekerjaan belum memiliki PIC' : 'Seluruh card memiliki PIC',
             'message' => $unassignedCards > 0
-                ? $unassignedCards.' card aktif belum memiliki assignee.'
-                : 'Tidak ada card aktif tanpa penanggung jawab.',
+                ? $unassignedCards.' card aktif yang dibuat pada periode terpilih belum memiliki assignee atau PIC.'
+                : 'Semua card aktif yang dibuat pada periode terpilih sudah memiliki assignee atau PIC.',
             'metric' => $unassignedCards.' tanpa PIC',
             'action_label' => 'Atur Assignment',
             'action_path' => '/divisions',
@@ -141,8 +147,8 @@ class DashboardController extends Controller
             'severity' => $staleCards > 0 ? 'warning' : 'success',
             'title' => $staleCards > 0 ? 'Pekerjaan tidak mengalami pembaruan' : 'Pembaruan card tetap aktif',
             'message' => $staleCards > 0
-                ? $staleCards.' card aktif tidak berubah selama minimal 7 hari.'
-                : 'Tidak ada card aktif yang stagnan selama tujuh hari atau lebih.',
+                ? $staleCards.' card aktif dari periode terpilih tidak mengalami pembaruan selama minimal 7 hari.'
+                : 'Tidak ada card aktif dari periode terpilih yang stagnan selama 7 hari atau lebih.',
             'metric' => $staleCards.' stagnan',
             'action_label' => 'Tinjau Card',
             'action_path' => '/divisions',
@@ -379,7 +385,9 @@ class DashboardController extends Controller
                     : 'Tidak ada respons tertunda',
                 'message' => $pendingSubmissions > 0
                     ? $pendingSubmissions.' dari '.$submissionCount.' respons masih berstatus submitted.'
-                    : 'Seluruh respons yang masuk sudah ditindaklanjuti.',
+                    : ($submissionCount > 0
+                        ? 'Semua '.$submissionCount.' respons yang masuk pada periode terpilih sudah ditindaklanjuti.'
+                        : 'Belum ada respons form yang masuk pada periode terpilih.'),
                 'metric' => $pendingSubmissions.' tertunda',
                 'action_label' => 'Buka Forms',
                 'action_path' => '/forms',
@@ -490,8 +498,8 @@ class DashboardController extends Controller
             'severity' => $activityCount > 0 ? 'info' : 'warning',
             'title' => $activityCount > 0 ? 'Kolaborasi sistem aktif' : 'Belum ada aktivitas pada periode ini',
             'message' => $activityCount > 0
-                ? $activeUsers.' pengguna menghasilkan '.$activityCount.' aktivitas.'
-                : 'Periksa periode atau dorong tim memperbarui pekerjaan.',
+                ? $activeUsers.' pengguna menghasilkan '.$activityCount.' aktivitas yang tercatat pada periode terpilih.'
+                : 'Belum ada aktivitas yang tercatat pada periode terpilih; periksa filter atau dorong pembaruan pekerjaan.',
             'metric' => $activeUsers.' pengguna aktif',
             'action_label' => $user->can('profile.view') ? 'Lihat Pengguna' : null,
             'action_path' => $user->can('profile.view') ? '/profile' : null,
