@@ -96,8 +96,12 @@ class ReportController extends Controller
                 'board',
                 'labels',
                 'brands',
-                'attachments.uploader',
-                'attachments.qcBy'
+                'attachments' => function ($attachmentQuery) {
+                    $attachmentQuery
+                        ->whereNull('archived_at')
+                        ->with(['uploader', 'qcBy'])
+                        ->latest('created_at');
+                },
             ]);
 
             $this->scopeCardsForUser($query, $user);
@@ -122,6 +126,12 @@ class ReportController extends Controller
     public function submitAttachmentQc(Request $request, CardAttachment $attachment): JsonResponse
     {
         try {
+            if ($attachment->archived_at) {
+                return response()->json([
+                    'message' => 'Versi arsip tidak dapat diproses QC. Gunakan hasil aktif terbaru.',
+                ], 422);
+            }
+
             $validated = $request->validate([
                 'qc_quantity' => "required|integer|min:0|max:{$attachment->quantity}",
                 'qc_note'     => 'nullable|string|max:1000',
@@ -546,7 +556,10 @@ public function previewPdf(Request $request): JsonResponse
                     'labels',
                     'brands',
                     'attachments' => function ($attQ) {
-                        $attQ->with(['uploader', 'qcBy']);
+                        $attQ
+                            ->whereNull('archived_at')
+                            ->with(['uploader', 'qcBy'])
+                            ->latest('created_at');
                     }
                 ]);
 

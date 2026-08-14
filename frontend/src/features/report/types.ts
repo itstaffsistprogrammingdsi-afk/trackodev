@@ -46,6 +46,7 @@ export interface Attachment {
   qc_user: { id: string; name: string } | null;
   qc_at: string | null;
   uploader: { id: string; name: string } | null;
+  archived_at?: string | null;
 }
 
 export interface Card {

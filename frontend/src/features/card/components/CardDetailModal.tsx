@@ -110,6 +110,7 @@ export default function CardDetailModal({
 
   const {
     attachments,
+    archivedAttachments,
     setAttachments,
     loading: attachmentLoading,
     fetchAttachments,
@@ -233,6 +234,7 @@ export default function CardDetailModal({
     showLabels,
     setShowLabels,
     attachments,
+    archivedAttachments,
     setAttachments,
     attachmentLoading,
     fetchAttachments,
@@ -403,10 +405,12 @@ export default function CardDetailModal({
                     <AttachmentSection
                       title="Result Attachments"
                       attachments={attachments}
+                      archivedAttachments={archivedAttachments}
                       setAttachments={setAttachments}
                       fetchAttachments={fetchAttachments}
                       deleteEndpoint="/attachments"
                       downloadEndpoint="/attachments"
+                      supportsResultDescription
                     />
                   </div>
 

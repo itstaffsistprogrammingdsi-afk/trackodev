@@ -156,7 +156,7 @@ class Card extends Model
     {
         return $this->hasMany(
             CardAttachment::class
-        );
+        )->whereNull('archived_at');
     }
 
     public function comments(): HasMany

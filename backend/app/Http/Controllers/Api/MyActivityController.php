@@ -182,6 +182,7 @@ class MyActivityController extends Controller
         */
 
         $attachmentQuery = CardAttachment::query()
+            ->whereNull('archived_at')
             ->where('uploaded_by', $user->id);
 
         $this->applyDateFilter(
@@ -548,6 +549,7 @@ class MyActivityController extends Controller
 
         $attachmentQuery = CardAttachment::query()
             ->with('card.board.campaign.workspace')
+            ->whereNull('archived_at')
             ->where('uploaded_by', $user->id)
             ->whereBetween('created_at', [$start, $end])
             ->latest();
@@ -765,6 +767,7 @@ class MyActivityController extends Controller
 
         $attachments = CardAttachment::query()
             ->with(['card.board.campaign.workspace', 'qcBy'])
+            ->whereNull('archived_at')
             ->where('uploaded_by', $user->id)
             ->whereBetween('created_at', [$start, $end])
             ->latest()

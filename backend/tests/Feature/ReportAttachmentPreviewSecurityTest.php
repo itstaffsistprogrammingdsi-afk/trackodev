@@ -172,4 +172,79 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
         $this->assertStringNotContainsString('href="https://example.com/external-reference"', $html);
         $this->assertNotEmpty($response->json('data.pdf_base64'));
     }
+
+    public function test_report_qc_only_exposes_active_attachment_and_rejects_archived_versions(): void
+    {
+        $viewer = User::factory()->create();
+        $viewer->assignRole('super_admin');
+        $reportUser = User::factory()->create();
+        Sanctum::actingAs($viewer);
+
+        $division = Division::create([
+            'name' => 'QC Archive Filter',
+            'slug' => 'qc-archive-filter',
+        ]);
+        $workspace = Workspace::create([
+            'division_id' => $division->id,
+            'name' => 'QC Workspace',
+        ]);
+        $campaign = Campaign::create([
+            'workspace_id' => $workspace->id,
+            'created_by' => $reportUser->id,
+            'name' => 'QC Campaign',
+            'type' => 'personal',
+        ]);
+        $board = Board::create([
+            'campaign_id' => $campaign->id,
+            'name' => 'In Progress',
+            'type' => 'progress',
+        ]);
+        $card = Card::create([
+            'board_id' => $board->id,
+            'created_by' => $reportUser->id,
+            'title' => 'QC Latest Result',
+        ]);
+
+        $archived = CardAttachment::create([
+            'card_id' => $card->id,
+            'uploaded_by' => $reportUser->id,
+            'file_name' => 'hasil-lama.xlsx',
+            'file_path' => 'attachments/hasil-lama.xlsx',
+            'file_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'file_size' => 1024,
+            'attachment_type' => 'file',
+            'quantity' => 1,
+            'archived_at' => now(),
+            'archived_by' => $viewer->id,
+        ]);
+        $active = CardAttachment::create([
+            'card_id' => $card->id,
+            'uploaded_by' => $reportUser->id,
+            'file_name' => 'hasil-terbaru.xlsx',
+            'file_path' => 'attachments/hasil-terbaru.xlsx',
+            'file_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'file_size' => 2048,
+            'attachment_type' => 'file',
+            'quantity' => 1,
+        ]);
+
+        $response = $this->getJson('/api/reports/users/'.$reportUser->id.'/cards')
+            ->assertOk();
+
+        $attachments = collect($response->json('data'))
+            ->firstWhere('id', $card->id)['attachments'];
+
+        $this->assertCount(1, $attachments);
+        $this->assertSame($active->id, $attachments[0]['id']);
+        $this->assertSame('hasil-terbaru.xlsx', $attachments[0]['file_name']);
+
+        $this->postJson('/api/reports/attachments/'.$archived->id.'/qc', [
+            'qc_quantity' => 1,
+            'qc_note' => 'Tidak boleh diproses',
+        ])->assertUnprocessable()
+            ->assertJsonPath(
+                'message',
+                'Versi arsip tidak dapat diproses QC. Gunakan hasil aktif terbaru.'
+            );
+    }
 }

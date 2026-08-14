@@ -83,6 +83,7 @@ class DashboardController extends Controller
         $overdueCount = $overdueCards->count();
 
         $qcQuery = CardAttachment::query()
+            ->whereNull('archived_at')
             ->whereNotNull('quantity')
             ->whereNull('qc_at');
         $this->applyDivisionScope(

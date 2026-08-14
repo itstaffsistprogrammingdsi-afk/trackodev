@@ -288,6 +288,7 @@ class ReportService
                 SELECT COUNT(*)
                 FROM card_attachments ca
                 WHERE ca.file_path IS NOT NULL
+                AND ca.archived_at IS NULL
                 AND ca.card_id IN (
                     SELECT cu.card_id
                     FROM card_user cu
@@ -301,6 +302,7 @@ class ReportService
                 SELECT COUNT(*)
                 FROM card_attachments ca
                 WHERE ca.link_url IS NOT NULL
+                AND ca.archived_at IS NULL
                 AND ca.card_id IN (
                     SELECT cu.card_id
                     FROM card_user cu
@@ -640,6 +642,7 @@ class ReportService
                             'card_id',
                             $card->id
                         )
+                        ->whereNull('archived_at')
                         ->get();
 
                     return [

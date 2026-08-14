@@ -173,6 +173,85 @@ class AttachmentResultDescriptionTemplateTest extends TestCase
             ->assertHeader('content-disposition');
     }
 
+    public function test_revision_is_hidden_restorable_and_next_upload_continues_its_version(): void
+    {
+        [$user, $card] = $this->createCampaignMemberWithCard();
+        Sanctum::actingAs($user);
+
+        $first = $this->postJson('/api/cards/'.$card->id.'/attachments', [
+            'type' => 'link',
+            'link_url' => 'https://example.com/design-v1',
+            'quantity' => 1,
+            'result_description' => 'Foto',
+        ])->assertCreated()->json('data');
+
+        $this->postJson('/api/attachments/'.$first['id'].'/archive')
+            ->assertOk()
+            ->assertJsonPath('message', 'File dipindahkan ke riwayat arsip.');
+
+        $this->getJson('/api/cards/'.$card->id.'/attachments')
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonCount(1, 'archived')
+            ->assertJsonPath('archived.0.can_restore', true);
+
+        $this->postJson('/api/attachments/'.$first['id'].'/restore')
+            ->assertOk()
+            ->assertJsonPath('message', 'File berhasil dipulihkan sebagai hasil aktif.');
+
+        $this->postJson('/api/attachments/'.$first['id'].'/archive')->assertOk();
+
+        $second = $this->postJson('/api/cards/'.$card->id.'/attachments', [
+            'type' => 'link',
+            'link_url' => 'https://example.com/design-v2',
+            'quantity' => 1,
+            'result_description' => 'Foto',
+        ])->assertCreated()
+            ->assertJsonPath('data.version', 2)
+            ->assertJsonPath('data.replaces_attachment_id', $first['id'])
+            ->json('data');
+
+        $this->getJson('/api/cards/'.$card->id.'/attachments')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $second['id'])
+            ->assertJsonCount(1, 'archived')
+            ->assertJsonPath('archived.0.can_restore', false);
+
+        $this->postJson('/api/attachments/'.$first['id'].'/restore')
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Versi ini tidak dapat dipulihkan karena sudah memiliki pengganti.');
+    }
+
+    public function test_uploading_the_same_result_type_automatically_archives_the_previous_active_version(): void
+    {
+        [$user, $card] = $this->createCampaignMemberWithCard();
+        Sanctum::actingAs($user);
+
+        $first = $this->postJson('/api/cards/'.$card->id.'/attachments', [
+            'type' => 'link',
+            'link_url' => 'https://example.com/halaman-v1',
+            'quantity' => 1,
+            'result_description' => 'Foto',
+        ])->assertCreated()->json('data');
+
+        $second = $this->postJson('/api/cards/'.$card->id.'/attachments', [
+            'type' => 'link',
+            'link_url' => 'https://example.com/halaman-v2',
+            'quantity' => 1,
+            'result_description' => 'Foto',
+        ])->assertCreated()
+            ->assertJsonPath('data.version', 2)
+            ->assertJsonPath('data.replaces_attachment_id', $first['id'])
+            ->json('data');
+
+        $this->getJson('/api/cards/'.$card->id.'/attachments')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $second['id'])
+            ->assertJsonCount(1, 'archived')
+            ->assertJsonPath('archived.0.id', $first['id']);
+    }
+
     public function test_result_and_brief_attachments_reject_files_above_10_99_mb(): void
     {
         Storage::fake('public');
