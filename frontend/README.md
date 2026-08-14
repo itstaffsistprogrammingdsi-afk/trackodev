@@ -112,12 +112,30 @@ Jangan mengganti pasangan kunci setelah APK publik beredar. Pada CI, simpan isi
 private key sebagai secret multiline `MOBILE_UPDATE_PRIVATE_KEY`, atau gunakan
 `MOBILE_UPDATE_PRIVATE_KEY_PATH` yang menunjuk file sementara dari secret manager.
 
-### Deployment produksi
+### Deployment web produksi
 
 ```bash
 npm ci
 npm run build
 ```
+
+Perintah tersebut hanya membangun aplikasi web dan tidak memerlukan private key
+OTA. Deploy seluruh isi `dist` secara atomik.
+
+### Publikasi update OTA
+
+Gunakan perintah berikut hanya ketika akan memublikasikan update web ke aplikasi
+mobile yang sudah terpasang:
+
+```bash
+npm ci
+npm run build:ota
+```
+
+`build:ota` membangun aplikasi web, lalu membuat bundle dan manifest yang telah
+ditandatangani. Perintah ini wajib menerima `MOBILE_UPDATE_PRIVATE_KEY` atau
+`MOBILE_UPDATE_PRIVATE_KEY_PATH`; kegagalan karena kunci tidak tersedia memang
+disengaja agar paket OTA tanpa signature tidak pernah terpublikasi.
 
 Deploy seluruh isi `dist` secara atomik. File
 `/mobile-updates/latest.json` harus memakai `Cache-Control: no-store`, sedangkan

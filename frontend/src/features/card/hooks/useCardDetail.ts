@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
-import { getUsers } from "@/features/user/api/user.api";
+import { getCoordinationUsers } from "@/features/user/api/user.api";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import type { Card, User } from "../types";
 
@@ -55,7 +55,7 @@ export function useCardDetail(
     if (!isOpen || !loadUsers) return;
 
     const requestId = ++usersRequestRef.current;
-    void getUsers()
+    void getCoordinationUsers()
       .then((data) => {
         if (requestId === usersRequestRef.current) setUsers(data);
       })

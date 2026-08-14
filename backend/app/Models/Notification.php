@@ -32,4 +32,34 @@ class Notification extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Deep-link internal yang aman. Notification lama belum menyimpan
+     * workspace_id, jadi workspace diturunkan dari campaign bila diperlukan.
+     */
+    public function getActionUrlAttribute(): ?string
+    {
+        $data = $this->data ?? [];
+        $cardId = $data['card_id'] ?? null;
+        $campaignId = $data['campaign_id'] ?? null;
+        $workspaceId = $data['workspace_id'] ?? null;
+
+        if (! is_string($cardId) || ! is_string($campaignId)) {
+            return null;
+        }
+
+        if (! is_string($workspaceId)) {
+            $workspaceId = Campaign::query()
+                ->whereKey($campaignId)
+                ->value('workspace_id');
+        }
+
+        if (! is_string($workspaceId)) {
+            return null;
+        }
+
+        return '/workspaces/'.rawurlencode($workspaceId)
+            .'/campaigns/'.rawurlencode($campaignId)
+            .'/boards?card='.rawurlencode($cardId);
+    }
 }

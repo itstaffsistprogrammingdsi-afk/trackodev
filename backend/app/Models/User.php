@@ -200,6 +200,38 @@ class User extends Authenticatable
             ->exists();
     }
 
+    /** Kepala Bagian sampai SPV direpresentasikan oleh admin divisi. */
+    public function isCollaborationLeader(): bool
+    {
+        return $this->isSuperAdmin() || $this->isAdmin() || $this->divisions()
+            ->wherePivot('role', 'admin')
+            ->exists();
+    }
+
+    /**
+     * Staff hanya dapat memilih koordinator. Koordinator dapat meneruskan
+     * pekerjaan kepada Staff yang berada di divisi yang dikoordinasikannya.
+     */
+    public function canCoordinateAssignmentTo(User $target): bool
+    {
+        if ($this->isSuperAdmin() || $this->is($target) || $target->isCollaborationLeader()) {
+            return true;
+        }
+
+        $coordinatedDivisions = $this->divisions();
+
+        if (! $this->isAdmin()) {
+            $coordinatedDivisions->wherePivot('role', 'admin');
+        }
+
+        $coordinatedDivisionIds = $coordinatedDivisions->pluck('divisions.id');
+
+        return $coordinatedDivisionIds->isNotEmpty()
+            && $target->divisions()
+                ->whereIn('divisions.id', $coordinatedDivisionIds)
+                ->exists();
+    }
+
 
 
     // ============================================

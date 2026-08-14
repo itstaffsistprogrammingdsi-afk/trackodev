@@ -3,6 +3,8 @@ export type User = {
   name: string;
   email: string;
   avatar?: string;
+  division_names?: string[];
+  collaborator_label?: string;
 };
 
 export type Campaign = {

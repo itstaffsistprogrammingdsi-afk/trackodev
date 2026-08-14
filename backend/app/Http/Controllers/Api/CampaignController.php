@@ -19,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\ActivityLogService;
+use Illuminate\Validation\ValidationException;
 
 use Carbon\Carbon;
 
@@ -138,6 +139,12 @@ class CampaignController extends Controller
             'member_ids'   => 'nullable|array',
             'member_ids.*' => 'uuid|exists:users,id',
         ]);
+
+        $this->ensureEligibleCollaborators(
+            $request->user(),
+            collect($request->member_ids ?? []),
+            'member_ids'
+        );
 
         $campaign = DB::transaction(function () use (
             $request,
@@ -476,6 +483,12 @@ class CampaignController extends Controller
 
         $userId = $request->user_id;
 
+        $this->ensureEligibleCollaborators(
+            $request->user(),
+            collect([$userId]),
+            'user_id'
+        );
+
         DB::transaction(function () use (
             $campaign,
             $userId
@@ -585,6 +598,20 @@ class CampaignController extends Controller
             'message' =>
             'Member berhasil dihapus dari campaign.',
         ]);
+    }
+
+    private function ensureEligibleCollaborators(User $actor, $userIds, string $field): void
+    {
+        $hasStaffCandidate = User::query()
+            ->whereIn('id', collect($userIds)->reject(fn ($id) => $id === $actor->id))
+            ->get()
+            ->contains(fn (User $candidate) => ! $candidate->isCollaborationLeader());
+
+        if ($hasStaffCandidate) {
+            throw ValidationException::withMessages([
+                $field => 'Collaborator hanya dapat dipilih dari Kepala Bagian sampai SPV. Staff tidak dapat menjadi collaborator langsung.',
+            ]);
+        }
     }
 
 

@@ -31,6 +31,8 @@ class NotificationCreated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        $actionUrl = $this->notification->action_url;
+
         return [
             'notification' => [
                 'id' => $this->notification->id,
@@ -38,6 +40,8 @@ class NotificationCreated implements ShouldBroadcast
                 'title' => $this->notification->title,
                 'body' => $this->notification->body,
                 'data' => $this->notification->data,
+                'action_url' => $actionUrl,
+                'action_label' => $actionUrl ? 'Buka card' : null,
                 'is_read' => $this->notification->is_read,
                 'created_at' => $this->notification->created_at?->toDateTimeString(),
             ],

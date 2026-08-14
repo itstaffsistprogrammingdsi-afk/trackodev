@@ -117,7 +117,7 @@ export default function DesignerPicker({
         placeholder={
           !divisionId
             ? "Pilih division terlebih dahulu"
-            : "Cari designer..."
+            : "Cari PIC/anggota..."
         }
         className="
           w-full
@@ -213,7 +213,7 @@ export default function DesignerPicker({
               text-emerald-700
             "
           >
-            Designer dipilih
+            PIC/anggota dipilih
           </p>
 
           <p

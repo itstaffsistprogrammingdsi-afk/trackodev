@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bell, CheckCheck, Inbox, Loader2, Trash2 } from "lucide-react";
+import { Bell, CheckCheck, ExternalLink, Inbox, Loader2, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router";
 
 import {
   deleteNotification,
@@ -8,15 +9,10 @@ import {
   markNotificationRead,
 } from "@/features/notification/api/notification.api";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
-
-interface NotificationItem {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  is_read: boolean;
-  created_at: string;
-}
+import {
+  getNotificationTargetPath,
+  type AppNotification,
+} from "@/features/notification/types";
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("id-ID", {
@@ -25,8 +21,9 @@ const formatDate = (value: string) =>
   }).format(new Date(value));
 
 export default function NotificationPage() {
+  const navigate = useNavigate();
   const realtimeRevision = useRealtimeRevision(["Notification"]);
-  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
@@ -48,15 +45,26 @@ export default function NotificationPage() {
     [items],
   );
 
-  const markRead = async (item: NotificationItem) => {
+  const markRead = async (item: AppNotification) => {
     if (item.is_read) return;
 
-    await markNotificationRead(item.id);
     setItems((current) =>
       current.map((entry) =>
         entry.id === item.id ? { ...entry, is_read: true } : entry,
       ),
     );
+
+    try {
+      await markNotificationRead(item.id);
+    } catch {
+      void loadNotifications();
+    }
+  };
+
+  const openNotification = (item: AppNotification) => {
+    const target = getNotificationTargetPath(item);
+    void markRead(item);
+    if (target) navigate(target);
   };
 
   const markAllRead = async () => {
@@ -132,7 +140,8 @@ export default function NotificationPage() {
             >
               <button
                 type="button"
-                onClick={() => void markRead(item)}
+                onClick={() => openNotification(item)}
+                aria-label={`${item.title}. ${item.action_label ?? "Tandai sudah dibaca"}`}
                 className="min-w-0 flex-1 text-left"
               >
                 <div className="flex items-center gap-2">
@@ -149,6 +158,12 @@ export default function NotificationPage() {
                 <time className="mt-2 block text-xs text-slate-400">
                   {formatDate(item.created_at)}
                 </time>
+                {item.action_url ? (
+                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                    {item.action_label ?? "Buka card"}
+                    <ExternalLink size={12} aria-hidden="true" />
+                  </span>
+                ) : null}
               </button>
 
               <button

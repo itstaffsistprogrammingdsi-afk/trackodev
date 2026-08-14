@@ -83,6 +83,7 @@ export default function FormResponsesPage() {
           <AssignmentModal
             open={assignmentOpen}
             submission={selectedSubmission}
+            requestForm={form}
             onClose={() => setAssignmentOpen(false)}
           />
         )}

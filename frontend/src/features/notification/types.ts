@@ -1,7 +1,39 @@
-export interface Notification {
-  id: number;
+export interface NotificationData {
+  card_id?: string;
+  board_id?: string;
+  campaign_id?: string;
+  workspace_id?: string;
+  assigned_by?: string;
+  submission_id?: string;
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
   title: string;
-  message: string;
+  body: string;
+  data?: NotificationData | null;
+  action_url?: string | null;
+  action_label?: string | null;
   is_read: boolean;
   created_at: string;
+}
+
+export function getNotificationTargetPath(notification: AppNotification): string | null {
+  if (
+    typeof notification.action_url === "string" &&
+    notification.action_url.startsWith("/") &&
+    !notification.action_url.startsWith("//")
+  ) {
+    return notification.action_url;
+  }
+
+  const { workspace_id: workspaceId, campaign_id: campaignId, card_id: cardId } =
+    notification.data ?? {};
+
+  if (!workspaceId || !campaignId || !cardId) return null;
+
+  return `/workspaces/${encodeURIComponent(workspaceId)}/campaigns/${encodeURIComponent(
+    campaignId,
+  )}/boards?card=${encodeURIComponent(cardId)}`;
 }

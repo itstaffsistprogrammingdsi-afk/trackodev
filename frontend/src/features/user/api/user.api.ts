@@ -14,6 +14,17 @@ export const getUsers = async (): Promise<User[]> => {
   return res.data.data;
 };
 
+export const getCoordinationUsers = async (): Promise<User[]> => {
+  const res = await api.get('/users', {
+    params: {
+      all: true,
+      coordination_assignment: 1,
+    },
+  });
+
+  return res.data.data;
+};
+
 export const searchUsers = async (
   query: string
 ) => {

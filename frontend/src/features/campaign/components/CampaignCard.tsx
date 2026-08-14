@@ -254,10 +254,13 @@ export default function CampaignCard({
       {/* MODALS (tidak diubah karena sudah clean) */}
       {showMembers && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <section className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4">
+          <section role="dialog" aria-modal="true" aria-labelledby="collaborator-dialog-title" className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4">
             <header className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Manage Members</h3>
-              <button onClick={() => setShowMembers(false)}>
+              <div>
+                <h3 id="collaborator-dialog-title" className="text-lg font-semibold">Kelola Collaborator</h3>
+                <p className="mt-0.5 text-xs text-gray-500">Khusus Kepala Bagian sampai SPV</p>
+              </div>
+              <button aria-label="Tutup dialog collaborator" onClick={() => setShowMembers(false)}>
                 <X size={18} />
               </button>
             </header>
@@ -276,7 +279,7 @@ export default function CampaignCard({
               ))}
             </div>
 
-            <MemberMentionInput onSelect={handleSelectUser} />
+            <MemberMentionInput collaboratorOnly onSelect={handleSelectUser} />
 
             <div className="flex flex-wrap gap-2">
               {selectedUsers.map((u) => (

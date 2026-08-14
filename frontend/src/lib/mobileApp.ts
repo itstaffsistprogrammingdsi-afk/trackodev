@@ -1,5 +1,9 @@
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import {
+  getNotificationTargetPath,
+  type AppNotification,
+} from "@/features/notification/types";
 
 export const LAST_APP_ROUTE_KEY = "tracko:last-route:v1";
 export const APP_RESUMED_EVENT = "tracko:app-resumed";
@@ -68,11 +72,7 @@ function notificationId(id: string): number {
   return Math.max(1, Math.abs(hash));
 }
 
-export async function showNativeNotification(notification: {
-  id: string;
-  title: string;
-  body: string;
-}) {
+export async function showNativeNotification(notification: AppNotification) {
   if (!(await setupNativeNotifications())) return;
 
   await LocalNotifications.schedule({
@@ -82,7 +82,7 @@ export async function showNativeNotification(notification: {
         title: notification.title || "Tracko",
         body: notification.body || "Ada aktivitas baru di Tracko.",
         channelId: "tracko-notifications",
-        extra: { path: "/notifications" },
+        extra: { path: getNotificationTargetPath(notification) ?? "/notifications" },
       },
     ],
   });

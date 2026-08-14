@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:web && npm run mobile:update:bundle",
+    "build": "npm run build:web",
+    "build:ota": "npm run build:web && npm run mobile:update:bundle",
     "build:web": "tsc -b && vite build",
     "build:android:web": "tsc -b && vite build --mode android",
     "build:ios:web": "tsc -b && vite build --mode ios",

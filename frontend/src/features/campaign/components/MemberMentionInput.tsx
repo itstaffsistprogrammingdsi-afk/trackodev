@@ -1,19 +1,23 @@
-import { useState } from "react"
+import { useId, useRef, useState } from "react"
 import { searchUsers } from "../api/campaign.api"
 import { User } from "../types"
 
 type Props = {
   onSelect: (user: User) => void
+  collaboratorOnly?: boolean
 }
 
 export default function MemberMentionInput({
   onSelect,
+  collaboratorOnly = false,
 }: Props) {
 
   const [query, setQuery] = useState("")
   const [users, setUsers] = useState<User[]>([])
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
+  const requestIdRef = useRef(0)
+  const listboxId = useId()
 
   // ============================================
   // SEARCH USER
@@ -24,6 +28,7 @@ export default function MemberMentionInput({
   ) => {
 
     setQuery(val)
+    const requestId = ++requestIdRef.current
 
     // 🔥 hilangkan @ jika ada
     const keyword = val
@@ -35,6 +40,7 @@ export default function MemberMentionInput({
 
       setUsers([])
       setShow(false)
+      setLoading(false)
 
       return
     }
@@ -42,23 +48,30 @@ export default function MemberMentionInput({
     try {
 
       setLoading(true)
+      setShow(true)
 
       const data =
-        await searchUsers(keyword)
+        await searchUsers(keyword, collaboratorOnly)
 
-      setUsers(data)
-      setShow(true)
+      if (requestId === requestIdRef.current) {
+        setUsers(data)
+        setShow(true)
+      }
 
     } catch (err) {
 
       console.error(err)
 
-      setUsers([])
-      setShow(false)
+      if (requestId === requestIdRef.current) {
+        setUsers([])
+        setShow(false)
+      }
 
     } finally {
 
-      setLoading(false)
+      if (requestId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
   }
 
@@ -90,7 +103,12 @@ export default function MemberMentionInput({
         onChange={(e) =>
           handleChange(e.target.value)
         }
-        placeholder="Cari user..."
+        placeholder={collaboratorOnly ? "Cari koordinator divisi..." : "Cari user..."}
+        aria-label={collaboratorOnly ? "Cari collaborator" : "Cari user"}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={show}
+        aria-controls={listboxId}
         className="
           w-full
           border
@@ -106,6 +124,8 @@ export default function MemberMentionInput({
       {show && (
 
         <div
+          id={listboxId}
+          role="listbox"
           className="
             absolute
             z-50
@@ -142,6 +162,8 @@ export default function MemberMentionInput({
             <button
               key={u.id}
               type="button"
+              role="option"
+              aria-selected="false"
               onClick={() =>
                 handleSelect(u)
               }
@@ -161,9 +183,20 @@ export default function MemberMentionInput({
                 {u.name}
               </div>
 
-              <div className="text-xs text-gray-500">
-                {u.email}
+              <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                <span>{u.email}</span>
+                {u.collaborator_label ? (
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700">
+                    {u.collaborator_label}
+                  </span>
+                ) : null}
               </div>
+
+              {u.division_names?.length ? (
+                <div className="mt-1 text-xs text-gray-400">
+                  {u.division_names.join(" · ")}
+                </div>
+              ) : null}
 
             </button>
           ))}
