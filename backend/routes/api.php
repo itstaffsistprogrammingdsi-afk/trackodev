@@ -498,6 +498,16 @@ Route::middleware([
         [CardController::class, 'removeAttachment']
     )->middleware('permission:attachment.delete|task.update');
 
+    Route::post(
+        'attachments/{attachment}/archive',
+        [CardController::class, 'archiveAttachment']
+    )->middleware('permission:attachment.delete|task.update');
+
+    Route::post(
+        'attachments/{attachment}/restore',
+        [CardController::class, 'restoreAttachment']
+    )->middleware('permission:attachment.delete|task.update');
+
     Route::get(
         'attachments/{attachment}/download',
         [CardController::class, 'download']

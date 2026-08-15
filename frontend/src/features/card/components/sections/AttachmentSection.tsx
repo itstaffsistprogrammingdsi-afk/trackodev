@@ -21,13 +21,27 @@ import {
   File,
   X,
   Camera,
+  Archive,
+  ChevronDown,
+  CheckCircle2,
+  Clock3,
+  RotateCcw,
+  AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 
 import { Attachment } from "../../types";
 import { StylesConfig } from "node_modules/react-select/dist/declarations/src/styles";
 
+const EMPTY_ATTACHMENTS: Attachment[] = [];
+const INDONESIAN_DATE_TIME = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 interface Props {
   attachments: Attachment[];
+  archivedAttachments?: Attachment[];
 
   setAttachments?: React.Dispatch<React.SetStateAction<Attachment[]>>;
 
@@ -51,6 +65,7 @@ interface Props {
 
 export default function AttachmentSection({
   attachments,
+  archivedAttachments = EMPTY_ATTACHMENTS,
   // setAttachments,
   loading,
   fetchAttachments,
@@ -62,7 +77,9 @@ export default function AttachmentSection({
   downloadEndpoint,
   supportsResultDescription = false,
 }: Props) {
-  const { hasRole } = useAuth();
+  const { can, hasRole } = useAuth();
+  const canManageResultAttachments =
+    can("attachment.delete") || can("task.update");
   const canCreateResultDescriptionTemplate =
     supportsResultDescription &&
     (hasRole("admin") || hasRole("super_admin"));
@@ -141,10 +158,23 @@ export default function AttachmentSection({
   const previewRequestRef = useRef(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [visibleCount, setVisibleCount] = useState(20);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveCandidate, setArchiveCandidate] = useState<Attachment | null>(null);
+  const [busyAttachmentId, setBusyAttachmentId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     setVisibleCount(20);
   }, [attachments.length]);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const timeout = window.setTimeout(() => setFeedback(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
 
   // =========================================
   // FETCH
@@ -181,6 +211,7 @@ export default function AttachmentSection({
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        setArchiveCandidate(null);
         previewRequestRef.current += 1;
         setPreviewOpen(false);
         setPreviewUrl(null);
@@ -213,6 +244,12 @@ export default function AttachmentSection({
     }
 
     return `${(kb / 1024).toFixed(1)} MB`;
+  };
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "Waktu tidak tersedia";
+
+    return INDONESIAN_DATE_TIME.format(new Date(value));
   };
 
   // =========================================
@@ -381,8 +418,16 @@ export default function AttachmentSection({
       setResultDescription("");
 
       await fetchAttachments();
+      setFeedback({
+        type: "success",
+        message: "Hasil terbaru berhasil diunggah.",
+      });
     } catch (err) {
       console.error(err);
+      setFeedback({
+        type: "error",
+        message: "Upload belum berhasil. Periksa data lalu coba lagi.",
+      });
     } finally {
       setUploading(false);
     }
@@ -402,6 +447,61 @@ export default function AttachmentSection({
       await fetchAttachments();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    const responseMessage = (
+      error as { response?: { data?: { message?: string } } }
+    )?.response?.data?.message;
+
+    return responseMessage || fallback;
+  };
+
+  const handleArchiveForRevision = async () => {
+    if (!archiveCandidate || !deleteEndpoint) return;
+
+    try {
+      setBusyAttachmentId(archiveCandidate.id);
+      const response = await api.post(
+        `${deleteEndpoint}/${archiveCandidate.id}/archive`,
+      );
+      setArchiveCandidate(null);
+      await fetchAttachments();
+      setFeedback({
+        type: "success",
+        message: response.data?.message || "File dipindahkan ke riwayat arsip.",
+      });
+    } catch (error) {
+      console.error("Gagal mengarsipkan file revisi:", error);
+      setFeedback({
+        type: "error",
+        message: getErrorMessage(error, "File belum berhasil diarsipkan."),
+      });
+    } finally {
+      setBusyAttachmentId(null);
+    }
+  };
+
+  const handleRestore = async (item: Attachment) => {
+    if (!deleteEndpoint || !item.can_restore) return;
+
+    try {
+      setBusyAttachmentId(item.id);
+      const response = await api.post(`${deleteEndpoint}/${item.id}/restore`);
+      await fetchAttachments();
+      setFeedback({
+        type: "success",
+        message: response.data?.message || "File berhasil dipulihkan.",
+      });
+    } catch (error) {
+      console.error("Gagal memulihkan file:", error);
+      setFeedback({
+        type: "error",
+        message: getErrorMessage(error, "File belum berhasil dipulihkan."),
+      });
+    } finally {
+      setBusyAttachmentId(null);
     }
   };
 
@@ -700,6 +800,22 @@ space-y-6
         {/* LIST */}
         {/* ATTACHMENT LIST */}
         {showList ? <div className="space-y-3">
+          {!loading && attachments.length > 0 && (
+            <div className="flex flex-col gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/40 dark:bg-emerald-950/20">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm dark:bg-slate-800">
+                  <CheckCircle2 size={18} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Hasil aktif terbaru</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Versi lama tidak ditampilkan di daftar utama.</p>
+                </div>
+              </div>
+              <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm dark:bg-slate-800 dark:text-emerald-400">
+                {attachments.length} hasil aktif
+              </span>
+            </div>
+          )}
           {/* LOADING */}
           {loading && (
             <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-6 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
@@ -717,11 +833,11 @@ space-y-6
               </div>
 
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Belum ada attachment
+                Belum ada hasil aktif
               </h3>
 
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Upload file atau tambahkan link
+                Upload hasil terbaru atau buka riwayat arsip
               </p>
             </div>
           )}
@@ -738,7 +854,7 @@ space-y-6
                   key={item.id}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-slate-600"
                 >
-                  <div className="flex items-start gap-4 p-4">
+                  <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start">
                     {/* ========================================= */}
                     {/* THUMBNAIL */}
                     {/* ========================================= */}
@@ -753,7 +869,7 @@ space-y-6
                       role={clickable ? "button" : undefined}
                       tabIndex={clickable ? 0 : undefined}
                       aria-label={clickable ? `Preview ${item.file_name || "attachment"}` : undefined}
-                      className={`relative h-[84px] w-[120px] shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 ${
+                      className={`relative h-40 w-full shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 sm:h-[84px] sm:w-[120px] ${
                         clickable ? "cursor-pointer" : ""
                       }`}
                     >
@@ -844,6 +960,14 @@ space-y-6
 
                       {/* META */}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          item.qc_at
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}>
+                          {item.qc_at && <CheckCircle2 size={12} />}
+                          {item.qc_at ? "ACC" : "Menunggu ACC"} · v{item.version ?? 1}
+                        </span>
                         {/* SIZE */}
                         {item.file_size && (
                           <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">
@@ -888,14 +1012,28 @@ space-y-6
                     {/* ========================================= */}
                     {/* ACTION */}
                     {/* ========================================= */}
-                    <button
-                      type="button"
-                      aria-label={`Hapus ${item.file_name || item.link_url || "attachment"}`}
-                      onClick={() => handleDelete(item.id)}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-red-500 transition hover:bg-red-50 hover:text-red-600"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+                      {supportsResultDescription && canManageResultAttachments && (
+                        <button
+                          type="button"
+                          onClick={() => setArchiveCandidate(item)}
+                          className="flex h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300 sm:px-3"
+                          title="Tandai perlu revisi"
+                          aria-label={`Tandai ${item.file_name || item.link_url || "attachment"} perlu revisi`}
+                        >
+                          <Archive size={16} />
+                          <span className="hidden md:inline">Perlu revisi</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`Hapus ${item.file_name || item.link_url || "attachment"}`}
+                        onClick={() => handleDelete(item.id)}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl text-red-500 transition hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-200"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -909,8 +1047,163 @@ space-y-6
               Muat {Math.min(20, attachments.length - visibleCount)} attachment lagi
             </button>
           ) : null}
+
+          {!loading && archivedAttachments.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
+              <button
+                type="button"
+                onClick={() => setArchiveOpen((current) => !current)}
+                aria-expanded={archiveOpen}
+                className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-300 dark:hover:bg-slate-800"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                    <Archive size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">Riwayat arsip</span>
+                    <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                      {archivedAttachments.length} versi lama · tersembunyi dari hasil aktif
+                    </span>
+                  </span>
+                </span>
+                <ChevronDown
+                  size={18}
+                  className={`shrink-0 text-slate-500 transition-transform ${archiveOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {archiveOpen && (
+                <div className="space-y-2 border-t border-slate-200 p-3 dark:border-slate-700">
+                  <div className="flex items-center gap-2 px-1 pb-1 text-xs text-slate-500 dark:text-slate-400">
+                    <Clock3 size={14} />
+                    Versi terdahulu hanya ditampilkan di riwayat ini.
+                  </div>
+                  {archivedAttachments.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-3 sm:flex-row sm:items-center dark:border-slate-600 dark:bg-slate-800/70"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                        {item.attachment_type === "link" ? <Link2 size={18} /> : <File size={18} />}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          {item.file_name || item.link_url || "Attachment"}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold dark:bg-slate-700">Arsip · v{item.version ?? 1}</span>
+                          <span>{formatDateTime(item.archived_at)}</span>
+                          {item.archiver?.name && <span>oleh {item.archiver.name}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-end gap-1">
+                        {item.attachment_type === "link" ? (
+                          <a
+                            href={item.link_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50"
+                            aria-label="Buka link arsip"
+                            title="Buka link"
+                          >
+                            <ExternalLink size={15} />
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openPreview(item)}
+                            className="flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50"
+                          >
+                            <FileText size={15} /> Preview
+                          </button>
+                        )}
+                        {item.can_restore && canManageResultAttachments && (
+                          <button
+                            type="button"
+                            onClick={() => handleRestore(item)}
+                            disabled={busyAttachmentId === item.id}
+                            className="flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
+                            title="Pulihkan sebagai hasil aktif"
+                          >
+                            {busyAttachmentId === item.id ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
+                            Pulihkan
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div> : null}
       </section>
+
+      {feedback && (
+        <div
+          role="status"
+          className={`fixed right-4 top-4 z-[100000] flex max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-xl ${
+            feedback.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          {feedback.type === "success" ? <CheckCircle2 size={18} className="mt-0.5 shrink-0" /> : <AlertTriangle size={18} className="mt-0.5 shrink-0" />}
+          <span className="leading-5">{feedback.message}</span>
+          <button type="button" onClick={() => setFeedback(null)} className="ml-1 rounded p-0.5 opacity-60 hover:opacity-100" aria-label="Tutup notifikasi">
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
+      {archiveCandidate && (
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="archive-confirmation-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !busyAttachmentId) setArchiveCandidate(null);
+          }}
+        >
+          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl dark:bg-slate-900 sm:p-6">
+            <div className="flex items-start gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                <Archive size={22} />
+              </span>
+              <div className="min-w-0">
+                <h3 id="archive-confirmation-title" className="text-base font-bold text-slate-900 dark:text-white">Tandai perlu revisi?</h3>
+                <p className="mt-1 truncate text-sm font-medium text-slate-700 dark:text-slate-200">
+                  {archiveCandidate.file_name || archiveCandidate.link_url || "Attachment"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+              File langsung disembunyikan dari hasil aktif dan tetap aman di Riwayat arsip. Upload berikutnya dengan jenis hasil yang sama otomatis menjadi versi lanjutannya.
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setArchiveCandidate(null)}
+                disabled={Boolean(busyAttachmentId)}
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleArchiveForRevision}
+                disabled={busyAttachmentId === archiveCandidate.id}
+                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
+              >
+                {busyAttachmentId === archiveCandidate.id ? <Loader2 size={16} className="animate-spin" /> : <Archive size={16} />}
+                Pindahkan ke arsip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===================================== */}
       {/* PREVIEW MODAL */}

@@ -2,24 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
-
-export interface Attachment {
-  id: string;
-
-  file_name?: string;
-
-  file_path?: string;
-
-  file_url?: string;
-
-  file_type?: string;
-
-  file_size?: number;
-
-  link_url?: string;
-
-  attachment_type: "file" | "link";
-}
+import type { Attachment } from "../types";
 
 export default function useAttachments(
   cardId?: string,
@@ -27,6 +10,8 @@ export default function useAttachments(
 ) {
   const realtimeRevision = useRealtimeRevision(["CardAttachment"]);
   const [attachments, setAttachments] =
+    useState<Attachment[]>([]);
+  const [archivedAttachments, setArchivedAttachments] =
     useState<Attachment[]>([]);
 
   const [loading, setLoading] =
@@ -44,6 +29,7 @@ export default function useAttachments(
       if (activeCardIdRef.current !== cardId) {
         activeCardIdRef.current = cardId;
         setAttachments([]);
+        setArchivedAttachments([]);
       }
 
       try {
@@ -55,6 +41,7 @@ export default function useAttachments(
 
         if (requestId === requestRef.current) {
           setAttachments(res.data.data || []);
+          setArchivedAttachments(res.data.archived || []);
         }
       } catch (err) {
         if (requestId === requestRef.current) {
@@ -78,6 +65,7 @@ export default function useAttachments(
 
   return {
     attachments,
+    archivedAttachments,
 
     setAttachments,
 

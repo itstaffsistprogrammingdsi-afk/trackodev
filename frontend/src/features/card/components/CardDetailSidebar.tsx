@@ -60,6 +60,7 @@ interface Props {
 
   // RESULT ATTACHMENTS
   attachments: Attachment[];
+  archivedAttachments: Attachment[];
   setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
   attachmentLoading: boolean;
   fetchAttachments: () => Promise<void>;
@@ -98,6 +99,7 @@ export default function CardDetailSidebar({
 
   // RESULT
   attachments,
+  archivedAttachments,
   setAttachments,
   attachmentLoading,
   fetchAttachments,
@@ -251,6 +253,7 @@ export default function CardDetailSidebar({
               <div className="mt-2 animate-in fade-in duration-200">
                 <AttachmentSection
                   attachments={attachments}
+                  archivedAttachments={archivedAttachments}
                   setAttachments={setAttachments}
                   loading={attachmentLoading}
                   fetchAttachments={fetchAttachments}

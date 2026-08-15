@@ -1051,12 +1051,24 @@ class CardController extends Controller
         // without this, those keys were simply absent from the response.
         $attachments = $card
             ->attachments()
-            ->with('card.board.campaign.workspace')
+            ->with(['card.board.campaign.workspace', 'uploader', 'qcBy'])
             ->latest()
             ->get();
 
+        $archivedAttachments = CardAttachment::query()
+            ->where('card_id', $card->id)
+            ->whereNotNull('archived_at')
+            ->with(['uploader', 'archiver', 'replacement'])
+            ->orderByDesc('archived_at')
+            ->get()
+            ->map(fn (CardAttachment $attachment) => array_merge(
+                $attachment->toArray(),
+                ['can_restore' => $attachment->replacement === null]
+            ));
+
         return response()->json([
             'data' => $attachments,
+            'archived' => $archivedAttachments,
         ]);
     }
 
@@ -1071,6 +1083,12 @@ class CardController extends Controller
             'quantity' => 'nullable|integer|min:0',
 
             'result_description' => 'nullable|string|max:255|exists:result_description_templates,name',
+
+            'replaces_attachment_id' => [
+                'nullable',
+                'uuid',
+                'exists:card_attachments,id',
+            ],
 
             'link_url' => [
                 'required_if:type,link',
@@ -1088,8 +1106,44 @@ class CardController extends Controller
         ]);
 
 
+        $replacedAttachment = null;
+        if (!empty($validated['replaces_attachment_id'])) {
+            $replacedAttachment = CardAttachment::query()
+                ->whereKey($validated['replaces_attachment_id'])
+                ->where('card_id', $card->id)
+                ->whereDoesntHave('replacement')
+                ->first();
+
+            if (!$replacedAttachment) {
+                return response()->json([
+                    'message' => 'Versi sebelumnya tidak ditemukan atau sudah memiliki pengganti.',
+                    'errors' => ['replaces_attachment_id' => ['Pilih versi dari card ini yang belum memiliki pengganti.']],
+                ], 422);
+            }
+        } else {
+            $replacedAttachment = CardAttachment::query()
+                ->where('card_id', $card->id)
+                ->whereNotNull('archived_at')
+                ->where('result_description', $validated['result_description'] ?? null)
+                ->whereDoesntHave('replacement')
+                ->orderByDesc('archived_at')
+                ->first();
+
+            // Upload hasil dengan kategori yang sama selalu menjadi versi
+            // terbaru. Jika belum ada versi arsip yang menunggu pengganti,
+            // arsipkan hasil aktif sebelumnya secara otomatis.
+            $replacedAttachment ??= CardAttachment::query()
+                ->where('card_id', $card->id)
+                ->whereNull('archived_at')
+                ->where('result_description', $validated['result_description'] ?? null)
+                ->latest('created_at')
+                ->first();
+        }
+
         $data = [
             'card_id'         => $card->id,
+            'replaces_attachment_id' => $replacedAttachment?->id,
+            'version'         => $replacedAttachment ? $replacedAttachment->version + 1 : 1,
             'uploaded_by'     => auth()->id(),
             'attachment_type' => $validated['type'],
             'quantity'        => $validated['quantity'] ?? null,
@@ -1119,7 +1173,16 @@ class CardController extends Controller
             $data['link_url'] = $request->input('link_url');
         }
 
-        $attachment = CardAttachment::create($data);
+        $attachment = DB::transaction(function () use ($data, $replacedAttachment) {
+            if ($replacedAttachment && !$replacedAttachment->archived_at) {
+                $replacedAttachment->update([
+                    'archived_at' => now(),
+                    'archived_by' => auth()->id(),
+                ]);
+            }
+
+            return CardAttachment::create($data);
+        });
 
 
         ActivityLogService::log(
@@ -1127,11 +1190,15 @@ class CardController extends Controller
             'card_attachment',
             (string) $attachment->id,
             'created',
-            "Menambahkan attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
+            $replacedAttachment
+                ? "Mengunggah versi {$attachment->version} sebagai pengganti di card '{$card->title}'"
+                : "Menambahkan attachment '{$attachment->file_name}' di card '{$card->title}' di board '{$card->board->name}'",
             [
                 'card_id' => $card->id,
                 'attachment_id' => $attachment->id,
                 'attachment_name' => $attachment->file_name ?: $attachment->link_url,
+                'replaces_attachment_id' => $replacedAttachment?->id,
+                'version' => $attachment->version,
             ]
         );
 
@@ -1144,6 +1211,84 @@ class CardController extends Controller
             'message' => 'Attachment berhasil ditambahkan.',
             'data'    => $attachment,
         ], 201);
+    }
+
+    public function archiveAttachment(Request $request, CardAttachment $attachment): JsonResponse
+    {
+        $card = Card::findOrFail($attachment->card_id);
+        $this->authorizeCard($card);
+
+        if ($attachment->archived_at) {
+            return response()->json([
+                'message' => 'File sudah berada di riwayat arsip.',
+                'data' => $attachment,
+            ]);
+        }
+
+        $attachment->update([
+            'archived_at' => now(),
+            'archived_by' => $request->user()->id,
+        ]);
+
+        ActivityLogService::log(
+            $request->user(),
+            'card_attachment',
+            (string) $attachment->id,
+            'archived_for_revision',
+            "Memindahkan attachment '{$attachment->file_name}' ke arsip revisi di card '{$card->title}'",
+            [
+                'card_id' => $card->id,
+                'attachment_id' => $attachment->id,
+                'version' => $attachment->version,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'File dipindahkan ke riwayat arsip.',
+            'data' => $attachment->fresh(),
+        ]);
+    }
+
+    public function restoreAttachment(Request $request, CardAttachment $attachment): JsonResponse
+    {
+        $card = Card::findOrFail($attachment->card_id);
+        $this->authorizeCard($card);
+
+        if (!$attachment->archived_at) {
+            return response()->json([
+                'message' => 'File ini sudah menjadi hasil aktif.',
+                'data' => $attachment,
+            ]);
+        }
+
+        if ($attachment->replacement()->exists()) {
+            return response()->json([
+                'message' => 'Versi ini tidak dapat dipulihkan karena sudah memiliki pengganti.',
+            ], 422);
+        }
+
+        $attachment->update([
+            'archived_at' => null,
+            'archived_by' => null,
+        ]);
+
+        ActivityLogService::log(
+            $request->user(),
+            'card_attachment',
+            (string) $attachment->id,
+            'restored_from_archive',
+            "Memulihkan attachment '{$attachment->file_name}' dari arsip di card '{$card->title}'",
+            [
+                'card_id' => $card->id,
+                'attachment_id' => $attachment->id,
+                'version' => $attachment->version,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'File berhasil dipulihkan sebagai hasil aktif.',
+            'data' => $attachment->fresh(),
+        ]);
     }
 
     public function removeAttachment(

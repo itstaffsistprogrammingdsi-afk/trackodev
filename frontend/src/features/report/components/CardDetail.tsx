@@ -113,7 +113,14 @@ export const CardDetail: React.FC<CardDetailProps> = ({
               </div>
             ) : (
               <div className="space-y-6">
-                {cards.map((card) => (
+                {cards.map((card) => {
+                  // Backend sudah memfilter arsip. Filter ini menjaga QC tetap aman
+                  // dari payload lama yang masih tersimpan di cache browser.
+                  const activeAttachments = card.attachments?.filter(
+                    (attachment) => !attachment.archived_at,
+                  ) ?? [];
+
+                  return (
                   <div key={card.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                     {/* Card Header */}
                     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -165,8 +172,8 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                     <div className="mt-4">
                       <h4 className="text-sm font-medium text-gray-700 mb-3">Attachment & QC</h4>
                       <div className="space-y-3">
-                        {card.attachments?.length > 0 ? (
-                          card.attachments.map((attachment) => {
+                        {activeAttachments.length > 0 ? (
+                          activeAttachments.map((attachment) => {
                             const isQcDone = attachment.qc_quantity !== null;
                             const isSubmitting = submittingQc[attachment.id] || false;
                             const maxQty = attachment.quantity || 0;
@@ -302,7 +309,8 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -85,6 +85,15 @@ export interface Attachment {
   quantity?: number;
 
   result_description?: string;
+
+  version?: number;
+  replaces_attachment_id?: string | null;
+  archived_at?: string | null;
+  qc_at?: string | null;
+  created_at?: string;
+  uploader?: { id: string; name: string } | null;
+  archiver?: { id: string; name: string } | null;
+  can_restore?: boolean;
 }
 
 export type Card = {
