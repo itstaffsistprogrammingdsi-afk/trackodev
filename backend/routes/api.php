@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\MyActivityController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PublicFormController;
+use App\Http\Controllers\Api\PushDeviceController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ResultDescriptionTemplateController;
 use App\Http\Controllers\Api\TaskController;
@@ -700,6 +701,11 @@ Route::middleware([
         'notifications/{notification}',
         [NotificationController::class, 'destroy']
     )->middleware('permission:notification.delete');
+
+    // Registrasi perangkat mengikuti sesi login, bukan permission menu
+    // notifikasi. Dengan begitu user tetap bisa menerima assignment penting.
+    Route::post('push-devices', [PushDeviceController::class, 'store']);
+    Route::delete('push-devices', [PushDeviceController::class, 'destroy']);
 
     // ========================================
     // FORMS

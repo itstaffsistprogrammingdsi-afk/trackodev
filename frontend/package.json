@@ -1,7 +1,7 @@
 {
   "name": "tailadmin-react",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,7 @@
     "build:ota": "npm run build:android:ota",
     "build:android:ota": "npm run build:android:web && npm run mobile:update:bundle",
     "build:web": "tsc -b && vite build",
-    "build:android:web": "npm run mobile:version:check && tsc -b && vite build --mode android",
+    "build:android:web": "npm run mobile:version:check && tsc -b && vite build --mode android && node scripts/prepare-android-web-assets.mjs",
     "build:ios:web": "tsc -b && vite build --mode ios",
     "mobile:update:bundle": "node scripts/create-mobile-update.mjs",
     "mobile:update:keygen": "node scripts/generate-mobile-update-keys.mjs",
@@ -30,6 +30,7 @@
     "@capacitor/core": "8.4.2",
     "@capacitor/ios": "^8.4.2",
     "@capacitor/local-notifications": "^8.0.0",
+    "@capacitor/push-notifications": "^8.0.0",
     "@capawesome/capacitor-live-update": "^8.0.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

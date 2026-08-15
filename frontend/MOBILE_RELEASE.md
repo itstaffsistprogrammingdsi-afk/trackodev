@@ -16,8 +16,9 @@ Perintah release otomatis membangun bundle Android, melakukan Capacitor sync,
 menghasilkan APK signed, menyalinnya ke `public/downloads/tracko-latest.apk`,
 dan memperbarui `public/downloads/tracko-latest.json`.
 
-`npm run android:apk` hanya menghasilkan file debug
-`tracko-latest-debug.apk` dan tidak boleh menggantikan APK resmi.
+`npm run android:apk` hanya menghasilkan APK debug versioned di
+`artifacts/android` dan tidak boleh menggantikan APK resmi. Build Android juga
+otomatis membuang APK lama dari web assets agar tidak terjadi APK bersarang.
 
 ## OTA web bundle untuk APK terpasang
 
@@ -29,3 +30,17 @@ dan memperbarui `public/downloads/tracko-latest.json`.
 
 OTA hanya untuk perubahan bundle web. Perubahan plugin, manifest, permission,
 atau kode native tetap memerlukan APK baru dan kenaikan `versionCode`.
+
+## Push notification saat aplikasi tertutup
+
+Push Android menggunakan Firebase Cloud Messaging (FCM). Sebelum build release:
+
+1. Daftarkan aplikasi Android `id.dsicorp.tracko` di Firebase.
+2. Simpan `google-services.json` ke `frontend/android/app/google-services.json`.
+3. Simpan JSON service account Firebase pada server backend, di luar public web
+   root, lalu isi `FIREBASE_PROJECT_ID` dan `FIREBASE_CREDENTIALS` di `.env`.
+4. Jalankan migrasi backend dan pastikan queue worker selalu aktif.
+5. Build APK baru; perubahan plugin push tidak dapat dikirim melalui OTA.
+
+Jangan commit `google-services.json`, service-account JSON, keystore, atau kata
+sandi signing ke repository.

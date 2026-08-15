@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { Capacitor } from "@capacitor/core";
 
 import {
   ChevronLeftIcon,
@@ -14,7 +15,7 @@ import Button from "../ui/button/Button";
 
 import { login } from "../../lib/auth.service";
 import { updateMobileApiUrl } from "../../lib/axios";
-import { getMobileApiUrl, isMobileApp } from "../../lib/mobileConfig";
+import { getMobileApiUrl } from "../../lib/mobileConfig";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SignInForm() {
@@ -27,7 +28,6 @@ export default function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const mobileApp = isMobileApp();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,7 +36,7 @@ export default function SignInForm() {
       setLoginError("");
       setLoading(true);
 
-      if (mobileApp) {
+      if (Capacitor.isNativePlatform()) {
         updateMobileApiUrl(getMobileApiUrl());
       }
 

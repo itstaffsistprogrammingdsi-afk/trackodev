@@ -1,4 +1,5 @@
 import api from "./axios";
+import { unregisterNativePushDevice } from "./mobileApp";
 
 // ====== TYPE USER ======
 export interface User {
@@ -50,6 +51,8 @@ export const getMe = async (): Promise<User> => {
 
 // ====== LOGOUT ======
 export const logout = async (): Promise<void> => {
+  await unregisterNativePushDevice();
+
   try {
     await api.post("/auth/logout");
   } catch {

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Events\NotificationCreated;
+use App\Jobs\SendPushNotification;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,11 +14,11 @@ class Notification extends Model
 
     protected $fillable = [
         'user_id', 'type', 'title',
-        'body', 'data', 'is_read'
+        'body', 'data', 'is_read',
     ];
 
     protected $casts = [
-        'data'    => 'array',
+        'data' => 'array',
         'is_read' => 'boolean',
     ];
 
@@ -25,6 +26,7 @@ class Notification extends Model
     {
         static::created(function (Notification $notification): void {
             NotificationCreated::dispatch($notification);
+            SendPushNotification::dispatch($notification->id)->afterCommit();
         });
     }
 

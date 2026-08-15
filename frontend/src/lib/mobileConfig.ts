@@ -5,7 +5,14 @@ const DEFAULT_MOBILE_API_URL = "https://dev.tracko.dsicorp.id/api";
 
 export type NativePlatform = "android" | "ios";
 
+const isDevelopmentMobilePreview = (): boolean =>
+  import.meta.env.DEV && import.meta.env.VITE_MOBILE_PREVIEW === "true";
+
 export const getNativePlatform = (): NativePlatform | null => {
+  // Preview khusus QA agar layout native dapat diuji di browser lokal tanpa
+  // mengaktifkan bridge/plugin native. Vite membuang cabang ini saat release.
+  if (isDevelopmentMobilePreview()) return "android";
+
   if (!Capacitor.isNativePlatform()) return null;
 
   const platform = Capacitor.getPlatform();
@@ -40,6 +47,10 @@ export const normalizeApiUrl = (value: string): string => {
 };
 
 export const getApiBaseUrl = (): string => {
+  if (isDevelopmentMobilePreview()) {
+    return import.meta.env.VITE_API_URL || "/api";
+  }
+
   if (isMobileApp()) {
     const savedUrl = localStorage.getItem(MOBILE_API_URL_KEY);
 

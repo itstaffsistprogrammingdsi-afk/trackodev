@@ -2,28 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-
-use Illuminate\Notifications\Notifiable;
-
-use Laravel\Sanctum\HasApiTokens;
-
-use Spatie\Permission\Traits\HasRoles;
-
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory,
-        Notifiable,
+    use HasApiTokens,
+        HasFactory,
+        HasRoles,
         HasUuids,
-        HasApiTokens,
-        HasRoles;
+        Notifiable;
 
     // ============================================
     // ROLE CONSTANTS
@@ -130,7 +125,7 @@ class User extends Authenticatable
 
     public function divisions(): BelongsToMany
     {
-        return $this->belongsToMany(Division::class,'division_user')
+        return $this->belongsToMany(Division::class, 'division_user')
             ->withPivot('role')
             ->withTimestamps();
     }
@@ -160,6 +155,11 @@ class User extends Authenticatable
         return $this->hasMany(
             Notification::class
         );
+    }
+
+    public function pushDevices(): HasMany
+    {
+        return $this->hasMany(PushDevice::class);
     }
 
     // ============================================
@@ -232,8 +232,6 @@ class User extends Authenticatable
                 ->exists();
     }
 
-
-
     // ============================================
     // ASSIGNMENTS
     // ============================================
@@ -262,66 +260,65 @@ class User extends Authenticatable
         );
     }
 
-public function accessibleCampaigns()
-{
-    $query = Campaign::query()
-        ->with([
-            'workspace',
-            'workspace.division',
-            'members',
-            'cards',
-            'cards.assignees',
-        ]);
+    public function accessibleCampaigns()
+    {
+        $query = Campaign::query()
+            ->with([
+                'workspace',
+                'workspace.division',
+                'members',
+                'cards',
+                'cards.assignees',
+            ]);
 
-    if ($this->isSuperAdmin()) {
-        return $query;
+        if ($this->isSuperAdmin()) {
+            return $query;
+        }
+
+        $userId = $this->id;
+        $divisionIds = $this->isAdmin()
+            ? $this->divisions()->pluck('divisions.id')
+            : collect();
+
+        return $query->where(function ($campaignQuery) use ($userId, $divisionIds) {
+            // Membership langsung tetap berlaku untuk semua role. Sebelumnya role
+            // admin hanya diperiksa lewat division sehingga undangan lintas division
+            // tidak pernah memperoleh brand/campaign yang memang ditugaskan kepadanya.
+            $campaignQuery
+                ->where('created_by', $userId)
+                ->orWhereHas('members', function ($memberQuery) use ($userId) {
+                    $memberQuery->where('users.id', $userId);
+                });
+
+            if ($divisionIds->isNotEmpty()) {
+                $campaignQuery->orWhereHas('workspace', function ($workspaceQuery) use ($divisionIds) {
+                    $workspaceQuery->whereIn('division_id', $divisionIds);
+                });
+            }
+        });
     }
 
-    $userId = $this->id;
-    $divisionIds = $this->isAdmin()
-        ? $this->divisions()->pluck('divisions.id')
-        : collect();
+    public function workspaces(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Workspace::class,
+            'workspace_user',
+            'user_id',
+            'workspace_id'
+        )->withTimestamps();
+    }
 
-    return $query->where(function ($campaignQuery) use ($userId, $divisionIds) {
-        // Membership langsung tetap berlaku untuk semua role. Sebelumnya role
-        // admin hanya diperiksa lewat division sehingga undangan lintas division
-        // tidak pernah memperoleh brand/campaign yang memang ditugaskan kepadanya.
-        $campaignQuery
-            ->where('created_by', $userId)
-            ->orWhereHas('members', function ($memberQuery) use ($userId) {
-                $memberQuery->where('users.id', $userId);
-            });
-
-        if ($divisionIds->isNotEmpty()) {
-            $campaignQuery->orWhereHas('workspace', function ($workspaceQuery) use ($divisionIds) {
-                $workspaceQuery->whereIn('division_id', $divisionIds);
-            });
-        }
-    });
-}
-
-public function workspaces(): BelongsToMany
-{
-    return $this->belongsToMany(
-        Workspace::class,
-        'workspace_user',
-        'user_id',
-        'workspace_id'
-    )->withTimestamps();
-}
-
-// ============================================
+    // ============================================
     // CARDS
     // ============================================
 
     public function cards(): BelongsToMany
     {
         return $this->belongsToMany(
-            Card::class, 
-            'card_user', 
-            'user_id', 
+            Card::class,
+            'card_user',
+            'user_id',
             'card_id'
         )->withTimestamps();
     }
-
 }

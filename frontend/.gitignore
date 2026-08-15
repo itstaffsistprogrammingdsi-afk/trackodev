@@ -14,6 +14,8 @@ dist-ssr
 .android-sdk/
 .mobile-update-keys/
 .mobile-update-output/
+android/app/google-services.json
+artifacts/
 
 # Editor directories and files
 .vscode/*

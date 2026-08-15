@@ -1,5 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { PushNotifications } from "@capacitor/push-notifications";
+import api from "@/lib/axios";
 import {
   getNotificationTargetPath,
   type AppNotification,
@@ -7,6 +9,7 @@ import {
 
 export const LAST_APP_ROUTE_KEY = "tracko:last-route:v1";
 export const APP_RESUMED_EVENT = "tracko:app-resumed";
+export const PUSH_TOKEN_KEY = "tracko:push-token:v1";
 
 const PUBLIC_PATHS = ["/", "/landing", "/signin", "/signup"];
 let notificationSetup: Promise<boolean> | null = null;
@@ -69,7 +72,7 @@ function notificationId(id: string): number {
   for (let index = 0; index < id.length; index += 1) {
     hash = (hash * 31 + id.charCodeAt(index)) | 0;
   }
-  return Math.max(1, Math.abs(hash));
+  return Math.max(1, hash & 0x7fffffff);
 }
 
 export async function showNativeNotification(notification: AppNotification) {
@@ -86,4 +89,32 @@ export async function showNativeNotification(notification: AppNotification) {
       },
     ],
   });
+}
+
+export async function registerNativePushDevice(token: string): Promise<void> {
+  if (!Capacitor.isNativePlatform() || !localStorage.getItem("token")) return;
+
+  localStorage.setItem(PUSH_TOKEN_KEY, token);
+  await api.post("/push-devices", {
+    token,
+    platform: Capacitor.getPlatform(),
+    device_name: navigator.userAgent.slice(0, 255),
+  });
+}
+
+export async function unregisterNativePushDevice(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+
+  const token = localStorage.getItem(PUSH_TOKEN_KEY);
+
+  try {
+    if (token && localStorage.getItem("token")) {
+      await api.delete("/push-devices", { data: { token } });
+    }
+  } catch (error) {
+    console.warn("Gagal menghapus push token dari server", error);
+  } finally {
+    localStorage.removeItem(PUSH_TOKEN_KEY);
+    await PushNotifications.unregister().catch(() => undefined);
+  }
 }
