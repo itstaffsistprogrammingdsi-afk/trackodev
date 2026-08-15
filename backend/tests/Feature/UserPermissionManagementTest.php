@@ -74,7 +74,7 @@ class UserPermissionManagementTest extends TestCase
         $this->assertTrue($freshTarget->can('dashboard.system_insights.view'));
     }
 
-    public function test_admin_cannot_grant_a_permission_they_do_not_have(): void
+    public function test_admin_cannot_manage_regular_user_permissions_even_with_legacy_permission(): void
     {
         Permission::firstOrCreate(['name' => 'user.update', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'form.delete', 'guard_name' => 'web']);
@@ -90,12 +90,12 @@ class UserPermissionManagementTest extends TestCase
 
         $this->putJson('/api/users/'.$target->id.'/permissions', [
             'permissions' => ['form.delete'],
-        ])->assertUnprocessable();
+        ])->assertForbidden();
 
         $this->assertFalse($target->fresh()->can('form.delete'));
     }
 
-    public function test_saving_does_not_remove_permissions_outside_the_editors_authority(): void
+    public function test_admin_cannot_change_permissions_outside_user_management(): void
     {
         foreach (['user.update', 'form.view', 'report.view'] as $name) {
             Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
@@ -112,9 +112,9 @@ class UserPermissionManagementTest extends TestCase
 
         $this->putJson('/api/users/'.$target->id.'/permissions', [
             'permissions' => ['form.view'],
-        ])->assertOk();
+        ])->assertForbidden();
 
         $this->assertTrue($target->fresh()->can('report.view'));
-        $this->assertTrue($target->fresh()->can('form.view'));
+        $this->assertFalse($target->fresh()->can('form.view'));
     }
 }

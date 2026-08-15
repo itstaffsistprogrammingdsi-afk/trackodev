@@ -3,24 +3,14 @@ import { User, UserPermissionData } from '../types';
 
 export const getUsers = async (): Promise<User[]> => {
   const res = await api.get(
-    "/users",
-    {
-      params: {
-        all: true,
-      },
-    }
+    "/users/assignment-candidates"
   );
 
   return res.data.data;
 };
 
 export const getCoordinationUsers = async (): Promise<User[]> => {
-  const res = await api.get('/users', {
-    params: {
-      all: true,
-      coordination_assignment: 1,
-    },
-  });
+  const res = await api.get('/users/assignment-candidates');
 
   return res.data.data;
 };

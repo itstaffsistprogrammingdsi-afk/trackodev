@@ -10,12 +10,14 @@ use App\Models\Brand;
 use App\Models\Campaign;
 use App\Models\Card;
 use App\Models\CardAttachment;
+use App\Models\ActivityLog;
 use App\Models\Division;
 use App\Models\Label;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
+use App\Support\ResourceAccess;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,6 +83,7 @@ class ReportController extends Controller
     public function showUserCards(Request $request, User $user): JsonResponse
     {
         $this->validateReportFilters($request);
+        $this->authorizeReportUser($request, $user);
 
         try {
             // Admin biasa tidak boleh mengakses report milik Super Admin.
@@ -125,17 +128,26 @@ class ReportController extends Controller
      */
     public function submitAttachmentQc(Request $request, CardAttachment $attachment): JsonResponse
     {
+        $attachment->loadMissing('card.board.campaign');
+        abort_unless(
+            $attachment->card
+                && ResourceAccess::card($request->user(), $attachment->card),
+            403,
+            'Anda tidak memiliki akses ke attachment ini.'
+        );
+
+        $maxQuantity = $attachment->quantity ?? PHP_INT_MAX;
+        $validated = $request->validate([
+            'qc_quantity' => "required|integer|min:0|max:{$maxQuantity}",
+            'qc_note' => 'nullable|string|max:1000',
+        ]);
+
         try {
             if ($attachment->archived_at) {
                 return response()->json([
                     'message' => 'Versi arsip tidak dapat diproses QC. Gunakan hasil aktif terbaru.',
                 ], 422);
             }
-
-            $validated = $request->validate([
-                'qc_quantity' => "required|integer|min:0|max:{$attachment->quantity}",
-                'qc_note'     => 'nullable|string|max:1000',
-            ]);
 
             $attachment->update([
                 'qc_quantity' => $validated['qc_quantity'],
@@ -169,23 +181,37 @@ class ReportController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error submitting QC: ' . $e->getMessage());
-            return response()->json(['message' => 'Gagal menyimpan QC: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Gagal menyimpan QC'], 500);
         }
     }
 
     /**
      * GET FILTER OPTIONS
      */
-    public function getFilterOptions(): JsonResponse
+    public function getFilterOptions(Request $request): JsonResponse
     {
         try {
+            $campaigns = $request->user()
+                ->accessibleCampaigns()
+                ->select(['campaigns.id', 'campaigns.name', 'campaigns.workspace_id'])
+                ->orderBy('campaigns.name')
+                ->get();
+            $workspaceIds = $campaigns->pluck('workspace_id')->filter()->unique();
+            $workspaces = Workspace::query()
+                ->whereKey($workspaceIds)
+                ->select(['id', 'division_id', 'name'])
+                ->orderBy('name')
+                ->get();
+            $divisionIds = $workspaces->pluck('division_id')->filter()->unique();
+
             return response()->json([
                 'data' => [
-                    'divisions'  => Division::select('id', 'name')->orderBy('name')->get(),
-                    'workspaces' => Workspace::select('id', 'name')->orderBy('name')->get(),
-                    'campaigns'  => Campaign::select('id', 'name')->orderBy('name')->get(),
+                    'divisions'  => Division::whereKey($divisionIds)->select('id', 'name')->orderBy('name')->get(),
+                    'workspaces' => $workspaces->map->only(['id', 'name'])->values(),
+                    'campaigns'  => $campaigns->map->only(['id', 'name'])->values(),
                     'labels'     => Label::select('id', 'name', 'color')->orderBy('name')->get(),
-                    'brands'     => Brand::select('id', 'name', 'color')->orderBy('name')->get(),
+                    'brands'     => Brand::whereIn('campaign_id', $campaigns->pluck('id'))
+                        ->select('id', 'name', 'color')->orderBy('name')->get(),
                 ]
             ]);
         } catch (\Exception $e) {
@@ -202,6 +228,54 @@ class ReportController extends Controller
         $currentUser = $request->user();
 
         return $currentUser && $currentUser->hasRole(self::SUPER_ADMIN_ROLE);
+    }
+
+    public function getUserActivityLogs(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeReportUser($request, $user);
+        $this->validateReportFilters($request);
+
+        $query = ActivityLog::query()
+            ->where('user_id', $user->id)
+            ->select([
+                'id', 'user_id', 'entity_type', 'entity_id', 'action',
+                'description', 'meta', 'created_at',
+            ])
+            ->latest();
+
+        if ($request->filled('start_date')) {
+            $query->where('created_at', '>=', $request->start_date.' 00:00:00');
+        }
+        if ($request->filled('end_date')) {
+            $query->where('created_at', '<=', $request->end_date.' 23:59:59');
+        }
+
+        $logs = $query->paginate(50);
+
+        return response()->json([
+            'data' => $logs->items(),
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+                'total' => $logs->total(),
+            ],
+        ]);
+    }
+
+    private function authorizeReportUser(Request $request, User $target): void
+    {
+        $viewer = $request->user();
+
+        if ($viewer->isSuperAdmin() || $viewer->is($target)) {
+            return;
+        }
+
+        $allowed = $viewer->isAdmin()
+            && $target->divisions()
+                ->whereIn('divisions.id', $viewer->divisions()->pluck('divisions.id'))
+                ->exists();
+
+        abort_unless($allowed, 403, 'Anda tidak memiliki akses ke report user ini.');
     }
 
     /**
@@ -618,6 +692,11 @@ private function restrictDivisionVisibility($query, Request $request): void
         $query->whereHas('divisions', function ($q) use ($divisionIds) {
             $q->whereIn('divisions.id', $divisionIds);
         });
+
+        return;
     }
+
+    // Role custom atau akun tanpa role tidak boleh mendapat scope global.
+    $query->where('users.id', $currentUser->id);
 }
 }

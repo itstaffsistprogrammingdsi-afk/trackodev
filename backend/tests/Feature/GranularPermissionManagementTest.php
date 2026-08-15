@@ -101,7 +101,7 @@ class GranularPermissionManagementTest extends TestCase
         $this->assertFalse($user->can('my_work.ranking.view'));
     }
 
-    public function test_permission_payload_is_grouped_and_supports_read_only_access(): void
+    public function test_non_super_admin_cannot_read_permission_payload(): void
     {
         $viewer = User::factory()->create();
         $viewer->assignRole('user');
@@ -111,11 +111,8 @@ class GranularPermissionManagementTest extends TestCase
         $target->assignRole('user');
         Sanctum::actingAs($viewer);
 
-        $response = $this->getJson('/api/users/'.$target->id.'/permissions')
-            ->assertOk()
-            ->assertJsonPath('data.can_update_permissions', false);
-
-        $this->assertNotEmpty($response->json('data.permission_catalog'));
+        $this->getJson('/api/users/'.$target->id.'/permissions')
+            ->assertForbidden();
 
         $this->putJson('/api/users/'.$target->id.'/permissions', [
             'permissions' => ['form.view'],
@@ -194,7 +191,7 @@ class GranularPermissionManagementTest extends TestCase
         );
     }
 
-    public function test_admin_permission_payload_contains_all_admin_catalog_actions(): void
+    public function test_admin_cannot_open_user_permission_management(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('admin');
@@ -203,23 +200,8 @@ class GranularPermissionManagementTest extends TestCase
         $target->assignRole('user');
         Sanctum::actingAs($admin);
 
-        $response = $this->getJson('/api/users/'.$target->id.'/permissions')
-            ->assertOk();
-
-        $formPermissions = collect(
-            $response->json('data.permission_catalog')
-        )->firstWhere('key', 'form')['permissions'];
-
-        $this->assertEqualsCanonicalizing(
-            collect(PermissionCatalog::modules()['form']['permissions'])
-                ->keys()
-                ->all(),
-            collect($formPermissions)->pluck('name')->all()
-        );
-        $this->assertEqualsCanonicalizing(
-            PermissionCatalog::adminPermissions(),
-            $response->json('data.available_permissions')
-        );
+        $this->getJson('/api/users/'.$target->id.'/permissions')
+            ->assertForbidden();
     }
 
     public function test_report_preview_and_export_are_independent_from_report_view(): void

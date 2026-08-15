@@ -31,13 +31,13 @@ class CollaborationHierarchyTest extends TestCase
             ->assertJsonFragment(['collaborator_label' => 'Admin Divisi'])
             ->assertJsonMissing(['id' => $dkvStaff->id]);
 
-        $this->getJson('/api/users?all=1&coordination_assignment=1')
+        $this->getJson('/api/users/assignment-candidates')
             ->assertOk()
             ->assertJsonFragment(['id' => $dkvLeader->id])
             ->assertJsonMissing(['id' => $dkvStaff->id]);
 
         Sanctum::actingAs($dkvLeader);
-        $this->getJson('/api/users?all=1&coordination_assignment=1')
+        $this->getJson('/api/users/assignment-candidates')
             ->assertOk()
             ->assertJsonFragment(['id' => $dkvStaff->id]);
     }

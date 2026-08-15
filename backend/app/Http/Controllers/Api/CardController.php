@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 // use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class CardController extends Controller
 {
@@ -140,6 +141,19 @@ class CardController extends Controller
         };
 
         $assignees = $validated['assignees'] ?? [];
+
+        if (! empty($assignees)) {
+            $assigneeUsers = User::query()->whereKey($assignees)->get();
+
+            abort_unless(
+                $assigneeUsers->count() === count(array_unique($assignees))
+                    && $assigneeUsers->every(
+                        fn (User $candidate) => $user->canCoordinateAssignmentTo($candidate)
+                    ),
+                403,
+                'Anda tidak dapat menugaskan salah satu user yang dipilih secara langsung.'
+            );
+        }
 
         DB::beginTransaction();
 
@@ -614,6 +628,13 @@ class CardController extends Controller
         $this->authorizeCard($card);
         $this->authorizeBoard($board);
 
+        if ($card->board?->campaign_id !== $board->campaign_id) {
+            return response()->json([
+                'message' => 'Card hanya dapat dipindahkan ke board dalam campaign yang sama.',
+                'errors' => ['board_id' => ['Board tujuan berada di campaign yang berbeda.']],
+            ], 422);
+        }
+
         $sourceBoard = $card->board;
         $lastOrder = $board
             ->cards()
@@ -683,7 +704,7 @@ class CardController extends Controller
     {
         $request->validate([
             'cards'         => 'required|array',
-            'cards.*.id'    => 'required|uuid|exists:cards,id',
+            'cards.*.id'    => 'required|uuid|distinct|exists:cards,id',
             'cards.*.order' => 'required|integer|min:0',
         ]);
 
@@ -698,6 +719,16 @@ class CardController extends Controller
         $cardIds = collect($request->cards)->pluck('id');
 
         $cards = Card::with('board')->whereIn('id', $cardIds)->get()->keyBy('id');
+
+        if (
+            $cards->count() !== $cardIds->count()
+            || $cards->pluck('board_id')->unique()->count() !== 1
+        ) {
+            return response()->json([
+                'message' => 'Semua card harus berasal dari board yang sama.',
+                'errors' => ['cards' => ['Daftar card lintas board tidak valid.']],
+            ], 422);
+        }
 
         // authorize batch (lebih efisien)
         foreach ($cards as $card) {
@@ -1405,7 +1436,11 @@ class CardController extends Controller
 
         $validated = $request->validate([
             'content'   => 'required|string',
-            'parent_id' => 'nullable|uuid|exists:card_comments,id',
+            'parent_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('card_comments', 'id')->where('card_id', $card->id),
+            ],
         ]);
 
         $comment = CardComment::create([
@@ -1443,6 +1478,11 @@ class CardController extends Controller
     ): JsonResponse {
         $card = Card::findOrFail($comment->card_id);
         $this->authorizeCard($card);
+        abort_unless(
+            $comment->user_id === $request->user()->id || $request->user()->isSuperAdmin(),
+            403,
+            'Anda hanya dapat mengubah komentar sendiri.'
+        );
 
         $validated = $request->validate([
             'content' => 'required|string',
@@ -1479,6 +1519,11 @@ class CardController extends Controller
     ): JsonResponse {
         $card = Card::findOrFail($comment->card_id);
         $this->authorizeCard($card);
+        abort_unless(
+            $comment->user_id === auth()->id() || auth()->user()->isSuperAdmin(),
+            403,
+            'Anda hanya dapat menghapus komentar sendiri.'
+        );
 
         $comment->delete();
 

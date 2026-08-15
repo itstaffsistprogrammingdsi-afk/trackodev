@@ -121,6 +121,11 @@ Route::middleware([
             [UserController::class, 'mentionable']
         )->middleware('permission:user.mention|user.view');
 
+    Route::get(
+        '/users/assignment-candidates',
+        [UserController::class, 'assignmentCandidates']
+    )->middleware('permission:user.mention|card.assign|form.submission.assign');
+
     // ========================================
     // USER MANAGEMENT
     // ========================================
