@@ -1,8 +1,32 @@
+import { useEffect, useState } from "react";
 import { CheckCircle2, Download, ShieldCheck, Smartphone } from "lucide-react";
 
 const APK_URL = "/downloads/tracko-latest.apk";
+const APK_METADATA_URL = "/downloads/tracko-latest.json";
+
+interface ApkMetadata {
+  version: string;
+  minimumAndroid: string;
+  sizeBytes: number;
+}
 
 export default function DownloadApp() {
+  const [metadata, setMetadata] = useState<ApkMetadata | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(APK_METADATA_URL, { cache: "no-store", signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((value: ApkMetadata | null) => setMetadata(value))
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, []);
+
+  const sizeMb = metadata ? (metadata.sizeBytes / 1024 / 1024).toFixed(1) : "14";
+  const version = metadata?.version || "1.0.0";
+  const minimumAndroid = metadata?.minimumAndroid || "7.0";
+
   return (
     <section id="download-apk" className="scroll-mt-24 bg-white py-14 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -33,14 +57,14 @@ export default function DownloadApp() {
               <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
                 <a
                   href={APK_URL}
-                  download="Tracko-Android-v1.0.0.apk"
+                  download={`Tracko-Android-v${version}.apk`}
                   className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-blue-500 px-6 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition hover:bg-blue-400 active:scale-[0.98] sm:w-auto"
                 >
                   <Download size={18} aria-hidden="true" />
                   Download APK
                 </a>
                 <span className="text-xs leading-5 text-slate-400">
-                  Versi 1.0.0 / sekitar 14 MB / Android 7.0+
+                  Versi {version} / sekitar {sizeMb} MB / Android {minimumAndroid}+
                 </span>
               </div>
             </div>

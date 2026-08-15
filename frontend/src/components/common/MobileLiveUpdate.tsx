@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { LiveUpdate } from "@capawesome/capacitor-live-update";
-import { AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
 
 import { isMobileApp } from "@/lib/mobileConfig";
 
@@ -17,6 +17,7 @@ interface UpdateManifest {
   checksum: string;
   signature: string;
   minimumNativeVersionCode: number;
+  webVersion?: string;
 }
 
 type BlockingState =
@@ -43,6 +44,8 @@ const isUpdateManifest = (value: unknown): value is UpdateManifest => {
 export default function MobileLiveUpdate() {
   const [blockingState, setBlockingState] = useState<BlockingState>(null);
   const [checking, setChecking] = useState(false);
+  const [readyUpdate, setReadyUpdate] = useState<UpdateManifest | null>(null);
+  const [applying, setApplying] = useState(false);
   const checkingRef = useRef(false);
   const initialCheckRef = useRef(true);
 
@@ -126,6 +129,8 @@ export default function MobileLiveUpdate() {
 
       if (initialCheckRef.current) {
         await LiveUpdate.reload();
+      } else {
+        setReadyUpdate(payload);
       }
     } catch (error) {
       // Network/update failures must never make the bundled application unusable.
@@ -153,7 +158,65 @@ export default function MobileLiveUpdate() {
     };
   }, [checkForUpdate]);
 
-  if (!isMobileApp() || !blockingState) return null;
+  const applyReadyUpdate = useCallback(async () => {
+    if (!readyUpdate || applying) return;
+    setApplying(true);
+    try {
+      await LiveUpdate.reload();
+    } catch (error) {
+      console.warn("Unable to apply downloaded mobile update", error);
+      setApplying(false);
+    }
+  }, [applying, readyUpdate]);
+
+  if (!isMobileApp()) return null;
+
+  if (!blockingState && readyUpdate) {
+    return (
+      <aside
+        role="status"
+        aria-live="polite"
+        className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[100000] mx-auto max-w-md overflow-hidden rounded-2xl border border-blue-200/70 bg-white/95 p-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl dark:border-blue-900/70 dark:bg-slate-900/95"
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25">
+            <Sparkles size={20} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">Update Tracko siap</p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  {readyUpdate.webVersion
+                    ? `Versi ${readyUpdate.webVersion} sudah diunduh.`
+                    : "Pembaruan terbaru sudah diunduh."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReadyUpdate(null)}
+                aria-label="Terapkan nanti"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              >
+                <X size={17} />
+              </button>
+            </div>
+            <button
+              type="button"
+              disabled={applying}
+              onClick={() => void applyReadyUpdate()}
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 active:scale-[0.99] disabled:opacity-60"
+            >
+              <RefreshCw size={16} className={applying ? "animate-spin" : ""} />
+              {applying ? "Memasang update..." : "Perbarui sekarang"}
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  if (!blockingState) return null;
 
   const maintenance = blockingState.kind === "maintenance";
 
