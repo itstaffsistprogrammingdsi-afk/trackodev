@@ -241,12 +241,13 @@ class CardController extends Controller
                     Notification::create([
                         'user_id' => $assignee->id,
                         'type'    => 'task_assigned',
-                        'title'   => 'Task Assigned',
-                        'body'    => "Task '{$card->title}' telah diassign kepada Anda",
+                        'title'   => 'Tugas Baru',
+                        'body'    => "Anda ditugaskan sebagai PIC pada task '{$card->title}'.",
                         'data'    => [
                             'card_id'     => $card->id,
                             'board_id'    => $board->id,
                             'campaign_id' => $board->campaign?->id,
+                            'workspace_id' => $board->campaign?->workspace_id,
                             'assigned_by' => $user->id,
                         ],
                         'is_read' => false,
@@ -778,6 +779,13 @@ class CardController extends Controller
         ]);
 
         $userId = $validated['user_id'];
+        $assignedUser = User::findOrFail($userId);
+
+        abort_unless(
+            $request->user()->canCoordinateAssignmentTo($assignedUser),
+            403,
+            'Staff tidak dapat menugaskan Staff lain secara langsung. Pilih koordinator divisi tujuan.'
+        );
 
         // ========================================
         // CEK SUDAH ASSIGNED?
@@ -862,8 +870,6 @@ class CardController extends Controller
             'board.campaign',
         ]);
 
-        $assignedUser = User::findOrFail($userId);
-
         // ========================================
         // EMAIL + NOTIFICATION
         // TIDAK BOLEH MENGGAGALKAN ASSIGNMENT
@@ -880,12 +886,13 @@ class CardController extends Controller
             Notification::create([
                 'user_id' => $assignedUser->id,
                 'type'    => 'task_assigned',
-                'title'   => 'Task Assigned',
-                'body'    => "Task '{$card->title}' telah diassign kepada Anda",
+                'title'   => 'Tugas Baru',
+                'body'    => "Anda ditugaskan sebagai PIC pada task '{$card->title}'.",
                 'data'    => [
                     'card_id'     => $card->id,
                     'board_id'    => $card->board_id,
                     'campaign_id' => $card->board->campaign?->id,
+                    'workspace_id' => $card->board->campaign?->workspace_id,
                     'assigned_by' => $request->user()->id,
                 ],
                 'is_read' => false,

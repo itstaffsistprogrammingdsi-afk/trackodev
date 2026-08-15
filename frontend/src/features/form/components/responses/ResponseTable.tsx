@@ -167,7 +167,7 @@ export default function ResponseTable({
                           <div className="text-xs text-zinc-500">
                             <div className="flex items-center gap-1">
                               <span className="font-medium text-zinc-700">
-                                {s
+                                Koordinator: {s
                                   .assignment
                                   ?.coordinator
                                   ?.name ||
@@ -179,7 +179,7 @@ export default function ResponseTable({
                               />
 
                               <span className="font-medium text-indigo-600">
-                                {s
+                                PIC: {s
                                   .assignment
                                   ?.designer
                                   ?.name ||

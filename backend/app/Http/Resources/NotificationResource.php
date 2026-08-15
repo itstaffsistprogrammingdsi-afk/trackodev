@@ -8,12 +8,16 @@ class NotificationResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $actionUrl = $this->action_url;
+
         return [
             'id'         => $this->id,
             'type'       => $this->type,
             'title'      => $this->title,
             'body'       => $this->body,
             'data'       => $this->data,
+            'action_url' => $actionUrl,
+            'action_label' => $actionUrl ? 'Buka card' : null,
             'is_read'    => $this->is_read,
             'created_at' => $this->created_at->toDateTimeString(),
         ];

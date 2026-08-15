@@ -136,12 +136,13 @@ class AssignmentController extends Controller
                     Notification::create([
                         'user_id' => $assignment->designer_id,
                         'type' => 'task_assigned',
-                        'title' => 'Task Assigned',
-                        'body' => "Task '{$assignment->card->title}' telah diassign kepada Anda",
+                        'title' => 'Tugas Baru',
+                        'body' => "Anda ditugaskan sebagai PIC pada task '{$assignment->card->title}'.",
                         'data' => [
                             'card_id' => $assignment->card_id,
                             'board_id' => $assignment->board_id,
                             'campaign_id' => $assignment->campaign_id,
+                            'workspace_id' => $campaign->workspace_id,
                             'assigned_by' => $validated['assigned_by'],
                             'submission_id' => $submission->id,
                         ],

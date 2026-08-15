@@ -17,7 +17,7 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import useAssignSubmission from "../../hooks/useAssignSubmission";
 
-import type { FormSubmission } from "../../types";
+import type { Form, FormSubmission } from "../../types";
 
 import type { AssignSubmissionPayload } from "../../api/form.api";
 
@@ -30,12 +30,14 @@ import type { Division } from "@/features/division/types";
 import type { Workspace } from "@/features/workspace/types";
 
 import DesignerPicker from "../DesignerPicker";
+import RenderCellValue from "../cells/RenderCellValue";
 
 import { useAuth } from "../../../../context/AuthContext";
 
 type Props = {
   open: boolean;
   submission: FormSubmission | null;
+  requestForm: Form;
   onClose: () => void;
   onSuccess?: () => void;
 };
@@ -63,6 +65,7 @@ const createInitialForm = (): AssignSubmissionPayload => ({
 export default function AssignmentModal({
   open,
   submission,
+  requestForm,
   onClose,
   onSuccess,
 }: Props) {
@@ -175,6 +178,11 @@ export default function AssignmentModal({
     return null;
   }
 
+  const answeredFields = (requestForm.fields ?? []).filter((field) => {
+    const value = submission.data?.[field.name];
+    return value !== undefined && value !== null && value !== "";
+  });
+
   /*
   |--------------------------------------------------------------------------
   | SUBMIT
@@ -207,7 +215,7 @@ export default function AssignmentModal({
     }
 
     if (!form.designer_id) {
-      alert("Designer wajib dipilih");
+      alert("PIC/anggota wajib dipilih");
       return;
     }
 
@@ -303,6 +311,9 @@ const payload = {
       "
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="assignment-modal-title"
         onClick={(e) => e.stopPropagation()}
         className="
           relative
@@ -327,6 +338,7 @@ const payload = {
         >
           <div>
             <h2
+              id="assignment-modal-title"
               className="
                 text-2xl
                 font-bold
@@ -349,6 +361,7 @@ const payload = {
 
           <button
             type="button"
+            aria-label="Tutup modal assignment"
             onClick={onClose}
             className="
               flex h-10 w-10
@@ -404,6 +417,25 @@ const payload = {
             >
               {submission.form?.name ?? "Untitled Request"}
             </h3>
+
+            {answeredFields.length > 0 ? (
+              <div className="mt-4 border-t border-indigo-100 pt-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                  Detail Request
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {answeredFields.map((field) => (
+                    <div key={field.id} className="min-w-0 rounded-xl border border-indigo-100 bg-white p-3">
+                      <p className="mb-2 text-xs font-medium text-slate-500">{field.label}</p>
+                      <RenderCellValue
+                        value={submission.data?.[field.name]}
+                        label={field.label}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* GRID */}
@@ -655,7 +687,7 @@ const payload = {
                         text-emerald-700
                       "
                     >
-                      Designer Dipilih
+                      PIC/Anggota Dipilih
                     </p>
 
                     <p
@@ -678,7 +710,7 @@ const payload = {
                     text-zinc-500
                   "
                 >
-                  Division wajib dipilih sebelum memilih designer
+                  Division wajib dipilih sebelum memilih PIC/anggota
                 </p>
               )}
             </div>

@@ -80,6 +80,105 @@ class CalendarCardIntegrationTest extends TestCase
             );
     }
 
+    public function test_user_and_admin_see_division_calendar_but_not_super_admin_cards(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('user');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $regularCreator = User::factory()->create();
+        $regularCreator->assignRole('user');
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole('super_admin');
+
+        $division = Division::create([
+            'name' => 'Shared Calendar Division',
+            'slug' => 'shared-calendar-division',
+        ]);
+        $division->users()->attach([
+            $user->id => ['role' => 'member'],
+            $admin->id => ['role' => 'member'],
+            $regularCreator->id => ['role' => 'member'],
+            $superAdmin->id => ['role' => 'member'],
+        ]);
+
+        $workspace = $division->workspaces()->create(['name' => 'Shared Calendar Workspace']);
+        $campaign = $workspace->campaigns()->create([
+            'name' => 'Shared Calendar Campaign',
+            'created_by' => $regularCreator->id,
+        ]);
+        $board = $campaign->boards()->create([
+            'name' => 'Schedule',
+            'type' => 'todo',
+            'order' => 1,
+        ]);
+
+        $regularCard = $board->cards()->create([
+            'title' => 'Jadwal Divisi',
+            'created_by' => $regularCreator->id,
+            'due_date' => '2026-08-20 09:00:00',
+            'status' => 'todo',
+            'order' => 1,
+        ]);
+        $superAdminCard = $board->cards()->create([
+            'title' => 'Jadwal Rahasia Super Admin',
+            'created_by' => $superAdmin->id,
+            'due_date' => '2026-08-20 10:00:00',
+            'status' => 'todo',
+            'order' => 2,
+        ]);
+
+        foreach ([$user, $admin] as $viewer) {
+            Sanctum::actingAs($viewer);
+
+            $this->getJson('/api/calendar?month=2026-08')
+                ->assertOk()
+                ->assertJsonFragment(['id' => $regularCard->id])
+                ->assertJsonMissing(['id' => $superAdminCard->id]);
+
+            $this->getJson('/api/calendar/2026-08-20')
+                ->assertOk()
+                ->assertJsonPath('total', 1)
+                ->assertJsonFragment(['id' => $regularCard->id])
+                ->assertJsonMissing(['id' => $superAdminCard->id]);
+        }
+
+        Sanctum::actingAs($superAdmin);
+        $this->getJson('/api/calendar/2026-08-20')
+            ->assertOk()
+            ->assertJsonPath('total', 2)
+            ->assertJsonFragment(['id' => $superAdminCard->id]);
+    }
+
+    public function test_calendar_does_not_expose_cards_from_an_unjoined_division(): void
+    {
+        $viewer = User::factory()->create();
+        $viewer->assignRole('user');
+        $ownBoard = $this->createBoardHierarchy('Own Division', $viewer);
+        $otherBoard = $this->createBoardHierarchy('Other Division');
+
+        $ownCard = $ownBoard->cards()->create([
+            'title' => 'Own division schedule',
+            'created_by' => $viewer->id,
+            'due_date' => '2026-08-21 09:00:00',
+            'status' => 'todo',
+            'order' => 1,
+        ]);
+        $otherCard = $otherBoard->cards()->create([
+            'title' => 'Other division schedule',
+            'created_by' => $otherBoard->campaign->created_by,
+            'due_date' => '2026-08-21 09:00:00',
+            'status' => 'todo',
+            'order' => 1,
+        ]);
+
+        Sanctum::actingAs($viewer);
+        $this->getJson('/api/calendar/2026-08-21')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $ownCard->id])
+            ->assertJsonMissing(['id' => $otherCard->id]);
+    }
+
     private function createBoardHierarchy(
         string $prefix,
         ?User $member = null
@@ -102,6 +201,9 @@ class CalendarCardIntegrationTest extends TestCase
 
         if ($member) {
             $campaign->members()->attach($member->id);
+            $division->users()->syncWithoutDetaching([
+                $member->id => ['role' => 'member'],
+            ]);
         }
 
         return Board::create([

@@ -162,10 +162,14 @@ export default function CampaignForm({
           {/* MEMBERS */}
           <div>
             <p className="text-sm font-medium mb-1">
-              Assign Members
+              Collaborator
             </p>
 
-            <MemberMentionInput onSelect={handleSelectUser} />
+            <p className="mb-2 text-xs leading-5 text-gray-500">
+              Pilih Kepala Bagian sampai SPV. Koordinator terpilih akan meneruskan pekerjaan ke Staff divisinya.
+            </p>
+
+            <MemberMentionInput collaboratorOnly onSelect={handleSelectUser} />
 
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedUsers.map((u) => (

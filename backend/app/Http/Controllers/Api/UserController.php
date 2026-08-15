@@ -118,6 +118,12 @@ class UserController extends Controller
                 ->latest()
                 ->get();
 
+            if ($request->boolean('coordination_assignment')) {
+                $users = $users
+                    ->filter(fn (User $candidate) => $request->user()->canCoordinateAssignmentTo($candidate))
+                    ->values();
+            }
+
             return response()->json([
 
                 'data' => UserResource::collection(
@@ -666,7 +672,8 @@ class UserController extends Controller
                 'name',
                 'email',
                 'avatar',
-            ]);
+            ])
+            ->with(['roles', 'divisions:id,name']);
 
         // ============================================
         // SEARCH
@@ -694,7 +701,16 @@ class UserController extends Controller
         // FILTER BERDASARKAN DIVISION
         // ============================================
 
-        if (! $user->isSuperAdmin()) {
+        if ($request->boolean('collaborator')) {
+            $query->where(function ($candidateQuery) {
+                $candidateQuery
+                    ->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', [
+                        User::ROLE_SUPER_ADMIN,
+                        User::ROLE_ADMIN,
+                    ]))
+                    ->orWhereHas('divisions', fn ($divisionQuery) => $divisionQuery->where('division_user.role', 'admin'));
+            });
+        } elseif (! $user->isSuperAdmin()) {
 
             $divisionIds = $user
                 ->divisions
@@ -710,11 +726,22 @@ class UserController extends Controller
         }
 
         $users = $query
+            ->whereKeyNot($user->id)
             ->limit(10)
             ->get();
 
         return response()->json([
-            'data' => UserResource::collection($users),
+            'data' => $users->map(fn (User $candidate) => [
+                'id' => $candidate->id,
+                'name' => $candidate->name,
+                'email' => $candidate->email,
+                'avatar' => $candidate->avatar ? asset('storage/'.$candidate->avatar) : null,
+                'roles' => $candidate->getRoleNames()->values(),
+                'division_names' => $candidate->divisions->pluck('name')->values(),
+                'collaborator_label' => $candidate->isSuperAdmin()
+                    ? 'Super Admin'
+                    : ($candidate->isAdmin() ? 'Admin Divisi' : 'Koordinator Divisi'),
+            ]),
         ]);
     }
 }

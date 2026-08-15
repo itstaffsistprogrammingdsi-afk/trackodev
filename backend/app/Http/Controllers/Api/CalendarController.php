@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CalendarResource;
 use App\Models\Board;
 use App\Models\Card;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,23 +33,12 @@ class CalendarController extends Controller
             ]);
 
         if (! $user->isSuperAdmin()) {
-            if ($user->isAdmin()) {
-                $divisionIds = $user->divisions()
-                    ->pluck('divisions.id');
+            $divisionIds = $user->divisions()->pluck('divisions.id');
 
-                $query->whereHas(
-                    'campaign.workspace',
-                    fn (Builder $builder) => $builder->whereIn(
-                        'division_id',
-                        $divisionIds
-                    )
-                );
-            } else {
-                $query->whereHas(
-                    'campaign.members',
-                    fn (Builder $builder) => $builder->whereKey($user->id)
-                );
-            }
+            $query->whereHas(
+                'campaign.workspace',
+                fn (Builder $builder) => $builder->whereIn('division_id', $divisionIds)
+            );
         }
 
         $boards = $query->get()
@@ -231,24 +221,15 @@ private function applyPermission(Builder $query, $user): void
 
     $divisionIds = $user->divisions()->pluck('divisions.id')->toArray();
 
-    if ($user->isAdmin()) {
-        $query->whereHas('board.campaign.workspace', function (Builder $q) use ($divisionIds) {
-            $q->whereIn('division_id', $divisionIds);
+    // User dan Admin memiliki aturan yang sama: kalender hanya berisi card
+    // dari divisi tempat mereka menjadi member. Card milik Super Admin tidak
+    // pernah diekspos kepada role di bawahnya, termasuk lewat detail tanggal.
+    $query
+        ->whereHas('board.campaign.workspace', function (Builder $workspaceQuery) use ($divisionIds) {
+            $workspaceQuery->whereIn('division_id', $divisionIds);
+        })
+        ->whereDoesntHave('creator.roles', function (Builder $roleQuery) {
+            $roleQuery->where('name', User::ROLE_SUPER_ADMIN);
         });
-        return;
-    }
-
-    // Untuk User Biasa, samakan visibilitas Calendar dengan akses Card:
-    // campaign membership langsung tetap valid meskipun user berasal dari
-    // divisi lain. Jalur division dipertahankan untuk kompatibilitas akses lama.
-    $query->where(function (Builder $q) use ($divisionIds, $user) {
-        $q->whereHas('board.campaign.members', function (Builder $memberQuery) use ($user) {
-            $memberQuery->whereKey($user->id);
-        })->orWhereHas('assignees.divisions', function (Builder $qq) use ($divisionIds) {
-            $qq->whereIn('divisions.id', $divisionIds);
-        })->orWhereHas('board.campaign.workspace', function (Builder $qqq) use ($divisionIds) {
-            $qqq->whereIn('division_id', $divisionIds);
-        });
-    });
 }
 }

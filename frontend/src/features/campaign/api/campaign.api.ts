@@ -61,9 +61,13 @@ export const getUsers = async () => {
   return res.data.data
 }
 
-export const searchUsers = async (query: string) => {
-
-  const res = await api.get(`/users/mentionable?search=${query}`)
+export const searchUsers = async (query: string, collaboratorOnly = false) => {
+  const res = await api.get('/users/mentionable', {
+    params: {
+      search: query,
+      collaborator: collaboratorOnly ? 1 : undefined,
+    },
+  })
 
   return res.data.data
 }

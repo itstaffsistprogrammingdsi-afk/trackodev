@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Bell,
   CheckCheck,
+  ExternalLink,
   Inbox,
   Loader2,
 } from "lucide-react";
@@ -11,7 +12,12 @@ import { useNavigate } from "react-router";
 import {
   getNotifications,
   markAllNotificationsRead,
+  markNotificationRead,
 } from "@/features/notification/api/notification.api";
+import {
+  getNotificationTargetPath,
+  type AppNotification,
+} from "@/features/notification/types";
 import { useAuth } from "@/context/AuthContext";
 import { acquireEcho, releaseEcho } from "@/lib/echo";
 import { REALTIME_DATA_CHANGED_EVENT } from "@/lib/realtimeEvents";
@@ -20,20 +26,12 @@ import {
   showNativeNotification,
 } from "@/lib/mobileApp";
 
-interface Notification {
-  id: string;
-  title: string;
-  body: string;
-  is_read: boolean;
-  created_at: string;
-}
-
 export default function NotificationBell() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState<
-    Notification[]
+    AppNotification[]
   >([]);
 
   const [loading, setLoading] = useState(true);
@@ -45,7 +43,7 @@ export default function NotificationBell() {
   const panelRef =
     useRef<HTMLDivElement>(null);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -58,11 +56,11 @@ export default function NotificationBell() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadNotifications();
-  }, []);
+  }, [loadNotifications]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -79,7 +77,7 @@ export default function NotificationBell() {
 
     echo.private(channelName).listen(
       ".notification.created",
-      (event: { notification: Notification }) => {
+      (event: { notification: AppNotification }) => {
         const incoming = event.notification;
 
         setNotifications((current) => [
@@ -98,7 +96,7 @@ export default function NotificationBell() {
       echo.leave(channelName);
       releaseEcho(echo);
     };
-  }, [user?.id]);
+  }, [loadNotifications, user?.id]);
 
   useEffect(() => {
     let refreshTimer: number | undefined;
@@ -122,7 +120,7 @@ export default function NotificationBell() {
         refreshAfterApplicationChange,
       );
     };
-  }, []);
+  }, [loadNotifications]);
 
   useEffect(() => {
     const refreshWhenVisible = () => {
@@ -138,7 +136,7 @@ export default function NotificationBell() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener(APP_RESUMED_EVENT, loadNotifications);
     };
-  }, []);
+  }, [loadNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (
@@ -221,6 +219,23 @@ export default function NotificationBell() {
       }
     };
 
+  const handleOpenNotification = (notification: AppNotification) => {
+    const target = getNotificationTargetPath(notification) ?? "/notifications";
+
+    setOpen(false);
+
+    if (!notification.is_read) {
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notification.id ? { ...item, is_read: true } : item,
+        ),
+      );
+      void markNotificationRead(notification.id).catch(() => loadNotifications());
+    }
+
+    navigate(target);
+  };
+
   return (
     <div
       ref={dropdownRef}
@@ -228,6 +243,9 @@ export default function NotificationBell() {
     >
       {/* Bell */}
       <button
+        type="button"
+        aria-label={`Notifikasi, ${unreadCount} belum dibaca`}
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="relative flex items-center justify-center w-11 h-11 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-800"
       >
@@ -258,6 +276,8 @@ export default function NotificationBell() {
         createPortal(
         <div
           ref={panelRef}
+          role="dialog"
+          aria-label="Daftar notifikasi"
           className="fixed inset-x-0 bottom-0 z-[100] flex max-h-[min(80dvh,34rem)] w-auto flex-col overflow-hidden rounded-t-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-20 sm:w-[26.25rem] sm:rounded-2xl"
         >
           {/* Header */}
@@ -322,6 +342,9 @@ export default function NotificationBell() {
                     key={
                       notification.id
                     }
+                    type="button"
+                    onClick={() => handleOpenNotification(notification)}
+                    aria-label={`${notification.title}. ${notification.action_label ?? "Buka notifikasi"}`}
                     className={`w-full border-b border-gray-100 px-4 py-4 text-left transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800 sm:px-5 ${
                       !notification.is_read
                         ? "bg-indigo-50/60 dark:bg-indigo-900/10"
@@ -353,6 +376,13 @@ export default function NotificationBell() {
                             notification.body
                           }
                         </p>
+
+                        {notification.action_url ? (
+                          <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                            {notification.action_label ?? "Buka card"}
+                            <ExternalLink size={12} aria-hidden="true" />
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </button>

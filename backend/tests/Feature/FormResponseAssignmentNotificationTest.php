@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Events\NotificationCreated;
+use App\Http\Resources\NotificationResource;
 use App\Jobs\SendCardAssignedEmailJob;
 use App\Models\Board;
 use App\Models\Campaign;
 use App\Models\Division;
 use App\Models\Form;
 use App\Models\FormSubmission;
+use App\Models\Notification;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -100,8 +102,28 @@ class FormResponseAssignmentNotificationTest extends TestCase
         $this->assertDatabaseHas('notifications', [
             'user_id' => $designer->id,
             'type' => 'task_assigned',
-            'title' => 'Task Assigned',
+            'title' => 'Tugas Baru',
             'is_read' => false,
         ]);
+
+        $notification = Notification::query()
+            ->where('user_id', $designer->id)
+            ->where('type', 'task_assigned')
+            ->firstOrFail();
+        $expectedUrl = "/workspaces/{$workspace->id}/campaigns/{$campaign->id}/boards?card={$assignment->card_id}";
+
+        $this->assertSame($workspace->id, $notification->data['workspace_id']);
+        $this->assertSame($expectedUrl, $notification->action_url);
+        $this->assertSame(
+            $expectedUrl,
+            (new NotificationResource($notification))->resolve()['action_url']
+        );
+
+        // Notifikasi lama yang belum menyimpan workspace_id tetap clickable.
+        $legacyData = $notification->data;
+        unset($legacyData['workspace_id']);
+        $notification->update(['data' => $legacyData]);
+
+        $this->assertSame($expectedUrl, $notification->refresh()->action_url);
     }
 }
