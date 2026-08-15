@@ -24,11 +24,7 @@ class UserController extends Controller
         Request $request
     ): JsonResponse {
 
-        abort_unless(
-            $request->user()->can('user.view'),
-            403,
-            'Unauthorized'
-        );
+        $this->authorizeUserManagement($request);
 
         // ============================================
         // QUERY
@@ -256,11 +252,7 @@ class UserController extends Controller
         Request $request
     ): JsonResponse {
 
-        abort_unless(
-            $request->user()->can('user.create'),
-            403,
-            'Unauthorized'
-        );
+        $this->authorizeUserManagement($request);
 
         $validated = $request->validate([
 
@@ -289,6 +281,11 @@ class UserController extends Controller
 
             'role' => [
                 'required',
+                Rule::in([
+                    User::ROLE_SUPER_ADMIN,
+                    User::ROLE_ADMIN,
+                    User::ROLE_USER,
+                ]),
                 'exists:roles,name',
             ],
         ]);
@@ -354,11 +351,7 @@ class UserController extends Controller
         User $user
     ): JsonResponse {
 
-        abort_unless(
-            $request->user()->can('user.view'),
-            403,
-            'Unauthorized'
-        );
+        $this->authorizeUserManagement($request);
 
         $user->load([
             'roles',
@@ -400,15 +393,15 @@ class UserController extends Controller
         Request $request,
         User $user
     ): JsonResponse {
+        $this->authorizeUserManagement($request);
 
-        $isSelf =
-            $request->user()->id === $user->id;
-
-        abort_unless(
-            $request->user()->can('user.update')
-                || $isSelf,
-            403,
-            'Unauthorized'
+        // Endpoint ini khusus User Management. Perubahan profil akun sendiri
+        // harus melalui /api/auth/profile agar field sensitif seperti role
+        // tidak dapat disisipkan lewat request langsung.
+        abort_if(
+            $request->filled('role') && $request->user()->is($user),
+            422,
+            'Super Admin tidak dapat mengubah role akun sendiri.'
         );
 
         $validated = $request->validate([
@@ -432,6 +425,11 @@ class UserController extends Controller
 
             'role' => [
                 'sometimes',
+                Rule::in([
+                    User::ROLE_SUPER_ADMIN,
+                    User::ROLE_ADMIN,
+                    User::ROLE_USER,
+                ]),
                 'exists:roles,name',
             ],
         ]);
@@ -459,6 +457,13 @@ class UserController extends Controller
         if (
             isset($validated['role'])
         ) {
+            abort_if(
+                $user->isSuperAdmin()
+                    && $validated['role'] !== User::ROLE_SUPER_ADMIN
+                    && $this->superAdminCount() <= 1,
+                422,
+                'Super Admin terakhir tidak dapat diturunkan rolenya.'
+            );
 
             $user->syncRoles([
                 $validated['role'],
@@ -500,11 +505,7 @@ class UserController extends Controller
         User $user
     ): JsonResponse {
 
-        abort_unless(
-            $request->user()->can('user.delete'),
-            403,
-            'Unauthorized'
-        );
+        $this->authorizeUserManagement($request);
 
         // ============================================
         // PREVENT SELF DELETE
@@ -520,6 +521,13 @@ class UserController extends Controller
 
             ], 422);
         }
+
+        abort_if(
+            $user->isSuperAdmin()
+                && $this->superAdminCount() <= 1,
+            422,
+            'Super Admin terakhir tidak dapat dihapus.'
+        );
 
         // ============================================
         // REMOVE RELATIONS
@@ -562,22 +570,45 @@ class UserController extends Controller
     ): void {
         /** @var User $actor */
         $actor = $request->user();
-        $permission = 'user.permissions.'.$action;
+        $this->authorizeUserManagement($request);
 
-        abort_unless(
-            $actor->can($permission) || $actor->can('user.update'),
-            403,
-            $action === 'view'
-                ? 'Anda tidak memiliki izin untuk melihat akses user.'
-                : 'Anda tidak memiliki izin untuk mengatur akses user.'
+        abort_if(
+            $actor->is($target),
+            422,
+            'Super Admin tidak dapat mengubah akses tambahan akun sendiri.'
         );
+    }
 
-        if (
-            ! $actor->isSuperAdmin()
-            && ($actor->is($target) || $target->isAdmin() || $target->isSuperAdmin())
-        ) {
-            abort(403, 'Hanya super admin yang dapat mengatur akses user ini.');
-        }
+    private function authorizeUserManagement(Request $request): void
+    {
+        abort_unless(
+            $request->user()?->isSuperAdmin(),
+            403,
+            'Hanya Super Admin yang dapat mengakses User Management.'
+        );
+    }
+
+    private function superAdminCount(): int
+    {
+        return User::query()
+            ->whereHas('roles', fn ($query) => $query
+                ->where('roles.name', User::ROLE_SUPER_ADMIN)
+                ->where('roles.guard_name', 'web'))
+            ->count();
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        $this->authorizeUserManagement($request);
+
+        return response()->json([
+            'data' => [
+                'total_users' => User::count(),
+                'total_super_admin' => User::query()->whereHas('roles', fn ($query) => $query->where('roles.name', User::ROLE_SUPER_ADMIN))->count(),
+                'total_admin' => User::query()->whereHas('roles', fn ($query) => $query->where('roles.name', User::ROLE_ADMIN))->count(),
+                'total_user' => User::query()->whereHas('roles', fn ($query) => $query->where('roles.name', User::ROLE_USER))->count(),
+            ],
+        ]);
     }
 
     private function manageablePermissions(User $actor)
@@ -741,6 +772,49 @@ class UserController extends Controller
                 'collaborator_label' => $candidate->isSuperAdmin()
                     ? 'Super Admin'
                     : ($candidate->isAdmin() ? 'Admin Divisi' : 'Koordinator Divisi'),
+            ]),
+        ]);
+    }
+
+    public function assignmentCandidates(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'division_id' => ['nullable', 'uuid', 'exists:divisions,id'],
+        ]);
+
+        $actor = $request->user();
+        $query = User::query()
+            ->select(['id', 'name', 'email', 'avatar'])
+            ->with(['roles', 'divisions:id,name']);
+
+        if (! empty($validated['search'])) {
+            $search = $validated['search'];
+            $query->where(function ($candidateQuery) use ($search) {
+                $candidateQuery
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if (! empty($validated['division_id'])) {
+            $divisionId = $validated['division_id'];
+            $query->whereHas('divisions', fn ($divisionQuery) => $divisionQuery
+                ->where('divisions.id', $divisionId));
+        }
+
+        $users = $query->orderBy('name')->limit(100)->get()
+            ->filter(fn (User $candidate) => $actor->canCoordinateAssignmentTo($candidate))
+            ->values();
+
+        return response()->json([
+            'data' => $users->map(fn (User $candidate) => [
+                'id' => $candidate->id,
+                'name' => $candidate->name,
+                'email' => $candidate->email,
+                'avatar' => $candidate->avatar ? asset('storage/'.$candidate->avatar) : null,
+                'roles' => $candidate->getRoleNames()->values(),
+                'division_names' => $candidate->divisions->pluck('name')->values(),
             ]),
         ]);
     }

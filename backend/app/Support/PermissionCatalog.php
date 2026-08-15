@@ -271,6 +271,13 @@ final class PermissionCatalog
     public static function adminPermissions(): array
     {
         return array_values(array_diff(self::names(), [
+            'user.view',
+            'user.create',
+            'user.update',
+            'user.delete',
+            'user.stats.view',
+            'user.permissions.view',
+            'user.permissions.update',
             'division.create',
             'division.update',
             'division.delete',
@@ -285,7 +292,6 @@ final class PermissionCatalog
     public static function userPermissions(): array
     {
         return [
-            'user.view',
             'user.mention',
             'division.view',
             'division.member.view',

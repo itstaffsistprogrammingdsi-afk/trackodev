@@ -57,7 +57,7 @@ export const removeMember = async (campaignId: string, userId: string) => {
 }
 
 export const getUsers = async () => {
-  const res = await api.get("/users") // pastikan endpoint ada
+  const res = await api.get("/users/assignment-candidates")
   return res.data.data
 }
 

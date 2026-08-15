@@ -145,13 +145,11 @@ export async function searchDesigners(
   q: string,
   divisionId?: string
 ) {
-  const res = await api.get("/users", {
+  const res = await api.get("/users/assignment-candidates", {
     params: {
       search: q,
       division_id: divisionId,
 
-      // IMPORTANT
-      assign: true,
     },
   });
 
