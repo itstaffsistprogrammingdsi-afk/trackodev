@@ -55,6 +55,8 @@ class SystemNegativeFlowTest extends TestCase
         $publicUris = [
             'api/ping',
             'api/auth/login',
+            'api/auth/forgot-password',
+            'api/auth/reset-password',
             'api/public/forms',
             'api/public/forms/{slug}',
             'api/public/forms/{slug}/submit',

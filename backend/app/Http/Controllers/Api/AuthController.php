@@ -6,14 +6,64 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\ImpersonationLog;
 use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        // Selalu kembalikan respons yang sama agar endpoint ini tidak dapat
+        // dipakai untuk menebak email mana yang terdaftar di Tracko.
+        Password::sendResetLink(['email' => $validated['email']]);
+
+        return response()->json([
+            'message' => 'Jika email terdaftar, tautan reset password telah dikirim.',
+        ]);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $status = Password::reset(
+            $validated,
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                $user->tokens()->delete();
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'email' => [__($status)],
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Password berhasil direset. Silakan masuk dengan password baru.',
+        ]);
+    }
+
     public function login(Request $request): JsonResponse
     {
         $request->validate([

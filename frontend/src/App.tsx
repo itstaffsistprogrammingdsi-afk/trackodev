@@ -12,6 +12,8 @@ import { getLastAppRoute, LAST_APP_ROUTE_KEY } from "@/lib/mobileApp";
 
 const SignIn = lazy(() => import("./pages/AuthPages/SignIn"));
 const SignUp = lazy(() => import("./pages/AuthPages/SignUp"));
+const ForgotPassword = lazy(() => import("./pages/AuthPages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/AuthPages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
 const UserProfiles = lazy(() => import("./pages/UserProfiles"));
 const Videos = lazy(() => import("./pages/UiElements/Videos"));
@@ -127,6 +129,8 @@ export default function App() {
         {/* ================= AUTH ================= */}
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* ================= PROTECTED ================= */}
         <Route element={
