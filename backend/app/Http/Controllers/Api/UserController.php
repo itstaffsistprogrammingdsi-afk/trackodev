@@ -496,6 +496,41 @@ class UserController extends Controller
         ]);
     }
 
+    public function resetPassword(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeUserManagement($request);
+
+        abort_if(
+            $request->user()->is($user),
+            422,
+            'Gunakan menu akun untuk mengubah password Anda sendiri.'
+        );
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+        ])->save();
+
+        // Password baru harus memutus seluruh sesi lama milik target.
+        $user->tokens()->delete();
+
+        ActivityLogService::log(
+            $request->user(),
+            'user',
+            (string) $user->id,
+            'password_reset',
+            "Mereset password user '{$user->name}'",
+            ['target_email' => $user->email]
+        );
+
+        return response()->json([
+            'message' => 'Password user berhasil ditetapkan ulang. Semua sesi lama telah dicabut.',
+        ]);
+    }
+
     // ============================================
     // DELETE USER
     // ============================================

@@ -23,6 +23,10 @@ import {
   Crown,
   ShieldCheck,
   KeyRound,
+  Eye,
+  EyeOff,
+  Copy,
+  RefreshCw,
 } from "lucide-react";
 
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
@@ -160,6 +164,33 @@ const getUserRole = (
   return "user";
 };
 
+const generateTemporaryPassword = (): string => {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const numbers = "23456789";
+  const symbols = "!@#$%";
+  const all = upper + lower + numbers + symbols;
+  const randomIndex = (length: number): number => {
+    const value = new Uint32Array(1);
+    crypto.getRandomValues(value);
+    return value[0] % length;
+  };
+  const password = [
+    upper[randomIndex(upper.length)],
+    lower[randomIndex(lower.length)],
+    numbers[randomIndex(numbers.length)],
+    symbols[randomIndex(symbols.length)],
+  ];
+  while (password.length < 14) password.push(all[randomIndex(all.length)]);
+
+  for (let index = password.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomIndex(index + 1);
+    [password[index], password[swapIndex]] = [password[swapIndex], password[index]];
+  }
+
+  return password.join("");
+};
+
 // ============================================
 // COMPONENT
 // ============================================
@@ -228,6 +259,15 @@ export default function UserProfiles() {
 
   const [password, setPassword] =
     useState("");
+
+  const [passwordConfirmation, setPasswordConfirmation] =
+    useState("");
+
+  const [showManagedPassword, setShowManagedPassword] =
+    useState(false);
+
+  const [passwordCopied, setPasswordCopied] =
+    useState(false);
 
   const [role, setRole] =
     useState<RoleType>("user");
@@ -337,6 +377,9 @@ export default function UserProfiles() {
     setEmail("");
     setPhone("");
     setPassword("");
+    setPasswordConfirmation("");
+    setShowManagedPassword(false);
+    setPasswordCopied(false);
     setRole("user");
   };
 
@@ -345,6 +388,16 @@ export default function UserProfiles() {
   // ============================================
 
   const handleSubmit = async () => {
+    if (!editingId && password.length < 8) {
+      alert("Password user baru minimal 8 karakter.");
+      return;
+    }
+
+    if (password && password !== passwordConfirmation) {
+      alert("Konfirmasi password belum sama.");
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -353,9 +406,6 @@ export default function UserProfiles() {
         email,
         phone,
         role,
-        ...(password
-          ? { password }
-          : {}),
       };
 
       if (editingId) {
@@ -363,6 +413,13 @@ export default function UserProfiles() {
           `/users/${editingId}`,
           payload
         );
+
+        if (password) {
+          await api.put(`/users/${editingId}/password`, {
+            password,
+            password_confirmation: passwordConfirmation,
+          });
+        }
       } else {
         await api.post("/users", {
           ...payload,
@@ -403,6 +460,23 @@ export default function UserProfiles() {
     );
 
     setPassword("");
+    setPasswordConfirmation("");
+    setShowManagedPassword(false);
+    setPasswordCopied(false);
+  };
+
+  const handleGeneratePassword = () => {
+    const generated = generateTemporaryPassword();
+    setPassword(generated);
+    setPasswordConfirmation(generated);
+    setShowManagedPassword(true);
+    setPasswordCopied(false);
+  };
+
+  const handleCopyPassword = async () => {
+    if (!password) return;
+    await navigator.clipboard.writeText(password);
+    setPasswordCopied(true);
   };
 
   // ============================================
@@ -614,7 +688,7 @@ export default function UserProfiles() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Nama
@@ -652,23 +726,48 @@ export default function UserProfiles() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Password
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {editingId ? "Password baru (reset)" : "Password awal"}
+              </label>
+              <button type="button" onClick={handleGeneratePassword} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">
+                <RefreshCw size={13} /> Buat otomatis
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type={showManagedPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordCopied(false);
+                }}
+                autoComplete="new-password"
+                placeholder={editingId ? "Kosongkan jika tidak direset" : "Minimal 8 karakter"}
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 pr-20 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
+              />
+              <div className="absolute right-1 top-1/2 flex -translate-y-1/2">
+                <button type="button" onClick={() => setShowManagedPassword((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-white hover:text-gray-700 dark:hover:bg-gray-800" aria-label={showManagedPassword ? "Sembunyikan password baru" : "Tampilkan password baru"}>
+                  {showManagedPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+                <button type="button" onClick={handleCopyPassword} disabled={!password} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-white hover:text-gray-700 disabled:opacity-30 dark:hover:bg-gray-800" aria-label="Salin password baru">
+                  <Copy size={17} />
+                </button>
+              </div>
+            </div>
+            <p className="text-[11px] leading-5 text-gray-500">
+              {passwordCopied ? "Password baru telah disalin." : "Password lama terenkripsi dan tidak dapat dilihat. Super admin hanya dapat menetapkan password baru."}
+            </p>
+          </div>
 
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Konfirmasi password</label>
             <input
-              type="password"
-              value={password}
-              onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
-              }
-              placeholder={
-                editingId
-                  ? "Kosongkan jika tidak diubah"
-                  : "Masukkan password"
-              }
+              type={showManagedPassword ? "text" : "password"}
+              value={passwordConfirmation}
+              onChange={(e) => setPasswordConfirmation(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Ulangi password baru"
               className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
             />
           </div>

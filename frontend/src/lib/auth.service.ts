@@ -34,6 +34,21 @@ export const login = async (
   return { user, token };
 };
 
+export const requestPasswordReset = async (email: string): Promise<string> => {
+  const res = await api.post("/auth/forgot-password", { email });
+  return res.data?.message;
+};
+
+export const resetPassword = async (payload: {
+  token: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<string> => {
+  const res = await api.post("/auth/reset-password", payload);
+  return res.data?.message;
+};
+
 // ====== GET USER LOGIN ======
 export const getMe = async (): Promise<User> => {
   const res = await api.get("/auth/me");

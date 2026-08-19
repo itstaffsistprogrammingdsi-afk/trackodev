@@ -80,6 +80,16 @@ Route::prefix('auth')->group(function () {
         [AuthController::class, 'login']
     )->middleware('throttle:10,1');
 
+    Route::post(
+        '/forgot-password',
+        [AuthController::class, 'forgotPassword']
+    )->middleware('throttle:5,1');
+
+    Route::post(
+        '/reset-password',
+        [AuthController::class, 'resetPassword']
+    )->middleware('throttle:5,1');
+
     Route::middleware('auth:sanctum')->group(function () {
 
         Route::post(
@@ -134,6 +144,7 @@ Route::middleware([
         ->middleware('permission:user.permissions.view|user.update');
     Route::put('users/{user}/permissions', [UserController::class, 'updatePermissions'])
         ->middleware('permission:user.permissions.update|user.update');
+    Route::put('users/{user}/password', [UserController::class, 'resetPassword']);
 
     Route::apiResource(
         'users',

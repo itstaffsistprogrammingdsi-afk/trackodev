@@ -1,6 +1,5 @@
 import { Capacitor } from "@capacitor/core";
 
-const MOBILE_API_URL_KEY = "tracko_mobile_api_url";
 const DEFAULT_MOBILE_API_URL = "https://dev.tracko.dsicorp.id/api";
 
 export type NativePlatform = "android" | "ios";
@@ -41,12 +40,6 @@ export const normalizeApiUrl = (value: string): string => {
 
 export const getApiBaseUrl = (): string => {
   if (isMobileApp()) {
-    const savedUrl = localStorage.getItem(MOBILE_API_URL_KEY);
-
-    if (savedUrl) {
-      return normalizeApiUrl(savedUrl);
-    }
-
     return normalizeApiUrl(
       import.meta.env.VITE_API_URL || DEFAULT_MOBILE_API_URL,
     );
@@ -54,12 +47,3 @@ export const getApiBaseUrl = (): string => {
 
   return import.meta.env.VITE_API_URL || "/api";
 };
-
-export const saveMobileApiUrl = (value: string): string => {
-  const normalizedUrl = normalizeApiUrl(value);
-  localStorage.setItem(MOBILE_API_URL_KEY, normalizedUrl);
-  return normalizedUrl;
-};
-
-export const getMobileApiUrl = (): string =>
-  isMobileApp() ? getApiBaseUrl() : "";
