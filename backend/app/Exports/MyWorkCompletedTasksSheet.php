@@ -2,14 +2,17 @@
 
 namespace App\Exports;
 
+use App\Services\ReportWatermarkService;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class MyWorkCompletedTasksSheet implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
+class MyWorkCompletedTasksSheet implements FromCollection, WithEvents, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     public function __construct(protected $completedTasks)
     {
@@ -51,6 +54,14 @@ class MyWorkCompletedTasksSheet implements FromCollection, WithHeadings, WithMap
     {
         return [
             1 => ['font' => ['bold' => true]],
+        ];
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => fn (AfterSheet $event) => app(ReportWatermarkService::class)
+                ->applyToWorksheet($event->sheet->getDelegate()),
         ];
     }
 }

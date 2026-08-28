@@ -22,6 +22,8 @@ export default function PermissionRoute({
     hasRole,
   } = useAuth();
 
+  const fallbackPath = can("dashboard.view") ? "/dashboard" : "/my-work";
+
   // tunggu proses getMe selesai
   if (loading) {
     return <div>Loading...</div>;
@@ -41,7 +43,7 @@ export default function PermissionRoute({
   if (role && !hasRole(role)) {
     return (
       <Navigate
-        to="/"
+        to={fallbackPath}
         replace
       />
     );
@@ -54,7 +56,7 @@ export default function PermissionRoute({
   ) {
     return (
       <Navigate
-        to="/"
+        to={fallbackPath}
         replace
       />
     );

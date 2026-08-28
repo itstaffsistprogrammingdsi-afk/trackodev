@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Services\ActivityLogService;
 use App\Support\PermissionCatalog;
@@ -364,6 +365,75 @@ class UserController extends Controller
         ]);
     }
 
+    public function details(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeUserManagement($request);
+
+        $passwordActions = [
+            'password_changed',
+            'password_recovery',
+            'password_reset',
+        ];
+
+        $passwordQuery = ActivityLog::query()
+            ->where('entity_type', 'user')
+            ->where('entity_id', $user->id)
+            ->whereIn('action', $passwordActions);
+
+        $passwordHistory = (clone $passwordQuery)
+            ->with('user:id,name,email')
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        $downloadQuery = ActivityLog::query()
+            ->where('user_id', $user->id)
+            ->where('action', 'report_downloaded');
+
+        $recentDownloads = (clone $downloadQuery)
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        $user->load('roles');
+
+        return response()->json([
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->getRoleNames()->values(),
+                    'created_at' => $user->created_at?->toIso8601String(),
+                ],
+                'stats' => [
+                    'report_downloads' => (clone $downloadQuery)->count(),
+                    'password_changes' => (clone $passwordQuery)->count(),
+                    'last_password_changed_at' => $passwordHistory->first()?->created_at?->toIso8601String(),
+                ],
+                'password_history' => $passwordHistory->map(fn (ActivityLog $log) => [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'description' => $log->description,
+                    'method' => $log->meta['method'] ?? null,
+                    'performed_by' => $log->user ? [
+                        'id' => $log->user->id,
+                        'name' => $log->user->name,
+                        'email' => $log->user->email,
+                    ] : null,
+                    'created_at' => $log->created_at?->toIso8601String(),
+                ])->values(),
+                'recent_report_downloads' => $recentDownloads->map(fn (ActivityLog $log) => [
+                    'id' => $log->id,
+                    'source' => $log->meta['source'] ?? 'report',
+                    'format' => $log->meta['format'] ?? null,
+                    'period_type' => $log->meta['period_type'] ?? null,
+                    'created_at' => $log->created_at?->toIso8601String(),
+                ])->values(),
+            ],
+        ]);
+    }
+
     public function permissions(Request $request, User $user): JsonResponse
     {
         $this->authorizePermissionManagement($request, $user, 'view');
@@ -523,7 +593,10 @@ class UserController extends Controller
             (string) $user->id,
             'password_reset',
             "Mereset password user '{$user->name}'",
-            ['target_email' => $user->email]
+            [
+                'target_email' => $user->email,
+                'method' => 'admin_reset',
+            ]
         );
 
         return response()->json([

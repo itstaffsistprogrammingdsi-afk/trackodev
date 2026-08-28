@@ -2,112 +2,50 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\HrisUser;
 use App\Services\HrisSyncService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Console\Command;
 use Throwable;
 
 class SyncHrisUsers extends Command
 {
-    protected $signature = 'app:sync-hris-users {--full : Perform full sync}';
-    protected $description = 'Sync users from HRIS to PM';
+    protected $signature = 'app:sync-hris-users
+        {--full : Opsi kompatibilitas; API selalu mengirim daftar karyawan lengkap}';
 
-    public function handle()
+    protected $description = 'Mengambil nama dan email karyawan dari API HRIS ke Tracko';
+
+    public function handle(HrisSyncService $service): int
     {
-        $service = app(HrisSyncService::class);
+        $this->info('Mengambil data karyawan dari HRIS...');
 
-        // =========================
-        // 🔥 FULL SYNC
-        // =========================
-        if ($this->option('full')) {
-            $this->info('🚀 Mode FULL SYNC');
+        try {
+            $stats = $service->sync();
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->error('Sinkronisasi HRIS gagal: '.$exception->getMessage());
 
-            $total = HrisUser::count();
-            $this->info("Total data: $total");
-
-            $this->output->progressStart($total);
-
-            $success = 0;
-            $failed = 0;
-
-            HrisUser::chunk(100, function ($users) use ($service, &$success, &$failed) {
-                foreach ($users as $hris) {
-                    try {
-                        $service->syncToPM($hris);
-                        $success++;
-                    } catch (Throwable $e) {
-                        $failed++;
-                        Log::error('SYNC ERROR (FULL)', [
-                            'hris_id' => $hris->id,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-
-                    $this->output->progressAdvance();
-                }
-            });
-
-            $this->output->progressFinish();
-
-            $this->newLine(2);
-            $this->info("✅ Full sync selesai");
-            $this->info("✔ Success: $success");
-            $this->error("❌ Failed: $failed");
-
-            return;
+            return self::FAILURE;
         }
 
-        // =========================
-        // ⚡ INCREMENTAL SYNC
-        // =========================
-        $lastSync = cache('hris_last_sync', now()->subDay());
+        $this->table(
+            ['Diterima', 'Dibuat', 'Diperbarui', 'Tetap', 'Dilewati', 'Gagal'],
+            [[
+                $stats['received'],
+                $stats['created'],
+                $stats['updated'],
+                $stats['unchanged'],
+                $stats['skipped'],
+                $stats['failed'],
+            ]],
+        );
 
-        $this->info('⚡ Mode INCREMENTAL');
-        $this->info('Last Sync: ' . $lastSync);
+        if ($stats['failed'] > 0) {
+            $this->warn('Sinkronisasi selesai dengan sebagian data gagal. Periksa log aplikasi.');
 
-        $query = HrisUser::where('updated_at', '>', $lastSync);
-
-        $count = $query->count();
-
-        if ($count === 0) {
-            $this->warn('⚠ Tidak ada data berubah');
-            return;
+            return self::FAILURE;
         }
 
-        $this->info("Data berubah: $count");
+        $this->info('Sinkronisasi HRIS selesai.');
 
-        $this->output->progressStart($count);
-
-        $success = 0;
-        $failed = 0;
-
-        $query->orderBy('updated_at')
-            ->chunk(100, function ($users) use ($service, &$success, &$failed) {
-                foreach ($users as $hris) {
-                    try {
-                        $service->syncToPM($hris);
-                        $success++;
-                    } catch (Throwable $e) {
-                        $failed++;
-                        Log::error('SYNC ERROR (INCREMENTAL)', [
-                            'hris_id' => $hris->id,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-
-                    $this->output->progressAdvance();
-                }
-            });
-
-        // update last sync
-        cache(['hris_last_sync' => now()]);
-
-        $this->output->progressFinish();
-
-        $this->newLine(2);
-        $this->info("✅ Incremental sync selesai");
-        $this->info("✔ Success: $success");
-        $this->error("❌ Failed: $failed");
+        return self::SUCCESS;
     }
 }

@@ -66,12 +66,15 @@ export const getMe = async (): Promise<User> => {
 // ====== LOGOUT ======
 export const logout = async (): Promise<void> => {
   try {
-    await api.post("/auth/logout");
+    // Jangan biarkan UI tertahan tanpa batas bila API sedang lambat/tidak tersedia.
+    await api.post("/auth/logout", undefined, { timeout: 5000 });
   } catch {
     console.warn("Logout API gagal, lanjut hapus token lokal");
+  } finally {
+    // Sesi lokal harus selalu dibersihkan, termasuk sisa sesi impersonation.
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("impersonated_by");
   }
-
-  // bersihkan semua auth state
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
 };

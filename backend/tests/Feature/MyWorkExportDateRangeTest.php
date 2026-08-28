@@ -104,7 +104,7 @@ class MyWorkExportDateRangeTest extends TestCase
 
     public function test_excel_and_pdf_exports_are_downloadable(): void
     {
-        $this->actingAsWithPermission('my_work.export');
+        $user = $this->actingAsWithPermission('my_work.export');
 
         foreach (['xlsx', 'pdf'] as $format) {
             $response = $this
@@ -134,6 +134,13 @@ class MyWorkExportDateRangeTest extends TestCase
                 (string) $response->headers->get('content-disposition')
             );
         }
+
+        $this->assertSame(
+            2,
+            ActivityLog::where('user_id', $user->id)
+                ->where('action', 'report_downloaded')
+                ->count()
+        );
     }
 
 

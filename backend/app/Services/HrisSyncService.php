@@ -2,120 +2,198 @@
 
 namespace App\Services;
 
+use App\Events\ApplicationDataChanged;
 use App\Models\User;
-use App\Models\HrisUser;
+use Carbon\Carbon;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
+use UnexpectedValueException;
 
 class HrisSyncService
 {
-    public function syncToPM(HrisUser $hris)
+    /**
+     * Import active HRIS employees into Tracko.
+     *
+     * Only the remote id, name, email, and update timestamp are persisted.
+     * A local password is assigned only when an account is first created.
+     */
+    public function sync(): array
     {
-        $pm = User::where(
-            'hris_id',
-            $hris->id
-        )->first();
+        $this->ensureConfigured();
 
-        // =====================================
-        // CREATE USER
-        // =====================================
+        $employees = $this->fetchEmployees();
+        $stats = [
+            'received' => count($employees),
+            'created' => 0,
+            'updated' => 0,
+            'unchanged' => 0,
+            'skipped' => 0,
+            'failed' => 0,
+        ];
 
-        if (!$pm) {
+        foreach ($employees as $employee) {
+            if (! is_array($employee) || ! $this->isImportable($employee)) {
+                $stats['skipped']++;
 
-            $user = User::create([
-
-                'hris_id' => $hris->id,
-
-                'name' => $hris->name,
-
-                'email' => $hris->email,
-
-                'password' => $hris->password,
-
-                'avatar' => $hris->avatar,
-
-                'role' => 'user',
-
-                'hris_updated_at' => $hris->updated_at,
-            ]);
-
-            // =====================================
-            // SPATIE ROLE SAFE
-            // =====================================
-
-            // ADDED
-            // supaya tidak bikin sync gagal
-            try {
-
-                if (method_exists($user, 'assignRole')) {
-
-                    $user->assignRole('user');
-
-                }
-
-            } catch (\Exception $e) {
-
-                // skip kalau role belum siap
-                logger()->warning($e->getMessage());
-
+                continue;
             }
 
-            return $user;
+            try {
+                $result = $this->syncEmployee($employee);
+                $stats[$result]++;
+            } catch (Throwable $exception) {
+                $stats['failed']++;
+
+                Log::error('HRIS employee sync failed.', [
+                    'hris_id' => $employee['id'] ?? null,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
-        // =====================================
-        // SKIP JIKA TIDAK BERUBAH
-        // =====================================
+        if ($stats['created'] + $stats['updated'] > 0) {
+            ApplicationDataChanged::dispatch(new User, 'synced');
+        }
+
+        return $stats;
+    }
+
+    private function fetchEmployees(): array
+    {
+        $response = $this->httpClient()
+            ->get((string) config('services.hris.employees_url'))
+            ->throw();
+
+        $payload = $response->json();
 
         if (
-            $pm->hris_updated_at ==
-            $hris->updated_at
+            ! is_array($payload)
+            || ($payload['success'] ?? false) !== true
+            || ! is_array($payload['data'] ?? null)
         ) {
-            return $pm;
+            throw new UnexpectedValueException('Format respons API HRIS tidak sesuai.');
         }
 
-        // =====================================
-        // UPDATE USER
-        // =====================================
+        return $payload['data'];
+    }
 
-        $pm->updateQuietly([
+    private function httpClient(): PendingRequest
+    {
+        return Http::acceptJson()
+            ->withToken((string) config('services.hris.api_token'))
+            ->timeout((int) config('services.hris.timeout', 30))
+            ->retry(3, 500);
+    }
 
-            'name' => $hris->name,
+    private function isImportable(array $employee): bool
+    {
+        if (
+            array_key_exists('is_active', $employee)
+            && ! filter_var($employee['is_active'], FILTER_VALIDATE_BOOLEAN)
+        ) {
+            return false;
+        }
 
-            'email' => $hris->email,
+        $hrisId = $employee['id'] ?? null;
+        $name = trim((string) ($employee['name'] ?? ''));
+        $email = Str::lower(trim((string) ($employee['email'] ?? '')));
 
-            'password' => $hris->password,
+        return (is_int($hrisId) || ctype_digit((string) $hrisId))
+            && (int) $hrisId > 0
+            && $name !== ''
+            && Str::length($name) <= 255
+            && Str::length($email) <= 255
+            && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
 
-            'avatar' => $hris->avatar,
+    private function syncEmployee(array $employee): string
+    {
+        $hrisId = (int) $employee['id'];
+        $name = Str::squish((string) $employee['name']);
+        $email = Str::lower(trim((string) $employee['email']));
+        $hrisUpdatedAt = $this->parseTimestamp($employee['updated_at'] ?? null);
 
-            'hris_updated_at' => $hris->updated_at,
-        ]);
+        return DB::transaction(function () use ($hrisId, $name, $email, $hrisUpdatedAt): string {
+            $user = User::query()
+                ->where('hris_id', $hrisId)
+                ->lockForUpdate()
+                ->first();
 
-        // =====================================
-        // SYNC ROLE SAFE
-        // =====================================
-
-        // ADDED
-        try {
-
-            if (
-                method_exists($pm, 'assignRole') &&
-                !$pm->hasAnyRole([
-                    'super_admin',
-                    'admin',
-                    'user'
-                ])
-            ) {
-
-                $pm->assignRole(
-                    $pm->role ?? 'user'
-                );
+            if (! $user) {
+                $user = User::query()
+                    ->whereRaw('LOWER(email) = ?', [$email])
+                    ->lockForUpdate()
+                    ->first();
             }
 
-        } catch (\Exception $e) {
+            if (! $user) {
+                $user = User::query()->createQuietly([
+                    'hris_id' => $hrisId,
+                    'name' => $name,
+                    'email' => $email,
+                    'password' => Hash::make((string) config('services.hris.default_password')),
+                    'hris_updated_at' => $hrisUpdatedAt,
+                ]);
 
-            logger()->warning($e->getMessage());
+                // Role berasal dari default sistem Tracko, bukan dari payload HRIS.
+                // Penetapan hanya dilakukan saat akun lokal pertama kali dibuat.
+                $user->assignRole(User::ROLE_USER);
 
+                return 'created';
+            }
+
+            if ($user->hris_id !== null && (int) $user->hris_id !== $hrisId) {
+                throw new RuntimeException('Email sudah terhubung ke HRIS ID yang berbeda.');
+            }
+
+            $user->forceFill([
+                'hris_id' => $hrisId,
+                'name' => $name,
+                'email' => $email,
+                'hris_updated_at' => $hrisUpdatedAt,
+            ]);
+
+            $changed = $user->isDirty();
+
+            if ($changed) {
+                $user->saveQuietly();
+            }
+
+            return $changed ? 'updated' : 'unchanged';
+        });
+    }
+
+    private function parseTimestamp(mixed $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
         }
 
-        return $pm;
+        try {
+            return Carbon::parse($value);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function ensureConfigured(): void
+    {
+        if (blank(config('services.hris.employees_url'))) {
+            throw new RuntimeException('HRIS_EMPLOYEES_URL belum dikonfigurasi.');
+        }
+
+        if (blank(config('services.hris.api_token'))) {
+            throw new RuntimeException('HRIS_API_TOKEN belum dikonfigurasi.');
+        }
+
+        if (Str::length((string) config('services.hris.default_password')) < 8) {
+            throw new RuntimeException('HRIS_DEFAULT_PASSWORD wajib berisi minimal 8 karakter.');
+        }
     }
 }

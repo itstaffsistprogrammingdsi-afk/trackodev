@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Services\ReportWatermarkService;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -264,6 +265,8 @@ while ($row <= $lastRow) {
                 $sheet->getColumnDimension('H')->setWidth(55);
                 $sheet->getColumnDimension('I')->setWidth(16);
                 $sheet->getColumnDimension('J')->setWidth(30);
+
+                app(ReportWatermarkService::class)->applyToWorksheet($sheet->getDelegate());
             },
         ];
     }
