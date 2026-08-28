@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Services\ReportWatermarkService;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -109,6 +110,8 @@ class MyWorkAttachmentSheet implements FromCollection, WithEvents, WithHeadings,
                     $font->setUnderline(true);
                     $font->getColor()->setARGB(Color::COLOR_BLUE);
                 }
+
+                app(ReportWatermarkService::class)->applyToWorksheet($sheet);
             },
         ];
     }

@@ -12,6 +12,7 @@ use App\Models\CardAttachment;
 use App\Models\CardBriefAttachment;
 use App\Models\CardComment;
 use App\Models\Workspace;
+use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -713,9 +714,24 @@ class MyActivityController extends Controller
 
         $password = $request->input('export_password');
 
-        return $format === 'pdf'
+        $download = $format === 'pdf'
             ? $this->exportAsPdf($type, $data, $password, $encryptedExport)
             : $this->exportAsExcel($type, $data, $password, $encryptedExport);
+
+        ActivityLogService::log(
+            $request->user(),
+            'report',
+            null,
+            'report_downloaded',
+            'Mengunduh laporan My Work.',
+            [
+                'source' => 'my_work',
+                'format' => $format,
+                'period_type' => $type,
+            ],
+        );
+
+        return $download;
     }
 
     /*

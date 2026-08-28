@@ -142,6 +142,7 @@ Route::middleware([
 
     Route::get('users/{user}/permissions', [UserController::class, 'permissions'])
         ->middleware('permission:user.permissions.view|user.update');
+    Route::get('users/{user}/details', [UserController::class, 'details']);
     Route::put('users/{user}/permissions', [UserController::class, 'updatePermissions'])
         ->middleware('permission:user.permissions.update|user.update');
     Route::put('users/{user}/password', [UserController::class, 'resetPassword']);

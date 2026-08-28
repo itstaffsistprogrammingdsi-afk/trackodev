@@ -215,6 +215,8 @@
 </head>
 
 <body>
+    @include('exports.partials.ownership-watermark')
+
 
     <!-- HEADER -->
     <div class="header">
@@ -224,7 +226,7 @@
             <span>|</span>
             <span>Waktu: {{ now()->format('H:i') }}</span>
             <span>|</span>
-            <span>Total User: {{ $users->count() }}</span>
+            <span>Total User: {{ $totalUsers ?? $users->count() }}</span>
             @if(isset($workspace))
                 <span>|</span>
                 <span>Workspace: {{ $workspace->name ?? 'Semua' }}</span>

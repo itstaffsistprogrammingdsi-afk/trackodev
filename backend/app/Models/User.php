@@ -14,7 +14,6 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
@@ -52,6 +51,7 @@ class User extends Authenticatable
         'avatar',
         'phone',
         'hris_id',
+        'hris_updated_at',
     ];
 
     // ============================================
@@ -72,6 +72,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'hris_id' => 'integer',
+            'hris_updated_at' => 'datetime',
         ];
     }
 
@@ -176,18 +178,6 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    // ============================================
-    // HRIS RELATION
-    // ============================================
-
-    public function hris(): BelongsTo
-    {
-        return $this->belongsTo(
-            HrisUser::class,
-            'hris_id',
-            'id'
-        );
-    }
 
     // ============================================
     // DIVISION HELPERS

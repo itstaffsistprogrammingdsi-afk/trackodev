@@ -59,10 +59,31 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 
-✔ Full sync (ambil semua)
-php artisan app:sync-hris-users --full
-✔ Incremental (default)
+## Sinkronisasi user dari HRIS
+
+Isi konfigurasi berikut di `.env` backend. Token dan password awal tidak boleh
+disimpan di repository:
+
+```dotenv
+HRIS_EMPLOYEES_URL=https://hris-holding.dsicorp.id/api/employees
+HRIS_API_TOKEN=
+HRIS_DEFAULT_PASSWORD=
+HRIS_API_TIMEOUT=30
+```
+
+Jalankan sinkronisasi manual bila diperlukan:
+
+```bash
 php artisan app:sync-hris-users
+```
+
+Scheduler menjalankannya otomatis setiap 15 menit. Sinkronisasi hanya mengambil
+nama dan email karyawan aktif. Password awal hanya dibuat untuk akun baru dan
+tidak akan ditimpa setelah user mengubah password. Role dari HRIS tidak pernah
+digunakan; akun baru memperoleh role default `user` dari Tracko satu kali saat
+dibuat. Perubahan role berikutnya dikelola secara mandiri melalui User Manager
+Tracko dan tidak ditimpa oleh sinkronisasi. Seeder user dummy tidak lagi
+dijalankan oleh `DatabaseSeeder`.
 
 php artisan schedule:work
 php artisan queue:work

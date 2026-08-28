@@ -17,8 +17,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
+use App\Services\ReportPdfService;
 use App\Support\ResourceAccess;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -458,7 +458,7 @@ class ReportController extends Controller
     /**
      * PREVIEW PDF
      */
-public function previewPdf(Request $request): JsonResponse
+public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonResponse
     {
         $this->validateReportFilters($request);
 
@@ -474,15 +474,7 @@ public function previewPdf(Request $request): JsonResponse
 
             $html = view('exports.report_pdf', compact('users'))->render();
 
-            $pdf = Pdf::loadHTML($html)
-                ->setPaper('a4', 'landscape')
-                ->setOptions([
-                    'defaultFont' => 'DejaVu Sans',
-                    'isHtml5ParserEnabled' => true,
-                    'isRemoteEnabled' => false,
-                ]);
-
-            $pdfContent = $pdf->output();
+            $pdfContent = $reportPdf->render($users);
             $base64Pdf = base64_encode($pdfContent);
 
             return response()->json([
@@ -506,7 +498,11 @@ public function previewPdf(Request $request): JsonResponse
     /**
      * EXPORT PDF
      */
-    public function exportPdf(Request $request, EncryptedExportService $encryptedExport)
+    public function exportPdf(
+        Request $request,
+        EncryptedExportService $encryptedExport,
+        ReportPdfService $reportPdf
+    )
     {
         $this->validateReportFilters($request);
 
@@ -526,23 +522,30 @@ public function previewPdf(Request $request): JsonResponse
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
-            $pdf = Pdf::loadView('exports.report_pdf', compact('users'))
-                ->setPaper('a4', 'landscape')
-                ->setOptions([
-                    'defaultFont' => 'DejaVu Sans',
-                    'isHtml5ParserEnabled' => true,
-                    'isRemoteEnabled' => false,
-                ]);
-
             $prefix = $request->filled('user_id') ? 'Report_User_' . $request->user_id : 'Report_Kinerja_Batch';
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.pdf';
 
-            return $encryptedExport->downloadPdf(
-                $pdf->output(),
+            $download = $encryptedExport->downloadPdf(
+                $reportPdf->render($users),
                 $fileName,
                 $validated['export_password'] ?? null
             );
+
+            ActivityLogService::log(
+                $request->user(),
+                'report',
+                null,
+                'report_downloaded',
+                'Mengunduh laporan kinerja dalam format PDF.',
+                [
+                    'source' => 'performance_report',
+                    'format' => 'pdf',
+                    'target_user_id' => $request->input('user_id'),
+                ],
+            );
+
+            return $download;
         } catch (\Exception $e) {
             Log::error('Export PDF error: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal export PDF: ' . $e->getMessage()], 500);
@@ -578,11 +581,26 @@ public function previewPdf(Request $request): JsonResponse
 
             $contents = Excel::raw(new ReportExportArray($users), ExcelWriter::XLSX);
 
-            return $encryptedExport->downloadSpreadsheet(
+            $download = $encryptedExport->downloadSpreadsheet(
                 $contents,
                 $fileName,
                 $validated['export_password'] ?? null
             );
+
+            ActivityLogService::log(
+                $request->user(),
+                'report',
+                null,
+                'report_downloaded',
+                'Mengunduh laporan kinerja dalam format Excel.',
+                [
+                    'source' => 'performance_report',
+                    'format' => 'xlsx',
+                    'target_user_id' => $request->input('user_id'),
+                ],
+            );
+
+            return $download;
         } catch (\Exception $e) {
             Log::error('Export Excel error: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal export Excel: ' . $e->getMessage()], 500);

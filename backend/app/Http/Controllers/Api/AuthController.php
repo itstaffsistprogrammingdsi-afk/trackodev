@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\ImpersonationLog;
 use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,6 +50,16 @@ class AuthController extends Controller
                 ])->save();
 
                 $user->tokens()->delete();
+
+                ActivityLogService::log(
+                    $user,
+                    'user',
+                    (string) $user->id,
+                    'password_recovery',
+                    'Mengubah password melalui tautan pemulihan akun.',
+                    ['method' => 'recovery_link'],
+                );
+
                 event(new PasswordReset($user));
             }
         );
@@ -146,6 +157,15 @@ class AuthController extends Controller
         $user->update([
             'password' => Hash::make($request->password),
         ]);
+
+        ActivityLogService::log(
+            $user,
+            'user',
+            (string) $user->id,
+            'password_changed',
+            'Mengubah password akun sendiri.',
+            ['method' => 'self_service'],
+        );
 
         return response()->json([
             'message' => 'Password berhasil diupdate.',

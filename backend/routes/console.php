@@ -4,7 +4,11 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('app:sync-hris-users')->everyMinute();
+Schedule::command('app:sync-hris-users')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(15)
+    ->onOneServer()
+    ->when(fn (): bool => filled(config('services.hris.api_token')));
 
 Schedule::command('reminder:due-date')
     ->everyFiveMinutes()

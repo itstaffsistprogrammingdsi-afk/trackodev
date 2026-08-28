@@ -27,6 +27,7 @@ import {
   EyeOff,
   Copy,
   RefreshCw,
+  History,
 } from "lucide-react";
 
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
@@ -34,6 +35,7 @@ import PageMeta from "../components/common/PageMeta";
 import Button from "../components/ui/button/Button";
 import api from "../lib/axios";
 import UserPermissionModal from '../features/user/components/UserPermissionModal';
+import UserActivityDetailModal from '../features/user/components/UserActivityDetailModal';
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 // ============================================
@@ -104,7 +106,7 @@ type UserStats = {
 // ============================================
 
 const roleStyle: Record<
-  RoleType,
+  RoleType | "unassigned",
   string
 > = {
   super_admin:
@@ -115,6 +117,9 @@ const roleStyle: Record<
 
   user:
     "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-500/10 dark:text-gray-300 dark:border-gray-700",
+
+  unassigned:
+    "bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20",
 };
 
 // ============================================
@@ -127,8 +132,8 @@ const getUserRole = (
     | AuthUser
     | null
     | undefined
-): RoleType => {
-  if (!user) return "user";
+): RoleType | null => {
+  if (!user) return null;
 
   // PRIORITY ROLE
   if (
@@ -161,7 +166,7 @@ const getUserRole = (
     }
   }
 
-  return "user";
+  return null;
 };
 
 const generateTemporaryPassword = (): string => {
@@ -223,6 +228,9 @@ export default function UserProfiles() {
   const [permissionUser, setPermissionUser] =
     useState<User | null>(null);
 
+  const [detailUser, setDetailUser] =
+    useState<User | null>(null);
+
   // SEARCH + PAGINATION
 
   const [search, setSearch] =
@@ -270,7 +278,7 @@ export default function UserProfiles() {
     useState(false);
 
   const [role, setRole] =
-    useState<RoleType>("user");
+    useState<RoleType | "">("user");
 
   // ============================================
   // FETCH LOGIN USER
@@ -317,18 +325,7 @@ export default function UserProfiles() {
             }
           );
 
-        const mappedUsers =
-          (
-            res.data.data || []
-          ).map((user) => ({
-            ...user,
-
-            role:
-              user.role ||
-              getUserRole(user),
-          }));
-
-        setUsers(mappedUsers);
+        setUsers(res.data.data || []);
 
         setPagination(res.data);
 
@@ -405,7 +402,7 @@ export default function UserProfiles() {
         name,
         email,
         phone,
-        role,
+        ...(role ? { role } : {}),
       };
 
       if (editingId) {
@@ -456,7 +453,7 @@ export default function UserProfiles() {
     setPhone(user.phone || "");
 
     setRole(
-      getUserRole(user)
+      getUserRole(user) ?? ""
     );
 
     setPassword("");
@@ -535,6 +532,10 @@ export default function UserProfiles() {
         onClose={() => setPermissionUser(null)}
         onSaved={fetchUsers}
       />
+      <UserActivityDetailModal
+        user={detailUser}
+        onClose={() => setDetailUser(null)}
+      />
       <PageMeta
         title="User Management"
         description="User Management Page"
@@ -570,12 +571,7 @@ export default function UserProfiles() {
                 </span>
 
                 <span className="capitalize">
-                  {getUserRole(
-                    authUser
-                  ).replace(
-                    "_",
-                    " "
-                  )}
+                  {getUserRole(authUser)?.replace("_", " ") ?? "belum ditetapkan"}
                 </span>
               </div>
             )}
@@ -782,11 +778,15 @@ export default function UserProfiles() {
               onChange={(e) =>
                 setRole(
                   e.target
-                    .value as RoleType
+                    .value as RoleType | ""
                 )
               }
               className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
             >
+              <option value="" disabled>
+                Belum ditetapkan
+              </option>
+
               <option value="super_admin">
                 Super Admin
               </option>
@@ -925,6 +925,9 @@ export default function UserProfiles() {
                         user
                       );
 
+                    const roleKey =
+                      userRole ?? "unassigned";
+
                     return (
                       <tr
                         key={
@@ -958,17 +961,24 @@ export default function UserProfiles() {
 
                         <td className="px-6 py-5">
                           <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${roleStyle[userRole]}`}
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${roleStyle[roleKey]}`}
                           >
-                            {userRole.replace(
-                              "_",
-                              " "
-                            )}
+                            {userRole
+                              ? userRole.replace("_", " ")
+                              : "Belum ditetapkan"}
                           </span>
                         </td>
 
                         <td className="px-6 py-5">
                           <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setDetailUser(user)}
+                              className="flex size-10 items-center justify-center rounded-xl border border-amber-200 bg-white text-amber-600 transition hover:bg-amber-50 dark:border-amber-500/30 dark:bg-gray-900"
+                              title="Lihat detail aktivitas"
+                              aria-label={`Lihat detail aktivitas ${user.name}`}
+                            >
+                              <History className="size-4" />
+                            </button>
                             {(authUser?.permissions?.includes('user.permissions.view') || authUser?.permissions?.includes('user.update')) && (
                               <button
                                 onClick={() => setPermissionUser(user)}
@@ -1028,6 +1038,9 @@ export default function UserProfiles() {
               const userRole =
                 getUserRole(user);
 
+              const roleKey =
+                userRole ?? "unassigned";
+
               return (
                 <div
                   key={user.id}
@@ -1054,18 +1067,25 @@ export default function UserProfiles() {
 
                         <div className="mt-3">
                           <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${roleStyle[userRole]}`}
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${roleStyle[roleKey]}`}
                           >
-                            {userRole.replace(
-                              "_",
-                              " "
-                            )}
+                            {userRole
+                              ? userRole.replace("_", " ")
+                              : "Belum ditetapkan"}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => setDetailUser(user)}
+                        className="flex size-10 items-center justify-center rounded-xl border border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-500/30"
+                        title="Lihat detail aktivitas"
+                        aria-label={`Lihat detail aktivitas ${user.name}`}
+                      >
+                        <History className="size-4" />
+                      </button>
                       {(authUser?.permissions?.includes('user.permissions.view') || authUser?.permissions?.includes('user.update')) && (
                         <button
                           onClick={() => setPermissionUser(user)}

@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'hris' => [
+        'employees_url' => env('HRIS_EMPLOYEES_URL'),
+        'api_token' => env('HRIS_API_TOKEN'),
+        'default_password' => env('HRIS_DEFAULT_PASSWORD'),
+        'timeout' => (int) env('HRIS_API_TIMEOUT', 30),
+    ],
+
 ];
