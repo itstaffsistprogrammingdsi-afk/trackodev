@@ -907,12 +907,28 @@ class UserController extends Controller
 
         if (! empty($validated['division_id'])) {
             $divisionId = $validated['division_id'];
-            $query->whereHas('divisions', fn ($divisionQuery) => $divisionQuery
-                ->where('divisions.id', $divisionId));
+            $query->where(function ($divisionQuery) use ($divisionId) {
+                $divisionQuery
+                    ->whereHas('divisions', fn ($membershipQuery) => $membershipQuery
+                        ->where('divisions.id', $divisionId))
+                    // Super Admin tidak wajib menjadi anggota division
+                    // tertentu dan tetap boleh dipilih sebagai target eskalasi.
+                    ->orWhereHas('roles', fn ($roleQuery) => $roleQuery
+                        ->where('roles.name', User::ROLE_SUPER_ADMIN));
+            });
         }
 
-        $users = $query->orderBy('name')->limit(100)->get()
+        // Filter policy sebelum membatasi jumlah hasil agar kandidat yang
+        // valid tidak hilang hanya karena berada di luar 100 nama pertama.
+        // Super Admin selalu diprioritaskan supaya tersedia untuk eskalasi.
+        $eligibleUsers = $query->orderBy('name')->get()
             ->filter(fn (User $candidate) => $actor->canCoordinateAssignmentTo($candidate))
+            ->values();
+        [$superAdmins, $otherCandidates] = $eligibleUsers->partition(
+            fn (User $candidate) => $candidate->isSuperAdmin()
+        );
+        $users = $superAdmins
+            ->concat($otherCandidates->take(max(0, 100 - $superAdmins->count())))
             ->values();
 
         return response()->json([

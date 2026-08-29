@@ -20,7 +20,7 @@ class CollaborationHierarchyTest extends TestCase
         $this->seed(PermissionSeeder::class);
     }
 
-    public function test_staff_only_sees_division_leaders_as_collaborator_candidates(): void
+    public function test_staff_assignment_candidates_include_destination_leaders_only(): void
     {
         [$itStaff, $dkvLeader, $dkvStaff] = $this->createCollaborationUsers();
         Sanctum::actingAs($itStaff);

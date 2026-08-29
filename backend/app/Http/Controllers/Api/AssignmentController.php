@@ -103,17 +103,25 @@ class AssignmentController extends Controller
                     continue;
                 }
 
-                $belongsToDivision = User::query()
-                    ->whereKey($validated[$userField])
-                    ->whereHas('divisions', fn ($query) => $query->where(
-                        'divisions.id',
-                        $validated['division_id']
-                    ))
+                $assignedUser = User::query()->findOrFail($validated[$userField]);
+                $isSuperAdmin = $assignedUser->isSuperAdmin();
+                $belongsToDivision = $assignedUser->divisions()
+                    ->where('divisions.id', $validated['division_id'])
                     ->exists();
 
-                if (! $belongsToDivision) {
+                // Target assignment memakai aturan yang sama dengan Board:
+                // Super Admin dapat menerima eskalasi langsung, sedangkan
+                // target lain harus lolos hierarki assignment dan menjadi
+                // anggota division yang dipilih.
+                $canAssign = $request->user()->canCoordinateAssignmentTo($assignedUser);
+                $isActorCoordinator = $userField === 'coordinator_id'
+                    && $assignedUser->is($request->user());
+
+                if (! $canAssign || (! $isSuperAdmin && ! $belongsToDivision && ! $isActorCoordinator)) {
                     throw ValidationException::withMessages([
-                        $userField => 'User harus menjadi anggota division yang dipilih.',
+                        $userField => $isSuperAdmin
+                            ? 'Anda tidak dapat menugaskan user ini melalui jalur assignment tersebut.'
+                            : 'User harus menjadi anggota division yang dipilih dan sesuai hierarki assignment.',
                     ]);
                 }
             }
