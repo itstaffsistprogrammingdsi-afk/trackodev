@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('app:sync-hris-users')
-    ->everyFifteenMinutes()
+    ->dailyAt('00:00')
+    ->timezone('Asia/Jakarta')
     ->withoutOverlapping(15)
     ->onOneServer()
     ->when(fn (): bool => filled(config('services.hris.api_token')));

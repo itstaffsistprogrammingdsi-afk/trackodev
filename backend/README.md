@@ -77,7 +77,7 @@ Jalankan sinkronisasi manual bila diperlukan:
 php artisan app:sync-hris-users
 ```
 
-Scheduler menjalankannya otomatis setiap 15 menit. Sinkronisasi hanya mengambil
+Scheduler menjalankannya otomatis setiap hari pukul 00.00 WIB. Sinkronisasi hanya mengambil
 nama dan email karyawan aktif. Password awal hanya dibuat untuk akun baru dan
 tidak akan ditimpa setelah user mengubah password. Role dari HRIS tidak pernah
 digunakan; akun baru memperoleh role default `user` dari Tracko satu kali saat
