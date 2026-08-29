@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Events\ApplicationDataChanged;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
@@ -62,6 +63,16 @@ class HrisUserSyncTest extends TestCase
             && $request->hasHeader('Authorization', 'Bearer test-api-token')
             && $request->hasHeader('Accept', 'application/json')
         );
+    }
+
+    public function test_hris_sync_runs_daily_at_midnight_wib(): void
+    {
+        $event = collect(app(Schedule::class)->events())
+            ->first(fn ($scheduled) => str_contains($scheduled->command, 'app:sync-hris-users'));
+
+        $this->assertNotNull($event);
+        $this->assertSame('0 0 * * *', $event->expression);
+        $this->assertSame('Asia/Jakarta', $event->timezone);
     }
 
     public function test_it_updates_hris_fields_without_overwriting_password_or_privileged_role(): void
