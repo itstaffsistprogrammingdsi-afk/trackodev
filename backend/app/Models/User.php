@@ -199,27 +199,40 @@ class User extends Authenticatable
     }
 
     /**
-     * Staff hanya dapat memilih koordinator. Koordinator dapat meneruskan
-     * pekerjaan kepada Staff yang berada di divisi yang dikoordinasikannya.
+     * Tentukan apakah user boleh memilih target assignment.
+     *
+     * Aturan assignment:
+     * - Super Admin dapat ditugaskan langsung oleh siapa pun.
+     * - Staff hanya dapat meneruskan pekerjaan kepada Admin Divisi tujuan;
+     *   staff tidak dapat menunjuk staff lain secara langsung.
+     * - Admin Divisi dapat menunjuk staff di divisinya dan Admin Divisi lain
+     *   untuk meneruskan pekerjaan lintas divisi.
+     * - Super Admin sebagai actor memiliki akses penuh.
      */
     public function canCoordinateAssignmentTo(User $target): bool
     {
-        if ($this->isSuperAdmin() || $this->is($target) || $target->isCollaborationLeader()) {
+        if ($this->isSuperAdmin() || $this->is($target) || $target->isSuperAdmin()) {
             return true;
         }
 
-        $coordinatedDivisions = $this->divisions();
+        $actorDivisionIds = $this->divisions()->pluck('divisions.id');
+        $targetDivisionIds = $target->divisions()->pluck('divisions.id');
+        $targetIsDivisionAdmin = $target->isAdmin()
+            || $target->divisions()->wherePivot('role', 'admin')->exists();
+        $actorIsDivisionAdmin = $this->isAdmin()
+            || $this->divisions()->wherePivot('role', 'admin')->exists();
 
-        if (! $this->isAdmin()) {
-            $coordinatedDivisions->wherePivot('role', 'admin');
+        // Admin Divisi menjadi pintu masuk resmi untuk pekerjaan lintas
+        // divisi. Karena itu Admin Divisi tujuan boleh dipilih langsung oleh
+        // actor mana pun, termasuk staff dari divisi lain.
+        if ($targetIsDivisionAdmin) {
+            return true;
         }
 
-        $coordinatedDivisionIds = $coordinatedDivisions->pluck('divisions.id');
-
-        return $coordinatedDivisionIds->isNotEmpty()
-            && $target->divisions()
-                ->whereIn('divisions.id', $coordinatedDivisionIds)
-                ->exists();
+        // Hanya Admin Divisi yang boleh menunjuk staff, dan hanya staff
+        // dalam divisi yang memang dikelolanya.
+        return $actorIsDivisionAdmin
+            && $actorDivisionIds->intersect($targetDivisionIds)->isNotEmpty();
     }
 
 
