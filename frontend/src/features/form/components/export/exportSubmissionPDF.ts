@@ -41,7 +41,7 @@ export function exportSubmissionPDF(
 
   y += 10;
 
-  form.fields?.forEach((field) => {
+  form.fields?.filter((field) => field.type !== "section").forEach((field) => {
     const value =
       submission.data?.[field.name] ?? "-";
 

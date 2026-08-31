@@ -89,7 +89,7 @@ export default function ResponseMobileList({
 
             {isOpen && (
               <div className="border-t bg-gray-50 p-4">
-                {form.fields?.map((f) => (
+                {form.fields?.filter((f) => f.type !== "section").map((f) => (
                   <div
                     key={f.id}
                     className="mb-4"

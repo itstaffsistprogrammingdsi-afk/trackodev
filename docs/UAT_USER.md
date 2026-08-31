@@ -1,7 +1,7 @@
 # User Acceptance Test (UAT) — Tracko
 
 **Dokumen:** UAT pengguna aplikasi Tracko<br>
-**Versi:** 1.0<br>
+**Versi:** 1.1<br>
 **Tanggal baseline:** 31 Agustus 2026<br>
 **Environment:** [https://dev.tracko.dsicorp.id/](https://dev.tracko.dsicorp.id/)<br>
 **API:** `https://dev.tracko.dsicorp.id/api`<br>
@@ -110,12 +110,35 @@ cd ~/trackodev/backend
 php artisan app:create-uat-public-form
 ```
 
-Command akan membuat atau memperbarui form dengan slug `uat-tracko-user`, menambahkan **41 field** yang mencakup identitas dan environment tester, kesiapan data, critical-flow checklist, status per area yang terpetakan ke ID skenario UAT, integritas/performa/recovery, jumlah dan severity defect, evidence upload/link, saran, serta keputusan sign-off. Link berikut tetap sama setiap kali command dijalankan:
+Command akan membuat atau memperbarui form dengan slug `uat-tracko-user`, menambahkan **200 field** yang mencakup seluruh menu, fungsi, dan fitur Tracko. Sebanyak **155 field** adalah pertanyaan status test case individual (bukan satu rating umum per menu), sedangkan sisanya adalah 17 heading section, metadata tester, kesiapan data, integritas/performa/recovery, jumlah dan severity defect, evidence upload/link, saran, serta keputusan sign-off. Form menggunakan navigasi section sehingga tester dapat berpindah per kelompok dan kembali ke section sebelumnya sebelum mengirim satu submission lengkap. Link berikut tetap sama setiap kali command dijalankan:
 
 - **Link publik pengisian:** `https://dev.tracko.dsicorp.id/public/forms/uat-tracko-user`
 - **Link response admin:** `https://dev.tracko.dsicorp.id/forms`
 
 Jika URL deployment berbeda, gunakan nilai `FRONTEND_URL` pada backend; command akan menyesuaikan link yang dicetak. Submission publik tidak memerlukan login dan tersimpan sebagai response form. Admin dapat membuka menu Forms → Responses untuk meninjau hasil. Satu submission merepresentasikan satu sesi pengujian; tester dapat mengirim sesi lain menggunakan tombol **Isi jawaban lain**. Jangan menaruh password atau token pada jawaban.
+
+### Cakupan exhaustive pada public form
+
+| Section | Cakupan | Jumlah test case |
+|---|---|---:|
+| A | Landing page dan public form | 5 |
+| B | Authentication dan navigasi umum | 15 |
+| C | Dashboard user dan My Work | 14 |
+| D | Division dan Workspace | 9 |
+| E | Campaign, detail, analitik, dan collaborator | 13 |
+| F | Board, column, Kanban/List, dan card search | 16 |
+| G | Detail card, task, checklist, attachment, komentar | 18 |
+| H | Calendar dan due date | 5 |
+| I | Chat dan komunikasi realtime | 8 |
+| J | Notifikasi | 5 |
+| K | Profile, avatar, password, dan account | 6 |
+| L | Mobile, realtime, dan konsistensi Web ↔ APK | 7 |
+| M | Permission, scope, validasi, dan keamanan | 6 |
+| N | Menu dan fungsi admin/super admin | 12 |
+| O | Forms, builder, public response, dan forwarding | 7 |
+| P | Report dan QC | 5 |
+| Q | Kualitas umum dan usability | 4 |
+| **Total** | **Pertanyaan status test case individual** | **155** |
 
 ## 5. Skenario UAT detail
 
@@ -324,7 +347,9 @@ UAT dinyatakan **LULUS** apabila:
 
 | Ringkasan | Nilai |
 |---|---:|
-| Total skenario baseline (AUTH–SYNC–SEC) | 106 |
+| Total skenario baseline terdokumentasi (AUTH–SYNC–SEC) | 106 |
+| Test case individual pada public form exhaustive | 155 |
+| Total field public form (termasuk metadata, section, dan sign-off) | 200 |
 | PASS |  |
 | FAIL |  |
 | BLOCKED |  |

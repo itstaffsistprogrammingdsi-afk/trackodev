@@ -101,7 +101,9 @@ class FormFieldController extends Controller
 
     private function allowedTypes(): array
     {
-        return ['text', 'textarea', 'number', 'date', 'file', 'checkbox', 'select', 'radio'];
+        // `section` dipakai oleh questionnaire publik untuk memisahkan
+        // kelompok test case tanpa menjadi input submission.
+        return ['text', 'textarea', 'number', 'date', 'file', 'checkbox', 'select', 'radio', 'section'];
     }
 
     private function uniqueName(Form $form, string $label, ?string $ignoreId = null): string

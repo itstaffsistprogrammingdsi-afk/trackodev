@@ -301,7 +301,7 @@ export default function ResponseTable({
                         className="bg-zinc-50 p-5"
                       >
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                          {form.fields?.map(
+                          {form.fields?.filter((f) => f.type !== "section").map(
                             (
                               f: FormField
                             ) => (

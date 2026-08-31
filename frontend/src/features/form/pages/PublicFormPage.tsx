@@ -20,6 +20,7 @@ import {
 
 import type {
   Form,
+  FormField,
   FormValue,
   FormValues,
   OtherValues,
@@ -62,6 +63,8 @@ export default function PublicFormPage() {
 
   const [submitted, setSubmitted] = useState(false);
 
+  const [activeSectionId, setActiveSectionId] = useState("");
+
   const [error, setError] = useState<string | null>(null);
 
   // =========================
@@ -81,6 +84,12 @@ export default function PublicFormPage() {
       const res = await api.get(`/public/forms/${slug}`, { signal });
 
       setForm(res.data);
+
+      const firstSection = res.data?.fields?.find(
+        (field: FormField) => field.type === "section",
+      );
+
+      setActiveSectionId(firstSection?.id ?? "");
     } catch (error) {
       if (signal?.aborted) return;
 
@@ -128,7 +137,44 @@ export default function PublicFormPage() {
       : String(dependencyValue ?? "") === expectedValue;
   };
 
-  const visibleFields = form?.fields?.filter((field) => isFieldVisible(field.id)) ?? [];
+  const sectionFields = form?.fields?.filter((field) => field.type === "section") ?? [];
+  const activeSectionIndex = sectionFields.findIndex(
+    (field) => field.id === activeSectionId,
+  );
+
+  // Tampilkan metadata sekali di section pertama, lalu satu section test case
+  // per layar. Field quality/sign-off setelah section terakhir ikut tampil di
+  // section terakhir agar tombol submit tidak tersebar di banyak tempat.
+  const fieldsForSection = (() => {
+    const allFields = form?.fields ?? [];
+
+    if (sectionFields.length === 0 || activeSectionIndex < 0) return allFields;
+
+    const firstSectionIndex = allFields.findIndex((field) => field.type === "section");
+    const activeFieldIndex = allFields.findIndex(
+      (field) => field.id === activeSectionId,
+    );
+    const nextSectionIndex = allFields.findIndex(
+      (field, index) => index > activeFieldIndex && field.type === "section",
+    );
+
+    const metadata = activeSectionIndex === 0
+      ? allFields.slice(0, firstSectionIndex)
+      : [];
+    const currentSection = allFields.slice(
+      activeFieldIndex,
+      nextSectionIndex === -1 ? allFields.length : nextSectionIndex,
+    );
+
+    return [...metadata, ...currentSection];
+  })();
+
+  const isLastSection =
+    sectionFields.length === 0 || activeSectionIndex === sectionFields.length - 1;
+
+  const visibleFields = form?.fields?.filter(
+    (field) => field.type !== "section" && isFieldVisible(field.id),
+  ) ?? [];
 
   const answeredFields = visibleFields.filter((field) => {
     if (field.type === "file") return Boolean(fileValues[field.name]);
@@ -151,6 +197,8 @@ export default function PublicFormPage() {
     if (!form) return false;
 
     for (const field of form.fields || []) {
+      if (field.type === "section") continue;
+
       if (!isFieldVisible(field.id)) continue;
 
       const value = values[field.name];
@@ -215,7 +263,7 @@ export default function PublicFormPage() {
       const formData = new FormData();
       const visibleFieldNames = new Set(
         (form.fields || [])
-          .filter((field) => isFieldVisible(field.id))
+          .filter((field) => field.type !== "section" && isFieldVisible(field.id))
           .map((field) => field.name),
       );
 
@@ -418,6 +466,35 @@ export default function PublicFormPage() {
             </div>
           ) : (
           <>
+          {sectionFields.length > 0 && (
+            <div className="mx-5 mb-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 sm:mx-8" aria-label="Navigasi section UAT">
+              <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                <span className="text-xs font-semibold text-slate-700">
+                  Section {activeSectionIndex + 1} dari {sectionFields.length}
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  Anda dapat kembali ke section sebelumnya
+                </span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {sectionFields.map((section, index) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => setActiveSectionId(section.id)}
+                    aria-current={section.id === activeSectionId ? "step" : undefined}
+                    className={`min-h-10 shrink-0 rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${
+                      section.id === activeSectionId
+                        ? "bg-[#673ab7] text-white shadow-sm"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {index + 1}. {section.label.replace(/^\w+\.\s*/, "")}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mx-5 mb-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:mx-8">
             <div className="flex items-center justify-between gap-3 text-xs font-medium text-slate-600">
               <span>{answeredFields} dari {visibleFields.length} pertanyaan terisi</span>
@@ -433,13 +510,29 @@ export default function PublicFormPage() {
 
           {/* FIELDS */}
           <div className="space-y-4 px-3 pb-6 pt-2 sm:px-4 sm:pb-8">
-            {form.fields
-              ?.filter((field) => isFieldVisible(field.id))
+            {fieldsForSection
+              .filter((field) => isFieldVisible(field.id))
               .map((field) => (
               <div
                 key={field.id}
-                className="rounded-2xl border border-[#dadce0] bg-white px-5 py-6 shadow-sm transition hover:shadow-md sm:px-6"
+                className={field.type === "section"
+                  ? "rounded-2xl border border-[#d8c8f1] bg-[#f7f2fc] px-5 py-5 shadow-sm sm:px-6"
+                  : "rounded-2xl border border-[#dadce0] bg-white px-5 py-6 shadow-sm transition hover:shadow-md sm:px-6"}
               >
+                {field.type === "section" ? (
+                  <>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#673ab7]">
+                      Section pengujian
+                    </p>
+                    <h2 className="mt-1 text-lg font-semibold text-[#3f2a5f]">
+                      {field.label}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Pilih status untuk setiap test case di bagian ini.
+                    </p>
+                  </>
+                ) : (
+                <>
                 {/* LABEL */}
                 <label htmlFor={`field-${field.id}`} className="mb-4 block">
                   <div className="flex flex-wrap items-center gap-1">
@@ -724,22 +817,48 @@ export default function PublicFormPage() {
                     )}
                   </div>
                 )}
+                </>
+                )}
               </div>
             ))}
 
             {/* SUBMIT */}
-            <div className="px-2 pt-2">
+            <div className="flex flex-wrap items-center gap-3 px-2 pt-2">
+              {sectionFields.length > 0 && activeSectionIndex > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const previousSection = sectionFields[activeSectionIndex - 1];
+                    if (previousSection) setActiveSectionId(previousSection.id);
+                  }}
+                  className="flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Section sebelumnya
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleSubmit}
+                onClick={() => {
+                  if (!isLastSection) {
+                    const nextSection = sectionFields[activeSectionIndex + 1];
+                    if (nextSection) setActiveSectionId(nextSection.id);
+                    return;
+                  }
+
+                  void handleSubmit();
+                }}
                 disabled={submitting}
                 className="flex h-11 items-center justify-center rounded-lg bg-[#673ab7] px-6 text-sm font-medium text-white transition hover:bg-[#5e35b1] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {submitting && (
+                {isLastSection && submitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
 
-                {submitting ? "Mengirim..." : "Kirim"}
+                {isLastSection
+                  ? submitting
+                    ? "Mengirim..."
+                    : "Kirim UAT"
+                  : "Lanjut ke section berikutnya"}
               </button>
             </div>
           </div>
