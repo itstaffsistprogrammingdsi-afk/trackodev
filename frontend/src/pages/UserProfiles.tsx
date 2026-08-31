@@ -990,23 +990,29 @@ export default function UserProfiles() {
                               </button>
                             )}
                             <button
+                              type="button"
                               onClick={() =>
                                 handleEdit(
                                   user
                                 )
                               }
                               className="flex size-10 items-center justify-center rounded-xl border border-gray-200 bg-white transition hover:bg-blue-50 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-blue-500/10"
+                              title={`Edit user ${user.name}`}
+                              aria-label={`Edit user ${user.name}`}
                             >
                               <Pencil className="size-4" />
                             </button>
 
                             <button
+                              type="button"
                               onClick={() =>
                                 handleDelete(
                                   user.id
                                 )
                               }
                               className="flex size-10 items-center justify-center rounded-xl border border-red-200 bg-white text-red-500 transition hover:bg-red-50 dark:bg-gray-900"
+                              title={`Hapus user ${user.name}`}
+                              aria-label={`Hapus user ${user.name}`}
                             >
                               <Trash2 className="size-4" />
                             </button>
@@ -1097,23 +1103,29 @@ export default function UserProfiles() {
                         </button>
                       )}
                       <button
+                        type="button"
                         onClick={() =>
                           handleEdit(
                             user
                           )
                         }
                         className="flex size-10 items-center justify-center rounded-xl border border-gray-200 hover:bg-blue-50 dark:border-gray-700"
+                        title={`Edit user ${user.name}`}
+                        aria-label={`Edit user ${user.name}`}
                       >
                         <Pencil className="size-4" />
                       </button>
 
                       <button
+                        type="button"
                         onClick={() =>
                           handleDelete(
                             user.id
                           )
                         }
                         className="flex size-10 items-center justify-center rounded-xl border border-red-200 text-red-500 hover:bg-red-50"
+                        title={`Hapus user ${user.name}`}
+                        aria-label={`Hapus user ${user.name}`}
                       >
                         <Trash2 className="size-4" />
                       </button>

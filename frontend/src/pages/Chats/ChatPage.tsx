@@ -1,45 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 const ChatPage: React.FC = () => {
-  const [token, setToken] = useState<string | null>(null);
-  const [loadingToken, setLoadingToken] = useState(true);
-
-  useEffect(() => {
-    // Mengambil token secara dinamis dari localStorage saat halaman di-load
-    const storedToken = localStorage.getItem("token") || localStorage.getItem("auth_token");
-    
-    if (storedToken) {
-      setToken(storedToken);
-    }
-    setLoadingToken(false);
-  }, []);
-
-  // Susun URL tujuan secara dinamis berdasarkan token yang berhasil didapatkan
-  const chatUrl = token 
-    ? `https://fluxer.dsicorp.id/?token=${encodeURIComponent(token)}`
-    : "https://fluxer.dsicorp.id/";
-
-  // Otomatis alihkan ke tab baru jika token valid dan siap
-  useEffect(() => {
-    if (!loadingToken && token) {
-      const autoOpen = setTimeout(() => {
-        window.open(chatUrl, "_blank", "noopener,noreferrer");
-      }, 1200);
-      return () => clearTimeout(autoOpen);
-    }
-  }, [loadingToken, token, chatUrl]);
+  const chatUrl = "https://fluxer.dsicorp.id/";
 
   const handleOpenChat = () => {
     window.open(chatUrl, "_blank", "noopener,noreferrer");
   };
-
-  if (loadingToken) {
-    return (
-      <div className="flex min-h-[50dvh] w-full items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-900">
-        <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-[60dvh] w-full items-center justify-center rounded-2xl bg-gray-50 p-0 transition-colors duration-200 dark:bg-gray-900 sm:p-4">
@@ -57,10 +23,8 @@ const ChatPage: React.FC = () => {
         </h3>
         
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mb-8 leading-relaxed">
-          {token 
-            ? "Sistem mendeteksi sesi aktif Anda. Obrolan enkripsi akan dibuka otomatis di jendela baru dalam hitungan detik."
-            : "Sesi aman tidak ditemukan atau telah kedaluwarsa. Anda tetap dapat membuka chat publik atau silakan login kembali."
-          }
+          Fluxer dibuka di tab baru tanpa mengirim token autentikasi melalui URL. Jika Fluxer
+          meminta autentikasi, silakan login di sana.
         </p>
 
         {/* Tombol Buka Chat */}
@@ -76,17 +40,10 @@ const ChatPage: React.FC = () => {
         </button>
 
         {/* Badge Status Keamanan */}
-        {token ? (
-          <div className="mt-8 flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-            <span>Sesi Dinamis Terverifikasi</span>
-          </div>
-        ) : (
-          <div className="mt-8 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 font-mono bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            <span>Mode Tamu (Tanpa Token Pribadi)</span>
-          </div>
-        )}
+        <div className="mt-8 flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span>Token tidak dibagikan melalui URL</span>
+        </div>
 
       </div>
     </div>

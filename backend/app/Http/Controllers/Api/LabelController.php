@@ -24,6 +24,14 @@ class LabelController extends Controller
     }
 
     /**
+     * GET /labels/{label}
+     */
+    public function show(Label $label)
+    {
+        return response()->json($label);
+    }
+
+    /**
      * POST /labels
      */
     public function store(Request $request)
