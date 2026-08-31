@@ -49,7 +49,9 @@ export const useDivision = (
     queryFn: () =>
       api.getDivision(id),
 
-    enabled: !!id
+    enabled: !!id,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
 
   })
 }
@@ -152,7 +154,9 @@ export const useDivisionMembers =
           divisionId
         ),
 
-      enabled: !!divisionId
+      enabled: !!divisionId,
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: true,
 
     })
   }
