@@ -5,6 +5,7 @@ import { User } from "../types";
 import MemberMentionInput from "./MemberMentionInput";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { useAuth } from "@/context/AuthContext";
 
 type Props = {
   workspaceId: string;
@@ -25,6 +26,7 @@ export default function CampaignForm({
   onClose,
   onSuccess,
 }: Props) {
+  const { user } = useAuth();
   const {
     register,
     handleSubmit,
@@ -43,6 +45,8 @@ export default function CampaignForm({
   const [loading, setLoading] = useState(false);
 
   const memberIds = watch("member_ids");
+  const isSuperAdmin = user?.roles?.includes("super_admin") ?? false;
+  const isAdmin = user?.roles?.includes("admin") ?? false;
 
   // ADD MEMBER
   const handleSelectUser = (user: User) => {
@@ -166,10 +170,19 @@ export default function CampaignForm({
             </p>
 
             <p className="mb-2 text-xs leading-5 text-gray-500">
-              Pilih Kepala Bagian sampai SPV. Koordinator terpilih akan meneruskan pekerjaan ke Staff divisinya.
+              {isSuperAdmin
+                ? "Super Admin dapat memilih user dari seluruh sistem."
+                : isAdmin
+                  ? "Admin dapat memilih seluruh anggota dari division campaign."
+                  : "Pilih Kepala Bagian sampai SPV. Koordinator terpilih akan meneruskan pekerjaan ke Staff divisinya."}
             </p>
 
-            <MemberMentionInput collaboratorOnly onSelect={handleSelectUser} />
+            <MemberMentionInput
+              collaboratorOnly
+              workspaceId={workspaceId}
+              placeholder={isSuperAdmin || isAdmin ? "Cari user atau email..." : undefined}
+              onSelect={handleSelectUser}
+            />
 
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedUsers.map((u) => (

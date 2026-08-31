@@ -14,6 +14,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, Pencil, Trash2, X, Check, } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CampaignCard({
   campaign,
@@ -25,11 +26,15 @@ export default function CampaignCard({
     workspaceId: string;
   }>();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const [showMembers, setShowMembers] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const isSuperAdmin = user?.roles?.includes("super_admin") ?? false;
+  const isAdmin = user?.roles?.includes("admin") ?? false;
 
   const [name, setName] = useState(campaign.name ?? "");
   const [description, setDescription] = useState(campaign.description ?? "");
@@ -258,7 +263,13 @@ export default function CampaignCard({
             <header className="flex justify-between items-center">
               <div>
                 <h3 id="collaborator-dialog-title" className="text-lg font-semibold">Kelola Collaborator</h3>
-                <p className="mt-0.5 text-xs text-gray-500">Khusus Kepala Bagian sampai SPV</p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {isSuperAdmin
+                    ? "Super Admin dapat menambahkan semua user."
+                    : isAdmin
+                      ? "Admin dapat menambahkan anggota dari division campaign."
+                      : "Khusus Kepala Bagian sampai SPV."}
+                </p>
               </div>
               <button aria-label="Tutup dialog collaborator" onClick={() => setShowMembers(false)}>
                 <X size={18} />
@@ -279,7 +290,12 @@ export default function CampaignCard({
               ))}
             </div>
 
-            <MemberMentionInput collaboratorOnly onSelect={handleSelectUser} />
+            <MemberMentionInput
+              collaboratorOnly
+              workspaceId={workspaceId}
+              placeholder={isSuperAdmin || isAdmin ? "Cari user atau email..." : undefined}
+              onSelect={handleSelectUser}
+            />
 
             <div className="flex flex-wrap gap-2">
               {selectedUsers.map((u) => (

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Support\PermissionCatalog;
 use Illuminate\Http\JsonResponse;
@@ -803,6 +804,12 @@ class UserController extends Controller
         Request $request
     ): JsonResponse {
 
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'division_id' => ['nullable', 'uuid', 'exists:divisions,id'],
+            'workspace_id' => ['nullable', 'uuid', 'exists:workspaces,id'],
+        ]);
+
         $user = $request->user();
 
         $query = User::query()
@@ -818,9 +825,9 @@ class UserController extends Controller
         // SEARCH
         // ============================================
 
-        if ($request->filled('search')) {
+        if (! empty($validated['search'])) {
 
-            $search = $request->search;
+            $search = $validated['search'];
 
             $query->where(function ($q) use ($search) {
 
@@ -841,14 +848,55 @@ class UserController extends Controller
         // ============================================
 
         if ($request->boolean('collaborator')) {
-            $query->where(function ($candidateQuery) {
-                $candidateQuery
-                    ->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', [
-                        User::ROLE_SUPER_ADMIN,
-                        User::ROLE_ADMIN,
-                    ]))
-                    ->orWhereHas('divisions', fn ($divisionQuery) => $divisionQuery->where('division_user.role', 'admin'));
-            });
+            // Super Admin dapat memilih user mana pun sebagai collaborator.
+            // Admin dibatasi pada anggota division tempat campaign dibuat.
+            // User biasa tetap memakai aturan lama: hanya coordinator.
+            if ($user->isSuperAdmin()) {
+                // Tidak ada filter tambahan.
+            } elseif ($user->isDivisionAdmin()) {
+                $targetDivisionId = $validated['division_id'] ?? null;
+
+                if (! empty($validated['workspace_id'])) {
+                    $targetDivisionId = Workspace::query()
+                        ->whereKey($validated['workspace_id'])
+                        ->value('division_id');
+                }
+
+                $managedDivisionIds = $user->divisions()->pluck('divisions.id');
+
+                if ($targetDivisionId !== null) {
+                    // Jangan mengembalikan kandidat dari workspace/division
+                    // yang tidak dikelola admin tersebut.
+                    if (! $managedDivisionIds->contains($targetDivisionId)) {
+                        $query->whereKey('__no_matching_user__');
+                    } else {
+                        $query->whereHas(
+                            'divisions',
+                            fn ($divisionQuery) => $divisionQuery->where(
+                                'divisions.id',
+                                $targetDivisionId
+                            )
+                        );
+                    }
+                } else {
+                    $query->whereHas(
+                        'divisions',
+                        fn ($divisionQuery) => $divisionQuery->whereIn(
+                            'divisions.id',
+                            $managedDivisionIds
+                        )
+                    );
+                }
+            } else {
+                $query->where(function ($candidateQuery) {
+                    $candidateQuery
+                        ->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', [
+                            User::ROLE_SUPER_ADMIN,
+                            User::ROLE_ADMIN,
+                        ]))
+                        ->orWhereHas('divisions', fn ($divisionQuery) => $divisionQuery->where('division_user.role', 'admin'));
+                });
+            }
         } elseif (! $user->isSuperAdmin()) {
 
             $divisionIds = $user

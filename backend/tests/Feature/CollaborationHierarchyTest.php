@@ -90,6 +90,98 @@ class CollaborationHierarchyTest extends TestCase
         ]);
     }
 
+    public function test_super_admin_can_search_all_users_as_campaign_collaborators(): void
+    {
+        [$itStaff, , $dkvStaff] = $this->createCollaborationUsers();
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
+
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson('/api/users/mentionable?search='.$dkvStaff->email.'&collaborator=1')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $dkvStaff->id]);
+
+        $this->getJson('/api/users/mentionable?search='.$itStaff->email.'&collaborator=1')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $itStaff->id]);
+    }
+
+    public function test_super_admin_can_add_user_without_division_to_campaign(): void
+    {
+        [$itStaff, , , $itDivision] = $this->createCollaborationUsers();
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
+        $unassignedUser = User::factory()->create(['name' => 'User Tanpa Division']);
+        $unassignedUser->assignRole(User::ROLE_USER);
+        $workspace = $itDivision->workspaces()->create(['name' => 'Campaign Global']);
+
+        Sanctum::actingAs($superAdmin);
+
+        $campaignId = $this->postJson("/api/workspaces/{$workspace->id}/campaigns", [
+            'name' => 'Campaign Global',
+            'type' => 'group',
+        ])->assertCreated()->json('data.id');
+
+        $this->postJson("/api/campaigns/{$campaignId}/members", [
+            'user_id' => $unassignedUser->id,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('campaign_user', [
+            'campaign_id' => $campaignId,
+            'user_id' => $unassignedUser->id,
+        ]);
+    }
+
+    public function test_admin_can_search_all_members_in_campaign_division(): void
+    {
+        [, $dkvLeader, $dkvStaff, $itDivision, $dkvDivision] = $this->createCollaborationUsers();
+
+        Sanctum::actingAs($dkvLeader);
+
+        $this->getJson('/api/users/mentionable?search='.$dkvStaff->email.'&collaborator=1&division_id='.$dkvDivision->id)
+            ->assertOk()
+            ->assertJsonFragment(['id' => $dkvStaff->id]);
+
+        $this->getJson('/api/users/mentionable?search='.$dkvStaff->email.'&collaborator=1&division_id='.$itDivision->id)
+            ->assertOk()
+            ->assertJsonMissing(['id' => $dkvStaff->id]);
+    }
+
+    public function test_admin_can_create_campaign_with_any_member_of_target_division(): void
+    {
+        [, $dkvLeader, $dkvStaff, , $dkvDivision] = $this->createCollaborationUsers();
+        $workspace = $dkvDivision->workspaces()->create(['name' => 'Campaign untuk Staff']);
+
+        Sanctum::actingAs($dkvLeader);
+
+        $response = $this->postJson("/api/workspaces/{$workspace->id}/campaigns", [
+            'name' => 'Campaign Staff DKV',
+            'type' => 'group',
+            'member_ids' => [$dkvStaff->id],
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('campaign_user', [
+            'campaign_id' => $response->json('data.id'),
+            'user_id' => $dkvStaff->id,
+        ]);
+    }
+
+    public function test_admin_cannot_add_member_from_another_division_to_campaign(): void
+    {
+        [$itStaff, $dkvLeader, , , $dkvDivision] = $this->createCollaborationUsers();
+        $workspace = $dkvDivision->workspaces()->create(['name' => 'Campaign Lintas Division']);
+
+        Sanctum::actingAs($dkvLeader);
+
+        $this->postJson("/api/workspaces/{$workspace->id}/campaigns", [
+            'name' => 'Campaign Lintas Division',
+            'type' => 'group',
+            'member_ids' => [$itStaff->id],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('member_ids');
+    }
+
     public function test_leader_schedule_is_not_visible_to_staff_without_explicit_permission(): void
     {
         [$itStaff, $dkvLeader, , $itDivision] = $this->createCollaborationUsers();

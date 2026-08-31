@@ -5,11 +5,15 @@ import { User } from "../types"
 type Props = {
   onSelect: (user: User) => void
   collaboratorOnly?: boolean
+  workspaceId?: string
+  placeholder?: string
 }
 
 export default function MemberMentionInput({
   onSelect,
   collaboratorOnly = false,
+  workspaceId,
+  placeholder,
 }: Props) {
 
   const [query, setQuery] = useState("")
@@ -51,7 +55,7 @@ export default function MemberMentionInput({
       setShow(true)
 
       const data =
-        await searchUsers(keyword, collaboratorOnly)
+        await searchUsers(keyword, collaboratorOnly, workspaceId)
 
       if (requestId === requestIdRef.current) {
         setUsers(data)
@@ -103,7 +107,7 @@ export default function MemberMentionInput({
         onChange={(e) =>
           handleChange(e.target.value)
         }
-        placeholder={collaboratorOnly ? "Cari koordinator divisi..." : "Cari user..."}
+        placeholder={placeholder ?? (collaboratorOnly ? "Cari collaborator..." : "Cari user...")}
         aria-label={collaboratorOnly ? "Cari collaborator" : "Cari user"}
         role="combobox"
         aria-autocomplete="list"

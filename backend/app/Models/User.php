@@ -95,6 +95,17 @@ class User extends Authenticatable
         );
     }
 
+    /**
+     * Admin division dapat didefinisikan oleh role sistem maupun role pada
+     * pivot division_user (data produksi lama memakai keduanya).
+     */
+    public function isDivisionAdmin(): bool
+    {
+        return $this->isAdmin() || $this->divisions()
+            ->wherePivot('role', 'admin')
+            ->exists();
+    }
+
     public function isUser(): bool
     {
         return $this->hasRole(
