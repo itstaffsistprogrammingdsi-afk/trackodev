@@ -1,7 +1,7 @@
 {
   "name": "tailadmin-react",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,9 +15,9 @@
     "mobile:update:keygen": "node scripts/generate-mobile-update-keys.mjs",
     "mobile:version:check": "node scripts/check-mobile-version.mjs",
     "android:sync": "npm run build:android:web && cap sync android",
-    "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug && cd .. && node scripts/publish-android-apk.mjs debug",
-    "android:apk:release": "node scripts/check-android-signing.mjs && npm run android:sync && cd android && gradlew.bat assembleRelease && cd .. && node scripts/publish-android-apk.mjs release",
-    "android:aab:release": "node scripts/check-android-signing.mjs && npm run android:sync && cd android && gradlew.bat bundleRelease",
+    "android:apk": "npm run android:sync && node scripts/run-gradle.mjs assembleDebug && node scripts/publish-android-apk.mjs debug",
+    "android:apk:release": "node scripts/check-android-signing.mjs && npm run android:sync && node scripts/run-gradle.mjs assembleRelease && node scripts/publish-android-apk.mjs release",
+    "android:aab:release": "node scripts/check-android-signing.mjs && npm run android:sync && node scripts/run-gradle.mjs bundleRelease",
     "android:open": "cap open android",
     "ios:sync": "npm run build:ios:web && cap sync ios && node scripts/normalize-ios-package-paths.mjs",
     "ios:open": "npm run ios:sync && cap open ios",

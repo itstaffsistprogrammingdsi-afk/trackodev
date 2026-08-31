@@ -24,7 +24,7 @@ export default function DownloadApp() {
   }, []);
 
   const sizeMb = metadata ? (metadata.sizeBytes / 1024 / 1024).toFixed(1) : "14";
-  const version = metadata?.version || "1.0.0";
+  const version = metadata?.version || "1.0.3";
   const minimumAndroid = metadata?.minimumAndroid || "7.0";
 
   return (

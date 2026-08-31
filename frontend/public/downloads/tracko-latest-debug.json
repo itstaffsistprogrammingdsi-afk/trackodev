@@ -1,8 +1,8 @@
 {
-  "version": "1.0.2",
-  "versionCode": 9,
+  "version": "1.0.3",
+  "versionCode": 10,
   "buildType": "debug",
   "minimumAndroid": "7.0",
-  "sizeBytes": 28285962,
-  "publishedAt": "2026-08-19T09:34:48.547Z"
+  "sizeBytes": 14336324,
+  "publishedAt": "2026-08-31T04:07:24.401Z"
 }
