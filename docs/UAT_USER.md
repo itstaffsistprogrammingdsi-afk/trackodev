@@ -101,7 +101,23 @@ Ini adalah ringkasan permission role `user` yang menjadi dasar expected result. 
 | Notifikasi | Lihat, read satu/read all, dan hapus notifikasi sendiri |
 | Akun | Lihat/ubah profil sendiri, password, dan avatar |
 
-## 4. Skenario UAT detail
+## 4. Publish sebagai public form
+
+Public questionnaire UAT dibuat idempotent melalui Artisan command. Jalankan di server backend setelah migration dan akun admin tersedia:
+
+```bash
+cd ~/trackodev/backend
+php artisan app:create-uat-public-form
+```
+
+Command akan membuat atau memperbarui form dengan slug `uat-tracko-user`, menambahkan pertanyaan user-friendly (identitas tester, platform/versi, status tiap area, rating, defect, saran, dan keputusan sign-off), lalu mencetak:
+
+- **Link publik pengisian:** `https://dev.tracko.dsicorp.id/public/forms/uat-tracko-user`
+- **Link response admin:** `https://dev.tracko.dsicorp.id/forms`
+
+Jika URL deployment berbeda, gunakan nilai `FRONTEND_URL` pada backend; command akan menyesuaikan link yang dicetak. Submission publik tidak memerlukan login dan tersimpan sebagai response form. Admin dapat membuka menu Forms → Responses untuk meninjau hasil. Jangan menaruh password atau token pada jawaban.
+
+## 5. Skenario UAT detail
 
 ### A. Autentikasi, sesi, dan navigasi umum
 
@@ -269,7 +285,7 @@ Ini adalah ringkasan permission role `user` yang menjadi dasar expected result. 
 | SEC-05 | P1 | User mencoba mengubah resource orang lain | Edit/hapus komentar, attachment, pesan, atau card yang bukan kewenangannya | Hanya aksi yang policy izinkan berhasil; server menolak aksi lain dan audit tidak berubah |  | N/T |
 | SEC-06 | P0 | Browser storage tersedia | Logout → periksa route protected dan local storage token/user secara aman | Token tidak dapat dipakai kembali; tidak ada data akun user sebelumnya yang tampil pada login user berikutnya |  | N/T |
 
-## 5. Add-on UAT untuk menu bersyarat
+## 6. Add-on UAT untuk menu bersyarat
 
 Jalankan bagian ini hanya jika stakeholder memang memberikan permission tambahan kepada akun user. Ini menjaga dokumen tetap lengkap tanpa mengubah baseline role user.
 
@@ -282,7 +298,7 @@ Jalankan bagian ini hanya jika stakeholder memang memberikan permission tambahan
 | ADD-ADMIN-02 | Division admin | Buat/edit/hapus division, kelola anggota dan role anggota | Hanya admin; anggota dan scope akses berubah sesuai policy |
 | ADD-ADMIN-03 | Workspace admin | Buat/edit/hapus workspace | Hanya admin; campaign pada workspace tidak ikut terhapus tanpa konfirmasi/policy yang benar |
 
-## 6. Data aktual dan defect log
+## 7. Data aktual dan defect log
 
 Isi bagian ini saat eksekusi. Setiap FAIL/BLOCKED harus memiliki bukti (screenshot, waktu, URL/route, akun/role, request ID atau log bila ada).
 
@@ -294,7 +310,7 @@ Isi bagian ini saat eksekusi. Setiap FAIL/BLOCKED harus memiliki bukti (screensh
 
 **Severity:** P0 blocker/kritis, P1 tinggi, P2 sedang, P3 rendah.
 
-## 7. Kriteria kelulusan dan sign-off
+## 8. Kriteria kelulusan dan sign-off
 
 UAT dinyatakan **LULUS** apabila:
 
