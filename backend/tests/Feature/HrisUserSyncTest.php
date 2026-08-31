@@ -104,6 +104,51 @@ class HrisUserSyncTest extends TestCase
         $this->assertFalse($user->hasRole(User::ROLE_USER));
     }
 
+    public function test_it_can_reset_legacy_hris_user_passwords_once_without_touching_admin_accounts(): void
+    {
+        Role::firstOrCreate(['name' => User::ROLE_ADMIN, 'guard_name' => 'web']);
+
+        $legacyUser = User::factory()->create([
+            'hris_id' => 401,
+            'name' => 'Legacy User',
+            'email' => 'legacy@example.com',
+            'password' => Hash::make('LegacyPassword@123'),
+        ]);
+        $legacyUser->assignRole(User::ROLE_USER);
+
+        $admin = User::factory()->create([
+            'hris_id' => 402,
+            'name' => 'HRIS Admin',
+            'email' => 'hris-admin@example.com',
+            'password' => Hash::make('AdminPassword@123'),
+        ]);
+        $admin->assignRole(User::ROLE_ADMIN);
+
+        Http::fake([
+            'https://hris.test/api/employees' => Http::response([
+                'success' => true,
+                'data' => [
+                    $this->employee(401, 'Legacy User', 'legacy@example.com'),
+                    $this->employee(402, 'HRIS Admin', 'hris-admin@example.com'),
+                ],
+            ]),
+        ]);
+
+        $this->artisan('app:sync-hris-users', ['--reset-passwords' => true])
+            ->assertSuccessful();
+
+        $legacyUser->refresh();
+        $admin->refresh();
+
+        $this->assertTrue(Hash::check('Default@123', $legacyUser->password));
+        $this->assertTrue(Hash::check('AdminPassword@123', $admin->password));
+
+        // Sinkronisasi biasa tidak mereset password yang sudah dipakai user.
+        $legacyUser->update(['password' => Hash::make('UserChangedPassword@123')]);
+        $this->artisan('app:sync-hris-users')->assertSuccessful();
+        $this->assertTrue(Hash::check('UserChangedPassword@123', $legacyUser->refresh()->password));
+    }
+
     public function test_it_links_an_existing_local_account_by_email_instead_of_duplicating_it(): void
     {
         $user = User::factory()->create([

@@ -67,6 +67,8 @@ disimpan di repository:
 ```dotenv
 HRIS_EMPLOYEES_URL=https://hris-holding.dsicorp.id/api/employees
 HRIS_API_TOKEN=
+# Password awal bersama untuk akun HRIS baru, minimal 8 karakter.
+# Contoh: Tracko@123 (simpan hanya di .env server, jangan di repository)
 HRIS_DEFAULT_PASSWORD=
 HRIS_API_TIMEOUT=30
 ```
@@ -84,6 +86,17 @@ digunakan; akun baru memperoleh role default `user` dari Tracko satu kali saat
 dibuat. Perubahan role berikutnya dikelola secara mandiri melalui User Manager
 Tracko dan tidak ditimpa oleh sinkronisasi. Seeder user dummy tidak lagi
 dijalankan oleh `DatabaseSeeder`.
+
+Jika akun HRIS yang dibuat oleh alur lama tidak dapat login, tetapkan password
+awal bersama satu kali setelah memastikan `HRIS_DEFAULT_PASSWORD` sudah diisi:
+
+```bash
+php artisan app:sync-hris-users --reset-passwords
+```
+
+Opsi tersebut hanya mereset akun yang terhubung ke HRIS dan bukan akun `admin`
+atau `super_admin`. Sinkronisasi harian tanpa opsi tersebut tidak mengubah
+password user yang sudah ada.
 
 php artisan schedule:work
 php artisan queue:work
