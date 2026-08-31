@@ -110,6 +110,8 @@ cd ~/trackodev/backend
 php artisan app:create-uat-public-form
 ```
 
+Opsi `--created-by` boleh diisi dengan email atau UUID pemilik form, misalnya `php artisan app:create-uat-public-form --created-by=superadmin@gmail.com`. Tidak perlu melakukan query manual ke kolom `users.id` ketika memakai email; command sudah membedakan format email dan UUID secara aman.
+
 Command akan membuat atau memperbarui form dengan slug `uat-tracko-user`, menambahkan **200 field** yang mencakup seluruh menu, fungsi, dan fitur Tracko. Sebanyak **155 field** adalah pertanyaan status test case individual (bukan satu rating umum per menu), sedangkan sisanya adalah 17 heading section, metadata tester, kesiapan data, integritas/performa/recovery, jumlah dan severity defect, evidence upload/link, saran, serta keputusan sign-off. Form menggunakan navigasi section sehingga tester dapat berpindah per kelompok dan kembali ke section sebelumnya sebelum mengirim satu submission lengkap. Link berikut tetap sama setiap kali command dijalankan:
 
 - **Link publik pengisian:** `https://dev.tracko.dsicorp.id/public/forms/uat-tracko-user`
