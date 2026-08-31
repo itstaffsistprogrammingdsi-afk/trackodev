@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { useCreateDivision } from "../hooks/useDivisions";
 
-import { useUsers } from "@/features/user/hooks/useUsers";
+import { useDivisionUsers } from "@/features/user/hooks/useUsers";
 
 import UserPicker from "./UserPicker";
 
@@ -19,7 +19,12 @@ export default function CreateDivisionModal({
 }: Props) {
   const createMutation = useCreateDivision();
 
-  const { data: users = [] } = useUsers();
+  const {
+    data: users = [],
+    isLoading: isUsersLoading,
+    isError: isUsersError,
+    refetch: refetchUsers,
+  } = useDivisionUsers(open);
 
   const [name, setName] = useState("");
 
@@ -208,27 +213,44 @@ export default function CreateDivisionModal({
           </div> */}
 
           {/* PICKERS */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* ADMIN */}
-            <UserPicker
-              title="Division Admin"
-              users={adminUsers}
-              selectedUsers={selectedAdmins}
-              onAdd={addAdmin}
-              onRemove={removeAdmin}
-              placeholder="Search admin..."
-            />
+          {isUsersLoading ? (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+              Loading division candidates...
+            </div>
+          ) : isUsersError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-center text-sm text-red-700">
+              <p>Unable to load users for this division.</p>
+              <button
+                type="button"
+                onClick={() => void refetchUsers()}
+                className="mt-3 rounded-lg bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-700"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* ADMIN */}
+              <UserPicker
+                title="Division Admin"
+                users={adminUsers}
+                selectedUsers={selectedAdmins}
+                onAdd={addAdmin}
+                onRemove={removeAdmin}
+                placeholder="Search admin..."
+              />
 
-            {/* MEMBER */}
-            <UserPicker
-              title="Division Members"
-              users={availableMembers}
-              selectedUsers={selectedMembers}
-              onAdd={addMember}
-              onRemove={removeMember}
-              placeholder="Search member..."
-            />
-          </div>
+              {/* MEMBER */}
+              <UserPicker
+                title="Division Members"
+                users={availableMembers}
+                selectedUsers={selectedMembers}
+                onAdd={addMember}
+                onRemove={removeMember}
+                placeholder="Search member..."
+              />
+            </div>
+          )}
         </div>
 
         {/* FOOTER */}

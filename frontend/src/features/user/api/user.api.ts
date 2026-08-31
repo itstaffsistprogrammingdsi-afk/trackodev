@@ -9,6 +9,19 @@ export const getUsers = async (): Promise<User[]> => {
   return res.data.data;
 };
 
+/**
+ * Candidate list used by Create Division. Assignment pickers intentionally
+ * stay capped at 100, but a division admin must be able to select any user
+ * returned by User Management when the account count grows beyond that.
+ */
+export const getDivisionUsers = async (): Promise<User[]> => {
+  const res = await api.get("/users/assignment-candidates", {
+    params: { limit: 1000 },
+  });
+
+  return res.data.data;
+};
+
 export const getCoordinationUsers = async (): Promise<User[]> => {
   const res = await api.get('/users/assignment-candidates');
 
