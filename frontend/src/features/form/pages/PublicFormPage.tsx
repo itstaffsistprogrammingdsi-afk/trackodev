@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import api from "@/lib/axios";
@@ -46,6 +46,55 @@ function PublicFormTopBar() {
   );
 }
 
+function matchesFieldDependency(
+  form: Form,
+  field: FormField,
+  values: FormValues,
+) {
+  if (!field.depends_on_field_id) return true;
+
+  const dependency = form.fields?.find(
+    (item) => item.id === field.depends_on_field_id,
+  );
+
+  if (!dependency) return false;
+
+  const dependencyValue = values[dependency.name];
+  const expectedValue = String(field.depends_on_value ?? "");
+
+  return Array.isArray(dependencyValue)
+    ? dependencyValue.map(String).includes(expectedValue)
+    : String(dependencyValue ?? "") === expectedValue;
+}
+
+function isPublicFieldVisible(
+  form: Form,
+  fieldId: string,
+  values: FormValues,
+) {
+  const fields = form.fields ?? [];
+  const field = fields.find((item) => item.id === fieldId);
+
+  if (!field) return false;
+
+  // A test case inherits the visibility of its nearest section. This keeps
+  // role/platform/module filtering consistent for every field in that block.
+  if (field.type !== "section") {
+    const fieldIndex = fields.findIndex((item) => item.id === fieldId);
+
+    for (let index = fieldIndex - 1; index >= 0; index -= 1) {
+      const section = fields[index];
+
+      if (section.type === "section") {
+        if (!matchesFieldDependency(form, section, values)) return false;
+        break;
+      }
+    }
+  }
+
+  return matchesFieldDependency(form, field, values);
+}
+
 export default function PublicFormPage() {
   const { slug } = useParams<{ slug: string }>();
 
@@ -64,6 +113,14 @@ export default function PublicFormPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const [activeSectionId, setActiveSectionId] = useState("");
+
+  const [draftReady, setDraftReady] = useState(false);
+
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
+
+  const draftStorageKey = slug
+    ? `tracko:public-form-draft:${slug}`
+    : null;
 
   const [error, setError] = useState<string | null>(null);
 
@@ -89,17 +146,43 @@ export default function PublicFormPage() {
         (field: FormField) => field.type === "section",
       );
 
-      setActiveSectionId(firstSection?.id ?? "");
+      let savedDraft: {
+        values?: FormValues;
+        otherValues?: OtherValues;
+        activeSectionId?: string;
+        savedAt?: string;
+      } | null = null;
+
+      if (draftStorageKey) {
+        try {
+          const rawDraft = window.localStorage.getItem(draftStorageKey);
+          if (rawDraft) savedDraft = JSON.parse(rawDraft);
+        } catch (draftError) {
+          console.warn("Draft public form tidak dapat dipulihkan", draftError);
+        }
+      }
+
+      if (savedDraft?.values) setValues(savedDraft.values);
+      if (savedDraft?.otherValues) setOtherValues(savedDraft.otherValues);
+
+      const savedSection = res.data?.fields?.find(
+        (field: FormField) => field.id === savedDraft?.activeSectionId,
+      );
+
+      setActiveSectionId(savedSection?.id ?? firstSection?.id ?? "");
+      setDraftSavedAt(savedDraft?.savedAt ? new Date(savedDraft.savedAt) : null);
+      setDraftReady(true);
     } catch (error) {
       if (signal?.aborted) return;
 
       console.error(error);
       setForm(null);
+      setDraftReady(false);
       setError("Formulir tidak dapat dimuat. Periksa koneksi lalu coba lagi.");
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [slug]);
+  }, [draftStorageKey, slug]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -107,6 +190,40 @@ export default function PublicFormPage() {
 
     return () => controller.abort();
   }, [fetchForm]);
+
+  useEffect(() => {
+    if (!form || !draftStorageKey || !draftReady || submitted) return;
+
+    const timer = window.setTimeout(() => {
+      try {
+        const savedAt = new Date();
+
+        window.localStorage.setItem(
+          draftStorageKey,
+          JSON.stringify({
+            values,
+            otherValues,
+            activeSectionId,
+            savedAt: savedAt.toISOString(),
+          }),
+        );
+
+        setDraftSavedAt(savedAt);
+      } catch (draftError) {
+        console.warn("Draft public form tidak dapat disimpan", draftError);
+      }
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    activeSectionId,
+    draftReady,
+    draftStorageKey,
+    form,
+    otherValues,
+    submitted,
+    values,
+  ]);
 
   // =========================
   // CHANGE
@@ -118,29 +235,29 @@ export default function PublicFormPage() {
     }));
   };
 
-  const isFieldVisible = (fieldId: string) => {
-    const field = form?.fields?.find((item) => item.id === fieldId);
+  const isFieldVisible = (fieldId: string) =>
+    form ? isPublicFieldVisible(form, fieldId, values) : false;
 
-    if (!field?.depends_on_field_id) return true;
-
-    const dependency = form?.fields?.find(
-      (item) => item.id === field.depends_on_field_id,
-    );
-
-    if (!dependency) return true;
-
-    const dependencyValue = values[dependency.name];
-    const expectedValue = String(field.depends_on_value ?? "");
-
-    return Array.isArray(dependencyValue)
-      ? dependencyValue.map(String).includes(expectedValue)
-      : String(dependencyValue ?? "") === expectedValue;
-  };
-
-  const sectionFields = form?.fields?.filter((field) => field.type === "section") ?? [];
+  const sectionFields = useMemo(
+    () => form?.fields?.filter(
+      (field) => field.type === "section" && isPublicFieldVisible(form, field.id, values),
+    ) ?? [],
+    [form, values],
+  );
   const activeSectionIndex = sectionFields.findIndex(
     (field) => field.id === activeSectionId,
   );
+
+  useEffect(() => {
+    if (!sectionFields.length) {
+      if (activeSectionId) setActiveSectionId("");
+      return;
+    }
+
+    if (activeSectionIndex < 0) {
+      setActiveSectionId(sectionFields[0].id);
+    }
+  }, [activeSectionId, activeSectionIndex, sectionFields]);
 
   // Tampilkan metadata sekali di section pertama, lalu satu section test case
   // per layar. Field quality/sign-off setelah section terakhir ikut tampil di
@@ -148,7 +265,8 @@ export default function PublicFormPage() {
   const fieldsForSection = (() => {
     const allFields = form?.fields ?? [];
 
-    if (sectionFields.length === 0 || activeSectionIndex < 0) return allFields;
+    if (sectionFields.length === 0) return allFields;
+    if (activeSectionIndex < 0) return [];
 
     const firstSectionIndex = allFields.findIndex((field) => field.type === "section");
     const activeFieldIndex = allFields.findIndex(
@@ -308,6 +426,16 @@ export default function PublicFormPage() {
       setValues({});
       setOtherValues({});
       setFileValues({});
+      setDraftSavedAt(null);
+
+      if (draftStorageKey) {
+        window.localStorage.removeItem(draftStorageKey);
+      }
+
+      const firstSection = form.fields?.find(
+        (field) => field.type === "section",
+      );
+      setActiveSectionId(firstSection?.id ?? "");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error: unknown) {
       console.error(error);
@@ -506,6 +634,11 @@ export default function PublicFormPage() {
                 style={{ width: `${completionPercent}%` }}
               />
             </div>
+            <p className="mt-2 text-[11px] text-slate-500">
+              {draftSavedAt
+                ? "Draft tersimpan otomatis di perangkat ini. Lampiran perlu dipilih ulang bila halaman ditutup."
+                : "Jawaban teks tersimpan otomatis sebagai draft di perangkat ini."}
+            </p>
           </div>
 
           {/* FIELDS */}

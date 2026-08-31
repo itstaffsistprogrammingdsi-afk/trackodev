@@ -195,6 +195,30 @@ class PublicFormController extends Controller
 
     private function isFieldVisible(Form $form, $field, Request $request): bool
     {
+        $fields = $form->fields->values();
+        $fieldIndex = $fields->search(fn ($candidate) => (string) $candidate->id === (string) $field->id);
+
+        // A field inherits the visibility of the nearest preceding section.
+        // This lets one section dependency hide all of its test cases.
+        if ($field->type !== 'section' && $fieldIndex !== false) {
+            for ($index = $fieldIndex - 1; $index >= 0; $index--) {
+                $section = $fields->get($index);
+
+                if ($section?->type === 'section') {
+                    if (! $this->matchesDependency($form, $section, $request)) {
+                        return false;
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        return $this->matchesDependency($form, $field, $request);
+    }
+
+    private function matchesDependency(Form $form, $field, Request $request): bool
+    {
         if (! $field->depends_on_field_id) {
             return true;
         }
