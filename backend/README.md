@@ -82,8 +82,13 @@ nama dan email karyawan aktif. Password awal hanya dibuat untuk akun baru dan
 tidak akan ditimpa setelah user mengubah password. Role dari HRIS tidak pernah
 digunakan; akun baru memperoleh role default `user` dari Tracko satu kali saat
 dibuat. Perubahan role berikutnya dikelola secara mandiri melalui User Manager
-Tracko dan tidak ditimpa oleh sinkronisasi. Seeder user dummy tidak lagi
-dijalankan oleh `DatabaseSeeder`.
+Tracko dan tidak ditimpa oleh sinkronisasi. Repository ini tidak menyediakan
+seeder data demo; seluruh data operasional dibuat melalui aplikasi atau
+sinkronisasi HRIS.
+
+`DatabaseSeeder` membuat satu super-admin bootstrap dari `SUPER_ADMIN_NAME`,
+`SUPER_ADMIN_EMAIL`, dan `SUPER_ADMIN_PASSWORD`. Ketiga variabel ini wajib
+disediakan di environment server dan tidak boleh memakai kredensial contoh.
 
 php artisan schedule:work
 php artisan queue:work

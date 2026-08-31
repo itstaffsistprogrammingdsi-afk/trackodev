@@ -439,6 +439,8 @@ Route::middleware([
 
     Route::get('labels', [LabelController::class, 'index'])
         ->middleware('permission:label.view');
+    Route::get('labels/{label}', [LabelController::class, 'show'])
+        ->middleware('permission:label.view');
     Route::post('labels', [LabelController::class, 'store'])
         ->middleware('permission:label.create');
     Route::put('labels/{label}', [LabelController::class, 'update'])

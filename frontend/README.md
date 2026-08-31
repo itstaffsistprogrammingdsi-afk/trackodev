@@ -16,9 +16,12 @@ npm run dev
 ```
 
 `npm run build:web` membuat bundle web tanpa artefak OTA. `npm run build`
-adalah perintah deployment produksi: bundle web dibuat, dikompres, diberi
-checksum, ditandatangani RSA, lalu manifest OTA ditulis ke
-`dist/mobile-updates/latest.json`.
+saat ini adalah alias ke `build:web`, sehingga perintah yang dipakai untuk
+deployment website adalah `npm run build:web` (atau `npm run build`).
+
+Build OTA yang dikompres, diberi checksum, ditandatangani RSA, dan menulis
+manifest ke `dist/mobile-updates/latest.json` dijalankan terpisah dengan
+`npm run build:ota`.
 
 ## Konfigurasi backend mobile
 

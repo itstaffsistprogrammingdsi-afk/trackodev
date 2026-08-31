@@ -61,6 +61,8 @@ interface Props {
   downloadEndpoint?: string;
 
   supportsResultDescription?: boolean;
+
+  requiresQuantity?: boolean;
 }
 
 export default function AttachmentSection({
@@ -76,6 +78,7 @@ export default function AttachmentSection({
   deleteEndpoint,
   downloadEndpoint,
   supportsResultDescription = false,
+  requiresQuantity = false,
 }: Props) {
   const { can, hasRole } = useAuth();
   const canManageResultAttachments =
@@ -157,6 +160,8 @@ export default function AttachmentSection({
   );
   const previewRequestRef = useRef(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [visibleCount, setVisibleCount] = useState(20);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveCandidate, setArchiveCandidate] = useState<Attachment | null>(null);
@@ -366,7 +371,7 @@ export default function AttachmentSection({
   const handleSubmit = async () => {
     if (!uploadEndpoint) return;
 
-    if (!quantity || quantity <= 0) {
+    if (requiresQuantity && (!quantity || quantity <= 0)) {
       alert("Quantity wajib diisi");
       return;
     }
@@ -385,16 +390,14 @@ export default function AttachmentSection({
 
         formData.append("type", "file");
         formData.append("file", selectedFile);
-        formData.append("quantity", String(quantity));
+        if (requiresQuantity) {
+          formData.append("quantity", String(quantity));
+        }
         if (supportsResultDescription) {
           formData.append("result_description", resultDescription);
         }
 
-        await api.post(uploadEndpoint, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        await api.post(uploadEndpoint, formData);
       }
 
       // LINK
@@ -413,6 +416,8 @@ export default function AttachmentSection({
       }
 
       setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
       setLinkUrl("");
       setQuantity(0);
       setResultDescription("");
@@ -582,7 +587,7 @@ space-y-6
                   </p>
                 </div>
 
-                <input type="file" className="hidden" onChange={handleUpload} />
+                <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
               </label>
               <label className="group flex min-h-24 cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-blue-200 bg-blue-50/60 px-4 py-3 text-blue-700 transition hover:border-blue-400 hover:bg-blue-50 active:scale-[0.99] sm:hidden">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
@@ -595,6 +600,7 @@ space-y-6
                   </span>
                 </span>
                 <input
+                  ref={cameraInputRef}
                   type="file"
                   accept="image/*"
                   capture="environment"
@@ -642,7 +648,11 @@ space-y-6
 
                   <button
                     type="button"
-                    onClick={() => setSelectedFile(null)}
+                    onClick={() => {
+                      setSelectedFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                      if (cameraInputRef.current) cameraInputRef.current.value = "";
+                    }}
                     className="
       h-8
       w-8
@@ -650,6 +660,8 @@ space-y-6
       hover:bg-red-100
       text-red-500
       "
+                    aria-label="Hapus file yang dipilih"
+                    title="Hapus file yang dipilih"
                   >
                     <X size={16} />
                   </button>
@@ -675,6 +687,7 @@ space-y-6
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
                     placeholder="https://example.com"
+                    aria-label="Link attachment"
                     className="
               h-11
               w-full
@@ -697,74 +710,81 @@ space-y-6
                 File yang diunggah harus berukuran maksimal 10,99 MB
               </p>
             </div>
-            <div
-              className={`grid grid-cols-1 gap-3 ${
-                supportsResultDescription ? "md:grid-cols-2" : ""
-              }`}
-            >
-              <input
-                type="number"
-                min="0"
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                placeholder="Quantity"
-                className="
-      h-11
-      rounded-xl
-      border
-      border-gray-200
-      px-4
-      text-sm
-      focus:outline-none
-      focus:ring-2
-      focus:ring-blue-500
-    "
-              />
+            {(requiresQuantity || supportsResultDescription) && (
+              <div
+                className={`grid grid-cols-1 gap-3 ${
+                  supportsResultDescription ? "md:grid-cols-2" : ""
+                }`}
+              >
+                {requiresQuantity && (
+                  <input
+                    type="number"
+                    min="0"
+                    value={quantity}
+                    onChange={(e) => setQuantity(Number(e.target.value))}
+                    placeholder="Quantity"
+                    aria-label="Quantity"
+                    className="
+                      h-11 rounded-xl border border-gray-200 px-4 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500
+                    "
+                  />
+                )}
 
-{supportsResultDescription && <CreatableSelect
-  isClearable
-  styles={selectStyles}
-  placeholder="Pilih / tambah"
-  options={descriptionOptions}
-  value={
-    resultDescription
-      ? {
-          value: resultDescription,
-          label: resultDescription,
-        }
-      : null
-  }
-  onChange={(newValue) =>
-    setResultDescription(newValue?.value || "")
-  }
-  isLoading={templatesLoading}
-  isValidNewOption={(inputValue) =>
-    canCreateResultDescriptionTemplate &&
-    Boolean(inputValue.trim()) &&
-    !descriptionOptions.some(
-      (option) => option.value.toLowerCase() === inputValue.trim().toLowerCase(),
-    )
-  }
-  onCreateOption={async (inputValue) => {
-    if (!canCreateResultDescriptionTemplate) return;
+                {supportsResultDescription && (
+                  <CreatableSelect
+                    isClearable
+                    styles={selectStyles}
+                    placeholder="Pilih / tambah"
+                    options={descriptionOptions}
+                    value={
+                      resultDescription
+                        ? {
+                            value: resultDescription,
+                            label: resultDescription,
+                          }
+                        : null
+                    }
+                    onChange={(newValue) =>
+                      setResultDescription(newValue?.value || "")
+                    }
+                    isLoading={templatesLoading}
+                    isValidNewOption={(inputValue) =>
+                      canCreateResultDescriptionTemplate &&
+                      Boolean(inputValue.trim()) &&
+                      !descriptionOptions.some(
+                        (option) =>
+                          option.value.toLowerCase() ===
+                          inputValue.trim().toLowerCase(),
+                      )
+                    }
+                    onCreateOption={async (inputValue) => {
+                      if (!canCreateResultDescriptionTemplate) return;
 
-    try {
-      const response = await api.post("/result-description-templates", {
-        name: inputValue.trim(),
-      });
-      const name = response.data.data.name as string;
-      const newOption = { value: name, label: name };
+                      try {
+                        const response = await api.post(
+                          "/result-description-templates",
+                          { name: inputValue.trim() },
+                        );
+                        const name = response.data.data.name as string;
+                        const newOption = { value: name, label: name };
 
-      setDescriptionOptions((prev) => [...prev, newOption]);
-      setResultDescription(name);
-    } catch (error) {
-      console.error("Gagal membuat template result description:", error);
-      alert("Gagal membuat template Result Description");
-    }
-  }}
-  className="text-sm"
-/>}
-            </div>
+                        setDescriptionOptions((prev) => [...prev, newOption]);
+                        setResultDescription(name);
+                      } catch (error) {
+                        console.error(
+                          "Gagal membuat template result description:",
+                          error,
+                        );
+                        alert("Gagal membuat template Result Description");
+                      }
+                    }}
+                    className="text-sm"
+                    aria-label="Result Description"
+                  />
+                )}
+              </div>
+            )}
 {(selectedFile || linkUrl.trim()) && (
   <button
     type="button"

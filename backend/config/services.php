@@ -42,4 +42,13 @@ return [
         'timeout' => (int) env('HRIS_API_TIMEOUT', 30),
     ],
 
+    // Kredensial bootstrap hanya dibaca saat seeder dijalankan. Nilainya
+    // wajib disediakan oleh environment server dan tidak boleh disimpan di
+    // repository.
+    'super_admin' => [
+        'name' => env('SUPER_ADMIN_NAME'),
+        'email' => env('SUPER_ADMIN_EMAIL'),
+        'password' => env('SUPER_ADMIN_PASSWORD'),
+    ],
+
 ];
