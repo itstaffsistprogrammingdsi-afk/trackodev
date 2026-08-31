@@ -22,8 +22,14 @@ class HrisSyncService
      *
      * Only the remote id, name, email, and update timestamp are persisted.
      * A local password is assigned only when an account is first created.
+     *
+     * @param  bool  $resetExistingPasswords  Reset existing non-privileged HRIS
+     *                                        accounts to the configured initial
+     *                                        password. This is intended for a
+     *                                        one-time recovery after migrating
+     *                                        from the old HRIS password flow.
      */
-    public function sync(): array
+    public function sync(bool $resetExistingPasswords = false): array
     {
         $this->ensureConfigured();
 
@@ -33,6 +39,7 @@ class HrisSyncService
             'created' => 0,
             'updated' => 0,
             'unchanged' => 0,
+            'password_reset' => 0,
             'skipped' => 0,
             'failed' => 0,
         ];
@@ -45,8 +52,9 @@ class HrisSyncService
             }
 
             try {
-                $result = $this->syncEmployee($employee);
-                $stats[$result]++;
+                $result = $this->syncEmployee($employee, $resetExistingPasswords);
+                $stats[$result['status']]++;
+                $stats['password_reset'] += $result['password_reset'] ? 1 : 0;
             } catch (Throwable $exception) {
                 $stats['failed']++;
 
@@ -57,7 +65,7 @@ class HrisSyncService
             }
         }
 
-        if ($stats['created'] + $stats['updated'] > 0) {
+        if ($stats['created'] + $stats['updated'] + $stats['password_reset'] > 0) {
             ApplicationDataChanged::dispatch(new User, 'synced');
         }
 
@@ -112,14 +120,23 @@ class HrisSyncService
             && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
-    private function syncEmployee(array $employee): string
+    /**
+     * @return array{status: string, password_reset: bool}
+     */
+    private function syncEmployee(array $employee, bool $resetExistingPasswords = false): array
     {
         $hrisId = (int) $employee['id'];
         $name = Str::squish((string) $employee['name']);
         $email = Str::lower(trim((string) $employee['email']));
         $hrisUpdatedAt = $this->parseTimestamp($employee['updated_at'] ?? null);
 
-        return DB::transaction(function () use ($hrisId, $name, $email, $hrisUpdatedAt): string {
+        return DB::transaction(function () use (
+            $hrisId,
+            $name,
+            $email,
+            $hrisUpdatedAt,
+            $resetExistingPasswords,
+        ): array {
             $user = User::query()
                 ->where('hris_id', $hrisId)
                 ->lockForUpdate()
@@ -145,7 +162,10 @@ class HrisSyncService
                 // Penetapan hanya dilakukan saat akun lokal pertama kali dibuat.
                 $user->assignRole(User::ROLE_USER);
 
-                return 'created';
+                return [
+                    'status' => 'created',
+                    'password_reset' => false,
+                ];
             }
 
             if ($user->hris_id !== null && (int) $user->hris_id !== $hrisId) {
@@ -159,13 +179,37 @@ class HrisSyncService
                 'hris_updated_at' => $hrisUpdatedAt,
             ]);
 
+            $passwordReset = false;
+
+            // Password HRIS hanya dipakai untuk proses import awal. Password
+            // akun yang sudah berjalan tidak boleh ikut berubah pada scheduler
+            // harian. Opsi ini disediakan untuk memperbaiki akun lama yang
+            // dibuat oleh alur HRIS sebelumnya, dan tidak menyentuh akun admin.
+            if (
+                $resetExistingPasswords
+                && ! $user->hasAnyRole([
+                    User::ROLE_ADMIN,
+                    User::ROLE_SUPER_ADMIN,
+                ])
+            ) {
+                $user->forceFill([
+                    'password' => Hash::make((string) config('services.hris.default_password')),
+                ]);
+                // Pastikan token dari password lama tidak dapat dipakai lagi.
+                $user->tokens()->delete();
+                $passwordReset = true;
+            }
+
             $changed = $user->isDirty();
 
             if ($changed) {
                 $user->saveQuietly();
             }
 
-            return $changed ? 'updated' : 'unchanged';
+            return [
+                'status' => $changed ? 'updated' : 'unchanged',
+                'password_reset' => $passwordReset,
+            ];
         });
     }
 
