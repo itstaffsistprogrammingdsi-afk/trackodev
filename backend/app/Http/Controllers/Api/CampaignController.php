@@ -143,7 +143,8 @@ class CampaignController extends Controller
         $this->ensureEligibleCollaborators(
             $request->user(),
             collect($request->member_ids ?? []),
-            'member_ids'
+            'member_ids',
+            $workspace->division_id
         );
 
         $campaign = DB::transaction(function () use (
@@ -486,7 +487,8 @@ class CampaignController extends Controller
         $this->ensureEligibleCollaborators(
             $request->user(),
             collect([$userId]),
-            'user_id'
+            'user_id',
+            $campaign->workspace?->division_id
         );
 
         DB::transaction(function () use (
@@ -600,10 +602,54 @@ class CampaignController extends Controller
         ]);
     }
 
-    private function ensureEligibleCollaborators(User $actor, $userIds, string $field): void
+    private function ensureEligibleCollaborators(
+        User $actor,
+        $userIds,
+        string $field,
+        ?string $divisionId = null
+    ): void
     {
+        $candidateIds = collect($userIds)
+            ->reject(fn ($id) => (string) $id === (string) $actor->id)
+            ->unique()
+            ->values();
+
+        if ($candidateIds->isEmpty() || $actor->isSuperAdmin()) {
+            return;
+        }
+
+        if ($actor->isDivisionAdmin()) {
+            $managedDivisionIds = $actor->divisions()->pluck('divisions.id');
+
+            $eligibleDivisionId = $divisionId !== null
+                && $managedDivisionIds->contains($divisionId)
+                ? $divisionId
+                : null;
+
+            $eligibleIds = $eligibleDivisionId === null
+                ? collect()
+                : User::query()
+                    ->whereIn('id', $candidateIds)
+                    ->whereHas(
+                        'divisions',
+                        fn ($divisionQuery) => $divisionQuery->where(
+                            'divisions.id',
+                            $eligibleDivisionId
+                        )
+                    )
+                    ->pluck('id');
+
+            if ($eligibleDivisionId === null || $candidateIds->diff($eligibleIds)->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    $field => 'Admin hanya dapat menambahkan anggota dari division yang dikelolanya.',
+                ]);
+            }
+
+            return;
+        }
+
         $hasStaffCandidate = User::query()
-            ->whereIn('id', collect($userIds)->reject(fn ($id) => $id === $actor->id))
+            ->whereIn('id', $candidateIds)
             ->get()
             ->contains(fn (User $candidate) => ! $candidate->isCollaborationLeader());
 

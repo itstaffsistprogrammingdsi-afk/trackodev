@@ -23,6 +23,7 @@ export function useRealtimeRevision(resources?: readonly string[]): number {
 
       if (
         acceptedResources &&
+        event.detail.resource !== "*" &&
         !acceptedResources.has(event.detail.resource)
       ) {
         return;

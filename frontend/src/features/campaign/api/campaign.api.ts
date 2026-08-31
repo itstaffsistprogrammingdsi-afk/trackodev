@@ -61,11 +61,16 @@ export const getUsers = async () => {
   return res.data.data
 }
 
-export const searchUsers = async (query: string, collaboratorOnly = false) => {
+export const searchUsers = async (
+  query: string,
+  collaboratorOnly = false,
+  workspaceId?: string,
+) => {
   const res = await api.get('/users/mentionable', {
     params: {
       search: query,
       collaborator: collaboratorOnly ? 1 : undefined,
+      workspace_id: workspaceId,
     },
   })
 

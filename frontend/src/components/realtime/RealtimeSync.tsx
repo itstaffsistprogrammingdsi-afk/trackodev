@@ -3,10 +3,13 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/AuthContext";
 import { acquireEcho, releaseEcho } from "@/lib/echo";
+import { isMobileApp } from "@/lib/mobileConfig";
 import {
   REALTIME_DATA_CHANGED_EVENT,
   type ApplicationDataChanged,
 } from "@/lib/realtimeEvents";
+
+const MOBILE_FALLBACK_REFRESH_INTERVAL_MS = 15_000;
 
 export default function RealtimeSync() {
   const { user } = useAuth();
@@ -17,14 +20,52 @@ export default function RealtimeSync() {
       return;
     }
 
+    const channelName = "app.updates";
+    let refreshTimer: number | undefined;
+    const fallbackRefresh = () => {
+      if (!isMobileApp() || document.visibilityState === "hidden") {
+        return;
+      }
+
+      const event: ApplicationDataChanged = {
+        // Wildcard events let pages that use direct Axios effects refresh too,
+        // while the normal Reverb event keeps resource-level filtering intact.
+        resource: "*",
+        action: "updated",
+        occurred_at: new Date().toISOString(),
+      };
+
+      window.dispatchEvent(
+        new CustomEvent<ApplicationDataChanged>(REALTIME_DATA_CHANGED_EVENT, {
+          detail: event,
+        }),
+      );
+
+      void queryClient.invalidateQueries({ type: "active" });
+    };
+    const fallbackRefreshTimer = isMobileApp()
+      ? window.setInterval(
+          fallbackRefresh,
+          MOBILE_FALLBACK_REFRESH_INTERVAL_MS,
+        )
+      : undefined;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fallbackRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     const echo = acquireEcho();
 
     if (!echo) {
-      return;
+      return () => {
+        if (fallbackRefreshTimer !== undefined) {
+          window.clearInterval(fallbackRefreshTimer);
+        }
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      };
     }
 
-    const channelName = "app.updates";
-    let refreshTimer: number | undefined;
     const removeConnectionListener = echo.connector.onConnectionChange((status) => {
       document.documentElement.dataset.realtimeStatus = status;
 
@@ -71,6 +112,10 @@ export default function RealtimeSync() {
 
     return () => {
       window.clearTimeout(refreshTimer);
+      if (fallbackRefreshTimer !== undefined) {
+        window.clearInterval(fallbackRefreshTimer);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       removeConnectionListener();
       pusherConnection.unbind("error", handleConnectionError);
       echo.leave(channelName);
