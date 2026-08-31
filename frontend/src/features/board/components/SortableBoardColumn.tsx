@@ -16,6 +16,7 @@ type Props = {
   onMoveCard?: (card: Card, boardId: string) => Promise<void>;
   onEdit?: () => void;
   onDelete?: () => void;
+  emptyMessage?: string;
   disableDrag?: boolean;
   fullWidth?: boolean;
 };

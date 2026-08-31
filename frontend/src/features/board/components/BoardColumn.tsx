@@ -26,6 +26,7 @@ type Props = {
   onMoveCard?: (card: Card, boardId: string) => Promise<void>;
   onEdit?: () => void;
   onDelete?: () => void;
+  emptyMessage?: string;
   dragHandle?: ReactNode;
 };
 
@@ -55,6 +56,7 @@ export default function BoardColumn({
   onMoveCard,
   onEdit,
   onDelete,
+  emptyMessage = "Belum ada task",
   dragHandle,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: board.id });
@@ -561,7 +563,7 @@ export default function BoardColumn({
           <div className="min-h-[80px] space-y-2.5">
             {board.cards.length === 0 && !isAdding && (
               <div className="flex h-24 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200/80 bg-white/40 text-center text-xs text-slate-400">
-                <span>Belum ada task</span>
+                <span>{emptyMessage}</span>
               </div>
             )}
 
