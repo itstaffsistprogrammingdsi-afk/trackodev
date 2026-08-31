@@ -16,6 +16,9 @@ Perintah release otomatis membangun bundle Android, melakukan Capacitor sync,
 menghasilkan APK signed, menyalinnya ke `public/downloads/tracko-latest.apk`,
 dan memperbarui `public/downloads/tracko-latest.json`.
 
+Wrapper Gradle dipanggil melalui script lintas platform, sehingga perintah yang
+sama dapat dijalankan di Windows maupun Linux server.
+
 `npm run android:apk` hanya menghasilkan file debug
 `tracko-latest-debug.apk` dan tidak boleh menggantikan APK resmi.
 
