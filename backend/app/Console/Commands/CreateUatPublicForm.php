@@ -7,6 +7,7 @@ use App\Models\FormField;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 class CreateUatPublicForm extends Command
@@ -111,13 +112,20 @@ class CreateUatPublicForm extends Command
 
     private function resolveCreator(): ?User
     {
-        $requested = trim((string) $this->option('created-by'));
+        // Sebagian shell/markdown mengirim email sebagai `nama\@domain`.
+        // Normalisasi agar lookup email tetap cocok dengan data HRIS.
+        $requested = str_replace('\\@', '@', trim((string) $this->option('created-by')));
 
         if ($requested !== '') {
-            return User::query()
-                ->where('id', $requested)
-                ->orWhere('email', $requested)
-                ->first();
+            // PostgreSQL akan melempar error jika string email dibandingkan
+            // langsung dengan kolom UUID `id`. Query ID hanya dijalankan
+            // ketika argumen memang UUID yang valid.
+            if (Str::isUuid($requested)) {
+                return User::query()->where('id', $requested)->first()
+                    ?? User::query()->where('email', $requested)->first();
+            }
+
+            return User::query()->where('email', $requested)->first();
         }
 
         return User::query()
