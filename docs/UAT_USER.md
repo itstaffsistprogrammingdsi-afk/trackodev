@@ -110,12 +110,12 @@ cd ~/trackodev/backend
 php artisan app:create-uat-public-form
 ```
 
-Command akan membuat atau memperbarui form dengan slug `uat-tracko-user`, menambahkan pertanyaan user-friendly (identitas tester, platform/versi, status tiap area, rating, defect, saran, dan keputusan sign-off), lalu mencetak:
+Command akan membuat atau memperbarui form dengan slug `uat-tracko-user`, menambahkan **41 field** yang mencakup identitas dan environment tester, kesiapan data, critical-flow checklist, status per area yang terpetakan ke ID skenario UAT, integritas/performa/recovery, jumlah dan severity defect, evidence upload/link, saran, serta keputusan sign-off. Link berikut tetap sama setiap kali command dijalankan:
 
 - **Link publik pengisian:** `https://dev.tracko.dsicorp.id/public/forms/uat-tracko-user`
 - **Link response admin:** `https://dev.tracko.dsicorp.id/forms`
 
-Jika URL deployment berbeda, gunakan nilai `FRONTEND_URL` pada backend; command akan menyesuaikan link yang dicetak. Submission publik tidak memerlukan login dan tersimpan sebagai response form. Admin dapat membuka menu Forms → Responses untuk meninjau hasil. Jangan menaruh password atau token pada jawaban.
+Jika URL deployment berbeda, gunakan nilai `FRONTEND_URL` pada backend; command akan menyesuaikan link yang dicetak. Submission publik tidak memerlukan login dan tersimpan sebagai response form. Admin dapat membuka menu Forms → Responses untuk meninjau hasil. Satu submission merepresentasikan satu sesi pengujian; tester dapat mengirim sesi lain menggunakan tombol **Isi jawaban lain**. Jangan menaruh password atau token pada jawaban.
 
 ## 5. Skenario UAT detail
 
