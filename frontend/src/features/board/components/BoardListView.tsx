@@ -8,6 +8,7 @@ import {
 interface Props {
   boards: Board[];
   onOpenCard?: (card: Card) => void;
+  emptyMessage?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -55,7 +56,11 @@ function DueDateBadge({ value }: { value?: string | null }) {
   );
 }
 
-export default function BoardListView({ boards, onOpenCard }: Props) {
+export default function BoardListView({
+  boards,
+  onOpenCard,
+  emptyMessage = "Belum ada task",
+}: Props) {
   const rows = boards.flatMap((board) =>
     board.cards.map((card) => ({ board, card })),
   );
@@ -64,7 +69,7 @@ export default function BoardListView({ boards, onOpenCard }: Props) {
     return (
       <div className="flex flex-col items-center justify-center gap-1 py-16 text-center">
         <div className="text-sm font-medium text-gray-700">
-          Belum ada task
+          {emptyMessage}
         </div>
         <p className="text-xs text-gray-400">
           Task yang dibuat di semua column akan muncul di sini.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 
 import {
@@ -39,7 +39,7 @@ import {
   isBoardOrderLocked,
 } from "../utils/boardOrder";
 
-import { Kanban, List, Plus, FolderKanban, Loader2 } from "lucide-react";
+import { Kanban, List, Plus, FolderKanban, Loader2, Search, X } from "lucide-react";
 
 type ViewMode = "kanban" | "list";
 
@@ -80,7 +80,11 @@ const { campaignId } = useParams<{ campaignId: string }>();
   const [activeBoard, setActiveBoard] = useState<Board | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [mobileBoardId, setMobileBoardId] = useState("");
+  const [cardSearch, setCardSearch] = useState("");
   const mobileApp = isMobileApp();
+  const deferredCardSearch = useDeferredValue(cardSearch);
+  const normalizedCardSearch = deferredCardSearch.trim().toLocaleLowerCase();
+  const isSearchActive = cardSearch.trim().length > 0;
 
   // =========================================
   // SYNC DATA
@@ -167,6 +171,40 @@ const { campaignId } = useParams<{ campaignId: string }>();
       setDeletingBoard(null);
     }
   }, [boards, editingBoard, deletingBoard]);
+
+  const filteredBoards = useMemo(() => {
+    if (!normalizedCardSearch) return boards;
+
+    return boards.map((board) => ({
+      ...board,
+      cards: board.cards.filter((card) =>
+        card.title.toLocaleLowerCase().includes(normalizedCardSearch),
+      ),
+    }));
+  }, [boards, normalizedCardSearch]);
+
+  const filteredCardCount = useMemo(
+    () => filteredBoards.reduce((total, board) => total + board.cards.length, 0),
+    [filteredBoards],
+  );
+
+  const totalCardCount = useMemo(
+    () => boards.reduce((total, board) => total + board.cards.length, 0),
+    [boards],
+  );
+
+  useEffect(() => {
+    if (!mobileApp || !normalizedCardSearch) return;
+
+    const selectedBoardHasMatch = filteredBoards.some(
+      (board) => board.id === mobileBoardId && board.cards.length > 0,
+    );
+    const firstMatchingBoard = filteredBoards.find((board) => board.cards.length > 0);
+
+    if (!selectedBoardHasMatch && firstMatchingBoard && firstMatchingBoard.id !== mobileBoardId) {
+      setMobileBoardId(firstMatchingBoard.id);
+    }
+  }, [filteredBoards, mobileApp, mobileBoardId, normalizedCardSearch]);
 
   // =========================================
   // DND SENSOR
@@ -476,12 +514,12 @@ const { campaignId } = useParams<{ campaignId: string }>();
 
   const visibleKanbanBoards =
     mobileApp && mobileBoardId
-      ? boards.filter((board) => board.id === mobileBoardId)
-      : boards;
+      ? filteredBoards.filter((board) => board.id === mobileBoardId)
+      : filteredBoards;
 
   return (
     <DndContext
-      sensors={sensors}
+      sensors={isSearchActive ? [] : sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -545,6 +583,46 @@ const { campaignId } = useParams<{ campaignId: string }>();
         </button>
       </div>
 
+      {/* CARD SEARCH */}
+      <label className="block w-full min-w-0 sm:max-w-md sm:flex-1">
+        <span className="sr-only">Cari card berdasarkan nama</span>
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="search"
+            value={cardSearch}
+            onChange={(event) => setCardSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setCardSearch("");
+            }}
+            placeholder="Cari nama card..."
+            autoComplete="off"
+            className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-10 pr-10 text-sm font-medium text-slate-800 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          />
+          {cardSearch ? (
+            <button
+              type="button"
+              onClick={() => setCardSearch("")}
+              aria-label="Hapus pencarian card"
+              className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            >
+              <X aria-hidden="true" size={16} />
+            </button>
+          ) : null}
+        </div>
+        {isSearchActive ? (
+          <span
+            className="mt-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400"
+            aria-live="polite"
+          >
+            {filteredCardCount} dari {totalCardCount} card ditemukan
+          </span>
+        ) : null}
+      </label>
+
       {mobileApp && viewMode === "kanban" && boards.length > 0 ? (
         <label className="block w-full sm:w-auto">
           <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
@@ -555,7 +633,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
             onChange={(event) => setMobileBoardId(event.target.value)}
             className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           >
-            {boards.map((board) => (
+            {filteredBoards.map((board) => (
               <option key={board.id} value={board.id}>
                 {board.name} ({board.cards.length})
               </option>
@@ -572,7 +650,9 @@ const { campaignId } = useParams<{ campaignId: string }>();
         <div className="flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-slate-50 px-2.5 py-1.5 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50">
           <FolderKanban size={14} className="text-slate-400 dark:text-slate-500" />
           <span>
-            {boards.reduce((sum, b) => sum + b.cards.length, 0)} Tasks in {boards.length} Columns
+            {isSearchActive
+              ? `${filteredCardCount} dari ${totalCardCount} Tasks ditemukan`
+              : `${totalCardCount} Tasks in ${boards.length} Columns`}
           </span>
         </div>
       </div>
@@ -629,6 +709,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
               onOpenCard={setSelectedCard}
               onEdit={() => setEditingBoard(board)}
               onDelete={() => setDeletingBoard(board)}
+              emptyMessage={isSearchActive ? "Tidak ada card yang cocok" : undefined}
               moveTargets={boards
                 .filter((target) => target.id !== board.id)
                 .map((target) => ({ id: target.id, name: target.name }))}
@@ -642,7 +723,11 @@ const { campaignId } = useParams<{ campaignId: string }>();
     ) : (
       /* LIST VIEW */
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-sm">
-        <BoardListView boards={boards} onOpenCard={setSelectedCard} />
+        <BoardListView
+          boards={filteredBoards}
+          onOpenCard={setSelectedCard}
+          emptyMessage={isSearchActive ? "Tidak ada card yang cocok" : undefined}
+        />
       </div>
     )}
   </div>
