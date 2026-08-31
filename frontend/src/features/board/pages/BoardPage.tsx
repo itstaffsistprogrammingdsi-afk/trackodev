@@ -615,7 +615,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
         <div
           className={
             mobileApp
-              ? "block max-h-[calc(100dvh-14rem)] w-full overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+1.5rem)] [-webkit-overflow-scrolling:touch]"
+              ? "block max-h-[calc(100dvh-14rem)] w-full overflow-y-auto overscroll-y-auto pb-[calc(env(safe-area-inset-bottom)+1.5rem)] [-webkit-overflow-scrolling:touch]"
               : "flex w-full gap-4 overflow-x-auto overflow-y-hidden pb-6 custom-scrollbar"
           }
           style={{ touchAction: mobileApp ? "pan-y" : "pan-x" }}
