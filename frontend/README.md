@@ -150,7 +150,7 @@ pada manifest untuk menghentikan rollout atau menampilkan maintenance mode.
 
 ## Build publik Android
 
-Rilis Android berikutnya adalah `1.0.3` dengan `versionCode 10`. Untuk release,
+Rilis Android berikutnya adalah `1.0.4` dengan `versionCode 11`. Untuk release,
 simpan Android upload keystore di secret manager dan sediakan seluruh environment
 berikut pada mesin build:
 
