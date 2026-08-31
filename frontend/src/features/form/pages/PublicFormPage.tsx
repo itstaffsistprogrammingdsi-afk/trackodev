@@ -60,6 +60,8 @@ export default function PublicFormPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const [submitted, setSubmitted] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   // =========================
@@ -125,6 +127,22 @@ export default function PublicFormPage() {
       ? dependencyValue.map(String).includes(expectedValue)
       : String(dependencyValue ?? "") === expectedValue;
   };
+
+  const visibleFields = form?.fields?.filter((field) => isFieldVisible(field.id)) ?? [];
+
+  const answeredFields = visibleFields.filter((field) => {
+    if (field.type === "file") return Boolean(fileValues[field.name]);
+
+    const value = values[field.name];
+
+    if (Array.isArray(value)) return value.length > 0;
+
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  }).length;
+
+  const completionPercent = visibleFields.length
+    ? Math.round((answeredFields / visibleFields.length) * 100)
+    : 0;
 
   // =========================
   // VALIDATE
@@ -237,11 +255,12 @@ export default function PublicFormPage() {
 
       await api.post(`/public/forms/${slug}/submit`, formData);
 
-      alert("Form berhasil dikirim");
+      setSubmitted(true);
 
       setValues({});
       setOtherValues({});
       setFileValues({});
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error: unknown) {
       console.error(error);
 
@@ -373,6 +392,44 @@ export default function PublicFormPage() {
               </div>
             </div>
           )}
+
+          {submitted ? (
+            <div className="mx-5 mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-6 sm:mx-8 sm:px-6" role="status">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-lg text-white">
+                  ✓
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-emerald-900">
+                    Jawaban berhasil dikirim
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-emerald-800">
+                    Terima kasih. Tim Tracko akan meninjau hasil UAT Anda.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSubmitted(false)}
+                    className="mt-4 min-h-11 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+                  >
+                    Isi jawaban lain
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+          <>
+          <div className="mx-5 mb-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:mx-8">
+            <div className="flex items-center justify-between gap-3 text-xs font-medium text-slate-600">
+              <span>{answeredFields} dari {visibleFields.length} pertanyaan terisi</span>
+              <span>{completionPercent}%</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+              <div
+                className="h-full rounded-full bg-[#673ab7] transition-all duration-300"
+                style={{ width: `${completionPercent}%` }}
+              />
+            </div>
+          </div>
 
           {/* FIELDS */}
           <div className="space-y-4 px-3 pb-6 pt-2 sm:px-4 sm:pb-8">
@@ -686,6 +743,8 @@ export default function PublicFormPage() {
               </button>
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>
