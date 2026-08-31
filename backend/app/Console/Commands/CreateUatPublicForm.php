@@ -19,6 +19,42 @@ class CreateUatPublicForm extends Command
 
     private const SLUG = 'uat-tracko-user';
 
+    private const MODE_QUICK = 'Quick UAT (10–15 menit)';
+
+    private const MODE_FULL = 'Full UAT (QA lengkap)';
+
+    private const SCOPE_USER = 'Fitur user reguler';
+
+    private const SCOPE_ADMIN = 'Fitur admin / super admin';
+
+    private const SCOPE_FORMS = 'Forms';
+
+    private const SCOPE_REPORTS = 'Report & QC';
+
+    /**
+     * Test case kritis yang tetap tampil pada Quick UAT. Case lain hanya
+     * tampil ketika tester memilih Full UAT.
+     */
+    private const QUICK_CASE_IDS = [
+        'PUB-01', 'PUB-04',
+        'AUTH-01', 'AUTH-02', 'AUTH-07', 'NAV-01', 'NAV-02',
+        'MYW-01', 'MYW-09',
+        'DIV-01', 'WSP-01', 'WSP-04',
+        'CAM-01', 'CAM-04', 'CAM-08', 'CAM-09',
+        'BRD-01', 'BRD-07', 'BRD-09', 'BRD-11', 'BRD-15',
+        'CARD-01', 'CARD-07', 'CARD-13',
+        'CAL-01',
+        'CHAT-01', 'CHAT-03',
+        'NOTIF-01',
+        'ACC-04', 'ACC-06',
+        'SYNC-01', 'SYNC-05', 'SYNC-06',
+        'SEC-01', 'SEC-02',
+        'ADM-01', 'ADM-04', 'ADM-07',
+        'FORM-01', 'FORM-04',
+        'RPT-01', 'RPT-03',
+        'GEN-01', 'GEN-02',
+    ];
+
     /**
      * Field names from the previous compact questionnaire. They are removed
      * during reconciliation so an existing form does not retain duplicate
@@ -66,8 +102,10 @@ class CreateUatPublicForm extends Command
                     ],
                 );
 
+                $fieldModels = [];
+
                 foreach ($definition['fields'] as $order => $field) {
-                    FormField::query()->updateOrCreate(
+                    $fieldModels[$field['name']] = FormField::query()->updateOrCreate(
                         [
                             'form_id' => $form->id,
                             'name' => $field['name'],
@@ -80,8 +118,28 @@ class CreateUatPublicForm extends Command
                             'allow_other' => $field['allow_other'] ?? false,
                             'other_label' => $field['other_label'] ?? null,
                             'order' => $order,
+                            'depends_on_field_id' => null,
+                            'depends_on_value' => null,
                         ],
                     );
+                }
+
+                foreach ($definition['fields'] as $field) {
+                    $dependencyName = $field['depends_on_name'] ?? null;
+
+                    if (! $dependencyName) {
+                        continue;
+                    }
+
+                    $dependency = $fieldModels[$dependencyName] ?? null;
+                    if (! $dependency) {
+                        throw new \RuntimeException("Dependency field {$dependencyName} tidak ditemukan.");
+                    }
+
+                    $fieldModels[$field['name']]->update([
+                        'depends_on_field_id' => $dependency->id,
+                        'depends_on_value' => $field['depends_on_value'] ?? null,
+                    ]);
                 }
 
                 FormField::query()
@@ -147,7 +205,9 @@ class CreateUatPublicForm extends Command
             ['name' => 'tester_name', 'label' => 'Nama tester', 'type' => 'text', 'is_required' => true],
             ['name' => 'tester_email', 'label' => 'Email tester', 'type' => 'text', 'is_required' => true],
             ['name' => 'tester_role', 'label' => 'Role saat menguji', 'type' => 'select', 'options' => ['User reguler', 'Admin', 'Super Admin', 'Lainnya'], 'is_required' => true],
+            ['name' => 'uat_mode', 'label' => 'Pilih mode pengujian', 'type' => 'radio', 'options' => [self::MODE_QUICK, self::MODE_FULL], 'is_required' => true],
             ['name' => 'test_platform', 'label' => 'Platform yang diuji (boleh pilih lebih dari satu)', 'type' => 'checkbox', 'options' => ['Web desktop', 'Web mobile browser', 'Android APK'], 'is_required' => true],
+            ['name' => 'tested_modules', 'label' => 'Area yang benar-benar Anda uji (boleh pilih lebih dari satu)', 'type' => 'checkbox', 'options' => [self::SCOPE_USER, self::SCOPE_ADMIN, self::SCOPE_FORMS, self::SCOPE_REPORTS], 'is_required' => true],
             ['name' => 'app_version', 'label' => 'Versi aplikasi/APK dan browser (contoh: APK v1.0.4, Chrome 140)', 'type' => 'text', 'is_required' => true],
             ['name' => 'test_date', 'label' => 'Tanggal pengujian', 'type' => 'date', 'is_required' => true],
             ['name' => 'test_scope', 'label' => 'Scope data yang diuji (division / workspace / campaign)', 'type' => 'text', 'is_required' => true],
@@ -166,16 +226,25 @@ class CreateUatPublicForm extends Command
                 'label' => $section['title'],
                 'type' => 'section',
                 'is_required' => false,
+                'depends_on_name' => $section['depends_on_name'] ?? null,
+                'depends_on_value' => $section['depends_on_value'] ?? null,
             ];
 
             foreach ($section['cases'] as $case) {
-                $fields[] = [
+                $caseField = [
                     'name' => strtolower(str_replace('-', '_', $case['id'])),
                     'label' => $case['id'].' — '.$case['label'],
                     'type' => 'select',
                     'options' => $statusOptions,
                     'is_required' => true,
                 ];
+
+                if (! in_array($case['id'], self::QUICK_CASE_IDS, true)) {
+                    $caseField['depends_on_name'] = 'uat_mode';
+                    $caseField['depends_on_value'] = self::MODE_FULL;
+                }
+
+                $fields[] = $caseField;
             }
         }
 
@@ -200,8 +269,9 @@ class CreateUatPublicForm extends Command
             'name' => 'UAT Tracko — Questionnaire & Sign-off',
             'description' => implode("\n", [
                 'Terima kasih sudah membantu menguji Tracko.',
-                'Form ini mencakup seluruh menu, fungsi, dan fitur bisnis Tracko. Pilih status untuk setiap test case dan lampirkan bukti jika ada kendala.',
-                'Satu pengisian mewakili satu sesi pengujian. Estimasi waktu pengisian 15–25 menit.',
+                'Quick UAT menampilkan alur kritis untuk user bisnis. Full UAT menampilkan seluruh menu, fungsi, dan fitur untuk QA.',
+                'Section Admin, Forms, Report, dan Mobile hanya muncul bila dipilih pada scope/platform. Draft jawaban teks tersimpan otomatis di perangkat ini.',
+                'Satu pengisian mewakili satu sesi. Estimasi Quick UAT 10–15 menit; Full UAT 30–45 menit untuk pengisian form.',
             ]),
             'note_content' => 'PASS = berjalan sesuai harapan. PASS dengan catatan = berjalan tetapi ada saran kecil. FAIL = fungsi tidak berjalan. BLOCKED = tidak bisa diuji karena environment/data. Untuk FAIL/BLOCKED, isi detail, severity, reproduksi, dan bukti. Pilih N/A hanya jika test case memang tidak berlaku untuk role Anda. Jangan tulis password atau token pada jawaban.',
             'fields' => $fields,
@@ -351,7 +421,7 @@ class CreateUatPublicForm extends Command
                 ['id' => 'ACC-05', 'label' => 'Validasi password lama, panjang, dan konfirmasi'],
                 ['id' => 'ACC-06', 'label' => 'Logout web dan APK'],
             ]],
-            ['code' => 'sync_mobile', 'title' => 'L. Mobile, realtime, dan konsistensi Web ↔ APK', 'cases' => [
+            ['code' => 'sync_mobile', 'title' => 'L. Mobile, realtime, dan konsistensi Web ↔ APK', 'depends_on_name' => 'test_platform', 'depends_on_value' => 'Android APK', 'cases' => [
                 ['id' => 'SYNC-01', 'label' => 'Entity baru dari web muncul di APK sesuai scope'],
                 ['id' => 'SYNC-02', 'label' => 'Perubahan dari APK muncul di web'],
                 ['id' => 'SYNC-03', 'label' => 'Event Reverb card/comment/assignment tidak hilang/dobel'],
@@ -368,7 +438,7 @@ class CreateUatPublicForm extends Command
                 ['id' => 'SEC-05', 'label' => 'Resource/komentar/attachment/pesan user lain terlindungi'],
                 ['id' => 'SEC-06', 'label' => 'Logout membersihkan token dan data storage'],
             ]],
-            ['code' => 'admin', 'title' => 'N. Menu dan fungsi admin/super admin', 'cases' => [
+            ['code' => 'admin', 'title' => 'N. Menu dan fungsi admin/super admin', 'depends_on_name' => 'tested_modules', 'depends_on_value' => self::SCOPE_ADMIN, 'cases' => [
                 ['id' => 'ADM-01', 'label' => 'User list, search, detail, activity, dan stats'],
                 ['id' => 'ADM-02', 'label' => 'Create/edit/delete user dan role'],
                 ['id' => 'ADM-03', 'label' => 'View/update permission tambahan user'],
@@ -382,7 +452,7 @@ class CreateUatPublicForm extends Command
                 ['id' => 'ADM-11', 'label' => 'CRUD result description template'],
                 ['id' => 'ADM-12', 'label' => 'Global dashboard, system insights, activities, dan ranking'],
             ]],
-            ['code' => 'forms', 'title' => 'O. Forms, builder, public response, dan forwarding', 'cases' => [
+            ['code' => 'forms', 'title' => 'O. Forms, builder, public response, dan forwarding', 'depends_on_name' => 'tested_modules', 'depends_on_value' => self::SCOPE_FORMS, 'cases' => [
                 ['id' => 'FORM-01', 'label' => 'List/create/update/delete form'],
                 ['id' => 'FORM-02', 'label' => 'Builder field text/textarea/number/date/file/select/radio/checkbox, required, options'],
                 ['id' => 'FORM-03', 'label' => 'Conditional field dan opsi Other'],
@@ -391,7 +461,7 @@ class CreateUatPublicForm extends Command
                 ['id' => 'FORM-06', 'label' => 'Assign/forward submission menjadi card'],
                 ['id' => 'FORM-07', 'label' => 'Public form index hanya menampilkan form aktif dan slug invalid ditolak'],
             ]],
-            ['code' => 'reports', 'title' => 'P. Report dan QC', 'cases' => [
+            ['code' => 'reports', 'title' => 'P. Report dan QC', 'depends_on_name' => 'tested_modules', 'depends_on_value' => self::SCOPE_REPORTS, 'cases' => [
                 ['id' => 'RPT-01', 'label' => 'Filter report user/division/workspace/campaign/periode'],
                 ['id' => 'RPT-02', 'label' => 'Preview report dan attachment'],
                 ['id' => 'RPT-03', 'label' => 'Export PDF/Excel dan secure password'],

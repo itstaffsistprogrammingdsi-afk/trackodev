@@ -112,7 +112,7 @@ php artisan app:create-uat-public-form
 
 Opsi `--created-by` boleh diisi dengan email atau UUID pemilik form, misalnya `php artisan app:create-uat-public-form --created-by=superadmin@gmail.com`. Tidak perlu melakukan query manual ke kolom `users.id` ketika memakai email; command sudah membedakan format email dan UUID secara aman.
 
-Command akan membuat atau memperbarui form dengan slug `uat-tracko-user`, menambahkan **200 field** yang mencakup seluruh menu, fungsi, dan fitur Tracko. Sebanyak **155 field** adalah pertanyaan status test case individual (bukan satu rating umum per menu), sedangkan sisanya adalah 17 heading section, metadata tester, kesiapan data, integritas/performa/recovery, jumlah dan severity defect, evidence upload/link, saran, serta keputusan sign-off. Form menggunakan navigasi section sehingga tester dapat berpindah per kelompok dan kembali ke section sebelumnya sebelum mengirim satu submission lengkap. Link berikut tetap sama setiap kali command dijalankan:
+Command akan membuat atau memperbarui form dengan slug `uat-tracko-user`, menambahkan **202 field** yang mencakup seluruh menu, fungsi, dan fitur Tracko. Sebanyak **155 field** adalah pertanyaan status test case individual (bukan satu rating umum per menu), sedangkan sisanya adalah 17 heading section, pilihan mode/scope, metadata tester, kesiapan data, integritas/performa/recovery, jumlah dan severity defect, evidence upload/link, saran, serta keputusan sign-off. Mode **Quick UAT** hanya menampilkan case kritis (sekitar 34–44 status, bergantung platform/modul); mode **Full UAT** menampilkan seluruh 155 case. Form menggunakan navigasi section sehingga tester dapat berpindah per kelompok dan kembali ke section sebelumnya sebelum mengirim satu submission lengkap. Link berikut tetap sama setiap kali command dijalankan:
 
 - **Link publik pengisian:** `https://dev.tracko.dsicorp.id/public/forms/uat-tracko-user`
 - **Link response admin:** `https://dev.tracko.dsicorp.id/forms`
@@ -141,6 +141,13 @@ Jika URL deployment berbeda, gunakan nilai `FRONTEND_URL` pada backend; command 
 | P | Report dan QC | 5 |
 | Q | Kualitas umum dan usability | 4 |
 | **Total** | **Pertanyaan status test case individual** | **155** |
+
+### Mode pengisian yang disarankan
+
+- **Quick UAT (10–15 menit):** pilih untuk user bisnis. Hanya alur kritis yang tampil; case tambahan pada menu admin, Forms, Report, dan APK mengikuti scope/platform yang dipilih.
+- **Full UAT (30–45 menit untuk pengisian form):** pilih untuk QA atau tester yang membutuhkan coverage penuh. Semua 155 status test case akan tampil.
+- Pilih `N/A` hanya jika fitur memang tidak berlaku untuk role atau scope yang diuji. Jika tester memilih Full UAT, semua case yang tampil tetap harus diberi status.
+- Draft jawaban teks disimpan otomatis di browser/perangkat yang sama. File evidence tidak disimpan ke draft dan perlu dipilih ulang jika halaman ditutup.
 
 ## 5. Skenario UAT detail
 
@@ -351,7 +358,7 @@ UAT dinyatakan **LULUS** apabila:
 |---|---:|
 | Total skenario baseline terdokumentasi (AUTH–SYNC–SEC) | 106 |
 | Test case individual pada public form exhaustive | 155 |
-| Total field public form (termasuk metadata, section, dan sign-off) | 200 |
+| Total field public form (termasuk metadata, section, dan sign-off) | 202 |
 | PASS |  |
 | FAIL |  |
 | BLOCKED |  |
