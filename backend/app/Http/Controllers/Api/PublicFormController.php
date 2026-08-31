@@ -87,7 +87,10 @@ class PublicFormController extends Controller
             }
 
             $rules = [];
+            // Field section hanya heading UI dan tidak boleh ikut divalidasi
+            // atau disimpan sebagai jawaban.
             $visibleFields = $form->fields
+                ->filter(fn ($field) => $field->type !== 'section')
                 ->filter(fn ($field) => $this->isFieldVisible($form, $field, $request));
 
             foreach ($visibleFields as $field) {

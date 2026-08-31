@@ -6,7 +6,8 @@ export type FieldType =
   | "file"
   | "checkbox"
   | "select"
-  | "radio";
+  | "radio"
+  | "section";
 
 export interface FormField {
   id: string;
