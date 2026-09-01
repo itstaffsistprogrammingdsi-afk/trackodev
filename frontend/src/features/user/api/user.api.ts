@@ -9,6 +9,23 @@ export const getUsers = async (): Promise<User[]> => {
   return res.data.data;
 };
 
+/**
+ * Kandidat admin untuk modal pembuatan division.
+ * Endpoint User Management tidak memakai batas 100 kandidat seperti
+ * assignment-candidates, sehingga admin yang berada di urutan mana pun tetap
+ * dapat dicari oleh Super Admin.
+ */
+export const getDivisionAdminCandidates = async (): Promise<User[]> => {
+  const res = await api.get("/users", {
+    params: {
+      all: 1,
+      role: "admin",
+    },
+  });
+
+  return res.data.data ?? [];
+};
+
 export const getCoordinationUsers = async (): Promise<User[]> => {
   const res = await api.get('/users/assignment-candidates');
 
@@ -17,13 +34,16 @@ export const getCoordinationUsers = async (): Promise<User[]> => {
 
 export const searchUsers = async (
   query: string
-) => {
+): Promise<User[]> => {
 
   const res = await api.get(
     "/users",
     {
       params: {
-        search: query
+        search: query,
+        // Search division members through the full User Management result;
+        // the paginated default can hide a matching admin after 10 rows.
+        all: 1,
       }
     }
   )

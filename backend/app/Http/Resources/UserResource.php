@@ -21,6 +21,11 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'avatar' => $this->avatar ? asset('storage/' . $this->avatar) : null,
 
+            // DivisionController memuat user melalui pivot division_user;
+            // expose role pivot agar UI dapat membedakan Division Admin dan
+            // member biasa setelah proses penambahan.
+            'division_role' => $this->pivot?->role,
+
             'roles' => $this->getRoleNames(),
 
             'permissions' => $this
