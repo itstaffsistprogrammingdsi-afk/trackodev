@@ -52,6 +52,9 @@ export default function DivisionMembers({
   const [removingId, setRemovingId] =
     useState<string | null>(null);
 
+  const [newMemberRole, setNewMemberRole] =
+    useState<"admin" | "member">("member");
+
   const fetchMembers =
     useCallback(async () => {
       try {
@@ -99,7 +102,7 @@ export default function DivisionMembers({
           divisionId,
           {
             user_id: user.id,
-            role: "member",
+            role: newMemberRole,
           }
         );
 
@@ -168,12 +171,28 @@ export default function DivisionMembers({
           Search and assign users
           to this division.
         </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label htmlFor="division-member-role" className="text-xs font-medium text-gray-600">
+            Tambahkan sebagai
+          </label>
+          <select
+            id="division-member-role"
+            value={newMemberRole}
+            onChange={(event) => setNewMemberRole(event.target.value as "admin" | "member")}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700"
+          >
+            <option value="member">Member</option>
+            <option value="admin">Division Admin</option>
+          </select>
+        </div>
       </div>
 
       {/* Add Member */}
 
       <DivisionMemberMentionInput
         onSelect={handleAdd}
+        role={newMemberRole}
       />
 
       {/* Error */}

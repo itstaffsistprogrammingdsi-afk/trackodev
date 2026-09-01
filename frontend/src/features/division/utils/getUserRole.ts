@@ -6,6 +6,7 @@ export type RoleType =
 type UserLike = {
   role?: string
   roles?: string[]
+  division_role?: 'admin' | 'member'
 }
 
 export const getUserRole = (
@@ -14,6 +15,10 @@ export const getUserRole = (
 
   if (!user)
     return 'user'
+
+  if (user.division_role) {
+    return user.division_role === 'admin' ? 'admin' : 'user'
+  }
 
   if (
     user.role &&

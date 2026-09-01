@@ -21,10 +21,13 @@ type Props = {
   onSelect: (
     user: User
   ) => Promise<void> | void;
+
+  role?: "admin" | "member";
 };
 
 export default function DivisionMemberMentionInput({
   onSelect,
+  role = "member",
 }: Props) {
   const [query, setQuery] =
     useState("");
@@ -114,7 +117,16 @@ export default function DivisionMemberMentionInput({
               keyword
             );
 
-          setUsers(result ?? []);
+          const candidates = result ?? [];
+          const filteredCandidates = role === "admin"
+            ? candidates.filter((user) =>
+                user.roles?.some((candidateRole) =>
+                  ["admin", "super_admin"].includes(candidateRole.toLowerCase())
+                )
+              )
+            : candidates;
+
+          setUsers(filteredCandidates);
           setShow(true);
         } catch {
           setError(
@@ -129,7 +141,7 @@ export default function DivisionMemberMentionInput({
 
     return () =>
       clearTimeout(timer);
-  }, [query]);
+  }, [query, role]);
 
   const handleAdd =
     async (user: User) => {

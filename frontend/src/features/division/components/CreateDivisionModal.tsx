@@ -2,7 +2,10 @@ import { useState } from "react";
 
 import { useCreateDivision } from "../hooks/useDivisions";
 
-import { useDivisionUsers } from "@/features/user/hooks/useUsers";
+import {
+  useDivisionAdminCandidates,
+  useDivisionUsers,
+} from "@/features/user/hooks/useUsers";
 
 import UserPicker from "./UserPicker";
 
@@ -18,6 +21,8 @@ export default function CreateDivisionModal({
   onClose,
 }: Props) {
   const createMutation = useCreateDivision();
+
+  const { data: adminCandidates = [] } = useDivisionAdminCandidates(open);
 
   const {
     data: users = [],
@@ -45,8 +50,8 @@ export default function CreateDivisionModal({
   // ADMIN USERS
   // ============================================
 
-  const adminUsers = users.filter((user) =>
-    user.roles?.includes("admin")
+  const adminUsers = adminCandidates.filter((user) =>
+    user.roles?.some((role) => role.toLowerCase() === "admin")
   );
 
   // ============================================
