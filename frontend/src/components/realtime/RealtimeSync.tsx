@@ -108,7 +108,6 @@ export default function RealtimeSync() {
       })
       .subscribed(() => {
         document.documentElement.dataset.realtimeChannel = "subscribed";
-        void queryClient.invalidateQueries({ type: "active" });
       });
 
     return () => {

@@ -29,8 +29,9 @@ export const useDivisions = (ownOnly = false, enabled = true) => {
 
     queryFn: ownOnly ? api.getMyDivisions : api.getDivisions,
     enabled,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    // Division changes are invalidated by RealtimeSync. Polling here caused
+    // repeated requests even when there was no user-visible change.
+    refetchOnWindowFocus: false,
 
   })
 }

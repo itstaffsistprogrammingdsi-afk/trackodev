@@ -264,6 +264,7 @@ export default function CardDetailSidebar({
                   deleteEndpoint="/attachments"
                   downloadEndpoint="/attachments"
                   supportsResultDescription
+                  requiresQuantity
                 />
               </div>
             )}

@@ -147,6 +147,33 @@ class AssignmentHierarchyTest extends TestCase
         ]);
     }
 
+    public function test_assignment_candidates_can_return_more_than_default_picker_limit(): void
+    {
+        $superAdmin = $this->userWithRole(User::ROLE_SUPER_ADMIN);
+        $targetAdmin = User::factory()->create(['name' => 'ZZZ Division Admin']);
+        $targetAdmin->assignRole(User::ROLE_ADMIN);
+
+        foreach (range(0, 109) as $index) {
+            User::factory()->create([
+                'name' => sprintf('Candidate %03d', $index),
+            ]);
+        }
+
+        Sanctum::actingAs($superAdmin);
+
+        $defaultCandidates = $this->getJson('/api/users/assignment-candidates')
+            ->assertOk()
+            ->json('data');
+        $this->assertCount(100, $defaultCandidates);
+        $this->assertNotContains($targetAdmin->id, collect($defaultCandidates)->pluck('id'));
+
+        $expandedCandidates = $this->getJson('/api/users/assignment-candidates?limit=1000')
+            ->assertOk()
+            ->json('data');
+        $this->assertCount(112, $expandedCandidates);
+        $this->assertContains($targetAdmin->id, collect($expandedCandidates)->pluck('id'));
+    }
+
     public function test_admin_can_route_a_form_request_to_an_admin_of_another_division(): void
     {
         $sourceAdmin = $this->userWithRole(User::ROLE_ADMIN);

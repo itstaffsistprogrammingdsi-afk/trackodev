@@ -937,6 +937,9 @@ class UserController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'division_id' => ['nullable', 'uuid', 'exists:divisions,id'],
+            // Assignment picker tetap dibatasi secara default, sedangkan
+            // picker Create Division dapat meminta daftar yang lebih besar.
+            'limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
         ]);
 
         $actor = $request->user();
@@ -975,8 +978,9 @@ class UserController extends Controller
         [$superAdmins, $otherCandidates] = $eligibleUsers->partition(
             fn (User $candidate) => $candidate->isSuperAdmin()
         );
+        $limit = $validated['limit'] ?? 100;
         $users = $superAdmins
-            ->concat($otherCandidates->take(max(0, 100 - $superAdmins->count())))
+            ->concat($otherCandidates->take(max(0, $limit - $superAdmins->count())))
             ->values();
 
         return response()->json([

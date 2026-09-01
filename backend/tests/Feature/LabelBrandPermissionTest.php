@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Brand;
 use App\Models\Division;
+use App\Models\Label;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,6 +56,26 @@ class LabelBrandPermissionTest extends TestCase
         $this->postJson('/api/brands', [
             'name' => 'Restricted brand',
         ])->assertForbidden();
+    }
+
+    public function test_user_with_label_view_permission_can_read_a_single_label(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('user');
+        $label = Label::create([
+            'name' => 'Single label',
+            'slug' => 'single-label',
+            'color' => '#2563eb',
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/labels/'.$label->id)
+            ->assertOk()
+            ->assertJsonPath('id', $label->id)
+            ->assertJsonPath('name', 'Single label')
+            ->assertJsonPath('slug', 'single-label')
+            ->assertJsonPath('color', '#2563eb');
     }
 
     public function test_board_card_payload_includes_attached_brands(): void

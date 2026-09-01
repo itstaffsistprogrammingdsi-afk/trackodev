@@ -310,7 +310,7 @@ export default function CardDetailModal({
             </div>
 
             {/* INNER BODY CONTENT */}
-            <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-28 sm:space-y-6 sm:p-6 sm:pb-28 lg:space-y-8 lg:p-8 lg:pb-28 xl:flex-none xl:overflow-visible xl:overscroll-auto xl:pb-8">
+            <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-6 sm:space-y-6 sm:p-6 sm:pb-6 lg:space-y-8 lg:p-8 lg:pb-8 xl:flex-none xl:overflow-visible xl:overscroll-auto xl:pb-8">
               {loading ? (
                 <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
@@ -464,7 +464,7 @@ export default function CardDetailModal({
           </div>
 
         </div>
-        <div className="absolute inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl xl:hidden dark:border-slate-800 dark:bg-slate-900/95">
+        <div className="relative z-30 shrink-0 border-t border-slate-200/80 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl xl:hidden dark:border-slate-800 dark:bg-slate-900/95">
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}
