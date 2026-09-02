@@ -150,6 +150,53 @@ class CalendarCardIntegrationTest extends TestCase
             ->assertJsonFragment(['id' => $superAdminCard->id]);
     }
 
+    public function test_cross_division_campaign_member_sees_campaign_cards_in_calendar(): void
+    {
+        $viewer = User::factory()->create();
+        $viewer->assignRole('user');
+        $creator = User::factory()->create();
+        $creator->assignRole('user');
+
+        $division = Division::create([
+            'name' => 'Cross Division Calendar',
+            'slug' => 'cross-division-calendar',
+        ]);
+        $workspace = Workspace::create([
+            'division_id' => $division->id,
+            'name' => 'IMMODERMA Workspace',
+        ]);
+        $campaign = Campaign::create([
+            'workspace_id' => $workspace->id,
+            'created_by' => $creator->id,
+            'name' => 'IMMODERMA Campaign',
+            'type' => 'group',
+        ]);
+        $campaign->members()->attach($viewer->id);
+        $board = $campaign->boards()->create([
+            'name' => 'Todo',
+            'type' => 'todo',
+            'order' => 1,
+        ]);
+        $card = $board->cards()->create([
+            'title' => 'Cross division calendar card',
+            'created_by' => $creator->id,
+            'due_date' => '2026-08-22 09:00:00',
+            'status' => 'todo',
+            'order' => 1,
+        ]);
+
+        Sanctum::actingAs($viewer);
+
+        $this->getJson('/api/calendar?month=2026-08')
+            ->assertOk()
+            ->assertJsonPath('days.2026-08-22.total', 1)
+            ->assertJsonFragment(['id' => $card->id]);
+
+        $this->getJson('/api/calendar/create-options')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $board->id]);
+    }
+
     public function test_calendar_does_not_expose_cards_from_an_unjoined_division(): void
     {
         $viewer = User::factory()->create();
