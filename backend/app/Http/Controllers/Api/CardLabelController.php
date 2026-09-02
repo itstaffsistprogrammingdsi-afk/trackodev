@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ApplicationDataChanged;
 use App\Http\Controllers\Controller;
 use App\Models\Card;
 use App\Models\Label;
@@ -32,6 +33,7 @@ class CardLabelController extends Controller
                 $validated['label_id'],
             ]);
         $label = Label::findOrFail($validated['label_id']);
+        ApplicationDataChanged::dispatch($card, 'updated');
 
         ActivityLogService::log(
             auth()->user(),
@@ -60,6 +62,7 @@ class CardLabelController extends Controller
 
         $card->labels()
             ->detach($label->id);
+        ApplicationDataChanged::dispatch($card, 'updated');
 
         ActivityLogService::log(
             auth()->user(),
@@ -114,6 +117,8 @@ class CardLabelController extends Controller
         } else {
             $card->labels()->attach($labelId);
         }
+
+        ApplicationDataChanged::dispatch($card, 'updated');
 
         ActivityLogService::log(
             auth()->user(),

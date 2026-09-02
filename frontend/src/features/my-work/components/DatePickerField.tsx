@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 type Props = {
-  value: string; // "YYYY-MM-DD"
+  value: string; // "YYYY-MM-DD" (empty string = belum dipilih)
   onChange: (value: string) => void;
   align?: "left" | "right";
   id?: string;
   className?: string;
+  minDate?: string;
+  maxDate?: string;
+  placeholder?: string;
+  clearable?: boolean;
 };
 
 const WEEKDAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -21,9 +25,9 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const toValue = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-const parseValue = (v: string) => {
+const parseValue = (v: string, fallback = new Date()) => {
   const [y, m, d] = v.split("-").map(Number);
-  return new Date(y || new Date().getFullYear(), (m || 1) - 1, d || 1);
+  return new Date(y || fallback.getFullYear(), (m || fallback.getMonth() + 1) - 1, d || fallback.getDate());
 };
 
 const isSameDay = (a: Date, b: Date) =>
@@ -42,12 +46,19 @@ export default function DatePickerField({
   className = "",
   align = "left",
   id,
+  minDate,
+  maxDate,
+  placeholder = "Pilih tanggal",
+  clearable = false,
 }: Props) {
-  const selected = parseValue(value);
+  const selected = value ? parseValue(value) : null;
+  const minimum = minDate ? parseValue(minDate) : null;
+  const maximum = maxDate ? parseValue(maxDate) : null;
+  const initialViewDate = selected ?? new Date();
 
   const [open, setOpen] = useState(false);
-  const [viewMonth, setViewMonth] = useState(selected.getMonth());
-  const [viewYear, setViewYear] = useState(selected.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initialViewDate.getMonth());
+  const [viewYear, setViewYear] = useState(initialViewDate.getFullYear());
 
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -74,8 +85,9 @@ export default function DatePickerField({
   }, [open]);
 
   const openPicker = () => {
-    setViewMonth(selected.getMonth());
-    setViewYear(selected.getFullYear());
+    const viewDate = selected ?? new Date();
+    setViewMonth(viewDate.getMonth());
+    setViewYear(viewDate.getFullYear());
     setOpen((prev) => !prev);
   };
 
@@ -98,12 +110,28 @@ export default function DatePickerField({
   };
 
   const pickDay = (day: number) => {
-    onChange(toValue(new Date(viewYear, viewMonth, day)));
+    const pickedDate = new Date(viewYear, viewMonth, day);
+    if (
+      (minimum && pickedDate < minimum) ||
+      (maximum && pickedDate > maximum)
+    ) {
+      return;
+    }
+
+    onChange(toValue(pickedDate));
     setOpen(false);
   };
 
   const goToToday = () => {
-    const today = new Date();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (
+      (minimum && today < minimum) ||
+      (maximum && today > maximum)
+    ) {
+      return;
+    }
+
     onChange(toValue(today));
     setViewMonth(today.getMonth());
     setViewYear(today.getFullYear());
@@ -119,7 +147,9 @@ export default function DatePickerField({
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
-  const displayLabel = `${selected.getDate()} ${MONTHS[selected.getMonth()]} ${selected.getFullYear()}`;
+  const displayLabel = selected
+    ? `${selected.getDate()} ${MONTHS[selected.getMonth()]} ${selected.getFullYear()}`
+    : placeholder;
 
   return (
     <div ref={rootRef} className={`relative ${className}`}>
@@ -129,11 +159,25 @@ export default function DatePickerField({
         aria-expanded={open}
         type="button"
         onClick={openPicker}
-        className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-left hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        className={`w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-left hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${clearable && selected ? "pr-10" : ""}`}
       >
-        <span className="text-gray-900">{displayLabel}</span>
-        <Calendar size={15} className="text-gray-400 shrink-0" />
+        <span className={selected ? "text-gray-900" : "text-gray-400"}>{displayLabel}</span>
+        <Calendar size={15} className="shrink-0 text-gray-400" />
       </button>
+
+      {clearable && selected && (
+        <button
+          type="button"
+          aria-label="Kosongkan tanggal"
+          onClick={() => {
+            onChange("");
+            setOpen(false);
+          }}
+          className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        >
+          <X size={13} />
+        </button>
+      )}
 
       {open && (
         <div
@@ -182,19 +226,26 @@ export default function DatePickerField({
               if (day === null) return <div key={`empty-${idx}`} />;
 
               const cellDate = new Date(viewYear, viewMonth, day);
-              const isSelected = isSameDay(cellDate, selected);
+              const isSelected = selected ? isSameDay(cellDate, selected) : false;
               const isToday = isSameDay(cellDate, today);
+              const isDisabled = Boolean(
+                (minimum && cellDate < minimum) ||
+                (maximum && cellDate > maximum),
+              );
 
               return (
                 <button
                   type="button"
                   key={day}
                   onClick={() => pickDay(day)}
+                  disabled={isDisabled}
                   className={`
                     h-8 rounded-lg text-sm transition
                     ${
                       isSelected
                         ? "bg-blue-600 text-white font-semibold"
+                        : isDisabled
+                        ? "cursor-not-allowed text-gray-300"
                         : isToday
                         ? "border border-blue-300 text-blue-600 font-medium hover:bg-blue-50"
                         : "text-gray-700 hover:bg-gray-100"

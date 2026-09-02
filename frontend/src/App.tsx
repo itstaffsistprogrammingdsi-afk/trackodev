@@ -31,6 +31,7 @@ const Blank = lazy(() => import("./pages/Blank"));
 const Home = lazy(() => import("./pages/Dashboard/Home"));
 const TestConnection = lazy(() => import("./pages/TestConnection"));
 const DivisionPage = lazy(() => import("@/features/division/pages/DivisionPage"));
+const DivisionActivityPage = lazy(() => import("@/features/division/pages/DivisionActivityPage"));
 const WorkspacePage = lazy(() => import("@/features/workspace/pages/WorkspacePage"));
 const BoardPage = lazy(() => import("@/features/board/pages/BoardPage"));
 const CampaignListPage = lazy(() => import("./features/campaign/pages/CampaignListPage"));
@@ -159,6 +160,11 @@ export default function App() {
           <Route
             path="/divisions/:id"
             element={<PermissionRoute permission="workspace.view"><WorkspacePage /></PermissionRoute>}
+          />
+
+          <Route
+            path="/divisions/:id/detail"
+            element={<DivisionActivityPage />}
           />
 
           <Route

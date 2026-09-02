@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Form;
 use App\Models\FormField;
+use App\Services\ActivityLogService;
 use App\Support\ResourceAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -47,6 +48,19 @@ class FormFieldController extends Controller
             'depends_on_value' => $validated['depends_on_value'] ?? null,
         ]);
 
+        ActivityLogService::log(
+            $request->user(),
+            'form_field',
+            (string) $field->id,
+            'created',
+            "Membuat field form '{$field->label}'",
+            [
+                'form_id' => (string) $form->id,
+                'workspace_id' => $form->workspace_id,
+                'field_label' => $field->label,
+            ]
+        );
+
         return response()->json($field, 201);
     }
 
@@ -84,6 +98,19 @@ class FormFieldController extends Controller
 
         $field->update($validated);
 
+        ActivityLogService::log(
+            $request->user(),
+            'form_field',
+            (string) $field->id,
+            'updated',
+            "Mengupdate field form '{$field->label}'",
+            [
+                'form_id' => (string) $field->form_id,
+                'workspace_id' => $field->form?->workspace_id,
+                'field_label' => $field->label,
+            ]
+        );
+
         return response()->json($field);
     }
 
@@ -93,6 +120,19 @@ class FormFieldController extends Controller
         abort_unless(ResourceAccess::form($request->user(), $field->form), 403, 'Unauthorized');
 
         $field->delete();
+
+        ActivityLogService::log(
+            $request->user(),
+            'form_field',
+            (string) $field->id,
+            'deleted',
+            "Menghapus field form '{$field->label}'",
+            [
+                'form_id' => (string) $field->form_id,
+                'workspace_id' => $field->form?->workspace_id,
+                'field_label' => $field->label,
+            ]
+        );
 
         return response()->json([
             'message' => 'Field deleted successfully',

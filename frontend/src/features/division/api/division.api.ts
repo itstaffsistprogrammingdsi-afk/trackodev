@@ -134,3 +134,57 @@ export const getMyDivisions = async (): Promise<MyDivisionItem[]> => {
   const res = await api.get("/my-divisions");
   return res.data.data ?? [];
 };
+
+export type DivisionActivityCategory =
+  | "all"
+  | "create"
+  | "update"
+  | "delete"
+  | "comment";
+
+export type DivisionActivity = {
+  id: string;
+  user_id?: string | null;
+  entity_type: string;
+  entity_id?: string | null;
+  action: string;
+  activity_type: "create" | "update" | "delete" | "comment";
+  description?: string | null;
+  created_at: string;
+  meta?: Record<string, unknown> | null;
+  user?: { id: string; name: string } | null;
+};
+
+export type DivisionActivityResponse = {
+  success: boolean;
+  division_id: string;
+  category: DivisionActivityCategory;
+  total_logs: number;
+  current_page: number;
+  last_page: number;
+  has_more: boolean;
+  date_from?: string | null;
+  date_to?: string | null;
+  activities: DivisionActivity[];
+};
+
+export const getDivisionActivities = async (
+  divisionId: string,
+  category: DivisionActivityCategory = "all",
+  page = 1,
+  limit = 15,
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<DivisionActivityResponse> => {
+  const res = await api.get(`/divisions/${divisionId}/activities`, {
+    params: {
+      category,
+      page,
+      limit,
+      ...(dateFrom ? { date_from: dateFrom } : {}),
+      ...(dateTo ? { date_to: dateTo } : {}),
+    },
+  });
+
+  return res.data;
+};

@@ -284,6 +284,9 @@ class CardController extends Controller
             "Membuat card '{$card->title}' di board '{$board->name}'",
             [
                 'card_id' => $card->id,
+                'board_id' => $board->id,
+                'campaign_id' => $board->campaign?->id,
+                'workspace_id' => $board->campaign?->workspace_id,
             ]
         );
 
@@ -807,7 +810,13 @@ class CardController extends Controller
             (string) $card->id,
             'deleted',
 
-            "Menghapus card '{$card->title}' di board '{$card->board->name}'"
+            "Menghapus card '{$card->title}' di board '{$card->board->name}'",
+            [
+                'card_id' => (string) $card->id,
+                'board_id' => (string) $card->board_id,
+                'campaign_id' => $card->board?->campaign_id,
+                'workspace_id' => $card->board?->campaign?->workspace_id,
+            ]
         );
 
         return response()->json([

@@ -65,7 +65,8 @@ class FormController extends Controller
             'form',
             (string) $form->id,
             'created',
-            "Membuat form '{$form->name}'"
+            "Membuat form '{$form->name}'",
+            ['form_id' => (string) $form->id, 'workspace_id' => $form->workspace_id]
         );
 
         return response()->json($form, 201);
@@ -121,7 +122,8 @@ class FormController extends Controller
             'form',
             (string) $form->id,
             'updated',
-            "Mengupdate form '{$form->name}'"
+            "Mengupdate form '{$form->name}'",
+            ['form_id' => (string) $form->id, 'workspace_id' => $form->workspace_id]
         );
 
         return response()->json($form);
@@ -138,7 +140,8 @@ class FormController extends Controller
             'form',
             (string) $form->id,
             'deleted',
-            "Menghapus form '{$form->name}'"
+            "Menghapus form '{$form->name}'",
+            ['form_id' => (string) $form->id, 'workspace_id' => $form->workspace_id]
         );
 
         if ($form->header_image) {
