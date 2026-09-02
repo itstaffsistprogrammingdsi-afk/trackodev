@@ -218,15 +218,28 @@ class CalendarController extends Controller
 
         $divisionIds = $user->divisions()->pluck('divisions.id');
 
-        // A user can see cards from their own divisions, or cards belonging
-        // to a campaign they created or joined directly (including an
-        // invitation from another division).
-        $this->applyBoardAccess($query, $user, $divisionIds, 'board.campaign');
-
-        // Card milik Super Admin tidak diekspos kepada role di bawahnya,
-        // termasuk ketika card tersebut berada di campaign yang diikuti.
-        $query->whereDoesntHave('creator.roles', function (Builder $roleQuery) {
-            $roleQuery->where('name', User::ROLE_SUPER_ADMIN);
+        // Division members can see regular cards from their divisions. A
+        // direct campaign creator/member relationship is an explicit
+        // collaboration grant and therefore also allows cards created by a
+        // Super Admin in that campaign.
+        $query->where(function (Builder $accessQuery) use ($user, $divisionIds) {
+            $accessQuery->where(function (Builder $divisionAccess) use ($divisionIds) {
+                $divisionAccess
+                    ->whereHas(
+                        'board.campaign.workspace',
+                        fn (Builder $workspaceQuery) => $workspaceQuery->whereIn('division_id', $divisionIds)
+                    )
+                    ->whereDoesntHave('creator.roles', function (Builder $roleQuery) {
+                        $roleQuery->where('name', User::ROLE_SUPER_ADMIN);
+                    });
+            })->orWhereHas('board.campaign', function (Builder $campaignQuery) use ($user) {
+                $campaignQuery
+                    ->where('created_by', $user->id)
+                    ->orWhereHas(
+                        'members',
+                        fn (Builder $memberQuery) => $memberQuery->where('users.id', $user->id)
+                    );
+            });
         });
     }
 
