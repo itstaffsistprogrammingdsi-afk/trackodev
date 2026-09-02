@@ -332,6 +332,14 @@ class CardController extends Controller
         $oldPriority = $card->priority;
         $oldDueDate = $card->due_date;
 
+        if ($request->has('due_date')) {
+            abort_unless(
+                $this->canEditDueDate($request->user(), $card),
+                403,
+                'Hanya pembuat card, Admin, atau Super Admin yang dapat mengubah due date.'
+            );
+        }
+
         $data = $request->only([
             'title',
             'description',
@@ -451,6 +459,18 @@ class CardController extends Controller
             'message' => 'Card berhasil diupdate.',
             'data'    => new CardResource($card),
         ]);
+    }
+
+    /**
+     * Due date (termasuk mengosongkannya) hanya dapat diedit oleh pembuat
+     * card atau akun administratif. Hak update field card lain tetap mengikuti
+     * permission route yang sudah ada.
+     */
+    protected function canEditDueDate(User $user, Card $card): bool
+    {
+        return $user->isSuperAdmin()
+            || $user->isAdmin()
+            || (string) $card->created_by === (string) $user->id;
     }
 
     public function briefAttachments(Card $card): JsonResponse
