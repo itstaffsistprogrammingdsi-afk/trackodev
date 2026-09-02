@@ -937,12 +937,30 @@ class UserController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'division_id' => ['nullable', 'uuid', 'exists:divisions,id'],
+            // Form assignment memakai scope target yang berbeda dari picker
+            // assignment umum: semua anggota division boleh menjadi PIC.
+            'purpose' => ['nullable', 'string', 'in:form_submission'],
             // Assignment picker tetap dibatasi secara default, sedangkan
             // picker Create Division dapat meminta daftar yang lebih besar.
             'limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
         ]);
 
         $actor = $request->user();
+        $divisionId = $validated['division_id'] ?? null;
+        $canAccessDivision = $divisionId
+            && ($actor->isSuperAdmin()
+                || $actor->divisions()->whereKey($divisionId)->exists()
+                || Workspace::query()
+                    ->where('division_id', $divisionId)
+                    ->whereHas('members', fn ($memberQuery) => $memberQuery
+                        ->where('users.id', $actor->id))
+                    ->exists());
+        // Permission tetap diverifikasi dari actor (bukan dari query string),
+        // sehingga purpose=form_submission tidak dapat dipakai untuk melewati
+        // hierarki picker lain atau division yang tidak dapat diakses.
+        $isFormAssignment = $actor->can('form.submission.assign')
+            && $canAccessDivision
+            && ($validated['purpose'] ?? null) === 'form_submission';
         $query = User::query()
             ->select(['id', 'name', 'email', 'avatar'])
             ->with(['roles', 'divisions:id,name']);
@@ -956,8 +974,7 @@ class UserController extends Controller
             });
         }
 
-        if (! empty($validated['division_id'])) {
-            $divisionId = $validated['division_id'];
+        if ($divisionId) {
             $query->where(function ($divisionQuery) use ($divisionId) {
                 $divisionQuery
                     ->whereHas('divisions', fn ($membershipQuery) => $membershipQuery
@@ -973,7 +990,9 @@ class UserController extends Controller
         // valid tidak hilang hanya karena berada di luar 100 nama pertama.
         // Super Admin selalu diprioritaskan supaya tersedia untuk eskalasi.
         $eligibleUsers = $query->orderBy('name')->get()
-            ->filter(fn (User $candidate) => $actor->canCoordinateAssignmentTo($candidate))
+            ->filter(fn (User $candidate) => $isFormAssignment
+                ? true
+                : $actor->canCoordinateAssignmentTo($candidate))
             ->values();
         [$superAdmins, $otherCandidates] = $eligibleUsers->partition(
             fn (User $candidate) => $candidate->isSuperAdmin()

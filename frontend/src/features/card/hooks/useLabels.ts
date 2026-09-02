@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   attachLabel,
   createLabel,
+  deleteLabel as deleteLabelRequest,
   detachLabel,
   getLabels,
 } from "../api/card.api";
@@ -33,13 +34,31 @@ export default function useLabels({
   const [newColor, setNewColor] =
     useState("#3b82f6");
 
+  const [error, setError] = useState<string | null>(null);
+
+  const messageFromError = (err: unknown, fallback: string): string => {
+    const response = (err as {
+      response?: {
+        data?: {
+          message?: string;
+          errors?: Record<string, string[]>;
+        };
+      };
+    }).response;
+    const validationMessage = response?.data?.errors?.name?.[0];
+
+    return validationMessage || response?.data?.message || fallback;
+  };
+
   const fetchLabels = useCallback(async () => {
     try {
       const data = await getLabels();
 
       setLabels(data);
+      setError(null);
     } catch (err) {
       console.error(err);
+      setError("Gagal memuat daftar label.");
     }
   }, []);
 
@@ -50,6 +69,8 @@ export default function useLabels({
   async function handleCreateLabel() {
     if (!newLabel.trim()) return;
 
+    setError(null);
+
     try {
       const created = await createLabel({
         name: newLabel,
@@ -58,7 +79,7 @@ export default function useLabels({
 
       setLabels((prev) => [
         ...prev,
-        created,
+        { ...created, cards_count: created.cards_count ?? 0 },
       ]);
 
       setNewLabel("");
@@ -79,9 +100,16 @@ export default function useLabels({
             labels: updated.labels,
           };
         });
+
+        setLabels((prev) => prev.map((label) =>
+          label.id === created.id
+            ? { ...label, cards_count: (label.cards_count ?? 0) + 1 }
+            : label
+        ));
       }
     } catch (err) {
       console.error(err);
+      setError(messageFromError(err, "Label gagal dibuat."));
     }
   }
 
@@ -104,8 +132,15 @@ async function attach(
         labels: updated.labels,
       };
     });
+    setLabels((prev) => prev.map((label) =>
+      label.id === labelId
+        ? { ...label, cards_count: (label.cards_count ?? 0) + 1 }
+        : label
+    ));
+    setError(null);
   } catch (err) {
     console.error(err);
+    setError(messageFromError(err, "Label gagal ditambahkan."));
   }
 }
 
@@ -128,10 +163,33 @@ async function detach(
         labels: updated.labels,
       };
     });
+    setLabels((prev) => prev.map((label) =>
+      label.id === labelId
+        ? { ...label, cards_count: Math.max(0, (label.cards_count ?? 0) - 1) }
+        : label
+    ));
+    setError(null);
   } catch (err) {
     console.error(err);
+    setError(messageFromError(err, "Label gagal dilepas."));
   }
 }
+
+  async function remove(labelId: string, labelName: string) {
+    if (!window.confirm(`Hapus label "${labelName}" dari daftar master?`)) {
+      return;
+    }
+
+    setError(null);
+
+    try {
+      await deleteLabelRequest(labelId);
+      setLabels((prev) => prev.filter((label) => label.id !== labelId));
+    } catch (err) {
+      console.error(err);
+      setError(messageFromError(err, "Label gagal dihapus."));
+    }
+  }
 
   return {
     labels,
@@ -146,5 +204,7 @@ async function detach(
 
     attach,
     detach,
+    remove,
+    error,
   };
 }

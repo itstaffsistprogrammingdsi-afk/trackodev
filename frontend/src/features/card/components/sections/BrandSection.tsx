@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { HexColorPicker } from "react-colorful";
+import { Trash2 } from "lucide-react";
 
 import { Card } from "../../types";
 import { useCardBrand } from "../../hooks/useCardBrand";
@@ -25,7 +26,9 @@ export default function BrandSection({
     attachBrand,
     detachBrand,
     createAndAttach,
+    removeBrand,
     loading,
+    error,
   } = useCardBrand(card, isOpen, setDetail);
 
   // ============================================
@@ -80,6 +83,16 @@ export default function BrandSection({
 
   const isAttached = (id: string) =>
     card.brands?.some((b) => b.id === id);
+
+  const campaignId = card.campaign_id
+    ?? card.campaign?.id
+    ?? card.board?.campaign_id;
+  const normalizedName = name.trim().toLocaleLowerCase();
+  const duplicateBrand = normalizedName !== "" && brands.some(
+    (brand) =>
+      brand.campaign_id === campaignId
+      && brand.name.trim().toLocaleLowerCase() === normalizedName,
+  );
 
   const paginatedBrands = brands.slice(
     0,
@@ -153,7 +166,14 @@ export default function BrandSection({
           onChange={(e) =>
             setName(e.target.value)
           }
+          aria-invalid={duplicateBrand}
         />
+
+        {duplicateBrand && (
+          <p className="text-xs text-amber-600">
+            Brand sudah ada pada campaign ini. Pilih brand tersebut dari daftar untuk memasangnya.
+          </p>
+        )}
 
         {/* COLOR + BUTTON */}
 
@@ -260,7 +280,7 @@ export default function BrandSection({
           {/* ADD BUTTON */}
 
           <button
-            disabled={loading}
+            disabled={loading || duplicateBrand}
             onClick={handleCreate}
             className="
               flex-1
@@ -281,6 +301,12 @@ export default function BrandSection({
         </div>
       </div>}
 
+      {error && (
+        <p role="alert" className="rounded bg-red-50 px-2 py-1.5 text-xs text-red-600">
+          {error}
+        </p>
+      )}
+
       {/* LIST */}
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -292,6 +318,7 @@ export default function BrandSection({
 
         {paginatedBrands.map((b) => {
           const active = isAttached(b.id);
+          const isUsed = (b.cards_count ?? 0) > 0;
           return (
             <div
               key={b.id}
@@ -323,33 +350,48 @@ export default function BrandSection({
 
               {/* ACTION */}
 
-              {active ? (can('brand.detach') &&
-                <button
-                  onClick={() =>
-                    detachBrand(b.id)
-                  }
-                  className="
-                    text-red-500
-                    text-xs
-                    hover:underline
-                  "
-                >
-                  remove
-                </button>
-              ) : (can('brand.attach') &&
-                <button
-                  onClick={() =>
-                    attachBrand(b.id)
-                  }
-                  className="
-                    text-blue-500
-                    text-xs
-                    hover:underline
-                  "
-                >
-                  add
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {active ? (can('brand.detach') &&
+                  <button
+                    onClick={() =>
+                      detachBrand(b.id)
+                    }
+                    className="
+                      text-red-500
+                      text-xs
+                      hover:underline
+                    "
+                  >
+                    remove
+                  </button>
+                ) : (can('brand.attach') &&
+                  <button
+                    onClick={() =>
+                      attachBrand(b.id)
+                    }
+                    className="
+                      text-blue-500
+                      text-xs
+                      hover:underline
+                    "
+                  >
+                    add
+                  </button>
+                )}
+
+                {can('brand.delete') && (
+                  <button
+                    type="button"
+                    disabled={isUsed}
+                    onClick={() => removeBrand(b.id, b.name)}
+                    title={isUsed ? "Brand masih digunakan pada card" : "Hapus brand dari daftar master"}
+                    aria-label={`Hapus brand ${b.name}`}
+                    className="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

@@ -108,14 +108,22 @@ class AssignmentController extends Controller
                 $belongsToDivision = $assignedUser->divisions()
                     ->where('divisions.id', $validated['division_id'])
                     ->exists();
+                $isActorCoordinator = $userField === 'coordinator_id'
+                    && $assignedUser->is($request->user());
 
                 // Target assignment memakai aturan yang sama dengan Board:
                 // Super Admin dapat menerima eskalasi langsung, sedangkan
                 // target lain harus lolos hierarki assignment dan menjadi
                 // anggota division yang dipilih.
-                $canAssign = $request->user()->canCoordinateAssignmentTo($assignedUser);
-                $isActorCoordinator = $userField === 'coordinator_id'
-                    && $assignedUser->is($request->user());
+                // PIC pada form adalah pengecualian yang disengaja: user
+                // dengan permission assign form dapat memilih seluruh anggota
+                // division tujuan, bukan hanya admin divisi. Coordinator
+                // tetap mengikuti hierarki assignment umum.
+                $isFormDesigner = $userField === 'designer_id'
+                    && $request->user()->can('form.submission.assign');
+                $canAssign = $isFormDesigner
+                    ? ($isSuperAdmin || $belongsToDivision)
+                    : $request->user()->canCoordinateAssignmentTo($assignedUser);
 
                 if (! $canAssign || (! $isSuperAdmin && ! $belongsToDivision && ! $isActorCoordinator)) {
                     throw ValidationException::withMessages([

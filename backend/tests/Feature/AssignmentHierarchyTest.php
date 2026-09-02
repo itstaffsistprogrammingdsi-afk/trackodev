@@ -88,6 +88,95 @@ class AssignmentHierarchyTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_form_pic_search_and_assignment_allow_any_member_of_selected_division(): void
+    {
+        $actor = $this->userWithRole(User::ROLE_USER);
+        $divisionPic = $this->userWithRole(User::ROLE_USER);
+        $outsidePic = $this->userWithRole(User::ROLE_USER);
+        $actor->givePermissionTo('form.submission.assign');
+
+        $division = $this->divisionWithMembers([
+            [$actor, 'member'],
+            [$divisionPic, 'member'],
+        ]);
+        $this->divisionWithMembers([
+            [$outsidePic, 'member'],
+        ]);
+        $workspace = Workspace::create([
+            'division_id' => $division->id,
+            'name' => 'Form PIC Workspace',
+        ]);
+        $workspace->members()->attach($actor->id);
+        $campaign = Campaign::create([
+            'workspace_id' => $workspace->id,
+            'created_by' => $actor->id,
+            'name' => 'Form PIC Campaign',
+            'type' => 'group',
+        ]);
+        $campaign->members()->attach($actor->id);
+        Board::create([
+            'campaign_id' => $campaign->id,
+            'name' => 'Form Request',
+            'type' => 'request',
+            'order' => 1,
+        ]);
+        $form = Form::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Form PIC',
+            'slug' => 'form-pic-'.str()->random(8),
+            'created_by' => $actor->id,
+            'is_active' => true,
+        ]);
+        $submission = FormSubmission::create([
+            'form_id' => $form->id,
+            'user_id' => $actor->id,
+            'data' => [],
+            'status' => 'submitted',
+        ]);
+
+        Sanctum::actingAs($actor);
+        $candidates = $this->getJson('/api/users/assignment-candidates?'.http_build_query([
+            'division_id' => $division->id,
+            'purpose' => 'form_submission',
+            'search' => $divisionPic->email,
+        ]))->assertOk()->json('data');
+
+        $this->assertContains($divisionPic->id, collect($candidates)->pluck('id'));
+        $this->assertNotContains($outsidePic->id, collect($candidates)->pluck('id'));
+
+        $this->postJson('/api/form-submissions/'.$submission->id.'/assign', [
+            'division_id' => $division->id,
+            'workspace_id' => $workspace->id,
+            'campaign_id' => $campaign->id,
+            'designer_id' => $divisionPic->id,
+            'coordinator_id' => $actor->id,
+            'estimated_hours' => 1,
+            'priority' => 'medium',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('assignments', [
+            'submission_id' => $submission->id,
+            'designer_id' => $divisionPic->id,
+        ]);
+
+        $unassignedSubmission = FormSubmission::create([
+            'form_id' => $form->id,
+            'user_id' => $actor->id,
+            'data' => [],
+            'status' => 'submitted',
+        ]);
+
+        $this->postJson('/api/form-submissions/'.$unassignedSubmission->id.'/assign', [
+            'division_id' => $division->id,
+            'workspace_id' => $workspace->id,
+            'campaign_id' => $campaign->id,
+            'designer_id' => $outsidePic->id,
+            'coordinator_id' => $actor->id,
+            'estimated_hours' => 1,
+            'priority' => 'medium',
+        ])->assertUnprocessable()->assertJsonValidationErrors('designer_id');
+    }
+
     public function test_form_request_assignment_allows_super_admin_without_division_membership(): void
     {
         $admin = $this->userWithRole(User::ROLE_ADMIN);
