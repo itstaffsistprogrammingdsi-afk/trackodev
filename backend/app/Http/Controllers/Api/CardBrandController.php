@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ApplicationDataChanged;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Card;
@@ -17,6 +18,11 @@ class CardBrandController extends Controller
         $card->brands()->syncWithoutDetaching([
             $brand->id,
         ]);
+
+        // Updating a pivot table does not fire an Eloquent event for Card.
+        // Publish the parent resource explicitly so other open sessions
+        // reload their card detail instead of keeping a stale brand list.
+        ApplicationDataChanged::dispatch($card, 'updated');
 
         ActivityLogService::log(
             auth()->user(),
@@ -37,6 +43,10 @@ class CardBrandController extends Controller
     {
         $this->authorizeCard($request, $card);
         $card->brands()->detach($brand->id);
+
+        // See attach(): detach also changes only the pivot table, therefore
+        // explicitly publish a Card update for realtime consumers.
+        ApplicationDataChanged::dispatch($card, 'updated');
 
         ActivityLogService::log(
             auth()->user(),

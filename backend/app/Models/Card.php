@@ -142,7 +142,10 @@ class Card extends Model
             'brand_card',
             'card_id',
             'brand_id'
-        );
+        )
+            ->orderByRaw('LOWER(brands.name)')
+            ->orderBy('brands.name')
+            ->orderBy('brands.id');
     }
 
     public function tasks(): HasMany

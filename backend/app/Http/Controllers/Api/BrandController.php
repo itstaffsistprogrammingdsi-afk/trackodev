@@ -13,7 +13,14 @@ class BrandController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Brand::query()->latest();
+        // Brand catalogs are shared by every role, so keep the response
+        // deterministic and user-friendly instead of ordering by creation
+        // time. LOWER() makes the alphabetical order case-insensitive while
+        // the following clauses keep ties stable across database engines.
+        $query = Brand::query()
+            ->orderByRaw('LOWER(name)')
+            ->orderBy('name')
+            ->orderBy('id');
         $campaignId = $request->query('campaign_id');
 
         if (is_string($campaignId) && $campaignId !== '') {

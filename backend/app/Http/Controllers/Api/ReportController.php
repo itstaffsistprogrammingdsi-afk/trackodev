@@ -211,7 +211,11 @@ class ReportController extends Controller
                     'campaigns'  => $campaigns->map->only(['id', 'name'])->values(),
                     'labels'     => Label::select('id', 'name', 'color')->orderBy('name')->get(),
                     'brands'     => Brand::whereIn('campaign_id', $campaigns->pluck('id'))
-                        ->select('id', 'name', 'color')->orderBy('name')->get(),
+                        ->select('id', 'name', 'color')
+                        ->orderByRaw('LOWER(name)')
+                        ->orderBy('name')
+                        ->orderBy('id')
+                        ->get(),
                 ]
             ]);
         } catch (\Exception $e) {
