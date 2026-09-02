@@ -2,10 +2,12 @@ import {
   // useEffect, 
   useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { Pencil, Trash2, X } from "lucide-react";
 
 import {
   createForm,
   createField,
+  updateField,
   deleteField,
 } from "../api/form.api";
 
@@ -28,7 +30,9 @@ type FieldType =
   | "date"
   | "file"
   | "select"
-  | "checkbox";
+  | "checkbox"
+  | "radio"
+  | "section";
 
 // ======================================================
 // PAGE
@@ -83,12 +87,15 @@ export default function CreateFormBuilderPage() {
   const [otherLabel, setOtherLabel] =
     useState("");
 
+  const [editingFieldId, setEditingFieldId] =
+    useState<string | null>(null);
+
   // ======================================================
   // HELPERS
   // ======================================================
 
   const isOptionType = useMemo(() => {
-    return type === "select" || type === "checkbox";
+    return type === "select" || type === "checkbox" || type === "radio";
   }, [type]);
 
   const generateFieldName = (
@@ -102,6 +109,7 @@ export default function CreateFormBuilderPage() {
   };
 
   const resetFieldForm = () => {
+    setEditingFieldId(null);
     setLabel("");
     setType("text");
     setRequired(false);
@@ -173,7 +181,18 @@ export default function CreateFormBuilderPage() {
   // ADD FIELD
   // ======================================================
 
-  const handleAddField = async () => {
+  const handleStartEditField = (field: FormField) => {
+    setEditingFieldId(field.id);
+    setLabel(field.label);
+    setType(field.type as FieldType);
+    setRequired(Boolean(field.is_required));
+    setOptions(field.options?.length ? [...field.options] : [""]);
+    setAllowOther(Boolean(field.allow_other));
+    setOtherLabel(field.other_label || "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSaveField = async () => {
     if (!createdForm?.id) return;
 
     if (!label.trim()) {
@@ -190,10 +209,8 @@ export default function CreateFormBuilderPage() {
 
       const payload: Partial<FormField> = {
         label,
-        name: generateFieldName(label),
         type,
         is_required: required,
-        order: fields.length,
 
         options: isOptionType
           ? cleanOptions
@@ -206,18 +223,34 @@ export default function CreateFormBuilderPage() {
           : null,
       };
 
-      const newField = await createField(
-        createdForm.id,
-        payload as FormField,
-      );
-
-      setFields((prev) => [...prev, newField]);
+      if (editingFieldId) {
+        const updatedField = await updateField(editingFieldId, payload);
+        setFields((prev) =>
+          prev.map((field) =>
+            field.id === editingFieldId ? updatedField : field,
+          ),
+        );
+      } else {
+        const newField = await createField(
+          createdForm.id,
+          {
+            ...payload,
+            name: generateFieldName(label),
+            order: fields.length,
+          } as FormField,
+        );
+        setFields((prev) => [...prev, newField]);
+      }
 
       resetFieldForm();
     } catch (error) {
       console.error(error);
 
-      alert("Gagal menambahkan field");
+      alert(
+        editingFieldId
+          ? "Gagal mengubah field"
+          : "Gagal menambahkan field",
+      );
     } finally {
       setSavingField(false);
     }
@@ -242,6 +275,7 @@ export default function CreateFormBuilderPage() {
       setFields((prev) =>
         prev.filter((f) => f.id !== fieldId),
       );
+      if (editingFieldId === fieldId) resetFieldForm();
     } catch (error) {
       console.error(error);
 
@@ -461,11 +495,13 @@ export default function CreateFormBuilderPage() {
               <div className="rounded-2xl lg:sticky lg:top-6 border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="mb-5">
                   <h2 className="text-lg font-semibold text-gray-900">
-                    Add Field
+                    {editingFieldId ? "Edit Field" : "Add Field"}
                   </h2>
 
                   <p className="mt-1 text-sm text-gray-500">
-                    Configure a new form field.
+                    {editingFieldId
+                      ? "Update the selected field."
+                      : "Configure a new form field."}
                   </p>
                 </div>
 
@@ -534,6 +570,14 @@ export default function CreateFormBuilderPage() {
 
                       <option value="checkbox">
                         Checkbox
+                      </option>
+
+                      <option value="radio">
+                        Radio
+                      </option>
+
+                      <option value="section">
+                        Section
                       </option>
                     </select>
                   </div>
@@ -672,15 +716,30 @@ export default function CreateFormBuilderPage() {
                   )}
 
                   {/* BUTTON */}
-                  <button
-                    onClick={handleAddField}
-                    disabled={savingField}
-                    className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {savingField
-                      ? "Saving..."
-                      : "Add Field"}
-                  </button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {editingFieldId && (
+                      <button
+                        type="button"
+                        onClick={resetFieldForm}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 sm:w-auto"
+                      >
+                        <X size={16} />
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSaveField}
+                      disabled={savingField}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {savingField
+                        ? "Saving..."
+                        : editingFieldId
+                          ? "Update Field"
+                          : "Add Field"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -770,16 +829,24 @@ export default function CreateFormBuilderPage() {
                           </div>
 
                           {/* ACTION */}
-                          <button
-                            onClick={() =>
-                              handleDeleteField(
-                                field.id,
-                              )
-                            }
-                            className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditField(field)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 px-4 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-50"
+                            >
+                              <Pencil size={14} />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteField(field.id)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
