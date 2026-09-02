@@ -12,6 +12,19 @@ interface UseCardBrandReturn {
   createAndAttach: (name: string, color: string) => Promise<void>;
 }
 
+const brandNameCollator = new Intl.Collator("id", {
+  sensitivity: "base",
+  numeric: true,
+});
+
+function sortBrands(brands: Brand[]): Brand[] {
+  return [...brands].sort((left, right) => {
+    const nameOrder = brandNameCollator.compare(left.name, right.name);
+
+    return nameOrder || left.id.localeCompare(right.id);
+  });
+}
+
 export function useCardBrand(
   card: Card | null,
   isOpen: boolean,
@@ -34,7 +47,7 @@ export function useCardBrand(
       // berdasarkan card di sini karena brand dari campaign lain tetap perlu
       // terlihat; BrandSection yang menentukan mana yang dapat di-attach.
       const res = await api.get("/brands");
-      setBrands(res.data?.data ?? res.data ?? []);
+      setBrands(sortBrands(res.data?.data ?? res.data ?? []));
     } finally {
       setLoading(false);
     }
@@ -71,7 +84,7 @@ export function useCardBrand(
         ...prev,
         brands: exists
           ? prev.brands!
-          : [...(prev.brands || []), newBrand],
+          : sortBrands([...(prev.brands || []), newBrand]),
       };
     });
   };
@@ -96,7 +109,7 @@ export function useCardBrand(
         ...prev,
         brands: exists
           ? prev.brands!
-          : [...(prev.brands || []), brand],
+          : sortBrands([...(prev.brands || []), brand]),
       };
     });
   };

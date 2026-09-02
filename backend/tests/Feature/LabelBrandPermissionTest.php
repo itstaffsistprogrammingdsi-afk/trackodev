@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Events\ApplicationDataChanged;
 use App\Models\Brand;
 use App\Models\Division;
 use App\Models\Label;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
@@ -184,6 +186,74 @@ class LabelBrandPermissionTest extends TestCase
         $this->getJson("/api/brands/{$allowedBrand->id}")
             ->assertOk()
             ->assertJsonPath('id', $allowedBrand->id);
+    }
+
+    public function test_brand_catalog_is_sorted_alphabetically_case_insensitively(): void
+    {
+        $this->seed(PermissionSeeder::class);
+
+        $owner = User::factory()->create();
+        $owner->assignRole('super_admin');
+        [$campaign] = $this->createCampaignBrand($owner, 'placeholder');
+
+        foreach (['Zeta', 'beta', 'Alpha', 'Beta'] as $name) {
+            Brand::create([
+                'campaign_id' => $campaign->id,
+                'name' => $name,
+            ]);
+        }
+
+        Sanctum::actingAs($owner);
+
+        $this->getJson('/api/brands?campaign_id='.$campaign->id)
+            ->assertOk()
+            ->assertJsonPath('0.name', 'Alpha')
+            ->assertJsonPath('1.name', 'Beta')
+            ->assertJsonPath('2.name', 'beta')
+            ->assertJsonPath('3.name', 'placeholder')
+            ->assertJsonPath('4.name', 'Zeta');
+    }
+
+    public function test_detaching_a_brand_broadcasts_a_card_update_for_other_sessions(): void
+    {
+        $this->seed(PermissionSeeder::class);
+
+        $owner = User::factory()->create();
+        $owner->assignRole('super_admin');
+        [$campaign, $brand] = $this->createCampaignBrand($owner, 'Shared brand');
+        $board = $campaign->boards()->create([
+            'name' => 'To Do',
+            'type' => 'todo',
+            'order' => 1,
+        ]);
+        $card = $board->cards()->create([
+            'title' => 'Shared card',
+            'created_by' => $owner->id,
+            'order' => 1,
+            'status' => 'todo',
+        ]);
+        $card->brands()->attach($brand->id);
+
+        Event::fake([ApplicationDataChanged::class]);
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson('/api/cards/'.$card->id.'/brands/'.$brand->id.'/detach')
+            ->assertOk();
+
+        $this->assertDatabaseMissing('brand_card', [
+            'card_id' => $card->id,
+            'brand_id' => $brand->id,
+        ]);
+
+        $this->getJson('/api/cards/'.$card->id)
+            ->assertOk()
+            ->assertJsonPath('data.brands', []);
+
+        Event::assertDispatched(
+            ApplicationDataChanged::class,
+            fn (ApplicationDataChanged $event): bool =>
+                $event->resource === 'Card' && $event->action === 'updated'
+        );
     }
 
     private function createCampaignBrand(User $owner, string $brandName): array

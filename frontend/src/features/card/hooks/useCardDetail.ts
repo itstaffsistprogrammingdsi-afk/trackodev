@@ -20,6 +20,10 @@ export function useCardDetail(
 ): ReturnType {
   const realtimeRevision = useRealtimeRevision([
     "Assignment",
+    // Brand attach/detach writes the pivot and records an ActivityLog. Keep
+    // listening to the log as a fallback for deployments where the Card
+    // timestamp update is delayed or an older backend is still running.
+    "ActivityLog",
     "Brand",
     "Card",
     "Label",
