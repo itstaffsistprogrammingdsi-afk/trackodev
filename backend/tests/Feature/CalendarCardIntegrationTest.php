@@ -155,7 +155,7 @@ class CalendarCardIntegrationTest extends TestCase
         $viewer = User::factory()->create();
         $viewer->assignRole('admin');
         $creator = User::factory()->create();
-        $creator->assignRole('user');
+        $creator->assignRole('super_admin');
 
         $division = Division::create([
             'name' => 'Cross Division Calendar',
