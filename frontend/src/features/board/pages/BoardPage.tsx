@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   DndContext,
@@ -28,6 +29,8 @@ import DeleteBoardDialog from "../components/DeleteBoardDialog";
 import CardDetailModal from "@/features/card/components/CardDetailModal";
 
 import { moveCard, reorderCards } from "@/features/card/api/card.api";
+import { getCampaign } from "@/features/campaign/api/campaign.api";
+import type { Campaign } from "@/features/campaign/types";
 import { reorderBoards } from "../api/board.api";
 import { isMobileApp } from "@/lib/mobileConfig";
 
@@ -65,6 +68,12 @@ const { campaignId } = useParams<{ campaignId: string }>();
   const requestedCardId = searchParams.get("card");
 
   const { data, isLoading, refetch } = useBoards(id);
+  const { data: campaign, isLoading: isCampaignLoading } = useQuery<Campaign>({
+    queryKey: ["campaign", id],
+    queryFn: () => getCampaign(id),
+    enabled: !!id,
+    staleTime: 30_000,
+  });
 
   // =========================================
   // STATE
@@ -536,10 +545,29 @@ const { campaignId } = useParams<{ campaignId: string }>();
   <div className="relative z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80">
     <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       {/* LEFT SIDE: CONTROLS & SWITCHER */}
-      <div className="flex w-full items-center gap-3 sm:w-auto overflow-x-auto custom-scrollbar pb-1 sm:pb-0">
-        
-        {/* VIEW MODE SWITCHER */}
-        <div className="flex shrink-0 items-center rounded-xl border border-slate-200/80 bg-slate-100/80 p-1 dark:border-slate-800 dark:bg-slate-800/50">
+      <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto">
+        <div className="flex min-w-0 items-center gap-2">
+          <FolderKanban
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 text-blue-500"
+          />
+          <div className="min-w-0">
+            <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+              Campaign / Project
+            </span>
+            <h1
+              className="truncate text-sm font-bold text-slate-900 dark:text-slate-100 sm:max-w-[28rem]"
+              title={campaign?.name}
+              aria-busy={isCampaignLoading}
+            >
+              {campaign?.name ?? (isCampaignLoading ? "Memuat campaign..." : "Board")}
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-1 sm:pb-0">
+          {/* VIEW MODE SWITCHER */}
+          <div className="flex shrink-0 items-center rounded-xl border border-slate-200/80 bg-slate-100/80 p-1 dark:border-slate-800 dark:bg-slate-800/50">
           <button
             type="button"
             onClick={() => setViewMode("kanban")}
@@ -569,18 +597,19 @@ const { campaignId } = useParams<{ campaignId: string }>();
           </button>
         </div>
 
-        {/* ADD COLUMN BUTTON */}
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          className="
+          {/* ADD COLUMN BUTTON */}
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="
             flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold 
             text-white transition-all duration-200 hover:bg-blue-500 active:scale-[0.98] shadow-sm
           "
-        >
-          <Plus size={15} />
-          <span>Column</span>
-        </button>
+          >
+            <Plus size={15} />
+            <span>Column</span>
+          </button>
+        </div>
       </div>
 
       {/* CARD SEARCH */}
