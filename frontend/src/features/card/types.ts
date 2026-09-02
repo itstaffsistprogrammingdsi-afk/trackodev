@@ -52,6 +52,9 @@ export interface Label {
   color?: string | null;
 
   slug: string;
+
+  /** Number of cards currently using this master label. */
+  cards_count?: number;
 }
 
 // export interface Brand {
@@ -136,6 +139,8 @@ export type Brand = {
   name: string;
   color: string;
   campaign_id?: string;
+  /** Number of cards currently using this master brand. */
+  cards_count?: number;
 };
 
 

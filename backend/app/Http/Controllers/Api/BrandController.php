@@ -8,6 +8,7 @@ use App\Models\Campaign;
 use App\Services\ActivityLogService;
 use App\Support\ResourceAccess;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class BrandController extends Controller
 {
@@ -18,6 +19,7 @@ class BrandController extends Controller
         // time. LOWER() makes the alphabetical order case-insensitive while
         // the following clauses keep ties stable across database engines.
         $query = Brand::query()
+            ->withCount('cards')
             ->orderByRaw('LOWER(name)')
             ->orderBy('name')
             ->orderBy('id');
@@ -32,9 +34,28 @@ class BrandController extends Controller
 
     public function store(Request $request)
     {
+        $rawName = $request->input('name');
+        $name = is_string($rawName) ? trim($rawName) : $rawName;
+        $request->merge(['name' => $name]);
+
+        $rawCampaignId = $request->input('campaign_id');
+        $campaignId = is_scalar($rawCampaignId) ? (string) $rawCampaignId : '';
+
         $validated = $request->validate([
             'campaign_id' => 'required|exists:campaigns,id',
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail) use ($campaignId, $name): void {
+                    if (is_string($name) && Brand::query()
+                        ->where('campaign_id', $campaignId)
+                        ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower($name)])
+                        ->exists()) {
+                        $fail('Nama brand sudah digunakan pada campaign ini. Gunakan nama lain.');
+                    }
+                },
+            ],
             'color' => 'nullable|string|max:50',
         ]);
 
@@ -66,9 +87,29 @@ class BrandController extends Controller
         $brand = Brand::findOrFail($id);
         abort_unless(ResourceAccess::brand($request->user(), $brand), 403, 'Unauthorized');
 
+        $rawName = $request->input('name');
+        $name = is_string($rawName) ? trim($rawName) : $rawName;
+        $request->merge(['name' => $name]);
+
+        $rawCampaignId = $request->input('campaign_id');
+        $campaignId = is_scalar($rawCampaignId) ? (string) $rawCampaignId : '';
+
         $validated = $request->validate([
             'campaign_id' => 'required|exists:campaigns,id',
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail) use ($brand, $campaignId, $name): void {
+                    if (is_string($name) && Brand::query()
+                        ->where('campaign_id', $campaignId)
+                        ->where('id', '!=', $brand->id)
+                        ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower($name)])
+                        ->exists()) {
+                        $fail('Nama brand sudah digunakan pada campaign ini. Gunakan nama lain.');
+                    }
+                },
+            ],
             'color' => 'nullable|string|max:50',
         ]);
 
@@ -94,6 +135,15 @@ class BrandController extends Controller
     {
         $brand = Brand::findOrFail($id);
         abort_unless(ResourceAccess::brand($request->user(), $brand), 403, 'Unauthorized');
+
+        $usageCount = $brand->cards()->count();
+
+        if ($usageCount > 0) {
+            return response()->json([
+                'message' => 'Brand tidak dapat dihapus karena masih digunakan pada card.',
+                'usage_count' => $usageCount,
+            ], 409);
+        }
 
         ActivityLogService::log(
             auth()->user(),

@@ -153,6 +153,12 @@ export async function createLabel(data: {
   return res.data;
 }
 
+export async function deleteLabel(labelId: string) {
+  const res = await api.delete(`/labels/${labelId}`);
+
+  return res.data;
+}
+
 export async function attachLabel(
   cardId: string,
   labelId: string
@@ -205,6 +211,12 @@ export const createBrand = async (
     name,
     color,
   });
+
+  return res.data;
+};
+
+export const deleteBrand = async (brandId: string) => {
+  const res = await api.delete(`/brands/${brandId}`);
 
   return res.data;
 };

@@ -240,6 +240,33 @@ export default function CardDetailSidebar({
             )}
           </div>
 
+          {/* BRIEF ATTACHMENTS */}
+          <div>
+            <SidebarButton
+              icon={<Paperclip size={16} />}
+              label="Brief Attachment"
+              onClick={toggleBrief}
+              badge={`${briefSummary.files} Files • ${briefSummary.links} Links`}
+              expanded={showBrief}
+            />
+            {showBrief && (
+              <div className="mt-2 animate-in fade-in duration-200">
+                <AttachmentSection
+                  attachments={briefAttachments}
+                  setAttachments={setBriefAttachments}
+                  loading={briefLoading}
+                  fetchAttachments={fetchBriefAttachments}
+                  showUploader
+                  showList={false}
+                  title="Brief Attachment"
+                  uploadEndpoint={`/cards/${card.id}/brief-attachments`}
+                  deleteEndpoint="/brief-attachments"
+                  downloadEndpoint="/brief-attachments"
+                />
+              </div>
+            )}
+          </div>
+
           {/* RESULT ATTACHMENTS */}
           <div>
             <SidebarButton
@@ -265,33 +292,6 @@ export default function CardDetailSidebar({
                   downloadEndpoint="/attachments"
                   supportsResultDescription
                   requiresQuantity
-                />
-              </div>
-            )}
-          </div>
-
-          {/* BRIEF ATTACHMENTS */}
-          <div>
-            <SidebarButton
-              icon={<Paperclip size={16} />}
-              label="Brief Attachment"
-              onClick={toggleBrief}
-              badge={`${briefSummary.files} Files • ${briefSummary.links} Links`}
-              expanded={showBrief}
-            />
-            {showBrief && (
-              <div className="mt-2 animate-in fade-in duration-200">
-                <AttachmentSection
-                  attachments={briefAttachments}
-                  setAttachments={setBriefAttachments}
-                  loading={briefLoading}
-                  fetchAttachments={fetchBriefAttachments}
-                  showUploader
-                  showList={false}
-                  title="Brief Attachment"
-                  uploadEndpoint={`/cards/${card.id}/brief-attachments`}
-                  deleteEndpoint="/brief-attachments"
-                  downloadEndpoint="/brief-attachments"
                 />
               </div>
             )}

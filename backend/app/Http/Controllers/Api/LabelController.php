@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Label;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use App\Services\ActivityLogService;
 
 class LabelController extends Controller
 {
@@ -18,6 +17,7 @@ class LabelController extends Controller
     {
         return response()->json(
             Label::query()
+                ->withCount('cards')
                 ->orderBy('name')
                 ->get()
         );
@@ -36,12 +36,25 @@ class LabelController extends Controller
      */
     public function store(Request $request)
     {
+        // Names are stored without surrounding whitespace and are compared
+        // case-insensitively so values such as "DSI", " dsi ", and "dSi"
+        // cannot create separate master labels.
+        $rawName = $request->input('name');
+        $name = is_string($rawName) ? trim($rawName) : $rawName;
+        $request->merge(['name' => $name]);
+
         $validated = $request->validate([
             'name' => [
                 'required',
                 'string',
                 'max:100',
-                Rule::unique('labels', 'name'),
+                function (string $attribute, mixed $value, \Closure $fail) use ($name): void {
+                    if (is_string($name) && Label::query()
+                        ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower($name)])
+                        ->exists()) {
+                        $fail('Nama label sudah digunakan. Gunakan nama lain.');
+                    }
+                },
             ],
 
             'color' => [
@@ -61,7 +74,7 @@ class LabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            
+
             'label',
             (string) $label->id,
             'created',
@@ -82,14 +95,23 @@ class LabelController extends Controller
         Request $request,
         Label $label
     ) {
+        $rawName = $request->input('name');
+        $name = is_string($rawName) ? trim($rawName) : $rawName;
+        $request->merge(['name' => $name]);
+
         $validated = $request->validate([
             'name' => [
                 'required',
                 'string',
                 'max:100',
-
-                Rule::unique('labels', 'name')
-                    ->ignore($label->id),
+                function (string $attribute, mixed $value, \Closure $fail) use ($name, $label): void {
+                    if (is_string($name) && Label::query()
+                        ->where('id', '!=', $label->id)
+                        ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower($name)])
+                        ->exists()) {
+                        $fail('Nama label sudah digunakan. Gunakan nama lain.');
+                    }
+                },
             ],
 
             'color' => [
@@ -111,7 +133,7 @@ class LabelController extends Controller
 
         ActivityLogService::log(
             auth()->user(),
-            
+
             'label',
             (string) $label->id,
             'updated',
@@ -129,9 +151,18 @@ class LabelController extends Controller
      */
     public function destroy(Label $label)
     {
+        $usageCount = $label->cards()->count();
+
+        if ($usageCount > 0) {
+            return response()->json([
+                'message' => 'Label tidak dapat dihapus karena masih digunakan pada card.',
+                'usage_count' => $usageCount,
+            ], 409);
+        }
+
         ActivityLogService::log(
             auth()->user(),
-            
+
             'label',
             (string) $label->id,
             'deleted',
@@ -161,18 +192,18 @@ class LabelController extends Controller
 
         while (
             Label::query()
-            ->where('slug', $slug)
-            ->when(
-                $ignoreId,
-                fn($query) => $query->where(
-                    'id',
-                    '!=',
-                    $ignoreId
+                ->where('slug', $slug)
+                ->when(
+                    $ignoreId,
+                    fn ($query) => $query->where(
+                        'id',
+                        '!=',
+                        $ignoreId
+                    )
                 )
-            )
-            ->exists()
+                ->exists()
         ) {
-            $slug = $baseSlug . '-' . $counter;
+            $slug = $baseSlug.'-'.$counter;
 
             $counter++;
         }

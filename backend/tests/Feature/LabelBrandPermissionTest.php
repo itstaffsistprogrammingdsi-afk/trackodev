@@ -256,6 +256,93 @@ class LabelBrandPermissionTest extends TestCase
         );
     }
 
+    public function test_master_names_are_unique_case_insensitively(): void
+    {
+        $this->seed(PermissionSeeder::class);
+
+        $owner = User::factory()->create();
+        $owner->assignRole('super_admin');
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/labels', ['name' => '  DSI  '])
+            ->assertCreated()
+            ->assertJsonPath('name', 'DSI');
+
+        $this->postJson('/api/labels', ['name' => 'dsi'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('name');
+
+        [$campaign] = $this->createCampaignBrand($owner, 'Existing brand');
+
+        $this->postJson('/api/brands', [
+            'campaign_id' => $campaign->id,
+            'name' => '  Client A  ',
+        ])->assertCreated()
+            ->assertJsonPath('name', 'Client A');
+
+        $this->postJson('/api/brands', [
+            'campaign_id' => $campaign->id,
+            'name' => 'client a',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('name');
+    }
+
+    public function test_only_unused_master_names_can_be_deleted(): void
+    {
+        $this->seed(PermissionSeeder::class);
+
+        $owner = User::factory()->create();
+        $owner->assignRole('super_admin');
+        [$campaign, $brand] = $this->createCampaignBrand($owner, 'Used brand');
+        $board = $campaign->boards()->create([
+            'name' => 'To Do',
+            'type' => 'todo',
+            'order' => 1,
+        ]);
+        $card = $board->cards()->create([
+            'title' => 'Master usage card',
+            'created_by' => $owner->id,
+            'order' => 1,
+            'status' => 'todo',
+        ]);
+        $card->brands()->attach($brand->id);
+
+        $unusedLabel = Label::create([
+            'name' => 'Unused label',
+            'slug' => 'unused-label',
+        ]);
+        $usedLabel = Label::create([
+            'name' => 'Used label',
+            'slug' => 'used-label',
+        ]);
+        $card->labels()->attach($usedLabel->id);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson('/api/labels/'.$unusedLabel->id)
+            ->assertOk();
+        $this->assertDatabaseMissing('labels', ['id' => $unusedLabel->id]);
+
+        $this->deleteJson('/api/labels/'.$usedLabel->id)
+            ->assertStatus(409)
+            ->assertJsonPath('usage_count', 1);
+        $this->assertDatabaseHas('labels', ['id' => $usedLabel->id]);
+
+        $unusedBrand = Brand::create([
+            'campaign_id' => $campaign->id,
+            'name' => 'Unused brand',
+        ]);
+
+        $this->deleteJson('/api/brands/'.$unusedBrand->id)
+            ->assertOk();
+        $this->assertDatabaseMissing('brands', ['id' => $unusedBrand->id]);
+
+        $this->deleteJson('/api/brands/'.$brand->id)
+            ->assertStatus(409)
+            ->assertJsonPath('usage_count', 1);
+        $this->assertDatabaseHas('brands', ['id' => $brand->id]);
+    }
+
     private function createCampaignBrand(User $owner, string $brandName): array
     {
         $suffix = Str::lower(Str::random(8));

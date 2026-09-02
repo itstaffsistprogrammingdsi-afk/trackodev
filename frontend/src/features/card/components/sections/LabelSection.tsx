@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { HexColorPicker } from "react-colorful";
+import { Trash2 } from "lucide-react";
 
 import useLabels from "../../hooks/useLabels";
 
@@ -35,6 +36,8 @@ export default function LabelSection({
 
     attach,
     detach,
+    remove,
+    error,
   } = useLabels({
     detail,
     setDetail,
@@ -90,6 +93,11 @@ export default function LabelSection({
       (l: Label) => l.id === id
     );
 
+  const normalizedNewLabel = newLabel.trim().toLocaleLowerCase();
+  const duplicateLabel = normalizedNewLabel !== "" && labels.some(
+    (label) => label.name.trim().toLocaleLowerCase() === normalizedNewLabel,
+  );
+
   const paginatedLabels = labels.slice(
     0,
     page * PAGE_SIZE
@@ -144,7 +152,14 @@ export default function LabelSection({
           onChange={(e) =>
             setNewLabel(e.target.value)
           }
+          aria-invalid={duplicateLabel}
         />
+
+        {duplicateLabel && (
+          <p className="text-xs text-amber-600">
+            Label sudah ada. Pilih label tersebut dari daftar untuk memasangnya.
+          </p>
+        )}
 
         {/* COLOR + BUTTON */}
 
@@ -249,6 +264,7 @@ export default function LabelSection({
           {/* BUTTON */}
 
           <button
+            disabled={duplicateLabel}
             onClick={() => {
               // Tutup picker dulu supaya tidak menutupi list di bawahnya
               setOpenPicker(false);
@@ -263,12 +279,20 @@ export default function LabelSection({
               rounded
               text-sm
               transition
+              disabled:cursor-not-allowed
+              disabled:opacity-50
             "
           >
             Add Label
           </button>
         </div>
       </div>}
+
+      {error && (
+        <p role="alert" className="rounded bg-red-50 px-2 py-1.5 text-xs text-red-600">
+          {error}
+        </p>
+      )}
 
       {/* LIST */}
 
@@ -283,6 +307,7 @@ export default function LabelSection({
           const active = isAttached(
             label.id
           );
+          const isUsed = (label.cards_count ?? 0) > 0;
 
           return (
             <div
@@ -316,33 +341,48 @@ export default function LabelSection({
 
               {/* ACTION */}
 
-              {active ? (can('label.detach') &&
-                <button
-                  onClick={() =>
-                    detach(label.id)
-                  }
-                  className="
-                    text-red-500
-                    text-xs
-                    hover:underline
-                  "
-                >
-                  remove
-                </button>
-              ) : (can('label.attach') &&
-                <button
-                  onClick={() =>
-                    attach(label.id)
-                  }
-                  className="
-                    text-blue-500
-                    text-xs
-                    hover:underline
-                  "
-                >
-                  add
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {active ? (can('label.detach') &&
+                  <button
+                    onClick={() =>
+                      detach(label.id)
+                    }
+                    className="
+                      text-red-500
+                      text-xs
+                      hover:underline
+                    "
+                  >
+                    remove
+                  </button>
+                ) : (can('label.attach') &&
+                  <button
+                    onClick={() =>
+                      attach(label.id)
+                    }
+                    className="
+                      text-blue-500
+                      text-xs
+                      hover:underline
+                    "
+                  >
+                    add
+                  </button>
+                )}
+
+                {can('label.delete') && (
+                  <button
+                    type="button"
+                    disabled={isUsed}
+                    onClick={() => remove(label.id, label.name)}
+                    title={isUsed ? "Label masih digunakan pada card" : "Hapus label dari daftar master"}
+                    aria-label={`Hapus label ${label.name}`}
+                    className="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
