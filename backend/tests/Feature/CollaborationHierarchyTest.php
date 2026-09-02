@@ -182,6 +182,82 @@ class CollaborationHierarchyTest extends TestCase
             ->assertJsonValidationErrors('member_ids');
     }
 
+    public function test_cross_division_admin_can_list_only_campaigns_they_joined(): void
+    {
+        [, $dkvLeader, , $itDivision] = $this->createCollaborationUsers();
+        $superAdmin = User::factory()->create(['name' => 'Super Admin']);
+        $superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
+        $workspace = $itDivision->workspaces()->create(['name' => 'Workspace Lintas Division']);
+
+        $joinedCampaign = $workspace->campaigns()->create([
+            'name' => 'IMMODERMA',
+            'type' => 'group',
+            'created_by' => $superAdmin->id,
+        ]);
+        $hiddenCampaign = $workspace->campaigns()->create([
+            'name' => 'Campaign Internal IT',
+            'type' => 'group',
+            'created_by' => $superAdmin->id,
+        ]);
+
+        // Jalur undangan resmi menyinkronkan membership campaign dan
+        // workspace, sehingga user lintas division bisa membuka listing.
+        Sanctum::actingAs($superAdmin);
+        $this->postJson("/api/campaigns/{$joinedCampaign->id}/members", [
+            'user_id' => $dkvLeader->id,
+        ])->assertOk();
+
+        Sanctum::actingAs($dkvLeader);
+
+        $response = $this->getJson("/api/workspaces/{$workspace->id}/campaigns")
+            ->assertOk();
+
+        $campaignIds = collect($response->json('data'))->pluck('id');
+        $this->assertContains($joinedCampaign->id, $campaignIds);
+        $this->assertNotContains($hiddenCampaign->id, $campaignIds);
+    }
+
+    public function test_user_cannot_list_campaigns_from_unrelated_workspace(): void
+    {
+        [$itStaff, , , $itDivision] = $this->createCollaborationUsers();
+        $workspace = $itDivision->workspaces()->create(['name' => 'Workspace Terbatas']);
+        $workspace->campaigns()->create([
+            'name' => 'Campaign Terbatas',
+            'type' => 'group',
+            'created_by' => $itStaff->id,
+        ]);
+
+        $outsider = User::factory()->create(['name' => 'Outsider']);
+        $outsider->assignRole(User::ROLE_USER);
+        Sanctum::actingAs($outsider);
+
+        $this->getJson("/api/workspaces/{$workspace->id}/campaigns")
+            ->assertForbidden();
+    }
+
+    public function test_legacy_campaign_membership_still_allows_cross_division_listing(): void
+    {
+        [, $dkvLeader, , $itDivision] = $this->createCollaborationUsers();
+        $superAdmin = User::factory()->create(['name' => 'Super Admin']);
+        $superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
+        $workspace = $itDivision->workspaces()->create(['name' => 'Workspace Legacy']);
+        $campaign = $workspace->campaigns()->create([
+            'name' => 'Campaign Legacy',
+            'type' => 'group',
+            'created_by' => $superAdmin->id,
+        ]);
+
+        // Data sebelum sinkronisasi workspace_user hanya memiliki pivot
+        // campaign_user; akses campaign tetap harus dapat dipulihkan.
+        $campaign->members()->attach($dkvLeader->id);
+
+        Sanctum::actingAs($dkvLeader);
+
+        $this->getJson("/api/workspaces/{$workspace->id}/campaigns")
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $campaign->id);
+    }
+
     public function test_leader_schedule_is_not_visible_to_staff_without_explicit_permission(): void
     {
         [$itStaff, $dkvLeader, , $itDivision] = $this->createCollaborationUsers();

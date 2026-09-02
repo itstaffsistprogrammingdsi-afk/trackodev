@@ -65,53 +65,57 @@ class CampaignController extends Controller
         }
 
         // ========================================
-        // ADMIN
+        // DIVISION ADMIN / CROSS-DIVISION MEMBER
         // ========================================
 
-        if ($user->isAdmin()) {
-
-            $hasDivision = $user
-                ->divisions()
-                ->where(
-                    'divisions.id',
-                    $workspace->division_id
-                )
+        // Admin pada division pemilik workspace boleh melihat seluruh
+        // campaign di workspace tersebut. Admin dari division lain tetap
+        // boleh membuka workspace jika ia diundang, tetapi hanya campaign
+        // yang memang ia buat/ikuti yang boleh dikembalikan.
+        $hasOwningDivision = $user->isAdmin()
+            && $user->divisions()
+                ->where('divisions.id', $workspace->division_id)
                 ->exists();
 
-            abort_unless(
-                $hasDivision,
-                403,
-                'Unauthorized'
-            );
-
+        if ($hasOwningDivision) {
             $campaigns = $query
                 ->latest()
                 ->get();
-
-            return response()->json([
-                'data' => CampaignResource::collection(
-                    $campaigns
-                ),
-            ]);
-        }
-
-        // ========================================
-        // USER
-        // ========================================
-
-        $campaigns = $query
-            ->whereHas(
-                'members',
-                function ($q) use ($user) {
-
-                    $q->where(
-                        'users.id',
-                        $user->id
+        } else {
+            // Direct division member maupun undangan lintas division harus
+            // tercatat sebagai member workspace. Store/addMember menjaga
+            // sinkronisasi ini. Untuk data lama yang hanya memiliki pivot
+            // campaign_user, membership campaign tetap menjadi bukti akses
+            // yang sah, tetapi daftar tetap dibatasi pada campaign tersebut.
+            $campaignAccessFilter = function ($campaignQuery) use ($user): void {
+                $campaignQuery
+                    ->where('created_by', $user->id)
+                    ->orWhereHas(
+                        'members',
+                        fn ($memberQuery) => $memberQuery->where(
+                            'users.id',
+                            $user->id
+                        )
                     );
-                }
-            )
-            ->latest()
-            ->get();
+            };
+
+            $hasWorkspaceAccess = $workspace->canBeAccessedBy($user);
+            $hasLegacyCampaignAccess = ! $hasWorkspaceAccess
+                && (clone $workspace->campaigns())
+                    ->where($campaignAccessFilter)
+                    ->exists();
+
+            abort_unless(
+                $hasWorkspaceAccess || $hasLegacyCampaignAccess,
+                403,
+                'Anda tidak memiliki akses ke workspace ini.'
+            );
+
+            $campaigns = $query
+                ->where($campaignAccessFilter)
+                ->latest()
+                ->get();
+        }
 
         return response()->json([
             'data' => CampaignResource::collection(
