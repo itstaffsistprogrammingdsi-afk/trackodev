@@ -399,6 +399,18 @@ class CampaignController extends Controller
             ])
         );
 
+        ActivityLogService::log(
+            $request->user(),
+            'campaign',
+            (string) $campaign->id,
+            'updated',
+            "Mengupdate campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
+            [
+                'campaign_id' => (string) $campaign->id,
+                'workspace_id' => (string) $campaign->workspace_id,
+            ]
+        );
+
         return response()->json([
             'message' =>
             'Campaign berhasil diupdate.',

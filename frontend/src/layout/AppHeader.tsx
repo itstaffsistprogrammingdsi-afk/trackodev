@@ -27,6 +27,7 @@ type BreadcrumbItem = {
 const breadcrumbRoutes: BreadcrumbRoute[] = [
   { pattern: "/divisions", label: "Divisions" },
   { pattern: "/divisions/:id", label: "Workspace" },
+  { pattern: "/divisions/:id/detail", label: "Division Detail" },
   { pattern: "/workspaces/:workspaceId/campaigns", label: "Campaigns" },
   {
     pattern: "/workspaces/:workspaceId/campaigns/:campaignId",
@@ -69,6 +70,16 @@ function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
     return [
       { href: "/divisions", label: "Divisions" },
       { href: `/divisions/${divisionId}`, label: "Workspace" },
+    ];
+  }
+
+  const divisionDetailMatch = pathname.match(/^\/divisions\/([^/]+)\/detail$/);
+  if (divisionDetailMatch) {
+    const divisionId = divisionDetailMatch[1];
+    return [
+      { href: "/divisions", label: "Divisions" },
+      { href: `/divisions/${divisionId}`, label: "Workspace" },
+      { label: "Division Detail" },
     ];
   }
 

@@ -197,6 +197,13 @@ Route::middleware([
         [DivisionController::class, 'show']
     );
 
+    // Audit feed division: controller menerapkan akses division/workspace
+    // yang sama seperti halaman detail division.
+    Route::get(
+        'divisions/{division}/activities',
+        [ActivityLogController::class, 'divisionActivities']
+    );
+
     Route::put(
         'divisions/{division}',
         [DivisionController::class, 'update']

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
+  Activity,
   ArrowRight,
   Building2,
   Pencil,
@@ -87,6 +88,13 @@ export default function DivisionCard({
     e.stopPropagation();
 
     onManageMembers?.(division);
+  };
+
+  const handleDivisionDetail = (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    e.stopPropagation();
+    navigate(`/divisions/${division.id}/detail`);
   };
 
   return (
@@ -315,6 +323,29 @@ export default function DivisionCard({
             >
               <Pencil className="h-4 w-4" />
               Edit
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDivisionDetail}
+              className="
+                inline-flex
+                items-center
+                gap-2
+                px-3
+                py-2
+                text-sm
+                font-medium
+                rounded-lg
+                border
+                border-violet-200
+                text-violet-700
+                hover:bg-violet-50
+                transition
+              "
+            >
+              <Activity className="h-4 w-4" />
+              Division Detail
             </button>
 
             <button
