@@ -35,10 +35,7 @@ class CalendarController extends Controller
         if (! $user->isSuperAdmin()) {
             $divisionIds = $user->divisions()->pluck('divisions.id');
 
-            $query->whereHas(
-                'campaign.workspace',
-                fn (Builder $builder) => $builder->whereIn('division_id', $divisionIds)
-            );
+            $this->applyBoardAccess($query, $user, $divisionIds, 'campaign');
         }
 
         $boards = $query->get()
@@ -213,23 +210,50 @@ class CalendarController extends Controller
     /**
      * Apply Access Control
      */
-private function applyPermission(Builder $query, $user): void
-{
-    if ($user->isSuperAdmin()) {
-        return;
-    }
+    private function applyPermission(Builder $query, User $user): void
+    {
+        if ($user->isSuperAdmin()) {
+            return;
+        }
 
-    $divisionIds = $user->divisions()->pluck('divisions.id')->toArray();
+        $divisionIds = $user->divisions()->pluck('divisions.id');
 
-    // User dan Admin memiliki aturan yang sama: kalender hanya berisi card
-    // dari divisi tempat mereka menjadi member. Card milik Super Admin tidak
-    // pernah diekspos kepada role di bawahnya, termasuk lewat detail tanggal.
-    $query
-        ->whereHas('board.campaign.workspace', function (Builder $workspaceQuery) use ($divisionIds) {
-            $workspaceQuery->whereIn('division_id', $divisionIds);
-        })
-        ->whereDoesntHave('creator.roles', function (Builder $roleQuery) {
+        // A user can see cards from their own divisions, or cards belonging
+        // to a campaign they created or joined directly (including an
+        // invitation from another division).
+        $this->applyBoardAccess($query, $user, $divisionIds, 'board.campaign');
+
+        // Card milik Super Admin tidak diekspos kepada role di bawahnya,
+        // termasuk ketika card tersebut berada di campaign yang diikuti.
+        $query->whereDoesntHave('creator.roles', function (Builder $roleQuery) {
             $roleQuery->where('name', User::ROLE_SUPER_ADMIN);
         });
-}
+    }
+
+    /**
+     * Scope a Board/Card query to divisions owned by the user or campaigns
+     * where the user is the creator/member. Keeping this in one helper makes
+     * the calendar listing and its create-options endpoint consistent.
+     */
+    private function applyBoardAccess(
+        Builder $query,
+        User $user,
+        $divisionIds,
+        string $campaignRelation
+    ): void
+    {
+        $query->where(function (Builder $accessQuery) use ($user, $divisionIds, $campaignRelation) {
+            $accessQuery->whereHas(
+                $campaignRelation.'.workspace',
+                fn (Builder $workspaceQuery) => $workspaceQuery->whereIn('division_id', $divisionIds)
+            )->orWhereHas($campaignRelation, function (Builder $campaignQuery) use ($user) {
+                $campaignQuery
+                    ->where('created_by', $user->id)
+                    ->orWhereHas(
+                        'members',
+                        fn (Builder $memberQuery) => $memberQuery->where('users.id', $user->id)
+                    );
+            });
+        });
+    }
 }
