@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { getForm, createField, deleteField } from "../api/form.api";
+import { Pencil, Trash2, X } from "lucide-react";
+import {
+  getForm,
+  createField,
+  updateField,
+  deleteField,
+} from "../api/form.api";
 import type { Form, FormField } from "../types";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
@@ -9,6 +15,7 @@ export default function FormBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const { can } = useAuth();
   const canCreateField = can('form.field.create') || can('form.update');
+  const canUpdateField = can('form.field.update') || can('form.update');
   const canDeleteField = can('form.field.delete') || can('form.update');
   const realtimeRevision = useRealtimeRevision(["Form", "FormField"]);
 
@@ -16,7 +23,7 @@ export default function FormBuilderPage() {
   const [loading, setLoading] = useState(true);
 
   const [label, setLabel] = useState("");
-  const [type, setType] = useState("text");
+  const [type, setType] = useState<FormField["type"]>("text");
   const [required, setRequired] = useState(false);
 
   const [options, setOptions] = useState<string[]>([""]);
@@ -24,6 +31,8 @@ export default function FormBuilderPage() {
   // ✅ OTHER FEATURE (FIXED PROPERLY)
   const [allowOther, setAllowOther] = useState(false);
   const [otherLabel, setOtherLabel] = useState("");
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  const [savingField, setSavingField] = useState(false);
 
   const fetchForm = useCallback(async () => {
     if (!id) return;
@@ -43,50 +52,73 @@ export default function FormBuilderPage() {
   const generateFieldName = (text: string) =>
     text.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, "");
 
-  const handleAddField = async () => {
+  const resetFieldEditor = () => {
+    setEditingFieldId(null);
+    setLabel("");
+    setType("text");
+    setRequired(false);
+    setOptions([""]);
+    setAllowOther(false);
+    setOtherLabel("");
+  };
+
+  const handleStartEditField = (field: FormField) => {
+    setEditingFieldId(field.id);
+    setLabel(field.label);
+    setType(field.type);
+    setRequired(Boolean(field.is_required));
+    setOptions(field.options?.length ? [...field.options] : [""]);
+    setAllowOther(Boolean(field.allow_other));
+    setOtherLabel(field.other_label || "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSaveField = async () => {
     if (!id || !label.trim()) {
       alert("Label wajib diisi");
       return;
     }
 
     try {
-      const fieldName = generateFieldName(label);
-
+      setSavingField(true);
       const cleanOptions = options
         .map((o) => o.trim())
         .filter(Boolean);
 
-      await createField(id, {
+      const payload: Partial<FormField> = {
         label,
-        name: fieldName,
         type,
         is_required: required,
-        order: form?.fields?.length || 0,
-
-        // ❗ IMPORTANT FIX:
-        // Only normal options here
         options:
-          type === "select" || type === "checkbox"
+          type === "select" || type === "checkbox" || type === "radio"
             ? cleanOptions
             : [],
-
-        // ✔ OTHER IS SEPARATE FLAG
         allow_other: allowOther,
         other_label: allowOther ? (otherLabel.trim() || "Other") : null,
-      } as FormField);
+      };
 
-      // RESET STATE
-      setLabel("");
-      setType("text");
-      setRequired(false);
-      setOptions([""]);
-      setAllowOther(false);
-      setOtherLabel("");
+      if (editingFieldId) {
+        await updateField(editingFieldId, payload);
+      } else {
+        await createField(id, {
+          ...payload,
+          name: generateFieldName(label),
+          order: form?.fields?.length || 0,
+        } as FormField);
+      }
+
+      resetFieldEditor();
 
       await fetchForm();
     } catch (error) {
       console.error(error);
-      alert("Gagal menambahkan field");
+      alert(
+        editingFieldId
+          ? "Gagal mengubah field"
+          : "Gagal menambahkan field",
+      );
+    } finally {
+      setSavingField(false);
     }
   };
 
@@ -95,6 +127,7 @@ export default function FormBuilderPage() {
 
     try {
       await deleteField(fieldId);
+      if (editingFieldId === fieldId) resetFieldEditor();
       await fetchForm();
     } catch (error) {
       console.error(error);
@@ -120,8 +153,19 @@ export default function FormBuilderPage() {
         <p className="text-sm text-gray-500">Form Builder</p>
       </div>
 
-      {/* CREATE FIELD */}
-      <div className={`${canCreateField ? 'block' : 'hidden'} mb-6 rounded-xl border bg-white p-5 shadow-sm`}>
+      {/* CREATE / EDIT FIELD */}
+      {(canCreateField || editingFieldId) && (
+      <div className="mb-6 rounded-xl border bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-800">
+            {editingFieldId ? "Edit Field" : "Add Field"}
+          </h2>
+          <p className="mt-1 text-sm text-gray-500">
+            {editingFieldId
+              ? "Perbarui isi field lalu simpan perubahan."
+              : "Tambahkan field baru ke form ini."}
+          </p>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <input
@@ -134,7 +178,7 @@ export default function FormBuilderPage() {
           <select
             value={type}
             onChange={(e) => {
-              setType(e.target.value);
+              setType(e.target.value as FormField["type"]);
               setOptions([""]);
               setAllowOther(false);
               setOtherLabel("");
@@ -148,6 +192,8 @@ export default function FormBuilderPage() {
             <option value="file">File</option>
             <option value="select">Select</option>
             <option value="checkbox">Checkbox</option>
+            <option value="radio">Radio</option>
+            <option value="section">Section</option>
           </select>
 
           <label className="flex items-center gap-2">
@@ -161,7 +207,7 @@ export default function FormBuilderPage() {
         </div>
 
         {/* OPTIONS */}
-        {(type === "select" || type === "checkbox") && (
+        {(type === "select" || type === "checkbox" || type === "radio") && (
           <div className="mt-4">
 
             <div className="space-y-2">
@@ -222,13 +268,32 @@ export default function FormBuilderPage() {
           </div>
         )}
 
-        <button
-          onClick={handleAddField}
-          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          Add Field
-        </button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {editingFieldId && (
+            <button
+              type="button"
+              onClick={resetFieldEditor}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <X size={16} />
+              Cancel
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSaveField}
+            disabled={savingField}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {savingField
+              ? "Saving..."
+              : editingFieldId
+                ? "Update Field"
+                : "Add Field"}
+          </button>
+        </div>
       </div>
+      )}
 
       {/* FIELD LIST */}
       <div className="rounded-xl border bg-white p-5">
@@ -266,12 +331,28 @@ export default function FormBuilderPage() {
                     )}
                   </div>
 
-                  <button
-                    onClick={() => handleDeleteField(field.id)}
-                    className={`${canDeleteField ? 'inline-flex' : 'hidden'} text-sm text-red-600`}
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {canUpdateField && (
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditField(field)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-1.5 text-sm text-blue-600 transition hover:bg-blue-50"
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </button>
+                    )}
+                    {canDeleteField && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteField(field.id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
