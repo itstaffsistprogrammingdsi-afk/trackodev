@@ -153,7 +153,7 @@ class CalendarCardIntegrationTest extends TestCase
     public function test_cross_division_campaign_member_sees_campaign_cards_in_calendar(): void
     {
         $viewer = User::factory()->create();
-        $viewer->assignRole('user');
+        $viewer->assignRole('admin');
         $creator = User::factory()->create();
         $creator->assignRole('user');
 
