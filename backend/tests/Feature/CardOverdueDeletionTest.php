@@ -11,6 +11,7 @@ use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class CardOverdueDeletionTest extends TestCase
@@ -41,6 +42,72 @@ class CardOverdueDeletionTest extends TestCase
         $this->deleteJson('/api/cards/'.$card->id)->assertOk();
 
         $this->assertDatabaseMissing('cards', ['id' => $card->id]);
+    }
+
+    public function test_only_card_creator_admin_and_super_admin_can_edit_due_date(): void
+    {
+        [$creator, $board] = $this->createCampaignMember();
+        $card = $this->createCard($board, $creator, now()->addDay());
+        $campaign = $board->campaign;
+        $creator->givePermissionTo(Permission::findOrCreate('card.update', 'web'));
+
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate([
+            'name' => User::ROLE_ADMIN,
+            'guard_name' => 'web',
+        ]));
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole(Role::firstOrCreate([
+            'name' => User::ROLE_SUPER_ADMIN,
+            'guard_name' => 'web',
+        ]));
+        $otherUser = User::factory()->create();
+
+        $updatePermission = Permission::findOrCreate('card.update', 'web');
+        foreach ([$admin, $superAdmin, $otherUser] as $user) {
+            $user->givePermissionTo($updatePermission);
+            $campaign->members()->attach($user->id);
+        }
+
+        Sanctum::actingAs($otherUser);
+        $this->putJson('/api/cards/'.$card->id, [
+            'due_date' => now()->addDays(2),
+        ])->assertForbidden();
+        $this->assertDatabaseHas('cards', ['id' => $card->id]);
+
+        $this->putJson('/api/cards/'.$card->id, [
+            'due_date' => null,
+        ])->assertForbidden();
+        $this->assertDatabaseHas('cards', ['id' => $card->id]);
+
+        Sanctum::actingAs($creator);
+        $this->putJson('/api/cards/'.$card->id, [
+            'due_date' => null,
+        ])->assertOk();
+        $this->assertDatabaseHas('cards', [
+            'id' => $card->id,
+            'due_date' => null,
+        ]);
+
+        $card->update(['due_date' => now()->addDay()]);
+        Sanctum::actingAs($admin);
+        $this->putJson('/api/cards/'.$card->id, [
+            'due_date' => null,
+        ])->assertOk();
+        $this->assertDatabaseHas('cards', [
+            'id' => $card->id,
+            'due_date' => null,
+        ]);
+
+        $card->update(['due_date' => now()->addDay()]);
+        Sanctum::actingAs($superAdmin);
+        $this->putJson('/api/cards/'.$card->id, [
+            'due_date' => null,
+        ])->assertOk();
+        $this->assertDatabaseHas('cards', [
+            'id' => $card->id,
+            'due_date' => null,
+        ]);
     }
 
     private function createCampaignMember(): array

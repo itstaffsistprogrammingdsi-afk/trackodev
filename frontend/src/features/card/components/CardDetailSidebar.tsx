@@ -110,7 +110,7 @@ export default function CardDetailSidebar({
   briefLoading,
   fetchBriefAttachments,
 }: Props) {
-  const { can } = useAuth();
+  const { can, hasRole, user } = useAuth();
   const toggleMembers = () => setShowMembers((prev) => !prev);
   const toggleDueDate = () => setShowDueDate((prev) => !prev);
   const toggleBrief = () => setShowBrief((prev) => !prev);
@@ -129,6 +129,12 @@ export default function CardDetailSidebar({
   };
   const dueStatus = getDueDateStatus(card.due_date);
   const deleteDisabled = card.is_overdue === true || isCardOverdue(card.due_date);
+  const canEditDueDate =
+    card.created_by?.id === user?.id ||
+    hasRole("admin") ||
+    hasRole("super_admin");
+  const dueDatePermissionMessage =
+    "Hanya pembuat card, Admin, atau Super Admin yang dapat mengubah due date.";
 
   return (
     <div className="w-full space-y-5 pb-2">
@@ -228,14 +234,21 @@ export default function CardDetailSidebar({
                 <input
                   type="datetime-local"
                   value={dueDate}
+                  disabled={!canEditDueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="
                     h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium 
                     text-slate-800 outline-none transition-all duration-200 
                     focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 
+                    disabled:cursor-not-allowed disabled:opacity-70
                     dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400
                   "
                 />
+                {!canEditDueDate ? (
+                  <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                    {dueDatePermissionMessage}
+                  </p>
+                ) : null}
               </div>
             )}
           </div>

@@ -1,5 +1,8 @@
 import axios from "axios";
 import { getApiBaseUrl } from "./mobileConfig";
+import { emitToast } from "../context/ToastContext";
+
+let sessionRedirectScheduled = false;
 
 const api = axios.create({
   // 🔥 Support Vite env var agar fleksibel (fallback ke "/api" jika env tidak diset)
@@ -23,7 +26,34 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status;
+    const requestUrl = String(err.config?.url ?? "");
+    const isLoginRequest = /(?:^|\/)auth\/login(?:\?|$)/.test(requestUrl);
+
+    if (status === 403 && !isLoginRequest) {
+      emitToast({
+        variant: "error",
+        title: "Akses ditolak",
+        message:
+          err.response?.data?.message ||
+          "Anda tidak memiliki izin untuk melakukan tindakan ini.",
+      });
+    } else if (status >= 500) {
+      emitToast({
+        variant: "error",
+        title: "Server bermasalah",
+        message: "Layanan sedang mengalami kendala. Silakan coba lagi.",
+      });
+    }
+
+    if (status === 401 && !isLoginRequest) {
+      emitToast({
+        variant: "warning",
+        title: "Sesi berakhir",
+        message: "Sesi Anda telah berakhir. Silakan masuk kembali.",
+        durationMs: 5000,
+      });
+
       // 1. Hapus token utama
       localStorage.removeItem("token");
 
@@ -34,7 +64,10 @@ api.interceptors.response.use(
 
       // 🔥 paksa reset app
       // Menggunakan replace() lebih baik daripada href agar user tidak bisa 'back' ke halaman terproteksi
-      window.location.replace("/signin");
+      if (!sessionRedirectScheduled) {
+        sessionRedirectScheduled = true;
+        window.setTimeout(() => window.location.replace("/signin"), 450);
+      }
     }
     
     return Promise.reject(err);

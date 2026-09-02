@@ -1,26 +1,27 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowRight, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import axios from "axios";
 
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import { login } from "../../lib/auth.service";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 
 export default function SignInForm() {
   const navigate = useNavigate();
   const { loadUser } = useAuth();
+  const { showToast } = useToast();
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     try {
-      setLoginError("");
       setLoading(true);
 
       const { user } = await login(email, password);
@@ -28,11 +29,25 @@ export default function SignInForm() {
       const roles = Array.isArray(user.roles) ? user.roles : [];
       navigate(roles.includes("super_admin") ? "/dashboard" : "/my-work", { replace: true });
     } catch (error: unknown) {
+      const status = axios.isAxiosError(error)
+        ? error.response?.status
+        : undefined;
+
+      // Interceptor global menangani error server. Untuk login, status 401/403
+      // tetap ditampilkan sebagai kegagalan kredensial di popup login.
+      if (status !== undefined && status >= 500) {
+        return;
+      }
+
       const message =
         error instanceof Error && /network|fetch|connect/i.test(error.message)
           ? "Server tidak dapat dijangkau. Periksa alamat server dan jaringan."
           : "Email atau password tidak sesuai.";
-      setLoginError(message);
+      showToast({
+        variant: "error",
+        title: "Gagal masuk",
+        message,
+      });
     } finally {
       setLoading(false);
     }
@@ -81,8 +96,6 @@ export default function SignInForm() {
             </button>
           </div>
         </div>
-
-        {loginError && <p role="alert" className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">{loginError}</p>}
 
         <button type="submit" disabled={loading} className="flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? "Memverifikasi akun..." : "Masuk ke Tracko"}
