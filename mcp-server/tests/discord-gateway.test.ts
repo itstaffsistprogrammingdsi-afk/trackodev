@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { discordCommands } from "../src/discord-commands.js";
+import { loadConfig } from "../src/config.js";
 import { loadDiscordConfig } from "../src/discord-config.js";
 import { formatDiscordResult } from "../src/discord-presenter.js";
 
@@ -22,6 +23,28 @@ test("Discord gateway configuration fails closed for non-TLS remote MCP URLs", (
     MCP_HTTP_BEARER_TOKEN: "test-bearer-token-that-is-at-least-32-characters",
     DISCORD_ACTOR_SIGNING_SECRET: "test-signing-secret-that-is-at-least-32-characters",
   }), /HTTPS/);
+});
+
+test("MCP defaults its actor allow-list to the configured Discord command guild", () => {
+  const config = loadConfig({
+    TRACO_API_URL: "https://traco.example.test/api",
+    TRACO_MCP_API_KEY: "traco_mcp_test-service-key-that-is-long-enough",
+    DISCORD_ACTOR_SIGNING_SECRET: "test-signing-secret-that-is-at-least-32-characters",
+    DISCORD_GUILD_ID: "1544990303113449512",
+  });
+
+  assert.deepEqual(config.allowedGuildIds, ["1544990303113449512"]);
+});
+
+test("MCP remains usable without the optional Discord gateway configuration", () => {
+  const config = loadConfig({
+    TRACO_API_URL: "https://traco.example.test/api",
+    TRACO_MCP_API_KEY: "traco_mcp_test-service-key-that-is-long-enough",
+    DISCORD_ACTOR_SIGNING_SECRET: "test-signing-secret-that-is-at-least-32-characters",
+    DISCORD_GUILD_ID: "",
+  });
+
+  assert.deepEqual(config.allowedGuildIds, []);
 });
 
 test("Discord presenter renders linked Traco identity without raw JSON", () => {
