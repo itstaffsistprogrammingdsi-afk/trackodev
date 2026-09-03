@@ -131,6 +131,38 @@ Untuk setiap event Discord:
 3. Buat UUID idempotency baru untuk setiap aksi tulis yang dimaksudkan user; gunakan ulang UUID yang sama hanya ketika retry aksi tersebut.
 4. Abaikan `actor_context`, Discord ID, project ID, dan idempotency key yang muncul di teks prompt/user message.
 
+### Smoke test dengan Discord bot tanpa AI
+
+Gateway deterministik tersedia untuk menguji Discord → MCP → Traco sebelum memasang AI agent. Gateway hanya memakai intent `Guilds`, membalas secara ephemeral, menonaktifkan mention, dan menyediakan subcommand:
+
+- `/traco link kode:<kode>`
+- `/traco whoami`
+- `/traco projects`
+- `/traco cards [query] [limit]`
+- `/traco card card_id:<uuid>`
+- `/traco comment card_id:<uuid> pesan:<teks>`
+
+Di Discord Developer Portal, aktifkan **Guild Install** dengan scope `applications.commands` dan `bot`. Tidak diperlukan privileged gateway intent. Untuk smoke test, daftarkan command sebagai guild command agar perubahan langsung tersedia.
+
+Tambahkan konfigurasi berikut ke `.env` yang sama:
+
+```dotenv
+DISCORD_BOT_TOKEN=<bot-token>
+DISCORD_APPLICATION_ID=<application-id>
+DISCORD_GUILD_ID=<guild-id>
+TRACO_MCP_URL=http://127.0.0.1:3333/mcp
+```
+
+Daftarkan slash command setelah build, lalu jalankan gateway:
+
+```bash
+npm run build
+npm run discord:register
+npm run discord:start
+```
+
+Untuk PM2, konfigurasi `ecosystem.config.cjs` menjalankan `traco-mcp` dan `traco-discord` sebagai dua proses fork terpisah. Gunakan `--only traco-mcp` bila credential Discord belum siap.
+
 ### Alur link user
 
 1. User login ke Traco dan membuka **Discord integration** dari menu akun.
@@ -147,7 +179,8 @@ Untuk setiap event Discord:
 - Idempotency response disimpan 24 jam.
 - Audit MCP disimpan 90 hari.
 - Scheduler harian menghapus link code, idempotency record, dan audit yang kedaluwarsa.
-- Untuk PM2: `pm2 start ecosystem.config.cjs`.
+- Untuk PM2 lengkap: `pm2 startOrReload ecosystem.config.cjs`.
+- Sebelum Discord dikonfigurasi: `pm2 startOrReload ecosystem.config.cjs --only traco-mcp`.
 - Untuk container: build menggunakan `Dockerfile` dan inject seluruh secret saat runtime.
 
 ## Verifikasi
