@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\FormController;
 use App\Http\Controllers\Api\FormFieldController;
 use App\Http\Controllers\Api\FormSubmissionController;
 use App\Http\Controllers\Api\LabelController;
+use App\Http\Controllers\Api\McpIntegrationController;
 use App\Http\Controllers\Api\MyActivityController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PublicFormController;
@@ -68,6 +69,73 @@ Route::get('/ping', function () {
 Broadcast::routes([
     'middleware' => ['auth:sanctum'],
 ]);
+
+// ============================================
+// USER-OWNED EXTERNAL IDENTITIES
+// ============================================
+
+Route::prefix('integrations')->middleware('auth:sanctum')->group(function () {
+    Route::get('/identities', [McpIntegrationController::class, 'identities'])
+        ->middleware('throttle:60,1');
+    Route::post('/link-codes', [McpIntegrationController::class, 'createLinkCode'])
+        ->middleware('throttle:10,1');
+    Route::delete('/identities/{identity}', [McpIntegrationController::class, 'unlinkIdentity'])
+        ->middleware('throttle:10,1');
+});
+
+// ============================================
+// MCP AGENT API
+// ============================================
+
+Route::prefix('mcp/v1')
+    ->middleware(['mcp.auth', 'throttle:mcp', 'mcp.audit'])
+    ->group(function () {
+        Route::post('/identities/link', [McpIntegrationController::class, 'consumeLinkCode'])
+            ->middleware(['mcp.ability:identity:link', 'throttle:20,1', 'mcp.idempotency'])
+            ->name('mcp.identities.link');
+
+        Route::middleware('mcp.actor')->group(function () {
+            Route::get('/context', [McpIntegrationController::class, 'context'])
+                ->middleware('mcp.ability:data:read')
+                ->name('mcp.context');
+            Route::get('/projects', [McpIntegrationController::class, 'projects'])
+                ->middleware(['mcp.ability:data:read', 'permission:campaign.view|card.view|task.view'])
+                ->name('mcp.projects');
+            Route::get('/cards/search', [McpIntegrationController::class, 'searchCards'])
+                ->middleware(['mcp.ability:data:read', 'permission:card.view|task.view'])
+                ->name('mcp.cards.search');
+            Route::get('/assignment-candidates', [McpIntegrationController::class, 'assignmentCandidates'])
+                ->middleware(['mcp.ability:data:read', 'permission:user.mention|card.assign|task.assign'])
+                ->name('mcp.assignment-candidates');
+            Route::get('/cards/{card}', [McpIntegrationController::class, 'showCard'])
+                ->middleware(['mcp.ability:data:read', 'permission:card.view|task.view'])
+                ->name('mcp.cards.show');
+
+            Route::middleware(['mcp.ability:data:write', 'mcp.idempotency'])->group(function () {
+                Route::post('/boards/{board}/cards', [CardController::class, 'store'])
+                    ->middleware('permission:card.create|task.create')
+                    ->name('mcp.cards.store');
+                Route::put('/cards/{card}', [CardController::class, 'update'])
+                    ->middleware('permission:card.update|task.update')
+                    ->name('mcp.cards.update');
+                Route::patch('/cards/{card}/move', [CardController::class, 'move'])
+                    ->middleware('permission:card.move|task.update')
+                    ->name('mcp.cards.move');
+                Route::post('/cards/{card}/comments', [CardController::class, 'addComment'])
+                    ->middleware('permission:comment.create|task.update')
+                    ->name('mcp.comments.store');
+                Route::post('/cards/{card}/assign', [CardController::class, 'assign'])
+                    ->middleware('permission:card.assign|task.assign')
+                    ->name('mcp.cards.assign');
+                Route::post('/cards/{card}/tasks', [TaskController::class, 'store'])
+                    ->middleware('permission:checklist.create|task.create')
+                    ->name('mcp.tasks.store');
+                Route::put('/tasks/{task}/status', [McpIntegrationController::class, 'setTaskStatus'])
+                    ->middleware('permission:checklist.complete|task.update')
+                    ->name('mcp.tasks.status');
+            });
+        });
+    });
 
 // ============================================
 // AUTH

@@ -72,10 +72,14 @@ class SystemNegativeFlowTest extends TestCase
                 continue;
             }
 
+            $requiredAuthentication = str_starts_with($uri, 'api/mcp/v1/')
+                ? 'mcp.auth'
+                : 'auth:sanctum';
+
             $this->assertContains(
-                'auth:sanctum',
+                $requiredAuthentication,
                 $route->gatherMiddleware(),
-                "Route {$uri} harus dilindungi auth:sanctum."
+                "Route {$uri} harus dilindungi {$requiredAuthentication}."
             );
         }
     }

@@ -43,6 +43,7 @@ const breadcrumbRoutes: BreadcrumbRoute[] = [
   { pattern: "/chats", label: "Chats" },
   { pattern: "/report", label: "Report" },
   { pattern: "/profile", label: "Profile" },
+  { pattern: "/integrations", label: "Integrations" },
 ];
 
 /* -------------------------------------------------------------------------- */
