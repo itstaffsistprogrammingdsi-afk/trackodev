@@ -81,6 +81,8 @@ Jalankan:
 npm start
 ```
 
+Perintah `npm start` dan konfigurasi PM2 otomatis memuat `mcp-server/.env`. Pada container, secret tetap di-inject sebagai environment variable runtime dan file `.env` tidak disalin ke image.
+
 Health check tersedia di `GET /healthz`. Letakkan mode HTTP di belakang reverse proxy HTTPS. Jangan membuka port 3333 langsung ke internet bila bind ke loopback sudah mencukupi.
 
 ### Mode stdio

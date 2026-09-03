@@ -4,7 +4,7 @@ module.exports = {
     script: "dist/src/index.js",
     cwd: __dirname,
     interpreter: "node",
-    node_args: "--enable-source-maps",
+    node_args: "--env-file=.env --enable-source-maps",
     instances: 1,
     autorestart: true,
     max_memory_restart: "256M",
