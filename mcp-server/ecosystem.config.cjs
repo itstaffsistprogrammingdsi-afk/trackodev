@@ -9,13 +9,12 @@ module.exports = {
       exec_mode: "fork",
       instances: 1,
       autorestart: true,
+      min_uptime: 10000,
+      max_restarts: 10,
       max_memory_restart: "256M",
       time: true,
       env: {
         NODE_ENV: "production",
-        MCP_TRANSPORT: "http",
-        MCP_HTTP_HOST: "127.0.0.1",
-        MCP_HTTP_PORT: "3333",
       },
     },
     {
@@ -28,6 +27,8 @@ module.exports = {
       instances: 1,
       autorestart: true,
       restart_delay: 5000,
+      min_uptime: 10000,
+      max_restarts: 10,
       max_memory_restart: "256M",
       time: true,
       env: {

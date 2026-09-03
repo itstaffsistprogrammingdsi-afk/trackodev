@@ -81,7 +81,7 @@ Jalankan:
 npm start
 ```
 
-Perintah `npm start` dan konfigurasi PM2 otomatis memuat `mcp-server/.env`. Pada container, secret tetap di-inject sebagai environment variable runtime dan file `.env` tidak disalin ke image.
+Perintah `npm start` dan konfigurasi PM2 otomatis memuat `mcp-server/.env`; PM2 tidak menimpa `MCP_TRANSPORT`, `MCP_HTTP_HOST`, atau `MCP_HTTP_PORT`. Pada container, secret tetap di-inject sebagai environment variable runtime dan file `.env` tidak disalin ke image.
 
 Health check tersedia di `GET /healthz`. Letakkan mode HTTP di belakang reverse proxy HTTPS. Jangan membuka port 3333 langsung ke internet bila bind ke loopback sudah mencukupi.
 
@@ -153,6 +153,11 @@ DISCORD_GUILD_ID=<guild-id>
 TRACO_MCP_URL=http://127.0.0.1:3333/mcp
 ```
 
+`DISCORD_ALLOWED_GUILD_IDS` sebaiknya diisi dengan guild produksi. Untuk
+gateway smoke test ini, bila nilainya kosong, MCP otomatis memakai
+`DISCORD_GUILD_ID` sebagai allow-list. Ini mencegah actor context yang sah
+secara kriptografis dipakai dari guild lain.
+
 Daftarkan slash command setelah build, lalu jalankan gateway:
 
 ```bash
@@ -162,6 +167,58 @@ npm run discord:start
 ```
 
 Untuk PM2, konfigurasi `ecosystem.config.cjs` menjalankan `traco-mcp` dan `traco-discord` sebagai dua proses fork terpisah. Gunakan `--only traco-mcp` bila credential Discord belum siap.
+
+### Deployment gateway Discord
+
+Lengkapi credential berikut pada `.env` server **sebelum** mendaftarkan slash
+command atau menjalankan PM2:
+
+```dotenv
+TRACO_MCP_API_KEY=traco_mcp_...             # keluaran satu-kali artisan
+MCP_HTTP_BEARER_TOKEN=<random-minimum-32-characters>
+DISCORD_ACTOR_SIGNING_SECRET=<random-minimum-32-characters>
+DISCORD_ALLOWED_GUILD_IDS=<DISCORD_GUILD_ID>
+```
+
+Buat service credential di host backend dan simpan hasilnya langsung ke
+`TRACO_MCP_API_KEY` di server MCP:
+
+```bash
+php artisan mcp:client:create discord-agent --abilities=data:read,data:write,identity:link
+```
+
+Gunakan nilai acak yang berbeda untuk `MCP_HTTP_BEARER_TOKEN` dan
+`DISCORD_ACTOR_SIGNING_SECRET`; masing-masing minimal 32 karakter. Setelah
+build, jalankan urutan ini:
+
+```bash
+npm ci
+npm run build
+npm run discord:register
+pm2 startOrReload ecosystem.config.cjs --update-env
+curl -fsS http://127.0.0.1:3333/healthz
+pm2 logs traco-mcp --lines 50 --nostream
+pm2 logs traco-discord --lines 50 --nostream
+pm2 save
+```
+
+PM2 membatasi restart cepat hingga 10 kali, sehingga credential yang keliru
+tidak lagi membuat proses tampak online sambil menghabiskan CPU.
+
+### Konflik port lokal
+
+Jangan menghentikan proses lain yang sudah memakai port MCP. Pilih port loopback
+yang kosong dan ubah **kedua** nilai berikut pada `.env` agar gateway Discord
+dan MCP selalu menuju endpoint yang sama:
+
+```dotenv
+MCP_HTTP_PORT=3334
+TRACO_MCP_URL=http://127.0.0.1:3334/mcp
+```
+
+Setelah itu jalankan `pm2 startOrReload ecosystem.config.cjs --update-env`,
+lalu periksa `curl -fsS http://127.0.0.1:3334/healthz`. Gunakan `ss -ltnp`
+untuk memeriksa pemilik suatu port bila diperlukan.
 
 ### Alur link user
 

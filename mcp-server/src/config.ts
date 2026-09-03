@@ -1,5 +1,10 @@
 import { z } from "zod/v4";
 
+const optionalSnowflake = z.preprocess(
+  (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
+  z.string().regex(/^\d{15,22}$/).optional(),
+);
+
 const environmentSchema = z.object({
   TRACO_API_URL: z.string().url().transform((value) => value.replace(/\/$/, "")),
   TRACO_MCP_API_KEY: z.string().min(40),
@@ -11,6 +16,10 @@ const environmentSchema = z.object({
   MCP_ALLOWED_ORIGINS: z.string().default(""),
   DISCORD_ACTOR_SIGNING_SECRET: z.string().min(32),
   DISCORD_ALLOWED_GUILD_IDS: z.string().default(""),
+  // Gateway Discord memakai guild ini untuk registrasi slash command. Ketika
+  // allow-list MCP belum diisi, gunakan sebagai default yang aman agar actor
+  // context dari guild lain tetap ditolak.
+  DISCORD_GUILD_ID: optionalSnowflake,
   DISCORD_ACTOR_MAX_TTL_SECONDS: z.coerce.number().int().min(30).max(900).default(300),
   TRACO_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(15000),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -46,6 +55,8 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     throw new Error("MCP_HTTP_BEARER_TOKEN wajib diisi pada mode HTTP.");
   }
 
+  const configuredGuildIds = splitCsv(values.DISCORD_ALLOWED_GUILD_IDS);
+
   return {
     tracoApiUrl: values.TRACO_API_URL,
     tracoApiKey: values.TRACO_MCP_API_KEY,
@@ -58,7 +69,9 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
       : {}),
     allowedOrigins: splitCsv(values.MCP_ALLOWED_ORIGINS),
     actorSigningSecret: values.DISCORD_ACTOR_SIGNING_SECRET,
-    allowedGuildIds: splitCsv(values.DISCORD_ALLOWED_GUILD_IDS),
+    allowedGuildIds: configuredGuildIds.length > 0
+      ? configuredGuildIds
+      : values.DISCORD_GUILD_ID ? [values.DISCORD_GUILD_ID] : [],
     actorMaxTtlSeconds: values.DISCORD_ACTOR_MAX_TTL_SECONDS,
     requestTimeoutMs: values.TRACO_REQUEST_TIMEOUT_MS,
     logLevel: values.LOG_LEVEL,
