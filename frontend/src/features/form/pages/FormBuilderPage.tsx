@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { Pencil, Trash2, X } from "lucide-react";
 import {
@@ -33,6 +33,12 @@ export default function FormBuilderPage() {
   const [otherLabel, setOtherLabel] = useState("");
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [savingField, setSavingField] = useState(false);
+
+  // The app shell owns the scroll position in an internal <main> element.
+  // Keeping refs to the editor and its first input lets us navigate that
+  // scroll container reliably when a field is edited.
+  const fieldEditorRef = useRef<HTMLDivElement>(null);
+  const labelInputRef = useRef<HTMLInputElement>(null);
 
   const fetchForm = useCallback(async () => {
     if (!id) return;
@@ -70,8 +76,25 @@ export default function FormBuilderPage() {
     setOptions(field.options?.length ? [...field.options] : [""]);
     setAllowOther(Boolean(field.allow_other));
     setOtherLabel(field.other_label || "");
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if (!editingFieldId) return;
+
+    // Wait until the editor has switched to edit mode and is present in the
+    // DOM, then scroll the nearest overflow container and place the cursor in
+    // the first editable control. preventScroll avoids interrupting the
+    // smooth scroll animation when focus is applied.
+    const frame = window.requestAnimationFrame(() => {
+      fieldEditorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      labelInputRef.current?.focus({ preventScroll: true });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [editingFieldId]);
 
   const handleSaveField = async () => {
     if (!id || !label.trim()) {
@@ -155,24 +178,51 @@ export default function FormBuilderPage() {
 
       {/* CREATE / EDIT FIELD */}
       {(canCreateField || editingFieldId) && (
-      <div className="mb-6 rounded-xl border bg-white p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {editingFieldId ? "Edit Field" : "Add Field"}
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {editingFieldId
-              ? "Perbarui isi field lalu simpan perubahan."
-              : "Tambahkan field baru ke form ini."}
-          </p>
+      <div
+        ref={fieldEditorRef}
+        id="field-editor"
+        role="region"
+        aria-labelledby="field-editor-title"
+        className={`mb-6 scroll-mt-6 rounded-xl border bg-white p-5 shadow-sm transition-all duration-300 dark:bg-gray-900 ${
+          editingFieldId
+            ? "border-blue-300 ring-4 ring-blue-100/80 dark:border-blue-700 dark:ring-blue-900/30"
+            : "border-gray-200 dark:border-gray-800"
+        }`}
+      >
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 id="field-editor-title" className="text-lg font-semibold text-gray-800 dark:text-white">
+                {editingFieldId ? "Edit Field" : "Add Field"}
+              </h2>
+              {editingFieldId && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  Editing
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {editingFieldId
+                ? "Anda sedang mengedit field ini. Perbarui isinya lalu simpan perubahan."
+                : "Tambahkan field baru ke form ini."}
+            </p>
+          </div>
+
+          {editingFieldId && (
+            <p className="text-xs font-medium text-blue-600 dark:text-blue-300" aria-live="polite">
+              Perubahan belum disimpan
+            </p>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <input
+            ref={labelInputRef}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
+            aria-label="Field label"
             placeholder="Field label"
-            className="rounded-lg border px-3 py-2"
+            className="rounded-lg border border-gray-300 px-3 py-2 transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-900/30"
           />
 
           <select
@@ -183,7 +233,8 @@ export default function FormBuilderPage() {
               setAllowOther(false);
               setOtherLabel("");
             }}
-            className="rounded-lg border px-3 py-2"
+            aria-label="Field type"
+            className="rounded-lg border border-gray-300 px-3 py-2 transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-900/30"
           >
             <option value="text">Text</option>
             <option value="textarea">Textarea</option>
