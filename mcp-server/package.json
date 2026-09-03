@@ -21,16 +21,20 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsx --env-file=.env src/index.ts",
     "start": "node --env-file=.env --enable-source-maps dist/src/index.js",
+    "discord:dev": "tsx --env-file=.env src/discord-bot.ts",
+    "discord:register": "node --env-file=.env --enable-source-maps dist/src/register-discord-commands.js",
+    "discord:start": "node --env-file=.env --enable-source-maps dist/src/discord-bot.js",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
     "@modelcontextprotocol/node": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",
+    "discord.js": "14.27.0",
     "zod": "4.5.4"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "2.0.0",
     "@types/node": "26.4.1",
     "tsx": "4.20.5",
     "typescript": "7.0.2"
