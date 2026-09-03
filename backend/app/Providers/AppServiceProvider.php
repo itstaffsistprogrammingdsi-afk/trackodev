@@ -25,8 +25,11 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Observers\ApplicationDataObserver;
 use App\Observers\UserObserver;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -44,6 +47,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('mcp', function (Request $request) {
+            $clientId = $request->attributes->get('mcp_client')?->id;
+
+            return Limit::perMinute(config('mcp.rate_limit_per_minute', 120))
+                ->by($clientId ?: $request->ip());
+        });
+
         ResetPassword::createUrlUsing(function (User $user, string $token): string {
             $query = http_build_query([
                 'token' => $token,

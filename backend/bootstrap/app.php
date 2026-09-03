@@ -1,9 +1,17 @@
 <?php
 
+use App\Http\Middleware\AuditMcpRequest;
+use App\Http\Middleware\AuthenticateMcpClient;
+use App\Http\Middleware\EnsureMcpAbility;
+use App\Http\Middleware\EnsureMcpIdempotency;
+use App\Http\Middleware\ResolveMcpActor;
+use App\Providers\AuthServiceProvider;
 use Illuminate\Foundation\Application;
-
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(
     basePath: dirname(__DIR__)
@@ -15,7 +23,7 @@ return Application::configure(
 
     ->withProviders([
 
-        App\Providers\AuthServiceProvider::class,
+        AuthServiceProvider::class,
     ])
 
     // ============================================
@@ -24,13 +32,13 @@ return Application::configure(
 
     ->withRouting(
 
-        web: __DIR__ . '/../routes/web.php',
+        web: __DIR__.'/../routes/web.php',
 
-        api: __DIR__ . '/../routes/api.php',
+        api: __DIR__.'/../routes/api.php',
 
-        commands: __DIR__ . '/../routes/console.php',
+        commands: __DIR__.'/../routes/console.php',
 
-        channels: __DIR__ . '/../routes/channels.php',
+        channels: __DIR__.'/../routes/channels.php',
 
         health: '/up',
     )
@@ -49,14 +57,21 @@ return Application::configure(
 
         $middleware->alias([
 
-            'role' =>
-                \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'role' => RoleMiddleware::class,
 
-            'permission' =>
-                \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'permission' => PermissionMiddleware::class,
 
-            'role_or_permission' =>
-                \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+
+            'mcp.auth' => AuthenticateMcpClient::class,
+
+            'mcp.actor' => ResolveMcpActor::class,
+
+            'mcp.ability' => EnsureMcpAbility::class,
+
+            'mcp.audit' => AuditMcpRequest::class,
+
+            'mcp.idempotency' => EnsureMcpIdempotency::class,
         ]);
 
         // ========================================

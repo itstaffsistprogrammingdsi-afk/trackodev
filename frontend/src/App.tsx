@@ -48,6 +48,7 @@ const NotificationPage = lazy(() => import("./pages/Notifications/NotificationPa
 const MyWorkPage = lazy(() => import("@/features/my-work/pages/MyWorkPage"));
 const LandingPage = lazy(() => import("@/features/landing/pages/LandingPage"));
 const EditAccountPage = lazy(() => import("@/features/account/pages/EditAccountPage"));
+const IntegrationSettingsPage = lazy(() => import("@/features/integration/pages/IntegrationSettingsPage"));
 
 function isSuperAdminUser(auth: ReturnType<typeof useAuth>) {
   try {
@@ -192,6 +193,8 @@ export default function App() {
             path="/notifications"
             element={<PermissionRoute permission="notification.view"><NotificationPage /></PermissionRoute>}
           />
+
+          <Route path="/integrations" element={<IntegrationSettingsPage />} />
 
           {/* User Management */}
           <Route

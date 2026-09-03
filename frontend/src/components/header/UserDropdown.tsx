@@ -101,6 +101,17 @@ const handleLogout = async () => {
             </DropdownItem>
           </li>}
 
+          <li>
+            <DropdownItem
+              onItemClick={closeDropdown}
+              tag="a"
+              to="/integrations"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-white/5"
+            >
+              Discord integration
+            </DropdownItem>
+          </li>
+
         </ul>
 
         {/* LOGOUT */}
