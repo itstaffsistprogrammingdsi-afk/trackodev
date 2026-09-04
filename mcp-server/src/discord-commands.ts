@@ -11,7 +11,7 @@ export const tracoCommand = new SlashCommandBuilder()
       .setName("kode")
       .setDescription("Kode sekali-pakai dari halaman Integrations Traco")
       .setMinLength(8)
-      .setMaxLength(20)
+      .setMaxLength(9)
       .setRequired(true)))
   .addSubcommand((command) => command
     .setName("whoami")

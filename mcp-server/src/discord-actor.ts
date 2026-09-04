@@ -20,6 +20,9 @@ export type VerifyActorOptions = {
 };
 
 export function verifyDiscordActor(assertion: string, options: VerifyActorOptions): DiscordActor {
+  if (typeof assertion !== "string" || assertion.length > 4096) {
+    throw new Error("Actor context Discord tidak valid.");
+  }
   const parts = assertion.split(".");
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
     throw new Error("Actor context Discord tidak valid.");
@@ -40,7 +43,11 @@ export function verifyDiscordActor(assertion: string, options: VerifyActorOption
     throw new Error("Payload actor context Discord tidak valid.");
   }
 
-  const payload = actorPayloadSchema.parse(rawPayload);
+  const parsedPayload = actorPayloadSchema.safeParse(rawPayload);
+  if (!parsedPayload.success || parsedPayload.data.exp <= parsedPayload.data.iat) {
+    throw new Error("Payload actor context Discord tidak valid.");
+  }
+  const payload = parsedPayload.data;
   const now = options.now ?? Math.floor(Date.now() / 1000);
   if (payload.iat > now + 30 || payload.exp < now) {
     throw new Error("Actor context Discord belum berlaku atau sudah kedaluwarsa.");
@@ -65,6 +72,12 @@ export function signDiscordActor(
   ttlSeconds = 120,
   now = Math.floor(Date.now() / 1000),
 ): string {
+  if (typeof secret !== "string" || secret.length < 32) {
+    throw new Error("Secret penandatangan actor context Discord terlalu pendek.");
+  }
+  if (!Number.isInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 900) {
+    throw new Error("TTL actor context Discord harus berupa bilangan bulat 1-900 detik.");
+  }
   const payload: DiscordActor = {
     sub: actor.sub,
     ...(actor.username ? { username: actor.username } : {}),

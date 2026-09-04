@@ -7,6 +7,11 @@ Implementasi memakai MCP TypeScript SDK v2 dan mendukung dua transport:
 - `stdio` untuk agent/bot yang menjalankan MCP sebagai child process.
 - Streamable HTTP stateless di `/mcp` untuk agent yang berjalan terpisah.
 
+Panduan integrasi end-to-end untuk Discord bot dan AI agent tersedia di
+[`docs/MCP_DISCORD_INTEGRATION.md`](../docs/MCP_DISCORD_INTEGRATION.md),
+termasuk daftar seluruh tool, contoh `/traco whoami`, payload, deployment,
+dan troubleshooting.
+
 ## Arsitektur keamanan
 
 ```text
@@ -37,6 +42,7 @@ Jangan memasukkan ketiga secret tersebut ke prompt, pesan Discord, frontend, ata
 | `traco_list_projects` | Workspace, campaign, board, dan ID canonical |
 | `traco_search_cards` | Cari/filter card yang boleh diakses |
 | `traco_get_card` | Detail card, checklist, komentar, dan attachment metadata |
+| `traco_download_attachment` | Unduh attachment card/brief sebagai base64 terbatas tanpa URL publik |
 | `traco_search_assignment_candidates` | Kandidat assignment yang valid menurut hierarki |
 | `traco_create_card` | Buat card |
 | `traco_update_card` | Ubah field card |
@@ -45,8 +51,47 @@ Jangan memasukkan ketiga secret tersebut ke prompt, pesan Discord, frontend, ata
 | `traco_assign_card` | Assign user yang diizinkan |
 | `traco_add_checklist_item` | Tambah checklist |
 | `traco_set_checklist_status` | Set status checklist secara idempotent |
+| `traco_baca` | Akses terpadu untuk seluruh menu baca dengan istilah Indonesia yang konsisten |
+| `traco_ubah` | Akses terpadu untuk tindakan buat, ubah, pindah, tugaskan, komentar, form, dan QC |
+| `traco_ekspor_laporan` | Tarik berkas laporan Excel/PDF sesuai hak akses user |
+| `traco_ekspor_my_work` | Tarik rekap My Work XLSX/PDF milik actor tanpa URL publik |
 
-Resource `traco://guide/collaboration` berisi aturan operasi yang dapat dibaca MCP client.
+Tool lama dipertahankan demi kompatibilitas. Untuk agent baru, gunakan katalog
+berbahasa Indonesia agar permintaan pengguna lebih mudah dipetakan:
+
+| Area | Contoh `operation` |
+| --- | --- |
+| Struktur kerja | `daftar_semua_divisi`, `daftar_divisi`, `buat_divisi`, `buat_workspace`, `buat_campaign`, `buat_board` |
+| Kartu dan kolaborasi | `cari_kartu`, `buat_kartu`, `pindah_kartu`, `tambah_komentar`, `tugaskan_kartu` |
+| Rincian pekerjaan | `tambah_checklist`, `atur_status_checklist`, `tambah_subtask` |
+| Lampiran dan My Work | `daftar_lampiran_kartu`, `daftar_brief_kartu`, `tambah_lampiran_tautan`, `tambah_brief_lampiran_tautan`, `todo_harian`, `aktivitas_saya` |
+| Komunikasi dan notifikasi | `ruang_chat`, `kirim_pesan_chat`, `tandai_notifikasi_dibaca` |
+| Formulir | `daftar_form`, `buat_form`, `tambah_field_form`, `isi_form`, `detail_jawaban_form`, `teruskan_jawaban_ke_kartu`, `tugaskan_jawaban_form` |
+| Pengguna | `pengguna_dapat_disebut`, `daftar_pengguna`, `detail_pengguna`, `izin_pengguna`, `statistik_pengguna` |
+| Laporan | `filter_laporan`, `pratinjau_laporan_pdf`, `daftar_personel_laporan`, `rincian_laporan_personel`, `traco_ekspor_laporan` |
+
+Gunakan urutan istilah **divisi → workspace → campaign → board → kartu**.
+`traco_baca` menerima `operation` dan `data` untuk ID/filter; `traco_ubah`
+selalu membutuhkan `idempotency_key` UUID. Contoh membuat divisi:
+
+```json
+{
+  "operation": "buat_divisi",
+  "data": {
+    "name": "Marketing",
+    "code": "MKT"
+  }
+}
+```
+
+Operasi lampiran dari MCP menggunakan tautan HTTP/HTTPS. Upload file lokal
+tetap dilakukan melalui aplikasi Traco karena transport MCP JSON tidak
+menyediakan multipart upload. File yang sudah ada dapat diambil dengan
+`traco_download_attachment`; hasil dikirim sebagai base64 dengan batas ukuran
+dan tetap dibatasi oleh permission backend.
+
+Resource `traco://guide/collaboration` berisi aturan keamanan dan
+`traco://guide/actions` berisi kamus tindakan serta contoh bahasa pengguna.
 
 ## Instalasi
 
@@ -73,7 +118,15 @@ MCP_HTTP_HOST=127.0.0.1
 MCP_HTTP_PORT=3333
 MCP_ALLOWED_HOSTS=mcp.traco.example.com
 MCP_HTTP_BEARER_TOKEN=<random-minimum-32-characters>
+MCP_MAX_REQUEST_BYTES=2097152
+TRACO_MAX_RESPONSE_BYTES=8388608
+TRACO_MAX_EXPORT_BYTES=20971520
 ```
+
+Ketiga batas ukuran bersifat defensif untuk mencegah payload atau berkas
+berukuran ekstrem menghabiskan memori proses. Naikkan hanya bila host MCP
+memang membutuhkan berkas lebih besar dan memiliki reverse proxy dengan batas
+request yang setara.
 
 Jalankan:
 
