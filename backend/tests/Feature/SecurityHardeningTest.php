@@ -105,7 +105,11 @@ class SecurityHardeningTest extends TestCase
         $creator = $this->userWithRole(User::ROLE_USER);
         $otherStaff = $this->userWithRole(User::ROLE_USER);
         $project = $this->createProject($creator, 'Assignment');
-        $project['division']->users()->attach($otherStaff->id, ['role' => 'member']);
+        $foreignDivision = Division::create([
+            'name' => 'Foreign Assignment Division',
+            'slug' => 'foreign-assignment-'.str()->random(8),
+        ]);
+        $foreignDivision->users()->attach($otherStaff->id, ['role' => 'member']);
         Sanctum::actingAs($creator);
 
         $this->postJson('/api/boards/'.$project['board']->id.'/cards', [

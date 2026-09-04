@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendCardAssignedEmailJob;
 use App\Models\Board;
 use App\Models\Campaign;
 use App\Models\Card;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -70,6 +72,7 @@ class CardMemberCandidatesTest extends TestCase
         ]);
 
         Sanctum::actingAs($actor);
+        Bus::fake([SendCardAssignedEmailJob::class]);
 
         $response = $this->getJson('/api/cards/'.$card->id.'/member-candidates')
             ->assertOk();
@@ -80,6 +83,16 @@ class CardMemberCandidatesTest extends TestCase
             collect($response->json('data'))->pluck('id')->all(),
         );
         $this->assertArrayHasKey('can_assign', $response->json('data.0'));
+        $this->assertTrue($response->json('data.0.can_assign'));
+
+        $this->postJson('/api/cards/'.$card->id.'/assign', [
+            'user_id' => $members->first()->id,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('card_user', [
+            'card_id' => $card->id,
+            'user_id' => $members->first()->id,
+        ]);
     }
 
     public function test_card_member_candidates_supports_search_without_leaving_the_division(): void

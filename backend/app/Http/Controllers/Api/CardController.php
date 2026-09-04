@@ -148,7 +148,7 @@ class CardController extends Controller
             abort_unless(
                 $assigneeUsers->count() === count(array_unique($assignees))
                     && $assigneeUsers->every(
-                        fn (User $candidate) => $user->canCoordinateAssignmentTo($candidate)
+                        fn (User $candidate) => $user->canAssignCardMemberTo($candidate)
                     ),
                 403,
                 'Anda tidak dapat menugaskan salah satu user yang dipilih secara langsung.'
@@ -376,7 +376,7 @@ class CardController extends Controller
                     'can_assign' => (
                         $request->user()->can('card.assign')
                         || $request->user()->can('task.assign')
-                    ) && $request->user()->canCoordinateAssignmentTo($candidate),
+                    ) && $request->user()->canAssignCardMemberTo($candidate),
                 ];
             })->values(),
         ]);
@@ -906,9 +906,9 @@ class CardController extends Controller
         $assignedUser = User::findOrFail($userId);
 
         abort_unless(
-            $request->user()->canCoordinateAssignmentTo($assignedUser),
+            $request->user()->canAssignCardMemberTo($assignedUser),
             403,
-            'Staff tidak dapat menugaskan Staff lain secara langsung. Pilih koordinator divisi tujuan.'
+            'User hanya dapat menugaskan member satu divisi atau koordinator divisi tujuan.'
         );
 
         // ========================================
