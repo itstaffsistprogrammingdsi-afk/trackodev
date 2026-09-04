@@ -47,7 +47,7 @@ const filteredUsers = users
       ========================================= */}
       <div>
         <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
-          Staff berkolaborasi melalui koordinator divisi. Koordinator dapat meneruskan assignment kepada Staff di divisinya.
+          Member dalam satu divisi dapat saling menugaskan. Assignment lintas divisi tetap melalui koordinator.
         </div>
         <input
           type="text"

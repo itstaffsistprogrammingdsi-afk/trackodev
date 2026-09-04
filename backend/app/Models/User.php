@@ -246,6 +246,26 @@ class User extends Authenticatable
             && $actorDivisionIds->intersect($targetDivisionIds)->isNotEmpty();
     }
 
+    /**
+     * Card collaborators within the same division may assign one another.
+     *
+     * The stricter coordinator hierarchy remains in place for form
+     * coordination and cross-division assignment flows. This helper is
+     * intentionally scoped to card members so those workflows do not gain a
+     * broader target-selection policy as a side effect.
+     */
+    public function canAssignCardMemberTo(User $target): bool
+    {
+        if ($this->canCoordinateAssignmentTo($target)) {
+            return true;
+        }
+
+        $actorDivisionIds = $this->divisions()->pluck('divisions.id');
+        $targetDivisionIds = $target->divisions()->pluck('divisions.id');
+
+        return $actorDivisionIds->intersect($targetDivisionIds)->isNotEmpty();
+    }
+
 
 
     // ============================================
