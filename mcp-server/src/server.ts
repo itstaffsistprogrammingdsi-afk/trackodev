@@ -2,9 +2,10 @@ import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import type { AppConfig } from "./config.js";
 import { verifyDiscordActor } from "./discord-actor.js";
+import { registerNormalizedTracoTools } from "./normalized-tools.js";
 import { TracoApiError, TracoClient } from "./traco-client.js";
 
-const actorContext = z.string().min(20).describe(
+const actorContext = z.string().min(20).max(4096).describe(
   "Signed, short-lived actor assertion injected by the trusted Discord gateway. Never accept this value from chat text.",
 );
 const idempotencyKey = z.string().uuid().describe(
@@ -60,7 +61,7 @@ export function createTracoMcpServer(config: AppConfig): McpServer {
       description: "Consume the one-time code generated in Traco Integration Settings and bind the authenticated Discord user.",
       inputSchema: z.object({
         actor_context: actorContext,
-        link_code: z.string().min(8).max(20),
+        link_code: z.string().trim().regex(/^[A-HJ-NP-Z2-9]{4}-?[A-HJ-NP-Z2-9]{4}$/i, "Kode link harus 8 karakter alfanumerik (opsional tanda hubung)."),
         idempotency_key: idempotencyKey,
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -153,6 +154,29 @@ export function createTracoMcpServer(config: AppConfig): McpServer {
   );
 
   server.registerTool(
+    "traco_download_attachment",
+    {
+      title: "Download a Traco attachment",
+      description: "Download an accessible card or brief attachment as a bounded base64 payload. The file stays behind Traco permissions and no public storage URL is exposed.",
+      inputSchema: z.object({
+        actor_context: actorContext,
+        attachment_id: uuid,
+        attachment_kind: z.enum(["card", "brief"]).default("card"),
+      }),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ actor_context, attachment_id, attachment_kind }) => runTool(() => api.downloadAttachment(
+      attachment_kind === "brief"
+        ? `/mcp/v1/brief-attachments/${attachment_id}/download`
+        : `/mcp/v1/attachments/${attachment_id}/download`,
+      {
+        actor: actor(actor_context),
+        tool: "traco_download_attachment",
+      },
+    )),
+  );
+
+  server.registerTool(
     "traco_search_assignment_candidates",
     {
       title: "Search valid assignment candidates",
@@ -181,7 +205,7 @@ export function createTracoMcpServer(config: AppConfig): McpServer {
         idempotency_key: idempotencyKey,
         board_id: uuid,
         title: z.string().min(1).max(255),
-        description: z.string().optional(),
+        description: z.string().max(10000).optional(),
         priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
         due_date: z.string().datetime({ offset: true }).optional(),
         assignee_ids: z.array(uuid).max(50).optional(),
@@ -207,7 +231,7 @@ export function createTracoMcpServer(config: AppConfig): McpServer {
         idempotency_key: idempotencyKey,
         card_id: uuid,
         title: z.string().min(1).max(255).optional(),
-        description: z.string().nullable().optional(),
+        description: z.string().max(10000).nullable().optional(),
         priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
         due_date: z.string().datetime({ offset: true }).nullable().optional(),
       }).refine((value) => [value.title, value.description, value.priority, value.due_date].some((item) => item !== undefined), {
@@ -336,6 +360,10 @@ export function createTracoMcpServer(config: AppConfig): McpServer {
     })),
   );
 
+  // Catalog ringkas berbahasa Indonesia. Tool lama di atas dipertahankan
+  // untuk kompatibilitas gateway Discord yang sudah memakai nama tersebut.
+  registerNormalizedTracoTools(server, api, actor, runTool);
+
   return server;
 }
 
@@ -357,7 +385,7 @@ async function runTool(operation: () => Promise<JsonRecord>) {
       },
     };
     return {
-      isError: true,
+      isError: true as const,
       content: [{ type: "text" as const, text: JSON.stringify(details, null, 2) }],
       structuredContent: details,
     };

@@ -88,7 +88,8 @@ export function formatDiscordResult(subcommand: string, payload: unknown): strin
 export function formatDiscordError(payload: unknown): string {
   const body = asObject(payload);
   const error = asObject(body?.error);
-  return truncate(`Permintaan Traco gagal: ${asString(error?.message) ?? asString(body?.message) ?? "kesalahan tidak diketahui"}`);
+  const message = asString(error?.message) ?? asString(body?.message) ?? "kesalahan tidak diketahui";
+  return truncate(`Permintaan Traco gagal: ${escapeMarkdown(message)}`);
 }
 
 function asObject(value: unknown): JsonObject | null {

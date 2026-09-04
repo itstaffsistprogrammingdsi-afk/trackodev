@@ -7,6 +7,7 @@ import {
   GatewayIntentBits,
   MessageFlags,
 } from "discord.js";
+import { z } from "zod/v4";
 import { loadDiscordConfig } from "./discord-config.js";
 import { signDiscordActor } from "./discord-actor.js";
 import { formatDiscordError, formatDiscordResult } from "./discord-presenter.js";
@@ -23,6 +24,8 @@ const discord = new DiscordClient({
   intents: [GatewayIntentBits.Guilds],
   allowedMentions: { parse: [] },
 });
+const recentInteractions = new Map<string, number>();
+const INTERACTION_COOLDOWN_MS = 1500;
 
 discord.once(Events.ClientReady, (readyClient) => {
   console.log(`Traco Discord gateway online sebagai ${readyClient.user.tag}.`);
@@ -42,6 +45,23 @@ async function handleTracoCommand(interaction: ChatInputCommandInteraction): Pro
       flags: MessageFlags.Ephemeral,
     });
     return;
+  }
+
+  const rateKey = `${interaction.guildId}:${interaction.user.id}`;
+  const now = Date.now();
+  const previous = recentInteractions.get(rateKey) ?? 0;
+  if (now - previous < INTERACTION_COOLDOWN_MS) {
+    await interaction.reply({
+      content: "Tunggu sebentar sebelum menjalankan perintah Traco berikutnya.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+  recentInteractions.set(rateKey, now);
+  if (recentInteractions.size > 5000) {
+    for (const [key, timestamp] of recentInteractions) {
+      if (now - timestamp > INTERACTION_COOLDOWN_MS * 4) recentInteractions.delete(key);
+    }
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -69,21 +89,27 @@ async function handleTracoCommand(interaction: ChatInputCommandInteraction): Pro
   }
 }
 
-function createToolRequest(
+export function createToolRequest(
   interaction: ChatInputCommandInteraction,
   subcommand: string,
   actorContext: string,
 ): { name: string; arguments: JsonObject } {
   switch (subcommand) {
     case "link":
+      {
+        const linkCode = interaction.options.getString("kode", true).trim().toUpperCase();
+        if (!/^[A-HJ-NP-Z2-9]{4}-?[A-HJ-NP-Z2-9]{4}$/.test(linkCode)) {
+          throw new Error("Kode link harus 8 karakter alfanumerik (opsional tanda hubung).");
+        }
       return {
         name: "traco_link_discord_account",
         arguments: {
           actor_context: actorContext,
-          link_code: interaction.options.getString("kode", true).trim().toUpperCase(),
+          link_code: linkCode,
           idempotency_key: randomUUID(),
         },
       };
+      }
     case "whoami":
       return { name: "traco_get_my_context", arguments: { actor_context: actorContext } };
     case "projects":
@@ -105,7 +131,7 @@ function createToolRequest(
         name: "traco_get_card",
         arguments: {
           actor_context: actorContext,
-          card_id: interaction.options.getString("card_id", true),
+          card_id: requiredUuid(interaction.options.getString("card_id", true), "card_id"),
         },
       };
     case "comment":
@@ -114,13 +140,21 @@ function createToolRequest(
         arguments: {
           actor_context: actorContext,
           idempotency_key: randomUUID(),
-          card_id: interaction.options.getString("card_id", true),
+          card_id: requiredUuid(interaction.options.getString("card_id", true), "card_id"),
           content: interaction.options.getString("pesan", true),
         },
       };
     default:
       throw new Error(`Subcommand Discord tidak didukung: ${subcommand}`);
   }
+}
+
+function requiredUuid(value: string, field: string): string {
+  const normalized = value.trim();
+  if (!z.uuid().safeParse(normalized).success) {
+    throw new Error(`${field} harus berupa UUID Traco yang valid.`);
+  }
+  return normalized;
 }
 
 function parseTextContent(content: unknown): unknown {

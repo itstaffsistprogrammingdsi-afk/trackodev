@@ -29,13 +29,24 @@ if (config.transport === "stdio") {
   const originHostnames = config.allowedOrigins.map((origin) => new URL(origin).hostname);
   const validateOrigin = originValidation(originHostnames);
 
-  const httpServer = createHttpServer(async (request, response) => {
+  const httpServer = createHttpServer({
+    maxHeaderSize: 16 * 1024,
+    requestTimeout: config.requestTimeoutMs,
+    headersTimeout: Math.min(config.requestTimeoutMs, 30_000),
+    keepAliveTimeout: 5_000,
+  }, async (request, response) => {
     if (request.method === "GET" && request.url?.split("?")[0] === "/healthz") {
       sendJson(response, 200, { status: "ok", service: "traco-mcp" });
       return;
     }
     if (request.url?.split("?")[0] !== "/mcp") {
       sendJson(response, 404, { error: "Not found" });
+      return;
+    }
+    const contentLength = Number(request.headers["content-length"]);
+    if (Number.isFinite(contentLength) && contentLength > (config.maxRequestBytes ?? 2 * 1024 * 1024)) {
+      sendJson(response, 413, { error: "Request body too large" });
+      request.destroy();
       return;
     }
     if (!validateHost(request, response)) return;
@@ -50,7 +61,29 @@ if (config.transport === "stdio") {
       return;
     }
 
-    await nodeHandler(request as unknown as NodeIncomingMessageLike, response);
+    // IncomingMessage stays paused until the MCP adapter starts reading it.
+    // Keep the size observer paused as well; otherwise a `data` listener would
+    // put the stream in flowing mode and could consume chunks before
+    // `toNodeHandler` attaches its body reader.
+    const maxRequestBytes = config.maxRequestBytes ?? 2 * 1024 * 1024;
+    let receivedBytes = 0;
+    let requestTooLarge = false;
+    request.on("data", (chunk: Buffer | string) => {
+      receivedBytes += Buffer.byteLength(chunk);
+      if (!requestTooLarge && receivedBytes > maxRequestBytes) {
+        requestTooLarge = true;
+        if (!response.headersSent) sendJson(response, 413, { error: "Request body too large" });
+        request.destroy();
+      }
+    });
+    request.pause();
+
+    try {
+      await nodeHandler(request as unknown as NodeIncomingMessageLike, response);
+    } catch (error) {
+      console.error("MCP HTTP request error", error instanceof Error ? error.message : error);
+      if (!response.headersSent) sendJson(response, 500, { error: "Internal server error" });
+    }
   });
 
   httpServer.listen(config.httpPort, config.httpHost, () => {
@@ -74,6 +107,12 @@ function hasValidBearer(request: IncomingMessage, expectedToken: string): boolea
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
-  response.writeHead(status, { "Content-Type": "application/json" });
+  if (response.headersSent) return;
+  response.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+  });
   response.end(JSON.stringify(body));
 }

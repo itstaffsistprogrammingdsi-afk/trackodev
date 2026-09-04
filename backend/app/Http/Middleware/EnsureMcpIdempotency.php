@@ -26,13 +26,13 @@ class EnsureMcpIdempotency
 
         /** @var McpClient $client */
         $client = $request->attributes->get('mcp_client');
-        $hash = hash('sha256', json_encode([
+        $hash = hash('sha256', json_encode($this->canonicalize([
             'method' => $request->method(),
             'path' => $request->path(),
             'query' => $request->query(),
             'body' => $request->all(),
             'actor' => $request->attributes->get('mcp_actor')?->id,
-        ], JSON_THROW_ON_ERROR));
+        ]), JSON_THROW_ON_ERROR));
 
         $existing = McpIdempotencyKey::query()
             ->where('mcp_client_id', $client->id)
@@ -102,5 +102,30 @@ class EnsureMcpIdempotency
         return response()->json($record->response_body, $record->response_status ?? 200, [
             'X-Idempotent-Replay' => 'true',
         ]);
+    }
+
+    /**
+     * Requests that are semantically identical must produce the same hash
+     * even if a JSON client serializes object keys in another order. Arrays
+     * with numeric keys retain their order because order is meaningful for
+     * reorder and assignment operations.
+     */
+    private function canonicalize(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (array_is_list($value)) {
+            return array_map(fn (mixed $item) => $this->canonicalize($item), $value);
+        }
+
+        $normalized = [];
+        foreach ($value as $key => $item) {
+            $normalized[(string) $key] = $this->canonicalize($item);
+        }
+        ksort($normalized);
+
+        return $normalized;
     }
 }

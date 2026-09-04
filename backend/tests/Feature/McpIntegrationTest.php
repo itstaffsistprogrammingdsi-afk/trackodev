@@ -153,6 +153,36 @@ class McpIntegrationTest extends TestCase
         $this->assertDatabaseMissing('card_comments', ['card_id' => $project['card']->id, 'content' => 'Changed']);
     }
 
+    public function test_linked_super_admin_can_create_and_read_a_division_through_mcp(): void
+    {
+        $superAdmin = $this->userWithRole(User::ROLE_SUPER_ADMIN);
+        [, $credential] = $this->mcpClient();
+        $this->link($superAdmin, '555555555555555555');
+
+        $this->withHeaders($this->mcpHeaders(
+            $credential,
+            '555555555555555555',
+            'traco_ubah',
+            true,
+            (string) Str::uuid(),
+        ))
+            ->postJson('/api/mcp/v1/divisions', [
+                'name' => 'MCP Operations',
+                'code' => 'MCP-OPS',
+                'description' => 'Dibuat melalui permintaan MCP.',
+                'admin_ids' => [$superAdmin->id],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'MCP Operations');
+
+        $this->withHeaders($this->mcpHeaders($credential, '555555555555555555', 'traco_baca', false))
+            ->getJson('/api/mcp/v1/my-divisions')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'MCP Operations');
+
+        $this->assertDatabaseHas('divisions', ['name' => 'MCP Operations', 'code' => 'MCP-OPS']);
+    }
+
     private function mcpClient(array $abilities = ['data:read', 'data:write', 'identity:link']): array
     {
         $client = McpClient::query()->create([
