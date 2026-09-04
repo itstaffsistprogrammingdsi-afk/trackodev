@@ -42,6 +42,10 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  avatar?: string | null;
+  division_role?: "admin" | "member" | null;
+  division_names?: string[];
+  can_assign?: boolean;
 }
 
 export interface Label {

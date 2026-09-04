@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
-import { getCoordinationUsers } from "@/features/user/api/user.api";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import type { Card, User } from "../types";
+import { getCardMemberCandidates } from "../api/card.api";
 
 interface ReturnType {
   detail: Card | null;
@@ -59,7 +59,9 @@ export function useCardDetail(
     if (!isOpen || !loadUsers) return;
 
     const requestId = ++usersRequestRef.current;
-    void getCoordinationUsers()
+    if (!card?.id) return;
+
+    void getCardMemberCandidates(card.id)
       .then((data) => {
         if (requestId === usersRequestRef.current) setUsers(data);
       })
@@ -68,7 +70,7 @@ export function useCardDetail(
           console.error("FAILED FETCH USERS", error);
         }
       });
-  }, [isOpen, loadUsers]);
+  }, [card?.id, isOpen, loadUsers]);
 
   useEffect(() => {
     if (!card?.id || !isOpen) return;

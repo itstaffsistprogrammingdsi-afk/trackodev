@@ -318,6 +318,70 @@ class CardController extends Controller
         ]);
     }
 
+    /**
+     * Return the roster of the division that owns a card's workspace.
+     *
+     * The general assignment-candidates endpoint intentionally only returns
+     * users that the current actor may assign according to the assignment
+     * hierarchy. That is the right behaviour for selecting a target, but it
+     * made the card member picker look empty for staff users even when the
+     * card's division had members. A card collaborator should be able to see
+     * the division roster and the UI can then communicate which entries are
+     * assignable without weakening the assign endpoint's authorization.
+     */
+    public function memberCandidates(Request $request, Card $card): JsonResponse
+    {
+        $this->authorizeCard($card);
+
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
+        ]);
+
+        $card->loadMissing('board.campaign.workspace.division');
+        $division = $card->board?->campaign?->workspace?->division;
+
+        if (! $division) {
+            return response()->json(['data' => []]);
+        }
+
+        $query = $division->users()
+            ->with(['roles', 'divisions:id,name'])
+            ->orderBy('users.name');
+
+        if (! empty($validated['search'])) {
+            $search = $validated['search'];
+            $query->where(function ($userQuery) use ($search) {
+                $userQuery
+                    ->where('users.name', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%");
+            });
+        }
+
+        $limit = $validated['limit'] ?? 1000;
+        $users = $query->limit($limit)->get();
+
+        return response()->json([
+            'data' => $users->map(function (User $candidate) use ($request) {
+                return [
+                    'id' => $candidate->id,
+                    'name' => $candidate->name,
+                    'email' => $candidate->email,
+                    'avatar' => $candidate->avatar
+                        ? asset('storage/'.$candidate->avatar)
+                        : null,
+                    'roles' => $candidate->getRoleNames()->values(),
+                    'division_role' => $candidate->pivot?->role,
+                    'division_names' => $candidate->divisions->pluck('name')->values(),
+                    'can_assign' => (
+                        $request->user()->can('card.assign')
+                        || $request->user()->can('task.assign')
+                    ) && $request->user()->canCoordinateAssignmentTo($candidate),
+                ];
+            })->values(),
+        ]);
+    }
+
     public function update(Request $request, Card $card): JsonResponse
     {
         $this->authorizeCard($card);
