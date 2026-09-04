@@ -120,7 +120,7 @@ const filteredUsers = users
         {/* HEADER */}
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Available Members
+            Division Members
           </p>
 
 <span className="text-xs text-gray-400">
@@ -164,6 +164,13 @@ const filteredUsers = users
                   <div className="flex h-7 items-center rounded-md border border-green-100 bg-green-50 px-2.5 text-[11px] font-medium text-green-600">
                     Assigned
                   </div>
+                ) : user.can_assign === false ? (
+                  <span
+                    className="text-[11px] font-medium text-gray-400"
+                    title="Pilih koordinator divisi tujuan untuk menugaskan member ini"
+                  >
+                    Hanya lihat
+                  </span>
                 ) : (
                   <button
                     onClick={() => handleAssign(user.id)}

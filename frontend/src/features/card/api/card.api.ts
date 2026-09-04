@@ -4,6 +4,7 @@ import {
   CreateCardRequest,
   UpdateCardRequest,
   Brand,
+  User,
 } from "../types";
 
 // =====================================================
@@ -60,6 +61,19 @@ export const deleteCard = async (
   );
 
   return res.data;
+};
+
+// =====================================================
+// CARD MEMBER ROSTER
+// =====================================================
+export const getCardMemberCandidates = async (
+  cardId: string,
+): Promise<User[]> => {
+  const res = await api.get(`/cards/${cardId}/member-candidates`, {
+    params: { limit: 1000 },
+  });
+
+  return res.data.data;
 };
 
 // =====================================================
