@@ -66,6 +66,33 @@ class McpIntegrationTest extends TestCase
         $this->assertSame('[REDACTED]', $audit->input['code']);
     }
 
+    public function test_user_can_link_google_chat_identity_and_resolve_context(): void
+    {
+        $user = $this->userWithRole(User::ROLE_USER);
+        [, $credential] = $this->mcpClient();
+        Sanctum::actingAs($user);
+
+        $linkCode = $this->postJson('/api/integrations/link-codes', ['provider' => 'google_chat'])
+            ->assertCreated()
+            ->json('data.code');
+
+        $this->withHeaders($this->mcpHeaders($credential, 'users/123456789', 'traco_link_discord_account', true, null, 'google_chat'))
+            ->postJson('/api/mcp/v1/identities/link', [
+                'provider' => 'google_chat',
+                'code' => $linkCode,
+                'external_user_id' => 'users/123456789',
+                'display_name' => 'Ayu Google',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.provider', 'google_chat');
+
+        $this->withHeaders($this->mcpHeaders($credential, 'users/123456789', 'traco_get_my_context', false, null, 'google_chat'))
+            ->getJson('/api/mcp/v1/context')
+            ->assertOk()
+            ->assertJsonPath('data.user.id', $user->id)
+            ->assertJsonPath('data.identity.provider', 'google_chat');
+    }
+
     public function test_unlinked_or_foreign_discord_actor_cannot_read_cards(): void
     {
         $owner = $this->userWithRole(User::ROLE_USER);
@@ -202,13 +229,14 @@ class McpIntegrationTest extends TestCase
         string $tool = 'test_tool',
         bool $withIdempotency = true,
         ?string $idempotencyKey = null,
+        string $provider = 'discord',
     ): array {
         return array_filter([
             'Authorization' => 'Bearer '.$credential,
             'Accept' => 'application/json',
             'X-Request-ID' => (string) Str::uuid(),
             'X-Traco-Tool' => $tool,
-            'X-Traco-Actor-Provider' => $discordUserId ? 'discord' : null,
+            'X-Traco-Actor-Provider' => $discordUserId ? $provider : null,
             'X-Traco-Actor-Id' => $discordUserId,
             'Idempotency-Key' => $withIdempotency ? ($idempotencyKey ?? (string) Str::uuid()) : null,
         ], fn ($value) => $value !== null);

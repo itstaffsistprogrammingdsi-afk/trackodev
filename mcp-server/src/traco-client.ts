@@ -1,5 +1,7 @@
 import type { AppConfig } from "./config.js";
-import type { DiscordActor } from "./discord-actor.js";
+import type { ExternalActor } from "./discord-actor.js";
+import type { GoogleChatActor } from "./google-chat-actor.js";
+type TracoActor = ExternalActor | GoogleChatActor;
 
 const DEFAULT_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_EXPORT_BYTES = 20 * 1024 * 1024;
@@ -19,7 +21,7 @@ export class TracoApiError extends Error {
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  actor?: DiscordActor;
+  actor?: TracoActor;
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined>;
   idempotencyKey?: string;
@@ -27,7 +29,7 @@ type RequestOptions = {
 };
 
 type DownloadOptions = Omit<RequestOptions, "method" | "body" | "idempotencyKey" | "actor"> & {
-  actor: DiscordActor;
+  actor: TracoActor;
   exportPassword?: string;
 };
 
@@ -56,7 +58,7 @@ export class TracoClient {
       "X-Traco-Tool": options.tool,
     });
     if (options.actor) {
-      headers.set("X-Traco-Actor-Provider", "discord");
+      headers.set("X-Traco-Actor-Provider", options.actor.provider);
       headers.set("X-Traco-Actor-Id", options.actor.sub);
     }
     if (options.idempotencyKey) headers.set("Idempotency-Key", options.idempotencyKey);
@@ -114,7 +116,7 @@ export class TracoClient {
       Authorization: `Bearer ${this.config.tracoApiKey}`,
       "X-Request-ID": requestId,
       "X-Traco-Tool": options.tool,
-      "X-Traco-Actor-Provider": "discord",
+      "X-Traco-Actor-Provider": options.actor.provider,
       "X-Traco-Actor-Id": options.actor.sub,
     });
     if (options.exportPassword) headers.set("X-Export-Password", options.exportPassword);
@@ -185,7 +187,7 @@ export class TracoClient {
       Authorization: `Bearer ${this.config.tracoApiKey}`,
       "X-Request-ID": requestId,
       "X-Traco-Tool": options.tool,
-      "X-Traco-Actor-Provider": "discord",
+      "X-Traco-Actor-Provider": options.actor.provider,
       "X-Traco-Actor-Id": options.actor.sub,
     });
 

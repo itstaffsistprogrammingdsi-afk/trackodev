@@ -6,5 +6,6 @@ return [
     'idempotency_ttl_hours' => (int) env('MCP_IDEMPOTENCY_TTL_HOURS', 24),
     'audit_retention_days' => (int) env('MCP_AUDIT_RETENTION_DAYS', 90),
     'max_page_size' => (int) env('MCP_MAX_PAGE_SIZE', 50),
-    'providers' => ['discord'],
+    // External channel identities accepted by the MCP actor boundary.
+    'providers' => ['discord', 'google_chat'],
 ];

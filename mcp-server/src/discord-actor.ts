@@ -3,6 +3,9 @@ import { z } from "zod/v4";
 
 const actorPayloadSchema = z.object({
   sub: z.string().regex(/^\d{15,22}$/),
+  // Optional for backwards compatibility with assertions issued before the
+  // multi-channel actor context was introduced.
+  provider: z.literal("discord").optional(),
   username: z.string().min(1).max(255).optional(),
   guild_id: z.string().regex(/^\d{15,22}$/).optional(),
   iat: z.number().int().positive(),
@@ -11,6 +14,7 @@ const actorPayloadSchema = z.object({
 });
 
 export type DiscordActor = z.infer<typeof actorPayloadSchema>;
+export type ExternalActor = Omit<DiscordActor, "provider"> & { provider: "discord" };
 
 export type VerifyActorOptions = {
   secret: string;
@@ -19,7 +23,7 @@ export type VerifyActorOptions = {
   now?: number;
 };
 
-export function verifyDiscordActor(assertion: string, options: VerifyActorOptions): DiscordActor {
+export function verifyDiscordActor(assertion: string, options: VerifyActorOptions): ExternalActor {
   if (typeof assertion !== "string" || assertion.length > 4096) {
     throw new Error("Actor context Discord tidak valid.");
   }
@@ -47,7 +51,7 @@ export function verifyDiscordActor(assertion: string, options: VerifyActorOption
   if (!parsedPayload.success || parsedPayload.data.exp <= parsedPayload.data.iat) {
     throw new Error("Payload actor context Discord tidak valid.");
   }
-  const payload = parsedPayload.data;
+  const payload = { ...parsedPayload.data, provider: "discord" as const };
   const now = options.now ?? Math.floor(Date.now() / 1000);
   if (payload.iat > now + 30 || payload.exp < now) {
     throw new Error("Actor context Discord belum berlaku atau sudah kedaluwarsa.");
@@ -80,6 +84,7 @@ export function signDiscordActor(
   }
   const payload: DiscordActor = {
     sub: actor.sub,
+    provider: "discord",
     ...(actor.username ? { username: actor.username } : {}),
     ...(actor.guild_id ? { guild_id: actor.guild_id } : {}),
     iat: now,

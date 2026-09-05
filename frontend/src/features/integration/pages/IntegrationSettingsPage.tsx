@@ -6,16 +6,31 @@ import api from "@/lib/axios";
 
 type ExternalIdentity = {
   id: string;
-  provider: "discord";
+  provider: Provider;
   external_user_id: string;
   display_name: string | null;
   verified_at: string;
 };
 
 type LinkCode = {
-  provider: "discord";
+  provider: Provider;
   code: string;
   expires_at: string;
+};
+
+type Provider = "discord" | "google_chat";
+
+const providerCopy: Record<Provider, { label: string; description: string; command: string }> = {
+  discord: {
+    label: "Discord",
+    description: "Hubungkan identitas Discord agar AI agent dapat bekerja melalui server Discord.",
+    command: "Di Discord jalankan /traco link KODE.",
+  },
+  google_chat: {
+    label: "Google Chat",
+    description: "Hubungkan identitas Google Chat agar AI agent dapat bekerja dari ruang Chat Anda.",
+    command: "Kirim kode ini ke agent Traco di Google Chat.",
+  },
 };
 
 export default function IntegrationSettingsPage() {
@@ -25,6 +40,7 @@ export default function IntegrationSettingsPage() {
   const [working, setWorking] = useState(false);
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [provider, setProvider] = useState<Provider>("discord");
 
   const loadIdentities = useCallback(async () => {
     try {
@@ -42,13 +58,14 @@ export default function IntegrationSettingsPage() {
     void loadIdentities();
   }, [loadIdentities]);
 
-  const discordIdentity = identities.find((identity) => identity.provider === "discord");
+  const currentIdentity = identities.find((identity) => identity.provider === provider);
+  const copy = providerCopy[provider];
 
   useEffect(() => {
-    if (!linkCode || discordIdentity) return;
+    if (!linkCode || currentIdentity || linkCode.provider !== provider) return;
     const poll = window.setInterval(() => void loadIdentities(), 5000);
     return () => window.clearInterval(poll);
-  }, [discordIdentity, linkCode, loadIdentities]);
+  }, [currentIdentity, linkCode, loadIdentities, provider]);
 
   const createCode = async () => {
     setWorking(true);
@@ -56,7 +73,7 @@ export default function IntegrationSettingsPage() {
     setCopied(false);
     try {
       const response = await api.post<{ data: LinkCode }>("/integrations/link-codes", {
-        provider: "discord",
+        provider,
       });
       setLinkCode(response.data.data);
     } catch (error: unknown) {
@@ -74,17 +91,17 @@ export default function IntegrationSettingsPage() {
   };
 
   const disconnect = async () => {
-    if (!discordIdentity || !window.confirm("Putuskan akun Discord dari Traco?")) return;
+    if (!currentIdentity || !window.confirm(`Putuskan akun ${copy.label} dari Traco?`)) return;
     setWorking(true);
     setMessage(null);
     try {
-      await api.delete(`/integrations/identities/${discordIdentity.id}`);
+      await api.delete(`/integrations/identities/${currentIdentity.id}`);
       setLinkCode(null);
       await loadIdentities();
-      setMessage("Koneksi Discord berhasil diputus.");
+      setMessage(`Koneksi ${copy.label} berhasil diputus.`);
     } catch (error: unknown) {
       const apiMessage = isApiError(error) ? error.response?.data?.message : null;
-      setMessage(apiMessage ?? "Koneksi Discord gagal diputus.");
+      setMessage(apiMessage ?? `Koneksi ${copy.label} gagal diputus.`);
     } finally {
       setWorking(false);
     }
@@ -92,7 +109,7 @@ export default function IntegrationSettingsPage() {
 
   return (
     <>
-      <PageMeta title="Integrations | Traco" description="Hubungkan Traco dengan Discord dan AI agent." />
+      <PageMeta title="Integrations | Traco" description="Hubungkan Traco dengan Discord, Google Chat, dan AI agent." />
       <PageBreadcrumb pageTitle="Integrations" />
 
       <div className="mx-auto max-w-4xl space-y-6">
@@ -103,20 +120,32 @@ export default function IntegrationSettingsPage() {
                 <MessageCircle className="size-6" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Discord + Traco AI Agent</h1>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Channel + Traco AI Agent</h1>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-400">
-                  Hubungkan identitas Discord Anda agar AI agent dapat membaca dan memperbarui pekerjaan sesuai role, permission, dan akses project Traco Anda.
+                  {copy.description} Data tetap mengikuti role, permission, dan akses project Traco Anda.
                 </p>
               </div>
             </div>
           </div>
 
           <div className="p-6">
+            <div className="mb-6 flex flex-wrap gap-2 rounded-2xl bg-gray-50 p-2 dark:bg-gray-900/60">
+              {(["discord", "google_chat"] as Provider[]).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => { setProvider(option); setLinkCode(null); setMessage(null); setCopied(false); }}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${provider === option ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-300" : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"}`}
+                >
+                  {providerCopy[option].label}
+                </button>
+              ))}
+            </div>
             {loading ? (
               <div className="flex items-center gap-3 py-8 text-sm text-gray-500">
                 <Loader2 className="size-5 animate-spin" /> Memuat status koneksi...
               </div>
-            ) : discordIdentity ? (
+            ) : currentIdentity ? (
               <div className="space-y-5">
                 <div className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-500/20 dark:bg-emerald-500/10 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
@@ -124,9 +153,9 @@ export default function IntegrationSettingsPage() {
                       <Check className="size-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-emerald-900 dark:text-emerald-200">Discord terhubung</p>
-                      <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                        {discordIdentity.display_name || `Discord ID ${discordIdentity.external_user_id}`}
+                        <p className="font-semibold text-emerald-900 dark:text-emerald-200">{copy.label} terhubung</p>
+                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                        {currentIdentity.display_name || `${copy.label} ID ${currentIdentity.external_user_id}`}
                       </p>
                     </div>
                   </div>
@@ -151,7 +180,7 @@ export default function IntegrationSettingsPage() {
                 <ol className="grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-3">
                   {[
                     "Buat kode sekali-pakai di halaman ini.",
-                    "Di Discord jalankan /traco link KODE.",
+                    copy.command,
                     "Agent mengonfirmasi akun Traco Anda.",
                   ].map((text, index) => (
                     <li key={text} className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
@@ -187,7 +216,7 @@ export default function IntegrationSettingsPage() {
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700 disabled:opacity-50"
                   >
                     {working ? <Loader2 className="size-5 animate-spin" /> : <Link2 className="size-5" />}
-                    Buat kode koneksi Discord
+                    Buat kode koneksi {copy.label}
                   </button>
                 )}
               </div>

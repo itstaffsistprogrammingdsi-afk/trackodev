@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import type { AppConfig } from "./config.js";
 import { verifyDiscordActor } from "./discord-actor.js";
+import { verifyGoogleChatActor } from "./google-chat-actor.js";
 import { registerNormalizedTracoTools } from "./normalized-tools.js";
 import { TracoApiError, TracoClient } from "./traco-client.js";
 
@@ -22,11 +23,24 @@ export function createTracoMcpServer(config: AppConfig): McpServer {
     title: "Traco Collaboration MCP",
   });
   const api = new TracoClient(config);
-  const actor = (assertion: string) => verifyDiscordActor(assertion, {
-    secret: config.actorSigningSecret,
-    maxTtlSeconds: config.actorMaxTtlSeconds,
-    allowedGuildIds: config.allowedGuildIds,
-  });
+  const actor = (assertion: string) => {
+    try {
+      return verifyDiscordActor(assertion, {
+        secret: config.actorSigningSecret,
+        maxTtlSeconds: config.actorMaxTtlSeconds,
+        allowedGuildIds: config.allowedGuildIds,
+      });
+    } catch (discordError) {
+      try {
+        return verifyGoogleChatActor(assertion, {
+          secret: config.actorSigningSecret,
+          maxTtlSeconds: config.actorMaxTtlSeconds,
+        });
+      } catch {
+        throw discordError;
+      }
+    }
+  };
 
   server.registerResource(
     "traco-collaboration-guide",
@@ -43,12 +57,12 @@ export function createTracoMcpServer(config: AppConfig): McpServer {
         text: [
           "# Traco collaboration rules",
           "",
-          "- Resolve the Discord actor from trusted event metadata and sign it server-side.",
+          "- Resolve the channel actor from trusted Discord or Google Chat event metadata and sign it server-side.",
           "- Read project context before choosing IDs; never guess workspace, campaign, board, card, or user IDs.",
           "- Explain the intended change before a write when the user's request is ambiguous.",
           "- Supply one stable idempotency UUID per intended mutation and reuse it only for retries.",
           "- Traco enforces the linked user's permissions and project membership on every operation.",
-          "- Do not expose service credentials or signed actor assertions in Discord messages or logs.",
+          "- Do not expose service credentials or signed actor assertions in chat messages or logs.",
         ].join("\n"),
       }],
     }),
@@ -71,7 +85,7 @@ export function createTracoMcpServer(config: AppConfig): McpServer {
       return api.request<JsonRecord>("/mcp/v1/identities/link", {
         method: "POST",
         body: {
-          provider: "discord",
+          provider: currentActor.provider,
           code: link_code,
           external_user_id: currentActor.sub,
           display_name: currentActor.username,

@@ -1,10 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import type { DiscordActor } from "./discord-actor.js";
+import type { ExternalActor } from "./discord-actor.js";
+import type { GoogleChatActor } from "./google-chat-actor.js";
 import { TracoClient } from "./traco-client.js";
 
 type JsonRecord = Record<string, unknown>;
-type ActorResolver = (assertion: string) => DiscordActor;
+type ActorResolver = (assertion: string) => ExternalActor | GoogleChatActor;
 type ToolResult = {
   content: Array<{ type: "text"; text: string }>;
   structuredContent: JsonRecord;

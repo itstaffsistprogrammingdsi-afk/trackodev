@@ -1,6 +1,6 @@
 # Traco Collaboration MCP
 
-MCP server ini menjadi bridge aman antara Discord AI agent dan Traco. Server tidak mengakses database secara langsung; seluruh operasi melewati API Laravel khusus MCP dan tetap dievaluasi sebagai user Traco yang identitas Discord-nya sudah diverifikasi.
+MCP server ini menjadi bridge aman antara AI agent, Discord/Google Chat, dan Traco. Server tidak mengakses database secara langsung; seluruh operasi melewati API Laravel khusus MCP dan tetap dievaluasi sebagai user Traco yang identitas channel-nya sudah diverifikasi.
 
 Implementasi memakai MCP TypeScript SDK v2 dan mendukung dua transport:
 
@@ -12,14 +12,19 @@ Panduan integrasi end-to-end untuk Discord bot dan AI agent tersedia di
 termasuk daftar seluruh tool, contoh `/traco whoami`, payload, deployment,
 dan troubleshooting.
 
+Untuk alur **AI agent → Google Chat → Traco**, gunakan gateway HTTP tambahan
+yang dijalankan dengan `npm run google-chat:start`. Panduan konfigurasi Google
+Cloud, linking user, kontrak payload agent, dan deployment tersedia di
+[`docs/MCP_GOOGLE_CHAT_INTEGRATION.md`](../docs/MCP_GOOGLE_CHAT_INTEGRATION.md).
+
 ## Arsitektur keamanan
 
 ```text
-Discord event
-  -> Discord gateway menandatangani actor context (HMAC, TTL singkat)
+Channel event (Discord atau Google Chat)
+  -> gateway menandatangani actor context (HMAC, TTL singkat)
   -> MCP server memverifikasi signature, expiry, dan optional guild allow-list
   -> Laravel MCP API memverifikasi service credential
-  -> Discord ID dipetakan ke user Traco yang sudah linked
+  -> ID channel dipetakan ke user Traco yang sudah linked
   -> permission + membership Traco diperiksa
   -> mutation disimpan dengan idempotency key
   -> request dicatat di mcp_audit_logs
