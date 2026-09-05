@@ -79,7 +79,7 @@ export const UserList: React.FC<UserListProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           <input
             type="text"
-            placeholder="Cari nama anggota..."
+            placeholder="Cari nama atau email..."
             value={filters.search || ''}
             onChange={(e) => onFilterChange({ search: e.target.value })}
             className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm"
