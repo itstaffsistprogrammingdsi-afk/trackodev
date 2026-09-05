@@ -1251,26 +1251,11 @@ class CardController extends Controller
                     'errors' => ['replaces_attachment_id' => ['Pilih versi dari card ini yang belum memiliki pengganti.']],
                 ], 422);
             }
-        } else {
-            $replacedAttachment = CardAttachment::query()
-                ->where('card_id', $card->id)
-                ->whereNotNull('archived_at')
-                ->where('result_description', $validated['result_description'] ?? null)
-                ->whereDoesntHave('replacement')
-                ->orderByDesc('archived_at')
-                ->first();
-
-            // Upload hasil dengan kategori yang sama selalu menjadi versi
-            // terbaru. Jika belum ada versi arsip yang menunggu pengganti,
-            // arsipkan hasil aktif sebelumnya secara otomatis.
-            $replacedAttachment ??= CardAttachment::query()
-                ->where('card_id', $card->id)
-                ->whereNull('archived_at')
-                ->where('result_description', $validated['result_description'] ?? null)
-                ->latest('created_at')
-                ->first();
         }
 
+        // Tanpa replaces_attachment_id, setiap upload adalah hasil aktif
+        // baru. Attachment aktif lain tetap dipertahankan sampai user
+        // memindahkannya ke arsip melalui aksi archiveAttachment().
         $data = [
             'card_id'         => $card->id,
             'replaces_attachment_id' => $replacedAttachment?->id,

@@ -206,6 +206,7 @@ class AttachmentResultDescriptionTemplateTest extends TestCase
             'link_url' => 'https://example.com/design-v2',
             'quantity' => 1,
             'result_description' => 'Foto',
+            'replaces_attachment_id' => $first['id'],
         ])->assertCreated()
             ->assertJsonPath('data.version', 2)
             ->assertJsonPath('data.replaces_attachment_id', $first['id'])
@@ -222,7 +223,7 @@ class AttachmentResultDescriptionTemplateTest extends TestCase
             ->assertJsonPath('message', 'Versi ini tidak dapat dipulihkan karena sudah memiliki pengganti.');
     }
 
-    public function test_uploading_the_same_result_type_automatically_archives_the_previous_active_version(): void
+    public function test_uploading_the_same_result_type_keeps_both_results_active_until_manual_archive(): void
     {
         [$user, $card] = $this->createCampaignMemberWithCard();
         Sanctum::actingAs($user);
@@ -240,9 +241,20 @@ class AttachmentResultDescriptionTemplateTest extends TestCase
             'quantity' => 1,
             'result_description' => 'Foto',
         ])->assertCreated()
-            ->assertJsonPath('data.version', 2)
-            ->assertJsonPath('data.replaces_attachment_id', $first['id'])
+            ->assertJsonPath('data.version', 1)
+            ->assertJsonPath('data.replaces_attachment_id', null)
             ->json('data');
+
+        $this->getJson('/api/cards/'.$card->id.'/attachments')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonFragment(['id' => $first['id']])
+            ->assertJsonFragment(['id' => $second['id']])
+            ->assertJsonCount(0, 'archived');
+
+        $this->postJson('/api/attachments/'.$first['id'].'/archive')
+            ->assertOk()
+            ->assertJsonPath('message', 'File dipindahkan ke riwayat arsip.');
 
         $this->getJson('/api/cards/'.$card->id.'/attachments')
             ->assertOk()
