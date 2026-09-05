@@ -267,7 +267,7 @@ export default function CampaignCard({
                   {isSuperAdmin
                     ? "Super Admin dapat menambahkan semua user."
                     : isAdmin
-                      ? "Admin dapat menambahkan anggota dari division campaign."
+                      ? "Admin dapat menambahkan anggota dari division mana pun. Admin division asal akan menerima notifikasi untuk undangan lintas division."
                       : "Khusus Kepala Bagian sampai SPV."}
                 </p>
               </div>

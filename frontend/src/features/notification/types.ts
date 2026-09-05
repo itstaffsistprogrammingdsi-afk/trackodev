@@ -5,6 +5,8 @@ export interface NotificationData {
   workspace_id?: string;
   assigned_by?: string;
   submission_id?: string;
+  source_division_ids?: string[];
+  cross_division?: boolean;
 }
 
 export interface AppNotification {

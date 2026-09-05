@@ -14,6 +14,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\Board;
 use App\Models\Card;
+use App\Models\Division;
+use App\Models\Notification;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -312,6 +314,12 @@ class CampaignController extends Controller
             return $campaign;
         });
 
+        $this->notifyCrossDivisionAdmins(
+            $campaign,
+            collect($request->member_ids ?? []),
+            $request->user()->id
+        );
+
         ActivityLogService::log(
             $request->user(),
 
@@ -507,10 +515,13 @@ class CampaignController extends Controller
             $campaign->workspace?->division_id
         );
 
-        DB::transaction(function () use (
+        $wasAdded = DB::transaction(function () use (
             $campaign,
             $userId
         ) {
+            $wasAlreadyMember = $campaign->members()
+                ->whereKey($userId)
+                ->exists();
 
             // ========================================
             // CAMPAIGN MEMBER
@@ -543,7 +554,17 @@ class CampaignController extends Controller
                 ->syncWithoutDetaching([
                     $userId,
                 ]);
+
+            return ! $wasAlreadyMember;
         });
+
+        if ($wasAdded) {
+            $this->notifyCrossDivisionAdmins(
+                $campaign,
+                collect([$userId]),
+                $request->user()->id
+            );
+        }
 
         ActivityLogService::log(
             $request->user(),
@@ -635,29 +656,17 @@ class CampaignController extends Controller
         }
 
         if ($actor->isDivisionAdmin()) {
-            $managedDivisionIds = $actor->divisions()->pluck('divisions.id');
+            // Admin campaign boleh mengundang anggota dari divisi mana pun.
+            // User tanpa divisi tetap harus ditangani Super Admin agar setiap
+            // undangan lintas divisi memiliki pemilik divisi yang jelas.
+            $eligibleIds = User::query()
+                ->whereIn('id', $candidateIds)
+                ->whereHas('divisions')
+                ->pluck('id');
 
-            $eligibleDivisionId = $divisionId !== null
-                && $managedDivisionIds->contains($divisionId)
-                ? $divisionId
-                : null;
-
-            $eligibleIds = $eligibleDivisionId === null
-                ? collect()
-                : User::query()
-                    ->whereIn('id', $candidateIds)
-                    ->whereHas(
-                        'divisions',
-                        fn ($divisionQuery) => $divisionQuery->where(
-                            'divisions.id',
-                            $eligibleDivisionId
-                        )
-                    )
-                    ->pluck('id');
-
-            if ($eligibleDivisionId === null || $candidateIds->diff($eligibleIds)->isNotEmpty()) {
+            if ($candidateIds->diff($eligibleIds)->isNotEmpty()) {
                 throw ValidationException::withMessages([
-                    $field => 'Admin hanya dapat menambahkan anggota dari division yang dikelolanya.',
+                    $field => 'Admin hanya dapat menambahkan user yang terdaftar pada minimal satu division.',
                 ]);
             }
 
@@ -674,6 +683,66 @@ class CampaignController extends Controller
                 $field => 'Collaborator hanya dapat dipilih dari Kepala Bagian sampai SPV. Staff tidak dapat menjadi collaborator langsung.',
             ]);
         }
+    }
+
+    /**
+     * Beri tahu admin divisi asal ketika anggotanya diundang ke campaign
+     * milik divisi lain. Notifikasi dibuat per admin dan peristiwa undangan.
+     */
+    private function notifyCrossDivisionAdmins(
+        Campaign $campaign,
+        $memberIds,
+        string $actorId
+    ): void {
+        $owningDivisionId = (string) $campaign->workspace->division_id;
+        $members = User::query()
+            ->with(['divisions', 'roles'])
+            ->whereIn('id', collect($memberIds)->unique())
+            ->get();
+
+        $sourceDivisions = $members
+            ->flatMap(fn (User $member) => $member->divisions)
+            ->filter(fn (Division $division) => (string) $division->id !== $owningDivisionId)
+            ->unique('id')
+            ->values();
+
+        if ($sourceDivisions->isEmpty()) {
+            return;
+        }
+
+        $workspace = $campaign->workspace;
+        $recipients = collect();
+
+        foreach ($sourceDivisions as $division) {
+            $division->loadMissing(['users.roles']);
+            $recipients = $recipients->merge(
+                $division->users->filter(fn (User $admin) =>
+                    (string) $admin->id !== (string) $actorId
+                    && ($admin->isAdmin() || $admin->pivot?->role === 'admin')
+                )
+            );
+        }
+
+        $recipients->unique('id')->each(function (User $admin) use ($campaign, $workspace, $sourceDivisions): void {
+            $divisionNames = $sourceDivisions
+                ->filter(fn (Division $division) => $division->users->contains('id', $admin->id))
+                ->pluck('name')
+                ->implode(', ');
+
+            Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'campaign.cross_division_member_added',
+                'title' => 'Anggota divisi ditambahkan ke campaign lintas divisi',
+                'body' => "Anggota divisi {$divisionNames} ditambahkan ke campaign '{$campaign->name}' milik divisi {$workspace->division->name}.",
+                'data' => [
+                    'campaign_id' => (string) $campaign->id,
+                    'workspace_id' => (string) $workspace->id,
+                    'source_division_ids' => $sourceDivisions->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
+                    'cross_division' => true,
+                ],
+                'is_read' => false,
+            ]);
+        });
     }
 
 
