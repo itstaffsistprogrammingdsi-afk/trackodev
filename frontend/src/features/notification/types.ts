@@ -33,9 +33,13 @@ export function getNotificationTargetPath(notification: AppNotification): string
   const { workspace_id: workspaceId, campaign_id: campaignId, card_id: cardId } =
     notification.data ?? {};
 
-  if (!workspaceId || !campaignId || !cardId) return null;
+  if (!workspaceId || !campaignId) return null;
 
-  return `/workspaces/${encodeURIComponent(workspaceId)}/campaigns/${encodeURIComponent(
+  const campaignPath = `/workspaces/${encodeURIComponent(workspaceId)}/campaigns/${encodeURIComponent(
     campaignId,
-  )}/boards?card=${encodeURIComponent(cardId)}`;
+  )}`;
+
+  if (!cardId) return campaignPath;
+
+  return `${campaignPath}/boards?card=${encodeURIComponent(cardId)}`;
 }
