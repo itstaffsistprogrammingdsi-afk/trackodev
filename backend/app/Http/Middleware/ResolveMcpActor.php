@@ -30,7 +30,7 @@ class ResolveMcpActor
 
         if (! $identity?->user) {
             return response()->json([
-                'message' => 'Akun Discord belum terhubung ke user Traco.',
+                'message' => 'Akun channel belum terhubung ke user Traco.',
                 'code' => 'MCP_ACTOR_NOT_LINKED',
             ], 401);
         }

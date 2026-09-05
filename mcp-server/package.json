@@ -11,6 +11,10 @@
     "./discord-actor": {
       "types": "./dist/src/discord-actor.d.ts",
       "import": "./dist/src/discord-actor.js"
+    },
+    "./google-chat-actor": {
+      "types": "./dist/src/google-chat-actor.d.ts",
+      "import": "./dist/src/google-chat-actor.js"
     }
   },
   "description": "Secure MCP bridge between Discord AI agents and Traco",
@@ -24,6 +28,7 @@
     "discord:dev": "tsx --env-file=.env src/discord-bot.ts",
     "discord:register": "node --env-file=.env --enable-source-maps dist/src/register-discord-commands.js",
     "discord:start": "node --env-file=.env --enable-source-maps dist/src/discord-bot.js",
+    "google-chat:start": "node --env-file=.env --enable-source-maps dist/src/google-chat-index.js",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -32,6 +37,8 @@
     "@modelcontextprotocol/node": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",
     "discord.js": "14.27.0",
+    "google-auth-library": "10.4.1",
+    "google-auth-library": "^10.4.1",
     "zod": "4.5.4"
   },
   "devDependencies": {

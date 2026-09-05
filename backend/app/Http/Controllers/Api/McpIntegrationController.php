@@ -95,7 +95,7 @@ class McpIntegrationController extends Controller
         $validated = $request->validate([
             'provider' => ['required', Rule::in(config('mcp.providers', []))],
             'code' => ['required', 'string', 'max:20'],
-            'external_user_id' => ['required', 'regex:/^[0-9]{15,22}$/'],
+            'external_user_id' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9._:\/@-]+$/'],
             'display_name' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -118,7 +118,7 @@ class McpIntegrationController extends Controller
                 ->first();
 
             if ($externalOwner && $externalOwner->user_id !== $linkCode->user_id) {
-                abort(409, 'Akun Discord ini sudah terhubung ke user Traco lain.');
+                abort(409, 'Akun pada provider ini sudah terhubung ke user Traco lain.');
             }
 
             $userIdentity = ExternalIdentity::query()
@@ -127,7 +127,7 @@ class McpIntegrationController extends Controller
                 ->first();
 
             if ($userIdentity && $userIdentity->external_user_id !== $validated['external_user_id']) {
-                abort(409, 'User Traco ini sudah terhubung ke akun Discord lain.');
+                abort(409, 'User Traco ini sudah terhubung ke akun lain pada provider yang sama.');
             }
 
             $identity = ExternalIdentity::query()->updateOrCreate(
@@ -148,7 +148,7 @@ class McpIntegrationController extends Controller
         });
 
         return response()->json([
-            'message' => 'Akun Discord berhasil dihubungkan ke Traco.',
+            'message' => 'Akun channel berhasil dihubungkan ke Traco.',
             'data' => [
                 'provider' => $identity->provider,
                 'external_user_id' => $identity->external_user_id,
