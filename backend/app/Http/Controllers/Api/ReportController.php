@@ -47,9 +47,7 @@ class ReportController extends Controller
             $this->restrictSuperAdminVisibility($query, $request);
             $this->restrictDivisionVisibility($query, $request);
 
-            if ($request->filled('search')) {
-                $query->where('users.name', 'like', "%{$request->search}%");
-            }
+            $this->applyUserSearch($query, $request);
 
             if ($request->filled('division_id')) {
                 $query->whereHas('divisions', function ($q) use ($request) {
@@ -61,7 +59,9 @@ class ReportController extends Controller
                 $this->scopeUsersWithMatchingCards($query, $request);
             }
 
-            $users = $query->paginate(20);
+            $users = $query
+                ->orderBy('users.name', 'asc')
+                ->paginate(20);
 
             return response()->json([
                 'data' => UserResource::collection($users),
@@ -627,9 +627,7 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
                 $query->where('users.id', $request->user_id);
             }
 
-            if ($request->filled('search')) {
-                $query->where('users.name', 'like', "%{$request->search}%");
-            }
+            $this->applyUserSearch($query, $request);
 
             if ($request->filled('division_id')) {
                 $query->whereHas('divisions', function ($q) use ($request) {
@@ -637,7 +635,9 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
                 });
             }
 
-            $users = $query->get();
+            $users = $query
+                ->orderBy('users.name', 'asc')
+                ->get();
 
             // Untuk tiap user, ambil card lewat definisi yang SAMA dengan
             // scopeCardsForUser() (creator campaign ATAU anggota campaign
@@ -689,6 +689,24 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
             Log::error('Error getting export data: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Samakan pencarian user Reports dengan User Management (nama atau email).
+     */
+    private function applyUserSearch($query, Request $request): void
+    {
+        if (! $request->filled('search')) {
+            return;
+        }
+
+        $search = $request->input('search');
+
+        $query->where(function ($userQuery) use ($search) {
+            $userQuery
+                ->where('users.name', 'like', "%{$search}%")
+                ->orWhere('users.email', 'like', "%{$search}%");
+        });
     }
 
 private function restrictDivisionVisibility($query, Request $request): void
