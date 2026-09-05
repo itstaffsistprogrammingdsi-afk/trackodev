@@ -854,39 +854,11 @@ class UserController extends Controller
             if ($user->isSuperAdmin()) {
                 // Tidak ada filter tambahan.
             } elseif ($user->isDivisionAdmin()) {
-                $targetDivisionId = $validated['division_id'] ?? null;
-
-                if (! empty($validated['workspace_id'])) {
-                    $targetDivisionId = Workspace::query()
-                        ->whereKey($validated['workspace_id'])
-                        ->value('division_id');
-                }
-
-                $managedDivisionIds = $user->divisions()->pluck('divisions.id');
-
-                if ($targetDivisionId !== null) {
-                    // Jangan mengembalikan kandidat dari workspace/division
-                    // yang tidak dikelola admin tersebut.
-                    if (! $managedDivisionIds->contains($targetDivisionId)) {
-                        $query->whereKey('__no_matching_user__');
-                    } else {
-                        $query->whereHas(
-                            'divisions',
-                            fn ($divisionQuery) => $divisionQuery->where(
-                                'divisions.id',
-                                $targetDivisionId
-                            )
-                        );
-                    }
-                } else {
-                    $query->whereHas(
-                        'divisions',
-                        fn ($divisionQuery) => $divisionQuery->whereIn(
-                            'divisions.id',
-                            $managedDivisionIds
-                        )
-                    );
-                }
+                // Campaign admin dapat memilih collaborator dari seluruh
+                // division. Kandidat tetap harus memiliki minimal satu
+                // membership division agar undangan dapat dilaporkan kepada
+                // admin divisi asalnya.
+                $query->whereHas('divisions');
             } else {
                 $query->where(function ($candidateQuery) {
                     $candidateQuery

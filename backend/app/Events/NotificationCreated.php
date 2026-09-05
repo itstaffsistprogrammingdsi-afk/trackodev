@@ -41,7 +41,9 @@ class NotificationCreated implements ShouldBroadcast
                 'body' => $this->notification->body,
                 'data' => $this->notification->data,
                 'action_url' => $actionUrl,
-                'action_label' => $actionUrl ? 'Buka card' : null,
+                'action_label' => $actionUrl
+                    ? ($this->notification->type === 'campaign.cross_division_member_added' ? 'Buka campaign' : 'Buka card')
+                    : null,
                 'is_read' => $this->notification->is_read,
                 'created_at' => $this->notification->created_at?->toDateTimeString(),
             ],

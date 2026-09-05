@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Division;
+use App\Models\Notification;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -133,7 +134,7 @@ class CollaborationHierarchyTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_search_all_members_in_campaign_division(): void
+    public function test_admin_can_search_members_across_divisions_for_campaign(): void
     {
         [, $dkvLeader, $dkvStaff, $itDivision, $dkvDivision] = $this->createCollaborationUsers();
 
@@ -145,7 +146,7 @@ class CollaborationHierarchyTest extends TestCase
 
         $this->getJson('/api/users/mentionable?search='.$dkvStaff->email.'&collaborator=1&division_id='.$itDivision->id)
             ->assertOk()
-            ->assertJsonMissing(['id' => $dkvStaff->id]);
+            ->assertJsonFragment(['id' => $dkvStaff->id]);
     }
 
     public function test_admin_can_create_campaign_with_any_member_of_target_division(): void
@@ -167,9 +168,9 @@ class CollaborationHierarchyTest extends TestCase
         ]);
     }
 
-    public function test_admin_cannot_add_member_from_another_division_to_campaign(): void
+    public function test_admin_can_add_member_from_another_division_to_campaign(): void
     {
-        [$itStaff, $dkvLeader, , , $dkvDivision] = $this->createCollaborationUsers();
+        [$itStaff, $dkvLeader, , $itDivision, $dkvDivision] = $this->createCollaborationUsers();
         $workspace = $dkvDivision->workspaces()->create(['name' => 'Campaign Lintas Division']);
 
         Sanctum::actingAs($dkvLeader);
@@ -178,8 +179,39 @@ class CollaborationHierarchyTest extends TestCase
             'name' => 'Campaign Lintas Division',
             'type' => 'group',
             'member_ids' => [$itStaff->id],
-        ])->assertUnprocessable()
-            ->assertJsonValidationErrors('member_ids');
+        ])->assertCreated()
+            ->assertJsonPath('data.members.0.id', $itStaff->id);
+
+        $this->assertDatabaseHas('workspace_user', [
+            'workspace_id' => $workspace->id,
+            'user_id' => $itStaff->id,
+        ]);
+    }
+
+    public function test_cross_division_campaign_invite_notifies_source_division_admin(): void
+    {
+        [$itStaff, $dkvLeader, , $itDivision, $dkvDivision] = $this->createCollaborationUsers();
+        $itAdmin = User::factory()->create(['name' => 'Admin IT']);
+        $itAdmin->assignRole(User::ROLE_ADMIN);
+        $itDivision->users()->attach($itAdmin->id, ['role' => 'admin']);
+        $workspace = $dkvDivision->workspaces()->create(['name' => 'Campaign Lintas Division']);
+
+        Sanctum::actingAs($dkvLeader);
+
+        $campaignId = $this->postJson("/api/workspaces/{$workspace->id}/campaigns", [
+            'name' => 'Campaign Kolaborasi',
+            'type' => 'group',
+            'member_ids' => [$itStaff->id],
+        ])->assertCreated()->json('data.id');
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $itAdmin->id,
+            'type' => 'campaign.cross_division_member_added',
+        ]);
+
+        $notification = Notification::query()->where('user_id', $itAdmin->id)->latest()->firstOrFail();
+        $this->assertSame($campaignId, $notification->data['campaign_id']);
+        $this->assertSame('/workspaces/'.$workspace->id.'/campaigns/'.$campaignId, $notification->action_url);
     }
 
     public function test_cross_division_admin_can_list_only_campaigns_they_joined(): void

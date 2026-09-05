@@ -173,7 +173,7 @@ export default function CampaignForm({
               {isSuperAdmin
                 ? "Super Admin dapat memilih user dari seluruh sistem."
                 : isAdmin
-                  ? "Admin dapat memilih seluruh anggota dari division campaign."
+                  ? "Admin dapat memilih anggota dari division mana pun. Admin division asal akan menerima notifikasi untuk undangan lintas division."
                   : "Pilih Kepala Bagian sampai SPV. Koordinator terpilih akan meneruskan pekerjaan ke Staff divisinya."}
             </p>
 

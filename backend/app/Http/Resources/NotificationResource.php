@@ -17,7 +17,9 @@ class NotificationResource extends JsonResource
             'body'       => $this->body,
             'data'       => $this->data,
             'action_url' => $actionUrl,
-            'action_label' => $actionUrl ? 'Buka card' : null,
+            'action_label' => $actionUrl
+                ? ($this->type === 'campaign.cross_division_member_added' ? 'Buka campaign' : 'Buka card')
+                : null,
             'is_read'    => $this->is_read,
             'created_at' => $this->created_at->toDateTimeString(),
         ];

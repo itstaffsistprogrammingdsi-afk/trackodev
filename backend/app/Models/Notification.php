@@ -44,7 +44,7 @@ class Notification extends Model
         $campaignId = $data['campaign_id'] ?? null;
         $workspaceId = $data['workspace_id'] ?? null;
 
-        if (! is_string($cardId) || ! is_string($campaignId)) {
+        if (! is_string($campaignId)) {
             return null;
         }
 
@@ -58,8 +58,13 @@ class Notification extends Model
             return null;
         }
 
-        return '/workspaces/'.rawurlencode($workspaceId)
-            .'/campaigns/'.rawurlencode($campaignId)
-            .'/boards?card='.rawurlencode($cardId);
+        $campaignPath = '/workspaces/'.rawurlencode($workspaceId)
+            .'/campaigns/'.rawurlencode($campaignId);
+
+        if (is_string($cardId)) {
+            return $campaignPath.'/boards?card='.rawurlencode($cardId);
+        }
+
+        return $campaignPath;
     }
 }
