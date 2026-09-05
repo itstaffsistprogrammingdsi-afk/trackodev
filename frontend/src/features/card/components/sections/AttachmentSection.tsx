@@ -425,7 +425,7 @@ export default function AttachmentSection({
       await fetchAttachments();
       setFeedback({
         type: "success",
-        message: "Hasil terbaru berhasil diunggah.",
+        message: "Result berhasil diunggah dan tetap aktif.",
       });
     } catch (err) {
       console.error(err);
@@ -536,7 +536,7 @@ space-y-6
               <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
 
               <p className="mt-1 text-xs text-gray-500">
-                Upload file atau tambahkan link external
+                Upload file atau tambahkan link external. Beberapa result tetap aktif sampai diarsipkan manual.
               </p>
             </div>
             <div className="space-y-3">
@@ -827,8 +827,8 @@ space-y-6
                   <CheckCircle2 size={18} />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Hasil aktif terbaru</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Versi lama tidak ditampilkan di daftar utama.</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Hasil aktif</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Semua result aktif ditampilkan di daftar utama sampai diarsipkan manual.</p>
                 </div>
               </div>
               <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm dark:bg-slate-800 dark:text-emerald-400">
@@ -857,7 +857,7 @@ space-y-6
               </h3>
 
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Upload hasil terbaru atau buka riwayat arsip
+                Upload hasil baru atau buka riwayat arsip
               </p>
             </div>
           )}
@@ -1038,11 +1038,11 @@ space-y-6
                           type="button"
                           onClick={() => setArchiveCandidate(item)}
                           className="flex h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300 sm:px-3"
-                          title="Tandai perlu revisi"
-                          aria-label={`Tandai ${item.file_name || item.link_url || "attachment"} perlu revisi`}
+                          title="Arsipkan result"
+                          aria-label={`Arsipkan ${item.file_name || item.link_url || "attachment"}`}
                         >
                           <Archive size={16} />
-                          <span className="hidden md:inline">Perlu revisi</span>
+                          <span className="hidden md:inline">Arsipkan</span>
                         </button>
                       )}
                       <button
@@ -1193,14 +1193,14 @@ space-y-6
                 <Archive size={22} />
               </span>
               <div className="min-w-0">
-                <h3 id="archive-confirmation-title" className="text-base font-bold text-slate-900 dark:text-white">Tandai perlu revisi?</h3>
+                <h3 id="archive-confirmation-title" className="text-base font-bold text-slate-900 dark:text-white">Arsipkan result?</h3>
                 <p className="mt-1 truncate text-sm font-medium text-slate-700 dark:text-slate-200">
                   {archiveCandidate.file_name || archiveCandidate.link_url || "Attachment"}
                 </p>
               </div>
             </div>
             <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-              File langsung disembunyikan dari hasil aktif dan tetap aman di Riwayat arsip. Upload berikutnya dengan jenis hasil yang sama otomatis menjadi versi lanjutannya.
+              File langsung disembunyikan dari hasil aktif dan tetap aman di Riwayat arsip. Result lain tetap aktif sampai Anda mengarsipkannya secara manual.
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
