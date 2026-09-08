@@ -47,6 +47,17 @@ type TaskStatus = {
   overdue: number;
   due_soon: number;
   completion_rate: number;
+  columns: DashboardBoardColumn[];
+};
+
+type DashboardBoardColumn = {
+  id: string;
+  name: string;
+  type: string | null;
+  color: string;
+  order: number;
+  count: number;
+  board_ids: string[];
 };
 
 type InsightScope = {
@@ -113,6 +124,7 @@ export default function Home() {
       overdue: 0,
       due_soon: 0,
       completion_rate: 0,
+      columns: [],
     },
     insight_scope: {
       type: "assigned_divisions",

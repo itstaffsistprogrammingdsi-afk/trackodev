@@ -6,6 +6,8 @@ export interface NotificationData {
   assigned_by?: string;
   submission_id?: string;
   source_division_ids?: string[];
+  source_division_id?: string;
+  source_division_name?: string;
   cross_division?: boolean;
 }
 

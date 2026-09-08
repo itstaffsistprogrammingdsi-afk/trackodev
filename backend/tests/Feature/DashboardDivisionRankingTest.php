@@ -141,6 +141,12 @@ class DashboardDivisionRankingTest extends TestCase
             'slug' => 'dashboard-health',
         ]);
         $board = $this->createBoard($division, $superAdmin, 'Health');
+        $reviewBoard = Board::create([
+            'campaign_id' => $board->campaign_id,
+            'name' => 'Review',
+            'color' => '#ec4899',
+            'order' => 10,
+        ]);
 
         Card::create([
             'board_id' => $board->id,
@@ -196,6 +202,10 @@ class DashboardDivisionRankingTest extends TestCase
             ->assertJsonPath('task_status.overdue', 1)
             ->assertJsonPath('task_status.due_soon', 1)
             ->assertJsonPath('task_status.completion_rate', 20)
+            ->assertJsonPath('task_status.columns.0.name', 'Health')
+            ->assertJsonPath('task_status.columns.0.count', 5)
+            ->assertJsonPath('task_status.columns.1.name', 'Review')
+            ->assertJsonPath('task_status.columns.1.count', 0)
             ->assertJsonPath('insights.0.id', 'overdue-work')
             ->assertJsonPath('insights.0.severity', 'critical')
             ->assertJsonPath('insights.0.metric', '1 overdue')
@@ -247,6 +257,79 @@ class DashboardDivisionRankingTest extends TestCase
             ->assertOk()
             ->assertJsonPath('filter.period', 'month')
             ->assertJsonPath('task_status.total', 5);
+    }
+
+    public function test_dashboard_groups_real_board_columns_and_includes_added_empty_columns(): void
+    {
+        $dashboardPermission = Permission::firstOrCreate([
+            'name' => 'dashboard.view',
+            'guard_name' => 'web',
+        ]);
+        $superAdminRole = Role::firstOrCreate([
+            'name' => User::ROLE_SUPER_ADMIN,
+            'guard_name' => 'web',
+        ]);
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole($superAdminRole);
+        $superAdmin->givePermissionTo($dashboardPermission);
+
+        $division = Division::create([
+            'name' => 'Workflow Dashboard',
+            'slug' => 'workflow-dashboard',
+        ]);
+        $requestBoard = $this->createBoard($division, $superAdmin, 'By Request');
+        $requestBoard->update(['type' => 'request', 'order' => 0]);
+        $todoBoard = Board::create([
+            'campaign_id' => $requestBoard->campaign_id,
+            'name' => 'To Do',
+            'type' => 'todo',
+            'color' => '#f59e0b',
+            'order' => 1,
+        ]);
+        $progressBoard = Board::create([
+            'campaign_id' => $requestBoard->campaign_id,
+            'name' => 'Progress',
+            'type' => 'progress',
+            'color' => '#6366f1',
+            'order' => 2,
+        ]);
+        $doneBoard = Board::create([
+            'campaign_id' => $requestBoard->campaign_id,
+            'name' => 'Done',
+            'type' => 'completed',
+            'color' => '#10b981',
+            'order' => 3,
+        ]);
+        $reviewBoard = Board::create([
+            'campaign_id' => $requestBoard->campaign_id,
+            'name' => 'Review Desain',
+            'color' => '#ec4899',
+            'order' => 4,
+        ]);
+
+        foreach ([$requestBoard, $todoBoard, $progressBoard, $doneBoard] as $board) {
+            Card::create([
+                'board_id' => $board->id,
+                'created_by' => $superAdmin->id,
+                'title' => 'Task '.$board->name,
+                'status' => $board->type === 'completed' ? 'completed' : 'todo',
+            ]);
+        }
+
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson('/api/dashboard?scope=global')
+            ->assertOk()
+            ->assertJsonPath('task_status.columns.0.name', 'By Request')
+            ->assertJsonPath('task_status.columns.0.count', 1)
+            ->assertJsonPath('task_status.columns.1.name', 'To Do')
+            ->assertJsonPath('task_status.columns.1.count', 1)
+            ->assertJsonPath('task_status.columns.2.name', 'Progress')
+            ->assertJsonPath('task_status.columns.2.count', 1)
+            ->assertJsonPath('task_status.columns.3.name', 'Done')
+            ->assertJsonPath('task_status.columns.3.count', 1)
+            ->assertJsonPath('task_status.columns.4.name', 'Review Desain')
+            ->assertJsonPath('task_status.columns.4.count', 0);
     }
 
     public function test_dashboard_and_ranking_share_daily_monthly_and_all_year_filters(): void

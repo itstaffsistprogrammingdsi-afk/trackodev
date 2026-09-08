@@ -37,6 +37,7 @@ class SendCardAssignedEmailJob implements ShouldQueue
         $card = Card::with([
             'board',
             'board.campaign',
+            'board.campaign.workspace.division',
         ])->find($this->cardId);
 
         $assignee = User::find($this->assigneeId);

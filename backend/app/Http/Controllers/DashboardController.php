@@ -462,9 +462,11 @@ class DashboardController extends Controller
     }
 
     /**
-     * Distribusi status task untuk visual operational health dashboard.
-     * Overdue dipisahkan dari todo/in progress agar setiap card hanya masuk
-     * ke satu kategori utama.
+     * Distribusi kolom board untuk dashboard serta metrik operational health.
+     *
+     * Kolom tidak diturunkan dari `cards.status`: board dapat memiliki kolom
+     * tambahan dan type custom. Kolom dengan type yang sama digabungkan agar
+     * "To Do" dari beberapa campaign tetap tampil sebagai satu parameter.
      */
     private function taskStatus(
         $user,
@@ -472,16 +474,16 @@ class DashboardController extends Controller
         array $filter,
         ?array $divisionIds
     ): array {
-        $query = Card::query();
+        $scopedCards = Card::query();
 
         if ($scope === 'global') {
             $this->applyDivisionScope(
-                $query,
+                $scopedCards,
                 $divisionIds,
                 'board.campaign.workspace'
             );
         } else {
-            $query->where(function ($cardQuery) use ($user) {
+            $scopedCards->where(function ($cardQuery) use ($user) {
                 $cardQuery
                     ->where('created_by', $user->id)
                     ->orWhereHas('assignees', function ($assigneeQuery) use ($user) {
@@ -490,7 +492,60 @@ class DashboardController extends Controller
             });
         }
 
+        $query = clone $scopedCards;
         $this->applyPeriod($query, $filter, 'cards.created_at');
+
+        $cardCounts = (clone $query)
+            ->select('board_id')
+            ->selectRaw('COUNT(*) as card_count')
+            ->groupBy('board_id')
+            ->pluck('card_count', 'board_id');
+
+        $boards = Board::query();
+        if ($scope === 'global') {
+            $this->applyDivisionScope(
+                $boards,
+                $divisionIds,
+                'campaign.workspace'
+            );
+        } else {
+            // My Dashboard hanya menampilkan workflow yang memang relevan
+            // dengan card milik/ditugaskan ke pengguna, termasuk saat kolomnya
+            // sedang tidak memiliki card pada periode terpilih.
+            $boards->whereIn('id', (clone $scopedCards)->select('board_id'));
+        }
+
+        $columns = $boards
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get()
+            ->groupBy(function (Board $board) {
+                return $board->type
+                    ? 'type:'.$board->type
+                    : 'name:'.strtolower(trim($board->name));
+            })
+            ->map(function ($group, string $key) use ($cardCounts) {
+                /** @var Board $firstBoard */
+                $firstBoard = $group->first();
+
+                return [
+                    'id' => $key,
+                    'name' => $firstBoard->name,
+                    'type' => $firstBoard->type,
+                    'color' => $firstBoard->color,
+                    'order' => (int) $group->min('order'),
+                    'count' => (int) $group->sum(
+                        fn (Board $board) => (int) ($cardCounts[$board->id] ?? 0)
+                    ),
+                    'board_ids' => $group->pluck('id')->values()->all(),
+                ];
+            })
+            ->sortBy([
+                ['order', 'asc'],
+                ['name', 'asc'],
+            ])
+            ->values()
+            ->all();
 
         $now = now();
         $dueSoonEnd = $now->copy()->addDays(7)->endOfDay();
@@ -532,6 +587,7 @@ class DashboardController extends Controller
             'completion_rate' => $total > 0
                 ? round(($completed / $total) * 100, 2)
                 : 0,
+            'columns' => $columns,
         ];
     }
 

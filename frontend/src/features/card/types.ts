@@ -72,6 +72,22 @@ export interface Campaign {
   name: string;
 }
 
+export interface CardWorkflowBoard {
+  id: string;
+  name: string;
+  type?: string | null;
+  color?: string | null;
+  order?: number;
+}
+
+export interface CardSourceContext {
+  board: CardWorkflowBoard;
+  campaign?: Campaign | null;
+  workspace?: { id: string; name: string } | null;
+  division?: { id: string; name: string } | null;
+  workflow_boards: CardWorkflowBoard[];
+}
+
 export interface Attachment {
   id: string;
 
@@ -120,8 +136,11 @@ export type Card = {
 
   priority?: CardPriority;
 
+  status?: "todo" | "in_progress" | "completed";
+
   due_date?: string | null;
   is_overdue?: boolean;
+  completed_at?: string | null;
 
   comments?: CardComment[];
 
@@ -134,6 +153,8 @@ export type Card = {
   brands?: Brand[];
 
   campaign?: Campaign | null;
+
+  source?: CardSourceContext | null;
 
   board?: Board;
 };

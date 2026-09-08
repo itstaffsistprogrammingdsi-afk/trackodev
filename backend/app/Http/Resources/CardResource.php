@@ -36,6 +36,17 @@ class CardResource extends JsonResource
 
             /*
             |------------------------------------------------
+            | SOURCE CONTEXT
+            |------------------------------------------------
+            | A card can be rendered in a recipient's personal kanban while
+            | its workflow remains owned by another division. This explicit
+            | context makes that projection understandable without creating
+            | a copied card in the recipient's division.
+            */
+            'source' => $this->getSourceData(),
+
+            /*
+            |------------------------------------------------
             | BOARD - Tetap seperti semula
             |------------------------------------------------
             */
@@ -156,5 +167,63 @@ class CardResource extends JsonResource
         }
 
         return null;
+    }
+
+    /**
+     * Location and available native workflow boards for a personal card view.
+     * The values are only present when the controller explicitly eager-loads
+     * the nested relationships, so ordinary board payloads stay lightweight.
+     */
+    protected function getSourceData(): ?array
+    {
+        if (! $this->relationLoaded('board') || ! $this->board) {
+            return null;
+        }
+
+        $board = $this->board;
+        $campaign = $board->relationLoaded('campaign')
+            ? $board->campaign
+            : null;
+
+        $workspace = $campaign && $campaign->relationLoaded('workspace')
+            ? $campaign->workspace
+            : null;
+
+        $division = $workspace && $workspace->relationLoaded('division')
+            ? $workspace->division
+            : null;
+
+        return [
+            'board' => [
+                'id' => $board->id,
+                'name' => $board->name,
+                'type' => $board->type,
+                'color' => $board->color,
+            ],
+            'campaign' => $campaign ? [
+                'id' => $campaign->id,
+                'name' => $campaign->name,
+            ] : null,
+            'workspace' => $workspace ? [
+                'id' => $workspace->id,
+                'name' => $workspace->name,
+            ] : null,
+            'division' => $division ? [
+                'id' => $division->id,
+                'name' => $division->name,
+            ] : null,
+            'workflow_boards' => $campaign && $campaign->relationLoaded('boards')
+                ? $campaign->boards
+                    ->map(fn ($workflowBoard) => [
+                        'id' => $workflowBoard->id,
+                        'name' => $workflowBoard->name,
+                        'type' => $workflowBoard->type,
+                        'color' => $workflowBoard->color,
+                        'order' => $workflowBoard->order,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
+        ];
     }
 }
