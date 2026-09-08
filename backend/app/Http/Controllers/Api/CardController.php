@@ -84,6 +84,48 @@ class CardController extends Controller
             true
         );
     }
+
+    /**
+     * Create the one notification consumed by web real-time and mobile
+     * native-notification clients. The email is dispatched separately so a
+     * mail outage can never roll back the assignment itself.
+     */
+    protected function createAssignmentNotification(
+        Card $card,
+        User $assignee,
+        User $actor
+    ): void {
+        $card->loadMissing('board.campaign.workspace.division');
+
+        $board = $card->board;
+        $campaign = $board?->campaign;
+        $workspace = $campaign?->workspace;
+        $division = $workspace?->division;
+        $isCrossDivision = $division !== null
+            && ! $assignee->divisions()->whereKey($division->id)->exists();
+        $sourceSuffix = $isCrossDivision
+            ? " dari divisi '{$division->name}'"
+            : '';
+
+        Notification::create([
+            'user_id' => $assignee->id,
+            'type' => 'task_assigned',
+            'title' => $isCrossDivision ? 'Tugas lintas divisi' : 'Tugas baru',
+            'body' => "{$actor->name} menugaskan Anda pada task '{$card->title}'{$sourceSuffix}.",
+            'data' => [
+                'card_id' => $card->id,
+                'board_id' => $board?->id,
+                'campaign_id' => $campaign?->id,
+                'workspace_id' => $workspace?->id,
+                'assigned_by' => $actor->id,
+                'cross_division' => $isCrossDivision,
+                'source_division_id' => $division?->id,
+                'source_division_name' => $division?->name,
+            ],
+            'is_read' => false,
+        ]);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | CARD
@@ -109,6 +151,39 @@ class CardController extends Controller
             ])
             ->orderBy('order')
             ->orderBy('created_at')
+            ->get();
+
+        return response()->json([
+            'data' => CardResource::collection($cards),
+        ]);
+    }
+
+    /**
+     * Cards assigned directly to the authenticated user.
+     *
+     * This is intentionally a personal projection, not a second card or a
+     * copy into the recipient's division. A card keeps its original board as
+     * the workflow authority; the source context and available native boards
+     * are returned so the client can move that same card from My Work.
+     */
+    public function myCards(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $cards = Card::query()
+            ->whereHas('assignees', fn ($query) => $query->whereKey($user->id))
+            ->with([
+                'creator',
+                'assignees',
+                'labels',
+                'brands',
+                'tasks.subtasks',
+                'board.campaign.workspace.division',
+                'board.campaign.boards',
+            ])
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->orderByDesc('created_at')
             ->get();
 
         return response()->json([
@@ -251,21 +326,7 @@ class CardController extends Controller
                         $user->id
                     );
 
-                    // Simpan notifikasi
-                    Notification::create([
-                        'user_id' => $assignee->id,
-                        'type'    => 'task_assigned',
-                        'title'   => 'Tugas Baru',
-                        'body'    => "Anda ditugaskan sebagai PIC pada task '{$card->title}'.",
-                        'data'    => [
-                            'card_id'     => $card->id,
-                            'board_id'    => $board->id,
-                            'campaign_id' => $board->campaign?->id,
-                            'workspace_id' => $board->campaign?->workspace_id,
-                            'assigned_by' => $user->id,
-                        ],
-                        'is_read' => false,
-                    ]);
+                    $this->createAssignmentNotification($card, $assignee, $user);
                 } catch (\Throwable $e) {
 
                     \Log::error('SEND EMAIL AND NOTIFICATION ERROR', [
@@ -309,7 +370,8 @@ class CardController extends Controller
             'attachments',
             'comments.user',
             'comments.replies.user',
-            'board',
+            'board.campaign.workspace.division',
+            'board.campaign.boards',
             'briefAttachments',
         ]);
 
@@ -1007,20 +1069,11 @@ class CardController extends Controller
                 $request->user()->id
             );
 
-            Notification::create([
-                'user_id' => $assignedUser->id,
-                'type'    => 'task_assigned',
-                'title'   => 'Tugas Baru',
-                'body'    => "Anda ditugaskan sebagai PIC pada task '{$card->title}'.",
-                'data'    => [
-                    'card_id'     => $card->id,
-                    'board_id'    => $card->board_id,
-                    'campaign_id' => $card->board->campaign?->id,
-                    'workspace_id' => $card->board->campaign?->workspace_id,
-                    'assigned_by' => $request->user()->id,
-                ],
-                'is_read' => false,
-            ]);
+            $this->createAssignmentNotification(
+                $card,
+                $assignedUser,
+                $request->user()
+            );
         } catch (\Throwable $e) {
 
             \Log::error('ASSIGN EMAIL/NOTIFICATION ERROR', [

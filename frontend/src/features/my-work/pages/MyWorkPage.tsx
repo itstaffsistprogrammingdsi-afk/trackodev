@@ -6,6 +6,7 @@ import MyWorkPeriodFilter from "../components/MyWorkPeriodFilter";
 import AttachmentPanel from "../components/AttachmentPanel";
 import ExportLogPanel from "../components/ExportLogPanel";
 import CompletionRanking from "../components/CompletionRanking";
+import MyAssignedTasks from "../components/MyAssignedTasks";
 import { useAuth } from "@/context/AuthContext";
 
 export default function MyWorkPage() {
@@ -65,6 +66,8 @@ export default function MyWorkPage() {
         completionRate={activities.summary.tasks.completion_rate}
         loading={activityLoading}
       />
+
+      <MyAssignedTasks />
 
       {canViewRanking && <CompletionRanking />}
 

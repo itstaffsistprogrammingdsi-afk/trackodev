@@ -21,6 +21,18 @@ export const getCards = async (
 };
 
 // =====================================================
+// MY ASSIGNED CARDS
+// =====================================================
+// A personal projection of directly assigned cards across divisions. Each
+// item still exposes its native board_id and source workflow; no card copy is
+// created for the recipient.
+export const getMyCards = async (): Promise<Card[]> => {
+  const res = await api.get<{ data: Card[] }>("/cards/mine");
+
+  return res.data.data;
+};
+
+// =====================================================
 // CREATE CARD
 // =====================================================
 export const createCard = async (

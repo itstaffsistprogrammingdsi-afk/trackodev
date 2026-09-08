@@ -815,6 +815,13 @@ Route::middleware([
         [CardController::class, 'store']
     )->middleware('permission:card.create|task.create');
 
+    // Personal kanban projection. Must be registered before cards/{card}
+    // so the literal "mine" is never treated as a card UUID.
+    Route::get(
+        'cards/mine',
+        [CardController::class, 'myCards']
+    )->middleware('permission:card.view|task.view');
+
     Route::get(
         'cards/{card}',
         [CardController::class, 'show']

@@ -32,6 +32,11 @@
         </tr>
 
         <tr>
+            <td><strong>Divisi Pemilik</strong></td>
+            <td>{{ $card->board?->campaign?->workspace?->division?->name ?? '-' }}</td>
+        </tr>
+
+        <tr>
             <td><strong>Priority</strong></td>
             <td>{{ ucfirst($card->priority) }}</td>
         </tr>

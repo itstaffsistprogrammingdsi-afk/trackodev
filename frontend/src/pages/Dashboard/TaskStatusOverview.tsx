@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  CheckCircle2,
   Clock3,
   Gauge,
   ListTodo,
@@ -16,38 +15,18 @@ type TaskStatus = {
   overdue: number;
   due_soon: number;
   completion_rate: number;
+  columns: DashboardBoardColumn[];
 };
 
-const STATUS_ITEMS = [
-  {
-    key: "completed" as const,
-    label: "Selesai",
-    color: "#10b981",
-    soft: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    icon: CheckCircle2,
-  },
-  {
-    key: "in_progress" as const,
-    label: "Sedang Berjalan",
-    color: "#6366f1",
-    soft: "bg-indigo-50 text-indigo-700 ring-indigo-100",
-    icon: Clock3,
-  },
-  {
-    key: "todo" as const,
-    label: "Belum Dimulai",
-    color: "#f59e0b",
-    soft: "bg-amber-50 text-amber-700 ring-amber-100",
-    icon: ListTodo,
-  },
-  {
-    key: "overdue" as const,
-    label: "Overdue",
-    color: "#f43f5e",
-    soft: "bg-rose-50 text-rose-700 ring-rose-100",
-    icon: AlertTriangle,
-  },
-];
+type DashboardBoardColumn = {
+  id: string;
+  name: string;
+  type: string | null;
+  color: string;
+  order: number;
+  count: number;
+  board_ids: string[];
+};
 
 export default function TaskStatusOverview({
   status,
@@ -56,9 +35,11 @@ export default function TaskStatusOverview({
   status: TaskStatus;
   periodLabel: string;
 }) {
-  const chartData = STATUS_ITEMS.map((item) => ({
-    ...item,
-    value: status[item.key],
+  const chartData = status.columns.map((column, index) => ({
+    ...column,
+    label: column.name,
+    value: column.count,
+    color: column.color || FALLBACK_COLORS[index % FALLBACK_COLORS.length],
   }));
   const hasTasks = status.total > 0;
   const health = getHealth(status);
@@ -69,10 +50,10 @@ export default function TaskStatusOverview({
         <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <h2 id="task-status-title" className="text-lg font-black text-slate-900">
-              Distribusi Status Task
+              Distribusi Kolom Board
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Komposisi pekerjaan pada periode {periodLabel}.
+              Komposisi pekerjaan menurut kolom workflow pada periode {periodLabel}.
             </p>
           </div>
           <span className="inline-flex w-fit items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 ring-1 ring-indigo-100">
@@ -126,20 +107,20 @@ export default function TaskStatusOverview({
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             {chartData.map((item) => {
-              const Icon = item.icon;
               const percentage = status.total
                 ? Math.round((item.value / status.total) * 100)
                 : 0;
 
               return (
                 <div
-                  key={item.key}
+                  key={item.id}
                   className="flex items-center gap-3 rounded-2xl border border-slate-100 p-3.5 transition-colors hover:bg-slate-50"
                 >
                   <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ${item.soft}`}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+                    style={{ backgroundColor: item.color }}
                   >
-                    <Icon className="h-5 w-5" aria-hidden="true" />
+                    <ListTodo className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-bold text-slate-500">{item.label}</p>
@@ -151,6 +132,11 @@ export default function TaskStatusOverview({
                 </div>
               );
             })}
+            {chartData.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                Belum ada kolom board pada scope ini.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -200,6 +186,8 @@ export default function TaskStatusOverview({
     </section>
   );
 }
+
+const FALLBACK_COLORS = ["#6366f1", "#0ea5e9", "#f59e0b", "#10b981", "#f43f5e", "#8b5cf6"];
 
 function HealthMetric({
   icon: Icon,

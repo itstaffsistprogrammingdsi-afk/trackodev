@@ -9,6 +9,8 @@ class NotificationResource extends JsonResource
     public function toArray(Request $request): array
     {
         $actionUrl = $this->action_url;
+        $isCrossDivisionTask = $this->type === 'task_assigned'
+            && (bool) data_get($this->data, 'cross_division');
 
         return [
             'id'         => $this->id,
@@ -18,7 +20,9 @@ class NotificationResource extends JsonResource
             'data'       => $this->data,
             'action_url' => $actionUrl,
             'action_label' => $actionUrl
-                ? ($this->type === 'campaign.cross_division_member_added' ? 'Buka campaign' : 'Buka card')
+                ? ($this->type === 'campaign.cross_division_member_added'
+                    ? 'Buka campaign'
+                    : ($isCrossDivisionTask ? 'Buka tugas lintas divisi' : 'Buka card'))
                 : null,
             'is_read'    => $this->is_read,
             'created_at' => $this->created_at->toDateTimeString(),
