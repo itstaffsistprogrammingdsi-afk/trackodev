@@ -9,7 +9,8 @@ interface ReturnType {
   detail: Card | null;
   users: User[];
   loading: boolean;
-  fetchDetail: () => Promise<void>;
+  refreshing: boolean;
+  fetchDetail: (options?: { silent?: boolean }) => Promise<void>;
   setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
 }
 
@@ -31,29 +32,55 @@ export function useCardDetail(
   const [detail, setDetail] = useState<Card | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const detailRequestRef = useRef(0);
   const usersRequestRef = useRef(0);
   const activeCardIdRef = useRef<string | null>(null);
+  const detailRef = useRef<Card | null>(null);
 
-  const fetchDetail = useCallback(async () => {
-    if (!card?.id || !isOpen) return;
+  useEffect(() => {
+    detailRef.current = detail;
+  }, [detail]);
 
-    const requestId = ++detailRequestRef.current;
-    setLoading(true);
+  const fetchDetail = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!card?.id || !isOpen) return;
 
-    try {
-      const cardRes = await api.get(`/cards/${card.id}`);
-      if (requestId === detailRequestRef.current) {
-        setDetail(cardRes.data.data);
+      const requestId = ++detailRequestRef.current;
+      // Background refresh (realtime/self-echo) untuk card yang sama harus
+      // silent: jangan menyalakan `loading` agar textarea deskripsi tidak
+      // di-unmount (yang menyebabkan focus hilang / "refresh terus" saat mengetik).
+      // `loading` hanya untuk initial load / ganti card.
+      const silent =
+        options?.silent ?? detailRef.current?.id === card.id;
+
+      if (silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    } catch (error) {
-      if (requestId === detailRequestRef.current) {
-        console.error("FAILED FETCH CARD DETAIL", error);
+
+      try {
+        const cardRes = await api.get(`/cards/${card.id}`);
+        if (requestId === detailRequestRef.current) {
+          setDetail(cardRes.data.data);
+        }
+      } catch (error) {
+        if (requestId === detailRequestRef.current) {
+          console.error("FAILED FETCH CARD DETAIL", error);
+        }
+      } finally {
+        if (requestId === detailRequestRef.current) {
+          if (silent) {
+            setRefreshing(false);
+          } else {
+            setLoading(false);
+          }
+        }
       }
-    } finally {
-      if (requestId === detailRequestRef.current) setLoading(false);
-    }
-  }, [card?.id, isOpen]);
+    },
+    [card?.id, isOpen],
+  );
 
   useEffect(() => {
     if (!isOpen || !loadUsers) return;
@@ -91,7 +118,8 @@ export function useCardDetail(
     setDetail(null);
     activeCardIdRef.current = null;
     setLoading(false);
+    setRefreshing(false);
   }, [isOpen]);
 
-  return { detail, users, loading, fetchDetail, setDetail };
+  return { detail, users, loading, refreshing, fetchDetail, setDetail };
 }
