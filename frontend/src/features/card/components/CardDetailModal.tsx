@@ -63,11 +63,12 @@ export default function CardDetailModal({
     setMemberSearch,
   } = useCardSidebar();
 
-  const { detail, users, loading, fetchDetail, setDetail } = useCardDetail(
-    card,
-    isOpen,
-    showMembers,
-  );
+  const { detail, users, loading, refreshing, fetchDetail, setDetail } =
+    useCardDetail(card, isOpen, showMembers);
+  // Hanya tampilkan skeleton saat initial load (belum ada data sama sekali).
+  // Background realtime refresh harus silent agar textarea deskripsi tidak
+  // di-unmount (penyebab focus hilang / "refresh terus" saat mengetik).
+  const showInitialLoading = loading && !detail;
 
   const {
     description,
@@ -311,7 +312,7 @@ export default function CardDetailModal({
 
             {/* INNER BODY CONTENT */}
             <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-6 sm:space-y-6 sm:p-6 sm:pb-6 lg:space-y-8 lg:p-8 lg:pb-8 xl:flex-none xl:overflow-visible xl:overscroll-auto xl:pb-8">
-              {loading ? (
+              {showInitialLoading ? (
                 <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
                   <p className="text-sm font-medium">Loading card details...</p>
@@ -336,12 +337,17 @@ export default function CardDetailModal({
                         </p>
                       </div>
 
-                      {saving && (
+                      {saving ? (
                         <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span>Saving...</span>
                         </div>
-                      )}
+                      ) : refreshing ? (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Syncing...</span>
+                        </div>
+                      ) : null}
                     </div>
                     {saveError ? (
                       <p role="alert" className="mb-3 text-xs font-medium text-rose-600 dark:text-rose-400">

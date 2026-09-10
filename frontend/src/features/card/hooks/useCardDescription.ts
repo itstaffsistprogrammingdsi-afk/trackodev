@@ -57,12 +57,26 @@ export default function useCardDescription(
     const savedDueDate = dueDateRef.current;
 
     if (descriptionDirtyRef.current) {
-      payload.description = savedDescription;
-      descriptionDirtyRef.current = false;
+      // Hindari PUT redundan yang memicu broadcast realtime -> refetch ->
+      // "refresh terus" saat nilai sebenarnya sama dengan server.
+      const serverDescription = currentDetail.description ?? "";
+      if (savedDescription === serverDescription) {
+        descriptionDirtyRef.current = false;
+      } else {
+        payload.description = savedDescription;
+        descriptionDirtyRef.current = false;
+      }
     }
     if (dueDateDirtyRef.current) {
-      payload.due_date = savedDueDate || null;
-      dueDateDirtyRef.current = false;
+      const serverDueDate = currentDetail.due_date
+        ? currentDetail.due_date.replace(" ", "T").slice(0, 16)
+        : "";
+      if (savedDueDate === serverDueDate) {
+        dueDateDirtyRef.current = false;
+      } else {
+        payload.due_date = savedDueDate || null;
+        dueDateDirtyRef.current = false;
+      }
     }
     if (Object.keys(payload).length === 0) return true;
 
@@ -113,10 +127,12 @@ export default function useCardDescription(
 
   const scheduleSave = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    // 1200ms: cukup responsif untuk autosave, tapi tidak menembak API di
+    // setiap jeda ketik singkat (yang memicu storm broadcast realtime).
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null;
       void persistDirtyFields();
-    }, 700);
+    }, 1200);
   }, [persistDirtyFields]);
 
   const setDescription: Dispatch<SetStateAction<string>> = useCallback(
