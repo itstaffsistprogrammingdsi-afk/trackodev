@@ -99,6 +99,8 @@ class ReportController extends Controller
                 'board',
                 'labels',
                 'brands',
+                'sourceDivision:id,name',
+                'mirroredBy:id,name',
                 'attachments' => function ($attachmentQuery) {
                     $attachmentQuery
                         ->whereNull('archived_at')
@@ -651,6 +653,8 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
                     'board',
                     'labels',
                     'brands',
+                    'sourceDivision:id,name',
+                    'mirroredBy:id,name',
                     'attachments' => function ($attQ) {
                         $attQ
                             ->whereNull('archived_at')

@@ -67,6 +67,10 @@ export interface Card {
   labels: Label[];
   assignees: User[];
   attachments: Attachment[];
+  is_cross_division_copy?: boolean;
+  parent_card_id?: string | null;
+  source_division?: { id: string; name: string } | null;
+  mirrored_by?: { id: string; name: string } | null;
 }
 
 export interface FilterParams {

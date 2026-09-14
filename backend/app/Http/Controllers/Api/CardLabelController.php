@@ -35,6 +35,13 @@ class CardLabelController extends Controller
         $label = Label::findOrFail($validated['label_id']);
         ApplicationDataChanged::dispatch($card, 'updated');
 
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)
+                ->syncLabel($card, (string) $validated['label_id'], true, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION LABEL MIRROR ERROR', ['card_id' => $card->id, 'message' => $e->getMessage()]);
+        }
+
         ActivityLogService::log(
             auth()->user(),
 
@@ -63,6 +70,13 @@ class CardLabelController extends Controller
         $card->labels()
             ->detach($label->id);
         ApplicationDataChanged::dispatch($card, 'updated');
+
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)
+                ->syncLabel($card, (string) $label->id, false, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION LABEL MIRROR ERROR', ['card_id' => $card->id, 'message' => $e->getMessage()]);
+        }
 
         ActivityLogService::log(
             auth()->user(),
@@ -119,6 +133,13 @@ class CardLabelController extends Controller
         }
 
         ApplicationDataChanged::dispatch($card, 'updated');
+
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)
+                ->syncLabel($card, (string) $labelId, ! $exists, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION LABEL MIRROR ERROR', ['card_id' => $card->id, 'message' => $e->getMessage()]);
+        }
 
         ActivityLogService::log(
             auth()->user(),

@@ -38,6 +38,12 @@ class TaskController extends Controller
             ['card_id' => $card->id, 'task_id' => $task->id, 'task_title' => $task->title]
         );
 
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)->syncTaskCreated($task, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION TASK MIRROR ERROR', ['task_id' => $task->id, 'message' => $e->getMessage()]);
+        }
+
         return response()->json(['message' => 'Task berhasil dibuat.', 'data' => new TaskResource($task)], 201);
     }
 
@@ -63,6 +69,12 @@ class TaskController extends Controller
             ]
         );
 
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)->syncTaskUpdated($task, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION TASK MIRROR ERROR', ['task_id' => $task->id, 'message' => $e->getMessage()]);
+        }
+
         return response()->json(['message' => 'Task berhasil diupdate.', 'data' => new TaskResource($task)]);
     }
 
@@ -81,6 +93,12 @@ class TaskController extends Controller
                 : "Membuka kembali task '{$task->title}' di card '{$task->card->title}'",
             ['card_id' => $task->card->id, 'task_id' => $task->id, 'task_title' => $task->title]
         );
+
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)->syncTaskUpdated($task, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION TASK MIRROR ERROR', ['task_id' => $task->id, 'message' => $e->getMessage()]);
+        }
 
         return response()->json(['message' => 'Status task berhasil diubah.', 'data' => new TaskResource($task)]);
     }
@@ -131,6 +149,13 @@ class TaskController extends Controller
     public function destroy(Task $task): JsonResponse
     {
         $this->authorizeTask($task);
+
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)->syncTaskDeleted($task, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION TASK MIRROR ERROR', ['task_id' => $task->id, 'message' => $e->getMessage()]);
+        }
+
         $task->delete();
         ActivityLogService::log(
             auth()->user(),
@@ -169,6 +194,12 @@ class TaskController extends Controller
             ['card_id' => $task->card->id, 'task_id' => $task->id, 'subtask_id' => $subtask->id, 'subtask_title' => $subtask->title]
         );
 
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)->syncSubtaskEvent($subtask, 'created', auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION SUBTASK MIRROR ERROR', ['subtask_id' => $subtask->id, 'message' => $e->getMessage()]);
+        }
+
         return response()->json(['message' => 'Subtask berhasil dibuat.', 'data' => $subtask], 201);
     }
 
@@ -195,6 +226,12 @@ class TaskController extends Controller
             ]
         );
 
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)->syncSubtaskEvent($subtask, 'updated', auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION SUBTASK MIRROR ERROR', ['subtask_id' => $subtask->id, 'message' => $e->getMessage()]);
+        }
+
         return response()->json(['message' => 'Subtask berhasil diupdate.', 'data' => $subtask]);
     }
 
@@ -214,12 +251,28 @@ class TaskController extends Controller
             ['card_id' => $subtask->task->card->id, 'task_id' => $subtask->task->id, 'subtask_id' => $subtask->id, 'subtask_title' => $subtask->title]
         );
 
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)->syncSubtaskEvent($subtask, 'updated', auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION SUBTASK MIRROR ERROR', ['subtask_id' => $subtask->id, 'message' => $e->getMessage()]);
+        }
+
         return response()->json(['message' => 'Status subtask berhasil diubah.', 'data' => $subtask]);
     }
 
     public function destroySubtask(Subtask $subtask): JsonResponse
     {
         $this->authorizeSubtask($subtask);
+
+        // Simpan relasi sebelum delete untuk propagasi mirror.
+        $subtask->loadMissing('task.card');
+
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)->syncSubtaskEvent($subtask, 'deleted', auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION SUBTASK MIRROR ERROR', ['subtask_id' => $subtask->id, 'message' => $e->getMessage()]);
+        }
+
         $subtask->delete();
         ActivityLogService::log(
             auth()->user(),

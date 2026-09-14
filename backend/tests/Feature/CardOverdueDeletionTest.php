@@ -44,7 +44,7 @@ class CardOverdueDeletionTest extends TestCase
         $this->assertDatabaseMissing('cards', ['id' => $card->id]);
     }
 
-    public function test_only_card_creator_admin_and_super_admin_can_edit_due_date(): void
+    public function test_only_card_creator_admin_assignee_and_super_admin_can_edit_due_date(): void
     {
         [$creator, $board] = $this->createCampaignMember();
         $card = $this->createCard($board, $creator, now()->addDay());
@@ -79,6 +79,14 @@ class CardOverdueDeletionTest extends TestCase
             'due_date' => null,
         ])->assertForbidden();
         $this->assertDatabaseHas('cards', ['id' => $card->id]);
+
+        // Mirror lintas divisi: assignee boleh mengubah due date agar
+        // perubahan dua arah benar-benar bisa terjadi.
+        $card->assignees()->attach($otherUser->id);
+
+        $this->putJson('/api/cards/'.$card->id, [
+            'due_date' => now()->addDays(3),
+        ])->assertOk();
 
         Sanctum::actingAs($creator);
         $this->putJson('/api/cards/'.$card->id, [

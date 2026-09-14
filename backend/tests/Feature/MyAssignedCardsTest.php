@@ -25,7 +25,7 @@ class MyAssignedCardsTest extends TestCase
         $this->seed(PermissionSeeder::class);
     }
 
-    public function test_cross_division_assignee_sees_one_canonical_card_in_my_work_and_can_move_it(): void
+    public function test_cross_division_assignee_sees_source_and_mirror_copy_in_my_work_and_can_move_them(): void
     {
         $bagas = User::factory()->create(['name' => 'Bagas']);
         $bagas->assignRole(User::ROLE_USER);
@@ -42,9 +42,9 @@ class MyAssignedCardsTest extends TestCase
             'slug' => 'dkv-'.str()->random(8),
         ]);
         $digitalMarketing->users()->attach($bagas->id, ['role' => 'member']);
-        // Risa is the DKV coordinator in this test, so Bagas may assign her
-        // through the existing cross-division hierarchy.
-        $dkv->users()->attach($risa->id, ['role' => 'admin']);
+        // Kebijakan lintas divisi (hasil UAT): staff DM boleh assign langsung
+        // ke staff DKV; copy mirror dibuat otomatis di division DKV.
+        $dkv->users()->attach($risa->id, ['role' => 'member']);
 
         $workspace = Workspace::create([
             'division_id' => $digitalMarketing->id,
@@ -124,13 +124,27 @@ class MyAssignedCardsTest extends TestCase
 
         Sanctum::actingAs($risa);
 
-        $this->getJson('/api/cards/mine')
+        // Risa melihat 2 card: sumber (DM) + copy mirror (DKV).
+        $mine = $this->getJson('/api/cards/mine')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $assignedCard->id)
-            ->assertJsonPath('data.0.source.division.name', 'Digital Marketing')
-            ->assertJsonPath('data.0.source.campaign.name', 'Promo Ayuko September 2026')
-            ->assertJsonCount(3, 'data.0.source.workflow_boards');
+            ->assertJsonCount(2, 'data')
+            ->json('data');
+
+        $byId = collect($mine)->keyBy('id');
+        $this->assertTrue($byId->has($assignedCard->id));
+
+        $copy = Card::query()->where('parent_card_id', $assignedCard->id)->firstOrFail();
+        $this->assertTrue($byId->has($copy->id));
+
+        $this->assertSame($assignedCard->id, $byId[$assignedCard->id]['id']);
+        $this->assertSame('Digital Marketing', $byId[$assignedCard->id]['source']['division']['name']);
+        $this->assertSame('Promo Ayuko September 2026', $byId[$assignedCard->id]['source']['campaign']['name']);
+        $this->assertCount(3, $byId[$assignedCard->id]['source']['workflow_boards']);
+
+        // Badge copy: dari division DM, ditugaskan oleh Bagas.
+        $this->assertTrue($byId[$copy->id]['is_cross_division_copy']);
+        $this->assertSame('Digital Marketing', $byId[$copy->id]['source_division']['name']);
+        $this->assertSame('Bagas', $byId[$copy->id]['mirrored_by']['name']);
 
         $this->patchJson('/api/cards/'.$assignedCard->id.'/move', [
             'board_id' => $progress->id,
@@ -141,6 +155,19 @@ class MyAssignedCardsTest extends TestCase
             'board_id' => $progress->id,
             'status' => 'in_progress',
         ]);
-        $this->assertSame(2, Card::query()->count());
+
+        // Pindah di DM ikut memindahkan copy DKV ke kolom progress.
+        $this->assertSame('progress', $copy->fresh()->board->type);
+
+        // Pindah dari sisi copy ikut memindahkan card sumber (dua arah).
+        $copyProgressBoard = $copy->fresh()->board;
+        $copyTodoBoard = $copyProgressBoard->campaign->boards()->where('type', 'todo')->firstOrFail();
+
+        $this->patchJson('/api/cards/'.$copy->id.'/move', [
+            'board_id' => $copyTodoBoard->id,
+        ])->assertOk();
+
+        $this->assertSame('todo', $assignedCard->fresh()->board->type);
+        $this->assertSame(3, Card::query()->count());
     }
 }

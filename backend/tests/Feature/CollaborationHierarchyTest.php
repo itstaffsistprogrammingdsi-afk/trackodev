@@ -21,21 +21,22 @@ class CollaborationHierarchyTest extends TestCase
         $this->seed(PermissionSeeder::class);
     }
 
-    public function test_staff_assignment_candidates_include_destination_leaders_only(): void
+    public function test_staff_assignment_candidates_include_users_across_divisions(): void
     {
         [$itStaff, $dkvLeader, $dkvStaff] = $this->createCollaborationUsers();
         Sanctum::actingAs($itStaff);
 
+        // Kebijakan lintas divisi (hasil UAT): staff dapat melihat dan memilih
+        // user dari divisi mana pun, bukan hanya pimpinan division tujuan.
         $this->getJson('/api/users/mentionable?search=DKV&collaborator=1')
             ->assertOk()
             ->assertJsonFragment(['id' => $dkvLeader->id])
-            ->assertJsonFragment(['collaborator_label' => 'Admin Divisi'])
-            ->assertJsonMissing(['id' => $dkvStaff->id]);
+            ->assertJsonFragment(['id' => $dkvStaff->id]);
 
         $this->getJson('/api/users/assignment-candidates')
             ->assertOk()
             ->assertJsonFragment(['id' => $dkvLeader->id])
-            ->assertJsonMissing(['id' => $dkvStaff->id]);
+            ->assertJsonFragment(['id' => $dkvStaff->id]);
 
         Sanctum::actingAs($dkvLeader);
         $this->getJson('/api/users/assignment-candidates')
@@ -43,30 +44,23 @@ class CollaborationHierarchyTest extends TestCase
             ->assertJsonFragment(['id' => $dkvStaff->id]);
     }
 
-    public function test_staff_must_collaborate_through_target_division_leader(): void
+    public function test_staff_can_collaborate_directly_across_divisions(): void
     {
         [$itStaff, $dkvLeader, $dkvStaff, $itDivision] = $this->createCollaborationUsers();
         $workspace = $itDivision->workspaces()->create(['name' => 'Kolaborasi IT DKV']);
 
         Sanctum::actingAs($itStaff);
 
-        $this->postJson("/api/workspaces/{$workspace->id}/campaigns", [
+        $campaignResponse = $this->postJson("/api/workspaces/{$workspace->id}/campaigns", [
             'name' => 'Kolaborasi langsung Staff',
             'type' => 'group',
             'member_ids' => [$dkvStaff->id],
-        ])->assertUnprocessable()
-            ->assertJsonValidationErrors('member_ids');
-
-        $campaignResponse = $this->postJson("/api/workspaces/{$workspace->id}/campaigns", [
-            'name' => 'Kolaborasi melalui koordinator',
-            'type' => 'group',
-            'member_ids' => [$dkvLeader->id],
         ])->assertCreated();
 
         $campaignId = $campaignResponse->json('data.id');
         $this->assertDatabaseHas('campaign_user', [
             'campaign_id' => $campaignId,
-            'user_id' => $dkvLeader->id,
+            'user_id' => $dkvStaff->id,
         ]);
 
         $campaign = \App\Models\Campaign::findOrFail($campaignId);
@@ -78,17 +72,43 @@ class CollaborationHierarchyTest extends TestCase
         ]);
 
         $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])
-            ->assertForbidden();
-
-        Sanctum::actingAs($dkvLeader);
-
-        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])
             ->assertOk();
 
         $this->assertDatabaseHas('card_user', [
             'card_id' => $card->id,
             'user_id' => $dkvStaff->id,
         ]);
+
+        // Copy mirror lintas divisi dibuat otomatis di division DKV.
+        $this->assertDatabaseHas('cards', [
+            'parent_card_id' => $card->id,
+            'is_cross_division_copy' => true,
+        ]);
+
+        // Guard tersisa: user tanpa division tetap ditolak.
+        $outsider = User::factory()->create(['name' => 'Tanpa Division']);
+        $outsider->assignRole(User::ROLE_USER);
+
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $outsider->id])
+            ->assertForbidden();
+
+        // Pimpinan division tujuan yang belum menjadi member tidak punya
+        // akses ke card (otorisasi card tetap berlaku).
+        Sanctum::actingAs($dkvLeader);
+
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])
+            ->assertForbidden();
+
+        // Setelah diundang, pimpinan division bisa saling assign lintas divisi.
+        Sanctum::actingAs($itStaff);
+
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvLeader->id])
+            ->assertOk();
+
+        Sanctum::actingAs($dkvLeader);
+
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])
+            ->assertOk();
     }
 
     public function test_super_admin_can_search_all_users_as_campaign_collaborators(): void

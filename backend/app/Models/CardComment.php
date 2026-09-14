@@ -11,7 +11,7 @@ class CardComment extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['card_id', 'user_id', 'parent_id', 'content'];
+    protected $fillable = ['card_id', 'source_comment_id', 'user_id', 'parent_id', 'content'];
 
     public function card(): BelongsTo
     {

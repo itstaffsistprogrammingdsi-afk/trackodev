@@ -212,13 +212,11 @@ class User extends Authenticatable
     /**
      * Tentukan apakah user boleh memilih target assignment.
      *
-     * Aturan assignment:
-     * - Super Admin dapat ditugaskan langsung oleh siapa pun.
-     * - Staff hanya dapat meneruskan pekerjaan kepada Admin Divisi tujuan;
-     *   staff tidak dapat menunjuk staff lain secara langsung.
-     * - Admin Divisi dapat menunjuk staff di divisinya dan Admin Divisi lain
-     *   untuk meneruskan pekerjaan lintas divisi.
-     * - Super Admin sebagai actor memiliki akses penuh.
+     * Kebijakan lintas divisi (hasil UAT): user mana pun boleh menugaskan
+     * atau menambahkan user lain walau beda divisi. Satu-satunya guard yang
+     * tersisa adalah target wajib terdaftar pada minimal satu division agar
+     * setiap undangan lintas divisi memiliki pemilik divisi yang jelas dan
+     * copy mirror punya destinasi yang valid.
      */
     public function canCoordinateAssignmentTo(User $target): bool
     {
@@ -226,44 +224,19 @@ class User extends Authenticatable
             return true;
         }
 
-        $actorDivisionIds = $this->divisions()->pluck('divisions.id');
-        $targetDivisionIds = $target->divisions()->pluck('divisions.id');
-        $targetIsDivisionAdmin = $target->isAdmin()
-            || $target->divisions()->wherePivot('role', 'admin')->exists();
-        $actorIsDivisionAdmin = $this->isAdmin()
-            || $this->divisions()->wherePivot('role', 'admin')->exists();
-
-        // Admin Divisi menjadi pintu masuk resmi untuk pekerjaan lintas
-        // divisi. Karena itu Admin Divisi tujuan boleh dipilih langsung oleh
-        // actor mana pun, termasuk staff dari divisi lain.
-        if ($targetIsDivisionAdmin) {
-            return true;
-        }
-
-        // Hanya Admin Divisi yang boleh menunjuk staff, dan hanya staff
-        // dalam divisi yang memang dikelolanya.
-        return $actorIsDivisionAdmin
-            && $actorDivisionIds->intersect($targetDivisionIds)->isNotEmpty();
+        return $target->divisions()->exists();
     }
 
     /**
-     * Card collaborators within the same division may assign one another.
+     * Card collaborators lintas divisi boleh saling assign.
      *
-     * The stricter coordinator hierarchy remains in place for form
-     * coordination and cross-division assignment flows. This helper is
-     * intentionally scoped to card members so those workflows do not gain a
-     * broader target-selection policy as a side effect.
+     * Kebijakan lama (sesama satu divisi / via koordinator) sudah dilonggarkan
+     * mengikuti permintaan UAT. Helper ini dipertahankan sebagai titik ekstensi
+     * agar workflow form coordination tidak ikut berubah perilakunya.
      */
     public function canAssignCardMemberTo(User $target): bool
     {
-        if ($this->canCoordinateAssignmentTo($target)) {
-            return true;
-        }
-
-        $actorDivisionIds = $this->divisions()->pluck('divisions.id');
-        $targetDivisionIds = $target->divisions()->pluck('divisions.id');
-
-        return $actorDivisionIds->intersect($targetDivisionIds)->isNotEmpty();
+        return $this->canCoordinateAssignmentTo($target);
     }
 
 

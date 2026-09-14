@@ -29,6 +29,7 @@ import DeleteBoardDialog from "../components/DeleteBoardDialog";
 import CardDetailModal from "@/features/card/components/CardDetailModal";
 
 import { moveCard, reorderCards } from "@/features/card/api/card.api";
+import { alertIfMirrorConflict } from "@/features/card/utils/mirrorConflict";
 import { getCampaign } from "@/features/campaign/api/campaign.api";
 import type { Campaign } from "@/features/campaign/types";
 import { reorderBoards } from "../api/board.api";
@@ -466,6 +467,10 @@ const { campaignId } = useParams<{ campaignId: string }>();
 
       await refetch();
     } catch (error) {
+      if (alertIfMirrorConflict(error)) {
+        await refetch();
+        return;
+      }
       console.error("Drag error:", error);
       await refetch();
     }
