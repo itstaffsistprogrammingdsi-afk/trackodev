@@ -72,6 +72,18 @@ function activityCopy(activity: ActivityLog) {
   };
   if (changes[activity.action]) return changes[activity.action];
 
+  if (activity.action === "mirrored") {
+    return { title: "membuat copy lintas divisi", detail };
+  }
+
+  if (activity.action === "mirror_synced") {
+    return { title: "menyinkronkan perubahan lintas divisi", detail };
+  }
+
+  if (activity.action === "mirror_removed") {
+    return { title: "menghapus copy lintas divisi", detail };
+  }
+
   if (activity.entity_type === "task" || activity.entity_type === "subtask") {
     const noun = activity.entity_type;
     const verbs: Record<string, string> = {
@@ -273,7 +285,12 @@ export default function ActivitySection({
                         </span>
                         <div className="min-w-0 flex-1 pt-0.5">
                           <p className="text-sm leading-5 text-slate-700 dark:text-slate-200">
-                            <span className="font-semibold">{activity.user?.name ?? "Sistem"}</span>{" "}
+                            <span className="font-semibold">
+                              {activity.user?.name ?? "Sistem"}
+                              {activity.user?.divisions?.length
+                                ? ` - ${activity.user.divisions.map((division) => division.name).join(", ")}`
+                                : ""}
+                            </span>{" "}
                             {copy.title}
                           </p>
                           {copy.detail && (

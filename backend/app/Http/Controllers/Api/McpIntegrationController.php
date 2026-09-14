@@ -368,6 +368,12 @@ class McpIntegrationController extends Controller
 
         if ((bool) $task->is_completed !== $completed) {
             $task->update(['is_completed' => $completed]);
+
+            try {
+                app(\App\Services\CrossDivisionMirrorService::class)->syncTaskUpdated($task->fresh(), $request->user());
+            } catch (\Throwable $e) {
+                \Log::warning('CROSS DIVISION TASK MIRROR ERROR', ['task_id' => $task->id, 'message' => $e->getMessage()]);
+            }
             ActivityLogService::log(
                 $request->user(),
                 'task',

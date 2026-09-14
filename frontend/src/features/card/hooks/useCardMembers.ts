@@ -1,4 +1,5 @@
 import { assignMember, unassignMember } from "../api/card.api";
+import { alertIfMirrorConflict } from "../utils/mirrorConflict";
 
 interface Props {
   cardId?: string;
@@ -29,6 +30,11 @@ export default function useCardMembers({
       await fetchDetail();
       onUpdated?.();
     } catch (err) {
+      if (alertIfMirrorConflict(err)) {
+        await fetchDetail();
+        onUpdated?.();
+        return;
+      }
       console.error(
         "FAILED ASSIGN MEMBER",
         err,

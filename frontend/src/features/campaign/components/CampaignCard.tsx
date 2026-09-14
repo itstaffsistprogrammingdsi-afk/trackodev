@@ -266,9 +266,7 @@ export default function CampaignCard({
                 <p className="mt-0.5 text-xs text-gray-500">
                   {isSuperAdmin
                     ? "Super Admin dapat menambahkan semua user."
-                    : isAdmin
-                      ? "Admin dapat menambahkan anggota dari division mana pun. Admin division asal akan menerima notifikasi untuk undangan lintas division."
-                      : "Khusus Kepala Bagian sampai SPV."}
+                    : "Tambahkan anggota dari division mana pun. Admin division asal akan menerima notifikasi untuk undangan lintas division."}
                 </p>
               </div>
               <button aria-label="Tutup dialog collaborator" onClick={() => setShowMembers(false)}>

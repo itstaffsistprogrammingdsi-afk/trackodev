@@ -25,6 +25,7 @@ import {
 import CardDetailModal from "@/features/card/components/CardDetailModal";
 import CardItem from "@/features/card/components/CardItem";
 import { getMyCards, moveCard } from "@/features/card/api/card.api";
+import { alertIfMirrorConflict } from "@/features/card/utils/mirrorConflict";
 import type { Card, CardWorkflowBoard } from "@/features/card/types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
@@ -222,6 +223,12 @@ export default function MyAssignedTasks() {
     try {
       await moveCard(card.id, targetBoardId);
       await refetch();
+    } catch (error) {
+      if (alertIfMirrorConflict(error)) {
+        await refetch();
+        return;
+      }
+      throw error;
     } finally {
       setMovingCardId(null);
     }

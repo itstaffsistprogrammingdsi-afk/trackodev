@@ -44,14 +44,20 @@ class ActivityLogController extends Controller
         $category = $validated['category'] ?? 'all';
         $limit = $validated['limit'] ?? 8;
 
-        $query = ActivityLog::with('user')
-            ->where(function ($query) use ($card) {
-                $query->where(function ($q) use ($card) {
+        // History gabungan satu family mirror: log asli + seluruh copy
+        // (termasuk unassign/mirror_removed setelah copy dihapus, karena
+        // ActivityLog tidak cascade). User dimuat bersama division-nya agar
+        // frontend bisa merender "Risa - DKV mengubah deskripsi".
+        $familyIds = $card->familyIds();
+
+        $query = ActivityLog::with(['user.divisions:id,name'])
+            ->where(function ($query) use ($familyIds) {
+                $query->where(function ($q) use ($familyIds) {
                     $q->where('entity_type', 'card')
-                        ->where('entity_id', $card->id);
+                        ->whereIn('entity_id', $familyIds);
                 });
 
-                $query->orWhere('meta->card_id', (string) $card->id);
+                $query->orWhereIn('meta->card_id', $familyIds);
             })
             ->whereNotIn('action', ['downloaded', 'reordered']);
 

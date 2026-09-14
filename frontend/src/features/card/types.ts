@@ -46,6 +46,7 @@ export interface User {
   division_role?: "admin" | "member" | null;
   division_names?: string[];
   can_assign?: boolean;
+  is_cross_division?: boolean;
 }
 
 export interface Label {
@@ -156,6 +157,14 @@ export type Card = {
 
   source?: CardSourceContext | null;
 
+  is_cross_division_copy?: boolean;
+
+  parent_card_id?: string | null;
+
+  source_division?: { id: string; name: string } | null;
+
+  mirrored_by?: { id: string; name: string } | null;
+
   board?: Board;
 };
 
@@ -198,6 +207,7 @@ export interface ActivityLog {
   user?: {
     id: string;
     name: string;
+    divisions?: { id: string; name: string }[];
   };
 }
 

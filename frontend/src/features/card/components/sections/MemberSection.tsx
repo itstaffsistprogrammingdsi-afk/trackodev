@@ -47,7 +47,7 @@ const filteredUsers = users
       ========================================= */}
       <div>
         <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
-          Member dalam satu divisi dapat saling menugaskan. Assignment lintas divisi tetap melalui koordinator.
+          Member dapat ditugaskan lintas divisi. Card yang di-assign ke divisi lain otomatis mendapat copy di division tersebut dan tersinkron dua arah.
         </div>
         <input
           type="text"
@@ -120,7 +120,7 @@ const filteredUsers = users
         {/* HEADER */}
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Division Members
+            Members (semua divisi)
           </p>
 
 <span className="text-xs text-gray-400">
@@ -156,6 +156,13 @@ const filteredUsers = users
                     <p className="truncate text-[11px] text-gray-500">
                       {user.email}
                     </p>
+
+                    {user.division_names?.length ? (
+                      <p className="truncate text-[11px] text-gray-400">
+                        {user.division_names.join(" · ")}
+                        {user.is_cross_division ? " · lintas divisi" : ""}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -167,7 +174,7 @@ const filteredUsers = users
                 ) : user.can_assign === false ? (
                   <span
                     className="text-[11px] font-medium text-gray-400"
-                    title="Pilih koordinator divisi tujuan untuk menugaskan member ini"
+                    title="User ini belum terdaftar pada division mana pun sehingga belum bisa di-assign"
                   >
                     Hanya lihat
                   </span>

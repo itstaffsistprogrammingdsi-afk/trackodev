@@ -655,32 +655,17 @@ class CampaignController extends Controller
             return;
         }
 
-        if ($actor->isDivisionAdmin()) {
-            // Admin campaign boleh mengundang anggota dari divisi mana pun.
-            // User tanpa divisi tetap harus ditangani Super Admin agar setiap
-            // undangan lintas divisi memiliki pemilik divisi yang jelas.
-            $eligibleIds = User::query()
-                ->whereIn('id', $candidateIds)
-                ->whereHas('divisions')
-                ->pluck('id');
-
-            if ($candidateIds->diff($eligibleIds)->isNotEmpty()) {
-                throw ValidationException::withMessages([
-                    $field => 'Admin hanya dapat menambahkan user yang terdaftar pada minimal satu division.',
-                ]);
-            }
-
-            return;
-        }
-
-        $hasStaffCandidate = User::query()
+        // Kebijakan lintas divisi (hasil UAT): staff maupun admin boleh
+        // menambahkan user dari divisi mana pun. Satu-satunya guard adalah
+        // target wajib terdaftar pada minimal satu division.
+        $eligibleIds = User::query()
             ->whereIn('id', $candidateIds)
-            ->get()
-            ->contains(fn (User $candidate) => ! $candidate->isCollaborationLeader());
+            ->whereHas('divisions')
+            ->pluck('id');
 
-        if ($hasStaffCandidate) {
+        if ($candidateIds->diff($eligibleIds)->isNotEmpty()) {
             throw ValidationException::withMessages([
-                $field => 'Collaborator hanya dapat dipilih dari Kepala Bagian sampai SPV. Staff tidak dapat menjadi collaborator langsung.',
+                $field => 'Hanya user yang terdaftar pada minimal satu division yang dapat ditambahkan.',
             ]);
         }
     }
