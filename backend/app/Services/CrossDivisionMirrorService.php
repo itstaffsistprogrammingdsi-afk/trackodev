@@ -196,6 +196,97 @@ class CrossDivisionMirrorService
     }
 
     // ============================================
+    // KANDIDAT MEMBER (dipakai card tool & board)
+    // ============================================
+    // Satu sumber kebenaran agar picker di card tool (member-candidates)
+    // dan form tambah-task di board menampilkan daftar user yang sama:
+    // roster division pemilik dulu, lalu user lain (lintas division maupun
+    // belum ber-division) agar pencarian selalu menemukan user yang ada di
+    // User Management. Flag can_assign/has_division memberi tahu UI siapa
+    // yang bisa di-assign; endpoint assign/create tetap otoritas final.
+
+    /**
+     * @return \Illuminate\Support\Collection<int, array>
+     */
+    public function memberCandidates(
+        ?Division $division,
+        User $actor,
+        ?string $search = null,
+        int $limit = 100
+    ) {
+        $limit = max(1, min($limit, 1000));
+
+        $applySearch = function ($userQuery) use ($search) {
+            if (! empty($search)) {
+                $userQuery->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('users.name', 'like', "%{$search}%")
+                        ->orWhere('users.email', 'like', "%{$search}%");
+                });
+            }
+        };
+
+        $formatCandidate = function (User $candidate) use ($actor, $division) {
+            $hasDivision = $candidate->relationLoaded('divisions')
+                ? $candidate->divisions->isNotEmpty()
+                : $candidate->divisions()->exists();
+
+            return [
+                'id' => $candidate->id,
+                'name' => $candidate->name,
+                'email' => $candidate->email,
+                'avatar' => $candidate->avatar
+                    ? asset('storage/'.$candidate->avatar)
+                    : null,
+                'roles' => $candidate->getRoleNames()->values(),
+                'division_role' => $candidate->pivot?->role,
+                'division_names' => $candidate->divisions->pluck('name')->values(),
+                'has_division' => $hasDivision,
+                'is_cross_division' => $division
+                    ? ! $candidate->divisions->contains('id', $division->id)
+                    : false,
+                'can_assign' => (
+                    $actor->can('card.assign')
+                    || $actor->can('task.assign')
+                ) && $actor->canAssignCardMemberTo($candidate),
+            ];
+        };
+
+        $users = collect();
+
+        // Roster division pemilik selalu diutamakan.
+        if ($division) {
+            $divisionUsers = $division->users()
+                ->with(['roles', 'divisions:id,name'])
+                ->orderBy('users.name');
+
+            $applySearch($divisionUsers);
+
+            $users = $users->concat($divisionUsers->limit($limit)->get());
+        }
+
+        $remaining = max(0, $limit - $users->count());
+
+        if ($remaining > 0) {
+            $crossQuery = User::query()
+                ->select(['users.id', 'users.name', 'users.email', 'users.avatar'])
+                ->with(['roles', 'divisions:id,name'])
+                ->when($division, fn ($crossDivisionQuery) => $crossDivisionQuery
+                    ->whereNotIn('users.id', $users->pluck('id'))
+                    ->whereDoesntHave('divisions', fn ($membershipQuery) => $membershipQuery
+                        ->where('divisions.id', $division->id)))
+                ->orderByRaw('(select count(*) from division_user where division_user.user_id = users.id) desc')
+                ->orderBy('users.name');
+
+            $applySearch($crossQuery);
+
+            $users = $users->concat($crossQuery->limit($remaining)->get());
+        }
+
+        return $users->map($formatCandidate)->values();
+    }
+
+    // ============================================
     // PENCARIAN CAMPAIGN MILIK ASSIGNEE (BY NAMA)
     // ============================================
 
@@ -296,6 +387,43 @@ class CrossDivisionMirrorService
     }
 
     /**
+     * Validasi + ambil campaign tujuan eksplisit pilihan pengassign.
+     * Mengembalikan null bila tidak valid (tanpa efek samping bila
+     * $syncMember false — dipakai pra-validasi sebelum card dibuat).
+     */
+    public function findTargetCampaign(
+        ?string $targetCampaignId,
+        User $assignee,
+        ?Division $targetDivision,
+        bool $syncMember = true
+    ): ?Campaign {
+        if (! $targetCampaignId || ! $targetDivision) {
+            return null;
+        }
+
+        $campaign = Campaign::query()
+            ->with('workspace.division')
+            ->whereKey($targetCampaignId)
+            ->first();
+
+        $valid = $campaign
+            && $campaign->name !== self::INBOX_CAMPAIGN_NAME
+            && (string) $campaign->workspace?->division_id === (string) $targetDivision->id
+            && ((string) $campaign->created_by === (string) $assignee->id
+                || $campaign->members()->where('users.id', $assignee->id)->exists());
+
+        if (! $valid) {
+            return null;
+        }
+
+        if ($syncMember) {
+            $campaign->members()->syncWithoutDetaching([$assignee->id]);
+        }
+
+        return $campaign;
+    }
+
+    /**
      * Campaign tujuan final: pilihan eksplisit pengassign (divalidasi),
      * pembuatan baru bila diminta, pencocokan otomatis, atau fallback Inbox.
      */
@@ -309,24 +437,13 @@ class CrossDivisionMirrorService
         ?string $campaignName = null
     ): Campaign {
         if ($targetCampaignId) {
-            $campaign = Campaign::query()
-                ->with('workspace.division')
-                ->whereKey($targetCampaignId)
-                ->first();
+            $campaign = $this->findTargetCampaign($targetCampaignId, $assignee, $targetDivision);
 
-            $valid = $campaign
-                && $campaign->name !== self::INBOX_CAMPAIGN_NAME
-                && (string) $campaign->workspace?->division_id === (string) $targetDivision->id
-                && ((string) $campaign->created_by === (string) $assignee->id
-                    || $campaign->members()->where('users.id', $assignee->id)->exists());
-
-            if (! $valid) {
+            if (! $campaign) {
                 throw ValidationException::withMessages([
                     'target_campaign_id' => 'Campaign tujuan tidak valid untuk user yang dipilih.',
                 ]);
             }
-
-            $campaign->members()->syncWithoutDetaching([$assignee->id]);
 
             return $campaign;
         }
@@ -592,6 +709,12 @@ class CrossDivisionMirrorService
                 try {
                     $campaign = $this->resolveTargetCampaign($root, $assignee, $actor, $targetDivision, $targetCampaignId, $createCampaign, $campaignName);
                     $targetBoard = $this->resolveTargetBoard($campaign, $root->board?->type);
+
+                    // Pengassign dijadikan member campaign tujuan agar bisa
+                    // membuka/melihat copy yang ia picu (tombol redirect
+                    // "Lihat campaign" di frontend). Inbox sudah
+                    // menanganinya sendiri; ini untuk campaign milik user.
+                    $campaign->members()->syncWithoutDetaching([$actor->id]);
 
                     $existing = Card::query()
                         ->where('parent_card_id', $rootId)

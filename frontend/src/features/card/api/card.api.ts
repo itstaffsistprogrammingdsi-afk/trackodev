@@ -104,6 +104,36 @@ export const getReceivingCampaigns = async (
 };
 
 // =====================================================
+// BOARD MEMBER ROSTER (form tambah-task, sama dengan card tool)
+// =====================================================
+export const getBoardMemberCandidates = async (
+  boardId: string,
+): Promise<User[]> => {
+  const res = await api.get(`/boards/${boardId}/member-candidates`, {
+    params: { limit: 1000 },
+  });
+
+  return res.data.data;
+};
+
+// =====================================================
+// RECEIVING CAMPAIGNS (kandidat campaign tujuan copy mirror)
+// =====================================================
+export const getBoardReceivingCampaigns = async (
+  boardId: string,
+  userId: string,
+): Promise<{ campaigns: ReceivingCampaign[]; suggested_name: string }> => {
+  const res = await api.get(`/boards/${boardId}/receiving-campaigns`, {
+    params: { user_id: userId },
+  });
+
+  return {
+    campaigns: res.data.data,
+    suggested_name: res.data.suggested_name ?? "",
+  };
+};
+
+// =====================================================
 // MOVE CARD
 // =====================================================
 export const moveCard = (

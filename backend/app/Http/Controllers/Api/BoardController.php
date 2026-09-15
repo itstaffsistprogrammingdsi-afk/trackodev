@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BoardResource;
 use App\Models\Board;
 use App\Models\Campaign;
+use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,6 +50,96 @@ class BoardController extends Controller
 
         return response()->json([
             'data' => BoardResource::collection($boards),
+        ]);
+    }
+
+    /**
+     * Kandidat member untuk form tambah-task di board. Memakai sumber yang
+     * sama persis dengan card tool (member-candidates) agar daftar user,
+     * pencarian, dan flag assign-nya identik.
+     */
+    public function memberCandidates(Request $request, Board $board): JsonResponse
+    {
+        $campaign = $board->campaign;
+
+        abort_unless(
+            $campaign && $request->user() && $campaign->canBeAccessedBy($request->user()),
+            403,
+            'Unauthorized'
+        );
+
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
+        ]);
+
+        $board->loadMissing('campaign.workspace.division');
+        $division = $board->campaign?->workspace?->division;
+
+        $candidates = app(\App\Services\CrossDivisionMirrorService::class)
+            ->memberCandidates(
+                $division,
+                $request->user(),
+                $validated['search'] ?? null,
+                $validated['limit'] ?? 100
+            );
+
+        return response()->json(['data' => $candidates]);
+    }
+
+    /**
+     * Kandidat campaign tujuan untuk copy mirror milik target user.
+     * Versi board (form tambah-task, belum ada card): otorisasi mengikuti
+     * akses board, selebihnya identik dengan versi card.
+     */
+    public function receivingCampaigns(Request $request, Board $board): JsonResponse
+    {
+        $campaign = $board->campaign;
+
+        abort_unless(
+            $campaign && $request->user() && $campaign->canBeAccessedBy($request->user()),
+            403,
+            'Unauthorized'
+        );
+
+        $validated = $request->validate([
+            'user_id' => 'required|uuid|exists:users,id',
+        ]);
+
+        $target = User::findOrFail($validated['user_id']);
+
+        abort_unless(
+            $request->user()->canAssignCardMemberTo($target),
+            403,
+            'Hanya user yang terdaftar pada minimal satu division yang dapat di-assign.'
+        );
+
+        $mirror = app(\App\Services\CrossDivisionMirrorService::class);
+        $sourceDivisionId = $board->campaign?->workspace?->division_id
+            ? (string) $board->campaign->workspace->division_id
+            : null;
+
+        $candidates = $mirror->receivingCandidates($target)
+            ->filter(fn ($candidate) => ! $sourceDivisionId
+                || (string) $candidate->workspace?->division_id !== (string) $sourceDivisionId)
+            ->values();
+
+        return response()->json([
+            'data' => $candidates->map(fn ($candidate) => [
+                'id' => $candidate->id,
+                'name' => $candidate->name,
+                'type' => $candidate->type,
+                'is_name_match' => (bool) $candidate->getAttribute('is_name_match'),
+                'workspace' => $candidate->workspace ? [
+                    'id' => $candidate->workspace->id,
+                    'name' => $candidate->workspace->name,
+                ] : null,
+                'division' => $candidate->workspace?->division ? [
+                    'id' => $candidate->workspace->division->id,
+                    'name' => $candidate->workspace->division->name,
+                ] : null,
+            ])->values(),
+            'suggested_name' => \App\Services\CrossDivisionMirrorService::suggestedCampaignName($target),
         ]);
     }
 

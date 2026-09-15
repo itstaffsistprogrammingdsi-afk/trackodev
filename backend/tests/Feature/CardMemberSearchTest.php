@@ -48,8 +48,7 @@ class CardMemberSearchTest extends TestCase
     }
 
     public function test_search_finds_super_admin_without_division_as_assignable(): void
-    {
-        [$actor, $card] = $this->setUpCard();
+    {        [$actor, $card] = $this->setUpCard();
 
         $superAdmin = User::factory()->create(['name' => 'Super Tanpa Divisi']);
         $superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
@@ -63,10 +62,46 @@ class CardMemberSearchTest extends TestCase
         $this->assertTrue($found['can_assign']);
     }
 
+    public function test_board_member_candidates_matches_card_tool_results(): void
+    {
+        [$actor, $card] = $this->setUpCard();
+
+        $crossDivision = Division::create(['name' => 'DKV', 'slug' => 'dkv-'.Str::random(6)]);
+        $dkvStaff = User::factory()->create(['name' => 'Risa DKV']);
+        $dkvStaff->assignRole(User::ROLE_USER);
+        $crossDivision->users()->attach($dkvStaff->id, ['role' => 'member']);
+
+        $noDivision = User::factory()->create(['name' => 'Budi Tanpa Divisi']);
+        $noDivision->assignRole(User::ROLE_USER);
+
+        Sanctum::actingAs($actor);
+
+        $cardData = $this->getJson("/api/cards/{$card->id}/member-candidates?limit=1000")
+            ->assertOk()->json('data');
+        $boardData = $this->getJson("/api/boards/{$card->board_id}/member-candidates?limit=1000")
+            ->assertOk()->json('data');
+
+        // Sumber identik: urutan dan isi sama persis dengan card tool.
+        $this->assertSame(
+            collect($cardData)->pluck('id')->all(),
+            collect($boardData)->pluck('id')->all()
+        );
+
+        $byId = collect($boardData)->keyBy('id');
+        $this->assertTrue($byId->has($dkvStaff->id));
+        $this->assertTrue($byId[$dkvStaff->id]['can_assign']);
+        $this->assertTrue($byId->has($noDivision->id));
+        $this->assertFalse($byId[$noDivision->id]['can_assign']);
+
+        // Pencarian nama lintas divisi menemukan user.
+        $search = $this->getJson("/api/boards/{$card->board_id}/member-candidates?search=Risa")
+            ->assertOk()->json('data');
+        $this->assertSame($dkvStaff->id, $search[0]['id']);
+    }
+
     /** @return array{0: User, 1: Card} */
     private function setUpCard(): array
-    {
-        $division = Division::create(['name' => 'DM', 'slug' => 'dm-'.Str::random(6)]);
+    {        $division = Division::create(['name' => 'DM', 'slug' => 'dm-'.Str::random(6)]);
         $actor = User::factory()->create(['name' => 'Actor']);
         $actor->assignRole(User::ROLE_USER);
         $division->users()->attach($actor->id, ['role' => 'member']);

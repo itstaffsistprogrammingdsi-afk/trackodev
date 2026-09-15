@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CardController extends Controller
 {
@@ -219,6 +220,13 @@ class CardController extends Controller
 
             'assignees'   => 'nullable|array',
             'assignees.*' => 'uuid|exists:users,id',
+
+            // Opsi mirror per assignee (dipilih di form tambah-task):
+            // campaign tujuan eksplisit dan/atau instruksi buatkan campaign.
+            'assignee_targets'   => 'nullable|array',
+            'assignee_targets.*' => 'nullable|uuid|exists:campaigns,id',
+            'create_campaigns'   => 'nullable|array',
+            'create_campaigns.*' => 'nullable|string|max:255',
         ]);
 
         $user = auth()->user();
@@ -244,6 +252,28 @@ class CardController extends Controller
                 403,
                 'Anda tidak dapat menugaskan salah satu user yang dipilih secara langsung.'
             );
+
+            // Pra-validasi campaign tujuan eksplisit SEBELUM card dibuat agar
+            // pilihan yang salah langsung 422 (bukan copy yang hilang diam-diam).
+            $mirror = app(\App\Services\CrossDivisionMirrorService::class);
+            $board->loadMissing('campaign.workspace.division');
+            $sourceDivisionId = $board->campaign?->workspace?->division_id
+                ? (string) $board->campaign->workspace->division_id
+                : null;
+
+            foreach ($assigneeUsers as $assigneeUser) {
+                $explicitTarget = $validated['assignee_targets'][(string) $assigneeUser->id] ?? null;
+
+                if ($explicitTarget) {
+                    $targetDivision = $mirror->targetDivisionFor($assigneeUser, $sourceDivisionId);
+
+                    if (! $mirror->findTargetCampaign($explicitTarget, $assigneeUser, $targetDivision, false)) {
+                        throw ValidationException::withMessages([
+                            'assignee_targets.'.$assigneeUser->id => 'Campaign tujuan tidak valid untuk user yang dipilih.',
+                        ]);
+                    }
+                }
+            }
         }
 
         DB::beginTransaction();
@@ -370,17 +400,43 @@ class CardController extends Controller
         // ========================================
         // MIRROR LINTAS DIVISI
         // ========================================
-        // Assignee beda division otomatis mendapat copy fisik di division-nya
-        // (campaign miliknya bila cocok nama, atau Inbox). Kegagalan mirror
-        // tidak boleh menggagalkan pembuatan card.
+        // Assignee beda division otomatis mendapat copy fisik di division-nya:
+        // campaign pilihan form, campaign yang diminta dibuatkan, campaign
+        // miliknya yang cocok nama, atau Inbox. Kegagalan mirror tidak boleh
+        // menggagalkan pembuatan card (kecuali pilihan yang sudah
+        // divalidasi bermasalah — diteruskan agar user tahu).
+
+        $copyCampaigns = [];
 
         if (! empty($assignees)) {
             try {
                 $mirror = app(\App\Services\CrossDivisionMirrorService::class);
 
                 foreach ($card->assignees as $assignee) {
-                    $mirror->ensureMirror($card, $assignee, $user);
+                    $assigneeId = (string) $assignee->id;
+                    $copy = $mirror->ensureMirror(
+                        $card,
+                        $assignee,
+                        $user,
+                        $validated['assignee_targets'][$assigneeId] ?? null,
+                        array_key_exists($assigneeId, $validated['create_campaigns'] ?? []),
+                        $validated['create_campaigns'][$assigneeId] ?? null
+                    );
+
+                    if ($copy) {
+                        $copy->loadMissing('board.campaign.workspace.division');
+                        $copyCampaigns[$assigneeId] = $copy->board?->campaign ? [
+                            'id' => $copy->board->campaign->id,
+                            'name' => $copy->board->campaign->name,
+                            'is_inbox' => $copy->board->campaign->name === \App\Services\CrossDivisionMirrorService::INBOX_CAMPAIGN_NAME,
+                            'workspace_id' => $copy->board->campaign->workspace_id,
+                        ] : null;
+                    }
                 }
+            } catch (\Symfony\Component\HttpKernel\Exception\ConflictHttpException $e) {
+                throw $e;
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                throw $e;
             } catch (\Throwable $e) {
                 \Log::warning('CROSS DIVISION MIRROR ERROR', [
                     'card_id' => $card->id,
@@ -392,6 +448,7 @@ class CardController extends Controller
         return response()->json([
             'message' => 'Card berhasil dibuat.',
             'data' => new CardResource($card),
+            'copy_campaigns' => $copyCampaigns,
         ], 201);
     }
 
@@ -442,84 +499,15 @@ class CardController extends Controller
         $card->loadMissing('board.campaign.workspace.division');
         $division = $card->board?->campaign?->workspace?->division;
 
-        $search = $validated['search'] ?? null;
-        $limit = $validated['limit'] ?? 100;
+        $candidates = app(\App\Services\CrossDivisionMirrorService::class)
+            ->memberCandidates(
+                $division,
+                $request->user(),
+                $validated['search'] ?? null,
+                $validated['limit'] ?? 100
+            );
 
-        $applySearch = function ($userQuery) use ($search) {
-            if (! empty($search)) {
-                $userQuery->where(function ($searchQuery) use ($search) {
-                    $searchQuery
-                        ->where('users.name', 'like', "%{$search}%")
-                        ->orWhere('users.email', 'like', "%{$search}%");
-                });
-            }
-        };
-
-        $formatCandidate = function (User $candidate) use ($request, $division) {
-            $hasDivision = $candidate->relationLoaded('divisions')
-                ? $candidate->divisions->isNotEmpty()
-                : $candidate->divisions()->exists();
-
-            return [
-                'id' => $candidate->id,
-                'name' => $candidate->name,
-                'email' => $candidate->email,
-                'avatar' => $candidate->avatar
-                    ? asset('storage/'.$candidate->avatar)
-                    : null,
-                'roles' => $candidate->getRoleNames()->values(),
-                'division_role' => $candidate->pivot?->role,
-                'division_names' => $candidate->divisions->pluck('name')->values(),
-                'has_division' => $hasDivision,
-                'is_cross_division' => $division
-                    ? ! $candidate->divisions->contains('id', $division->id)
-                    : false,
-                'can_assign' => (
-                    $request->user()->can('card.assign')
-                    || $request->user()->can('task.assign')
-                ) && $request->user()->canAssignCardMemberTo($candidate),
-            ];
-        };
-
-        $users = collect();
-
-        // Roster division pemilik card selalu diutamakan.
-        if ($division) {
-            $divisionUsers = $division->users()
-                ->with(['roles', 'divisions:id,name'])
-                ->orderBy('users.name');
-
-            $applySearch($divisionUsers);
-
-            $users = $users->concat($divisionUsers->limit($limit)->get());
-        }
-
-        // Lanjutkan dengan user lain (termasuk lintas division maupun yang
-        // belum punya division) agar pencarian member selalu menemukan user
-        // yang ada di User Management. Yang tanpa division tetap tampil
-        // dengan can_assign=false + has_division=false; endpoint assign
-        // tetap menolaknya dengan pesan yang jelas.
-        $remaining = max(0, $limit - $users->count());
-
-        if ($remaining > 0) {
-            $crossQuery = User::query()
-                ->select(['users.id', 'users.name', 'users.email', 'users.avatar'])
-                ->with(['roles', 'divisions:id,name'])
-                ->when($division, fn ($crossDivisionQuery) => $crossDivisionQuery
-                    ->whereNotIn('users.id', $users->pluck('id'))
-                    ->whereDoesntHave('divisions', fn ($membershipQuery) => $membershipQuery
-                        ->where('divisions.id', $division->id)))
-                ->orderByRaw('(select count(*) from division_user where division_user.user_id = users.id) desc')
-                ->orderBy('users.name');
-
-            $applySearch($crossQuery);
-
-            $users = $users->concat($crossQuery->limit($remaining)->get());
-        }
-
-        return response()->json([
-            'data' => $users->map($formatCandidate)->values(),
-        ]);
+        return response()->json(['data' => $candidates]);
     }
 
     /**
@@ -1348,6 +1336,8 @@ class CardController extends Controller
                     'id' => $copy->board->campaign->id,
                     'name' => $copy->board->campaign->name,
                     'is_inbox' => $copy->board->campaign->name === \App\Services\CrossDivisionMirrorService::INBOX_CAMPAIGN_NAME,
+                    'workspace_id' => $copy->board->campaign->workspace_id,
+                    'workspace_name' => $copy->board->campaign->workspace?->name,
                 ] : null;
 
                 // Perkaya notifikasi assignment dengan destinasi copy.

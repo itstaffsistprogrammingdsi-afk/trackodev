@@ -833,6 +833,16 @@ Route::middleware([
     )->middleware('permission:card.view|task.view');
 
     Route::get(
+        'boards/{board}/member-candidates',
+        [BoardController::class, 'memberCandidates']
+    )->middleware('permission:card.view|task.view');
+
+    Route::get(
+        'boards/{board}/receiving-campaigns',
+        [BoardController::class, 'receivingCampaigns']
+    )->middleware('permission:card.assign|task.assign');
+
+    Route::get(
         'cards/{card}/receiving-campaigns',
         [CardController::class, 'receivingCampaigns']
     )->middleware('permission:card.assign|task.assign');
