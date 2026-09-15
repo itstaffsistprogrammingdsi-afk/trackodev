@@ -48,7 +48,7 @@ interface Props {
   handleAssign: (
     userId: string,
     targetCampaignId?: string,
-    createOpts?: { createCampaign?: boolean; campaignName?: string },
+    createOpts?: { createCampaign?: boolean; campaignName?: string; forceInbox?: boolean },
   ) => unknown;
   handleUnassign: (userId: string) => void;
 

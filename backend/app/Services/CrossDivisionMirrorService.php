@@ -291,16 +291,33 @@ class CrossDivisionMirrorService
     // ============================================
 
     /**
-     * Kata kunci pencocokan: kata pertama nama assignee (lowercase).
-     * Null bila terlalu pendek (<3 karakter) agar tidak false-positive
-     * (mis. "Li" cocok ke mana-mana).
+     * Kata kunci pencocokan: seluruh kata nama assignee (lowercase,
+     * minimal 3 karakter) agar "Rizky Eggy Syah Putra" tetap cocok ke
+     * "Eggy 2026", bukan hanya kata pertamanya.
+     *
+     * @return list<string>
+     */
+    public static function nameTokens(User $user): array
+    {
+        $words = preg_split('/\s+/u', trim((string) $user->name)) ?: [];
+
+        $tokens = [];
+        foreach ($words as $word) {
+            $word = mb_strtolower(trim((string) $word));
+            if (mb_strlen($word) >= 3 && ! in_array($word, $tokens, true)) {
+                $tokens[] = $word;
+            }
+        }
+
+        return $tokens;
+    }
+
+    /**
+     * Kata kunci tunggal (kompatibilitas): kata pertama, null bila <3 char.
      */
     public static function nameToken(User $user): ?string
     {
-        $first = preg_split('/\s+/u', trim((string) $user->name))[0] ?? '';
-        $first = mb_strtolower($first);
-
-        return mb_strlen($first) >= 3 ? $first : null;
+        return self::nameTokens($user)[0] ?? null;
     }
 
     /**
@@ -316,9 +333,47 @@ class CrossDivisionMirrorService
     }
 
     /**
+     * Skor kecocokan nama campaign terhadap nama assignee:
+     *  2 = salah satu token cocok sebagai kata utuh (kuat),
+     *  1 = hanya substring dua arah, mis. token "rizkyegy" vs kata
+     *      campaign "eggy" (lemah, untuk nama tanpa spasi),
+     *  0 = tidak cocok.
+     * Hanya dipakai dalam campaign milik assignee sendiri sehingga risiko
+     * false-positive (mis. "Warisan" untuk "Risa") tertutup ranking.
+     */
+    public static function matchScore(string $campaignName, array $tokens): int
+    {
+        $normalized = mb_strtolower($campaignName);
+
+        foreach ($tokens as $token) {
+            if (self::isNameMatch($campaignName, $token)) {
+                return 2;
+            }
+        }
+
+        $nameWords = preg_split('/[^\p{L}]+/u', $normalized) ?: [];
+
+        foreach ($tokens as $token) {
+            if (mb_strlen($token) < 4) {
+                continue;
+            }
+            if (mb_strpos($normalized, $token) !== false) {
+                return 1;
+            }
+            foreach ($nameWords as $word) {
+                if (mb_strlen($word) >= 4 && mb_strpos($token, $word) !== false) {
+                    return 1;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    /**
      * Kandidat campaign tujuan untuk assignee: campaign non-inbox di
      * division-division miliknya di mana ia member/creator. Diurutkan:
-     * cocok-nama dulu, lalu buatan sendiri, lalu terbaru.
+     * skor cocok-nama dulu, lalu buatan sendiri, lalu terbaru.
      *
      * @return \Illuminate\Support\Collection<int, Campaign>
      */
@@ -330,7 +385,7 @@ class CrossDivisionMirrorService
             return collect();
         }
 
-        $token = self::nameToken($assignee);
+        $tokens = self::nameTokens($assignee);
 
         $campaigns = Campaign::query()
             ->where('name', '!=', self::INBOX_CAMPAIGN_NAME)
@@ -349,11 +404,10 @@ class CrossDivisionMirrorService
         $assigneeId = (string) $assignee->id;
 
         return $campaigns
-            ->map(function (Campaign $campaign) use ($token, $assigneeId) {
-                $campaign->setAttribute(
-                    'is_name_match',
-                    $token !== null && self::isNameMatch($campaign->name, $token)
-                );
+            ->map(function (Campaign $campaign) use ($tokens, $assigneeId) {
+                $score = self::matchScore($campaign->name, $tokens);
+                $campaign->setAttribute('match_score', $score);
+                $campaign->setAttribute('is_name_match', $score === 2);
                 $campaign->setAttribute(
                     'is_own',
                     (string) $campaign->created_by === $assigneeId
@@ -362,7 +416,7 @@ class CrossDivisionMirrorService
                 return $campaign;
             })
             ->sortByDesc(fn (Campaign $campaign) => [
-                $campaign->getAttribute('is_name_match') ? 1 : 0,
+                $campaign->getAttribute('match_score') ?? 0,
                 $campaign->getAttribute('is_own') ? 1 : 0,
                 $campaign->updated_at?->timestamp ?? 0,
             ])
@@ -371,6 +425,7 @@ class CrossDivisionMirrorService
 
     /**
      * Campaign milik assignee yang cocok nama (otomatis, tanpa pilihan).
+     * Menerima skor lemah (>=1) sebagai fallback nama tanpa spasi.
      */
     public function resolveOwnedCampaign(User $assignee, ?string $sourceDivisionId = null): ?Campaign
     {
@@ -383,7 +438,7 @@ class CrossDivisionMirrorService
             }
         }
 
-        return $candidates->firstWhere('is_name_match', true);
+        return $candidates->first(fn (Campaign $campaign) => ($campaign->getAttribute('match_score') ?? 0) > 0);
     }
 
     /**
@@ -434,7 +489,8 @@ class CrossDivisionMirrorService
         Division $targetDivision,
         ?string $targetCampaignId = null,
         bool $createCampaign = false,
-        ?string $campaignName = null
+        ?string $campaignName = null,
+        bool $forceInbox = false
     ): Campaign {
         if ($targetCampaignId) {
             $campaign = $this->findTargetCampaign($targetCampaignId, $assignee, $targetDivision);
@@ -446,6 +502,14 @@ class CrossDivisionMirrorService
             }
 
             return $campaign;
+        }
+
+        // Pilihan eksplisit "Inbox Lintas Divisi" dari picker: paksa fallback
+        // walau ada campaign yang cocok nama.
+        if ($forceInbox) {
+            $workspace = $this->resolveWorkspace($targetDivision);
+
+            return $this->resolveInboxCampaign($workspace, $actor, $assignee);
         }
 
         if ($createCampaign) {
@@ -669,7 +733,8 @@ class CrossDivisionMirrorService
         User $actor,
         ?string $targetCampaignId = null,
         bool $createCampaign = false,
-        ?string $campaignName = null
+        ?string $campaignName = null,
+        bool $forceInbox = false
     ): ?Card {
         if (Card::$isMirroring) {
             return null;
@@ -702,12 +767,13 @@ class CrossDivisionMirrorService
                 $sourceDivisionId,
                 $targetCampaignId,
                 $createCampaign,
-                $campaignName
+                $campaignName,
+                $forceInbox
             ) {
                 Card::$isMirroring = true;
 
                 try {
-                    $campaign = $this->resolveTargetCampaign($root, $assignee, $actor, $targetDivision, $targetCampaignId, $createCampaign, $campaignName);
+                    $campaign = $this->resolveTargetCampaign($root, $assignee, $actor, $targetDivision, $targetCampaignId, $createCampaign, $campaignName, $forceInbox);
                     $targetBoard = $this->resolveTargetBoard($campaign, $root->board?->type);
 
                     // Pengassign dijadikan member campaign tujuan agar bisa

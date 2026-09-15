@@ -227,6 +227,8 @@ class CardController extends Controller
             'assignee_targets.*' => 'nullable|uuid|exists:campaigns,id',
             'create_campaigns'   => 'nullable|array',
             'create_campaigns.*' => 'nullable|string|max:255',
+            'force_inbox'        => 'nullable|array',
+            'force_inbox.*'      => 'uuid|exists:users,id',
         ]);
 
         $user = auth()->user();
@@ -420,7 +422,8 @@ class CardController extends Controller
                         $user,
                         $validated['assignee_targets'][$assigneeId] ?? null,
                         array_key_exists($assigneeId, $validated['create_campaigns'] ?? []),
-                        $validated['create_campaigns'][$assigneeId] ?? null
+                        $validated['create_campaigns'][$assigneeId] ?? null,
+                        in_array($assigneeId, $validated['force_inbox'] ?? [], true)
                     );
 
                     if ($copy) {
@@ -1170,6 +1173,7 @@ class CardController extends Controller
             'target_campaign_id' => 'nullable|uuid|exists:campaigns,id',
             'create_campaign' => 'nullable|boolean',
             'campaign_name' => 'nullable|string|max:255',
+            'force_inbox' => 'nullable|boolean',
         ]);
 
         $userId = $validated['user_id'];
@@ -1326,7 +1330,8 @@ class CardController extends Controller
                 $request->user(),
                 $validated['target_campaign_id'] ?? null,
                 (bool) ($validated['create_campaign'] ?? false),
-                $validated['campaign_name'] ?? null
+                $validated['campaign_name'] ?? null,
+                (bool) ($validated['force_inbox'] ?? false)
             );
             $mirror->syncAssigneesToFamily($card, $request->user());
 

@@ -467,6 +467,76 @@ class CrossDivisionMirrorTest extends TestCase
         $this->assertTrue($boardData->json('data.0.is_name_match'));
     }
 
+    public function test_name_matching_uses_any_name_word_with_strong_first(): void
+    {
+        [$dmStaff, , $project] = $this->setUpScenario();
+        $eggy = $this->staffIn($project['dkvDivision'], 'Rizky Eggy Syah Putra');
+        // "Warisan Arsip" hanya cocok lemah (substring), "Eggy 2026" cocok kuat.
+        $this->makeOwnedCampaign($project['dkvDivision'], $eggy, 'Warisan Arsip');
+        $eggyCampaign = $this->makeOwnedCampaign($project['dkvDivision'], $eggy, 'Eggy 2026');
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Eggy');
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $eggy->id])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', 'Eggy 2026');
+
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+        $this->assertSame($eggyCampaign->id, $copy->board->campaign_id);
+    }
+
+    public function test_single_token_name_matches_by_substring_fallback(): void
+    {
+        [$dmStaff, , $project] = $this->setUpScenario();
+        // Nama akun gaya username tanpa spasi seperti "eggy.dkv".
+        $eggy = $this->staffIn($project['dkvDivision'], 'eggy.dkv');
+        $eggyCampaign = $this->makeOwnedCampaign($project['dkvDivision'], $eggy, 'Eggy 2026');
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Tanpa Spasi');
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $eggy->id])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', 'Eggy 2026');
+
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+        $this->assertSame($eggyCampaign->id, $copy->board->campaign_id);
+    }
+
+    public function test_force_inbox_overrides_name_match(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+        $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Risa 2026');
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Paksa Inbox');
+
+        // Assign biasa tetap otomatis ke campaign cocok...
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', 'Risa 2026');
+
+        // ...tapi pilihan eksplisit Inbox menang.
+        $card2 = $this->createCard($project, $dmStaff, 'Paksa Inbox 2');
+        $this->postJson("/api/cards/{$card2->id}/assign", [
+            'user_id' => $dkvStaff->id,
+            'force_inbox' => true,
+        ])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', CrossDivisionMirrorService::INBOX_CAMPAIGN_NAME);
+
+        // Sama untuk store (form tambah-task).
+        $response = $this->postJson("/api/boards/{$project['todo']->id}/cards", [
+            'title' => 'Store Paksa Inbox',
+            'assignees' => [$dkvStaff->id],
+            'force_inbox' => [$dkvStaff->id],
+        ])->assertCreated();
+
+        $this->assertSame(
+            CrossDivisionMirrorService::INBOX_CAMPAIGN_NAME,
+            $response->json("copy_campaigns.{$dkvStaff->id}.name")
+        );
+    }
+
     public function test_assign_with_invalid_target_campaign_is_rejected(): void
     {        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
 
