@@ -151,7 +151,7 @@ export default function BoardColumn({
 
   const handleTargetChange = (userId: string, target: AssignTarget | null): void => {
     setAssigneeTargets((prev) => {
-      if (!target || (!target.campaignId && !target.createName)) {
+      if (!target || (!target.campaignId && !target.createName && !target.forceInbox)) {
         const { [userId]: _removed, ...rest } = prev;
         return rest;
       }
@@ -201,6 +201,9 @@ export default function BoardColumn({
             .filter(([, target]) => target.createName)
             .map(([userId, target]) => [userId, target.createName as string]),
         ),
+        force_inbox: Object.entries(assigneeTargets)
+          .filter(([, target]) => target.forceInbox)
+          .map(([userId]) => userId),
       });
 
       resetForm();

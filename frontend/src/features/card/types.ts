@@ -15,12 +15,14 @@ export type CreateCardRequest = {
   assignees?: string[];
   assignee_targets?: Record<string, string>;
   create_campaigns?: Record<string, string>;
+  force_inbox?: string[];
 };
 
 export interface AssignTarget {
   campaignId?: string;
   campaignName?: string;
   createName?: string;
+  forceInbox?: boolean;
 }
 
 export type UpdateCardRequest =

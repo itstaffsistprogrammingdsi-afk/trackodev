@@ -179,7 +179,7 @@ export const assignMember = async (
   cardId: string,
   userId: string,
   targetCampaignId?: string,
-  createOpts?: { createCampaign?: boolean; campaignName?: string },
+  createOpts?: { createCampaign?: boolean; campaignName?: string; forceInbox?: boolean },
 ) => {
   const res = await api.post(
     `/cards/${cardId}/assign`,
@@ -190,6 +190,7 @@ export const assignMember = async (
       ...(createOpts?.campaignName?.trim()
         ? { campaign_name: createOpts.campaignName.trim() }
         : {}),
+      ...(createOpts?.forceInbox ? { force_inbox: true } : {}),
     },
   );
 

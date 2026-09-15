@@ -22,7 +22,7 @@ export default function useCardMembers({
   const handleAssign = async (
     userId: string,
     targetCampaignId?: string,
-    createOpts?: { createCampaign?: boolean; campaignName?: string },
+    createOpts?: { createCampaign?: boolean; campaignName?: string; forceInbox?: boolean },
   ) => {
     if (!cardId) return;
 

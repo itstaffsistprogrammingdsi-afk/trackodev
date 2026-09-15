@@ -19,7 +19,7 @@ interface Props {
   handleAssign: (
     userId: string,
     targetCampaignId?: string,
-    createOpts?: { createCampaign?: boolean; campaignName?: string },
+    createOpts?: { createCampaign?: boolean; campaignName?: string; forceInbox?: boolean },
   ) => unknown;
 
   handleUnassign: (userId: string) => void;
@@ -94,14 +94,18 @@ const filteredUsers = users
 
   const doAssign = async (
     userId: string,
-    target?: { campaignId?: string; campaignName?: string; createName?: string },
+    target?: { campaignId?: string; campaignName?: string; createName?: string; forceInbox?: boolean },
   ) => {
     setAssigning(true);
     try {
       const result = (await handleAssign(
         userId,
         target?.campaignId,
-        target?.createName ? { createCampaign: true, campaignName: target.createName } : undefined,
+        target?.createName
+          ? { createCampaign: true, campaignName: target.createName }
+          : target?.forceInbox
+            ? { forceInbox: true }
+            : undefined,
       )) as {
         copy_campaign?: {
           id: string;
@@ -114,10 +118,11 @@ const filteredUsers = users
       // Mode form buat-card (belum ada card): simpan pilihan untuk dikirim
       // bersama request create.
       if (!cardId) {
-        onTargetChange?.(userId, target?.campaignId || target?.createName ? {
+        onTargetChange?.(userId, target?.campaignId || target?.createName || target?.forceInbox ? {
           campaignId: target.campaignId,
           campaignName: target.campaignName,
           createName: target.createName,
+          forceInbox: target.forceInbox,
         } : null);
       }
 
@@ -171,13 +176,8 @@ const filteredUsers = users
         return;
       }
 
-      if (options.length === 1 && options[0].is_name_match) {
-        // Hanya satu dan cocok nama (mis. Risa → Risa 2026): langsung.
-        await doAssign(user.id, { campaignId: options[0].id, campaignName: options[0].name });
-        return;
-      }
-
-      // Lebih dari satu kandidat: pengassign memilih campaign tujuan.
+      // Selalu tampilkan pilihan agar tidak salah alamat: preselect yang
+      // cocok nama, dengan opsi eksplisit Inbox Lintas Divisi.
       setDestPicker({
         userId: user.id,
         userName: user.name,
@@ -239,6 +239,7 @@ const filteredUsers = users
             onChange={(e) => setDestPicker({ ...destPicker, selectedId: e.target.value })}
             className="w-full h-10 rounded-xl border border-violet-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
           >
+            <option value="__inbox__">Inbox Lintas Divisi</option>
             {destPicker.options.map((opt) => (
               <option key={opt.id} value={opt.id}>
                 {opt.name}
@@ -251,6 +252,10 @@ const filteredUsers = users
             <button
               disabled={assigning}
               onClick={() => {
+                if (destPicker.selectedId === "__inbox__") {
+                  void doAssign(destPicker.userId, { forceInbox: true });
+                  return;
+                }
                 const selected = destPicker.options.find((opt) => opt.id === destPicker.selectedId);
                 void doAssign(destPicker.userId, {
                   campaignId: destPicker.selectedId,
@@ -437,10 +442,14 @@ const filteredUsers = users
 
                     {(() => {
                       const saved = assigneeTargets?.[user.id];
-                      if (!saved || (!saved.campaignId && !saved.createName)) return null;
+                      if (!saved || (!saved.campaignId && !saved.createName && !saved.forceInbox)) return null;
                       return (
                         <p className="truncate text-[11px] font-medium text-violet-600">
-                          → {saved.createName ? `buatkan: ${saved.createName}` : saved.campaignName ?? "campaign terpilih"}
+                          → {saved.forceInbox
+                            ? "Inbox Lintas Divisi"
+                            : saved.createName
+                              ? `buatkan: ${saved.createName}`
+                              : saved.campaignName ?? "campaign terpilih"}
                         </p>
                       );
                     })()}
