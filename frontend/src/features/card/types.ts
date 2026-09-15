@@ -12,8 +12,16 @@ export type CreateCardRequest = {
   priority?: CardPriority;
 
   due_date?: string | null;
-  assignees?: string[]
+  assignees?: string[];
+  assignee_targets?: Record<string, string>;
+  create_campaigns?: Record<string, string>;
 };
+
+export interface AssignTarget {
+  campaignId?: string;
+  campaignName?: string;
+  createName?: string;
+}
 
 export type UpdateCardRequest =
   Partial<CreateCardRequest>;

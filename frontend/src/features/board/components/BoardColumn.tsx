@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
+import { AxiosError } from "axios";
+import { useQuery } from "@tanstack/react-query";
 import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
 import { Board } from "../types";
-import { Card, User } from "@/features/card/types";
+import { AssignTarget, Card, User } from "@/features/card/types";
 
 import CardItem from "@/features/card/components/CardItem";
 import MemberSection from "@/features/card/components/sections/MemberSection";
 
-import { createCard } from "@/features/card/api/card.api";
-import { useUsers } from "@/features/user/hooks/useUsers";
+import { createCard, getBoardMemberCandidates } from "@/features/card/api/card.api";
 
 type Priority = "low" | "medium" | "high" | "urgent";
 
@@ -60,7 +61,6 @@ export default function BoardColumn({
   dragHandle,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: board.id });
-  const { data: users = [] } = useUsers();
 
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -72,8 +72,19 @@ export default function BoardColumn({
   const [dueDate, setDueDate] = useState<string>("");
 
   const [assignees, setAssignees] = useState<string[]>([]);
+  const [assigneeTargets, setAssigneeTargets] = useState<Record<string, AssignTarget>>({});
   const [memberSearch, setMemberSearch] = useState<string>("");
   const [showMembers, setShowMembers] = useState<boolean>(false);
+
+  // Kandidat member diambil per-board (sumber identik dengan card tool),
+  // bukan daftar user global — supaya pencarian nama selalu menemukan user
+  // lintas divisi seperti di card tool.
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["board-member-candidates", board.id],
+    queryFn: () => getBoardMemberCandidates(board.id),
+    enabled: showMembers,
+    staleTime: 30_000,
+  });
 
   // REFS
   const menuRef = useRef<HTMLDivElement>(null);
@@ -138,8 +149,19 @@ export default function BoardColumn({
     setAssignees((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
   };
 
+  const handleTargetChange = (userId: string, target: AssignTarget | null): void => {
+    setAssigneeTargets((prev) => {
+      if (!target || (!target.campaignId && !target.createName)) {
+        const { [userId]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [userId]: target };
+    });
+  };
+
   const handleUnassign = (userId: string): void => {
     setAssignees((prev) => prev.filter((id) => id !== userId));
+    handleTargetChange(userId, null);
   };
 
   const resetForm = (): void => {
@@ -148,6 +170,7 @@ export default function BoardColumn({
     setOpenPriority(false);
     setDueDate("");
     setAssignees([]);
+    setAssigneeTargets({});
     setMemberSearch("");
     setShowMembers(false);
     setError(null);
@@ -168,6 +191,16 @@ export default function BoardColumn({
         priority,
         due_date: dueDate ? `${dueDate.replace("T", " ")}:00` : undefined,
         assignees: assignees.length ? assignees : undefined,
+        assignee_targets: Object.fromEntries(
+          Object.entries(assigneeTargets)
+            .filter(([, target]) => target.campaignId)
+            .map(([userId, target]) => [userId, target.campaignId as string]),
+        ),
+        create_campaigns: Object.fromEntries(
+          Object.entries(assigneeTargets)
+            .filter(([, target]) => target.createName)
+            .map(([userId, target]) => [userId, target.createName as string]),
+        ),
       });
 
       resetForm();
@@ -179,8 +212,16 @@ export default function BoardColumn({
         await onRefresh?.();
       }
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Gagal membuat task baru.";
+      let message = "Gagal membuat task baru.";
+      if (err instanceof AxiosError) {
+        const serverMessage = err.response?.data?.message;
+        message =
+          typeof serverMessage === "string" && serverMessage.trim().length > 0
+            ? serverMessage
+            : message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
       console.error("Create card failed:", message);
       setError(message);
     } finally {
@@ -541,12 +582,15 @@ export default function BoardColumn({
             {showMembers && (
               <div className="max-h-52 overflow-y-auto border-t border-slate-100 bg-slate-50/50 p-3">
                 <MemberSection
+                  boardId={board.id}
                   users={users}
                   memberSearch={memberSearch}
                   setMemberSearch={setMemberSearch}
                   assignees={selectedUsers}
                   handleAssign={handleAssign}
                   handleUnassign={handleUnassign}
+                  assigneeTargets={assigneeTargets}
+                  onTargetChange={handleTargetChange}
                 />
               </div>
             )}

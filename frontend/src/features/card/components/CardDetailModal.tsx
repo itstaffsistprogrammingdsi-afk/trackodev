@@ -247,6 +247,7 @@ export default function CardDetailModal({
     setShowResult,
     showBrief,
     setShowBrief,
+    onCloseModal: closeModal,
   };
 
   return (

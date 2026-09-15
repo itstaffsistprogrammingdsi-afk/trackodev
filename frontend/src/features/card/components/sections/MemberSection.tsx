@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { User, ReceivingCampaign } from "../../types";
-import { getReceivingCampaigns } from "../../api/card.api";
+import { useNavigate } from "react-router";
+import { AssignTarget, User, ReceivingCampaign } from "../../types";
+import { getBoardReceivingCampaigns, getReceivingCampaigns } from "../../api/card.api";
 
 interface Props {
   cardId?: string;
+
+  boardId?: string;
 
   users: User[];
 
@@ -20,6 +23,13 @@ interface Props {
   ) => unknown;
 
   handleUnassign: (userId: string) => void;
+
+  onCloseModal?: () => void;
+
+  /** Mode form buat-card: simpan pilihan campaign per user untuk dikirim saat create. */
+  assigneeTargets?: Record<string, AssignTarget>;
+
+  onTargetChange?: (userId: string, target: AssignTarget | null) => void;
 }
 
 interface DestPicker {
@@ -37,20 +47,32 @@ interface CreatePanel {
   campaignName: string;
 }
 
+interface DestInfo {
+  name: string;
+  isInbox: boolean;
+  campaignId: string;
+  workspaceId?: string | null;
+}
+
 export default function MemberSection({
   cardId,
+  boardId,
   users,
   memberSearch,
   assignees = [],
   setMemberSearch,
   handleAssign,
   handleUnassign,
+  onCloseModal,
+  assigneeTargets,
+  onTargetChange,
 }: Props) {
+  const navigate = useNavigate();
   const [destPicker, setDestPicker] = useState<DestPicker | null>(null);
   const [createPanel, setCreatePanel] = useState<CreatePanel | null>(null);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [destInfo, setDestInfo] = useState<DestInfo | null>(null);
 
   // =========================================
   // FILTER USERS
@@ -72,22 +94,41 @@ const filteredUsers = users
 
   const doAssign = async (
     userId: string,
-    targetCampaignId?: string,
-    createOpts?: { createCampaign?: boolean; campaignName?: string },
+    target?: { campaignId?: string; campaignName?: string; createName?: string },
   ) => {
     setAssigning(true);
     try {
-      const result = (await handleAssign(userId, targetCampaignId, createOpts)) as {
-        copy_campaign?: { id: string; name: string; is_inbox?: boolean } | null;
+      const result = (await handleAssign(
+        userId,
+        target?.campaignId,
+        target?.createName ? { createCampaign: true, campaignName: target.createName } : undefined,
+      )) as {
+        copy_campaign?: {
+          id: string;
+          name: string;
+          is_inbox?: boolean;
+          workspace_id?: string | null;
+        } | null;
       } | undefined;
+
+      // Mode form buat-card (belum ada card): simpan pilihan untuk dikirim
+      // bersama request create.
+      if (!cardId) {
+        onTargetChange?.(userId, target?.campaignId || target?.createName ? {
+          campaignId: target.campaignId,
+          campaignName: target.campaignName,
+          createName: target.createName,
+        } : null);
+      }
 
       const dest = result?.copy_campaign;
       if (dest) {
-        setNotice(
-          dest.is_inbox
-            ? "Copy dibuat di Inbox Lintas Divisi (tidak ada campaign yang cocok nama)."
-            : `Copy dibuat di campaign ${dest.name}.`,
-        );
+        setDestInfo({
+          name: dest.name,
+          isInbox: !!dest.is_inbox,
+          campaignId: dest.id,
+          workspaceId: dest.workspace_id ?? null,
+        });
       }
       setDestPicker(null);
       setCreatePanel(null);
@@ -96,11 +137,17 @@ const filteredUsers = users
     }
   };
 
-  const handleAssignClick = async (user: User) => {
-    setNotice(null);
+  const goToDestCampaign = () => {
+    if (!destInfo?.workspaceId || !destInfo?.campaignId) return;
+    onCloseModal?.();
+    navigate(`/workspaces/${destInfo.workspaceId}/campaigns/${destInfo.campaignId}/boards`);
+  };
 
-    // Satu divisi: langsung assign seperti biasa.
-    if (!user.is_cross_division || !cardId) {
+  const handleAssignClick = async (user: User) => {
+    setDestInfo(null);
+
+    // Satu divisi (atau tanpa konteks board/card): langsung seperti biasa.
+    if (!user.is_cross_division || (!cardId && !boardId)) {
       await doAssign(user.id);
       return;
     }
@@ -108,7 +155,9 @@ const filteredUsers = users
     // Lintas divisi: cek campaign milik user lebih dulu.
     setPickerLoading(true);
     try {
-      const { campaigns: options, suggested_name } = await getReceivingCampaigns(cardId, user.id);
+      const { campaigns: options, suggested_name } = cardId
+        ? await getReceivingCampaigns(cardId, user.id)
+        : await getBoardReceivingCampaigns(boardId as string, user.id);
 
       if (options.length === 0) {
         // Belum punya campaign: tawarkan buatkan campaign baru.
@@ -124,7 +173,7 @@ const filteredUsers = users
 
       if (options.length === 1 && options[0].is_name_match) {
         // Hanya satu dan cocok nama (mis. Risa → Risa 2026): langsung.
-        await doAssign(user.id, options[0].id);
+        await doAssign(user.id, { campaignId: options[0].id, campaignName: options[0].name });
         return;
       }
 
@@ -158,9 +207,22 @@ const filteredUsers = users
         />
       </div>
 
-      {notice ? (
-        <div className="rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs leading-5 text-green-700">
-          {notice}
+      {destInfo ? (
+        <div className="rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 space-y-2">
+          <p className="text-xs leading-5 text-green-700">
+            {destInfo.isInbox
+              ? "Copy dibuat di Inbox Lintas Divisi (tidak ada campaign yang cocok nama)."
+              : `Copy dibuat di campaign ${destInfo.name}.`}
+          </p>
+          {destInfo.workspaceId ? (
+            <button
+              type="button"
+              onClick={goToDestCampaign}
+              className="h-9 w-full rounded-xl bg-green-600 px-3 text-xs font-semibold text-white transition hover:bg-green-700"
+            >
+              Lihat campaign →
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -189,7 +251,11 @@ const filteredUsers = users
             <button
               disabled={assigning}
               onClick={() => {
-                void doAssign(destPicker.userId, destPicker.selectedId);
+                const selected = destPicker.options.find((opt) => opt.id === destPicker.selectedId);
+                void doAssign(destPicker.userId, {
+                  campaignId: destPicker.selectedId,
+                  campaignName: selected?.name,
+                });
               }}
               className="h-9 flex-1 rounded-xl bg-violet-600 px-3 text-xs font-semibold text-white transition hover:bg-violet-700 disabled:opacity-50"
             >
@@ -229,9 +295,8 @@ const filteredUsers = users
             <button
               disabled={assigning || !createPanel.campaignName.trim()}
               onClick={() => {
-                void doAssign(createPanel.userId, undefined, {
-                  createCampaign: true,
-                  campaignName: createPanel.campaignName.trim(),
+                void doAssign(createPanel.userId, {
+                  createName: createPanel.campaignName.trim(),
                 });
               }}
               className="h-9 flex-1 rounded-xl bg-emerald-600 px-3 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
@@ -301,7 +366,10 @@ const filteredUsers = users
 
                 {/* ACTION */}
                 <button
-                  onClick={() => handleUnassign(user.id)}
+                  onClick={() => {
+                    handleUnassign(user.id);
+                    onTargetChange?.(user.id, null);
+                  }}
                   className="h-8 shrink-0 rounded-lg bg-red-50 px-3 text-xs font-medium text-red-600 transition hover:bg-red-100"
                 >
                   Remove
@@ -366,6 +434,16 @@ const filteredUsers = users
                         Belum terdaftar di division mana pun
                       </p>
                     )}
+
+                    {(() => {
+                      const saved = assigneeTargets?.[user.id];
+                      if (!saved || (!saved.campaignId && !saved.createName)) return null;
+                      return (
+                        <p className="truncate text-[11px] font-medium text-violet-600">
+                          → {saved.createName ? `buatkan: ${saved.createName}` : saved.campaignName ?? "campaign terpilih"}
+                        </p>
+                      );
+                    })()}
                   </div>
                 </div>
 

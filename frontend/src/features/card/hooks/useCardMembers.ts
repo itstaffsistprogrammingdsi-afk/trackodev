@@ -34,7 +34,12 @@ export default function useCardMembers({
       onUpdated?.();
 
       return res.data as {
-        copy_campaign?: { id: string; name: string; is_inbox?: boolean } | null;
+        copy_campaign?: {
+          id: string;
+          name: string;
+          is_inbox?: boolean;
+          workspace_id?: string | null;
+        } | null;
       };
     } catch (err) {
       if (alertIfMirrorConflict(err)) {

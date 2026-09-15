@@ -49,8 +49,10 @@ interface Props {
     userId: string,
     targetCampaignId?: string,
     createOpts?: { createCampaign?: boolean; campaignName?: string },
-  ) => Promise<unknown>;
+  ) => unknown;
   handleUnassign: (userId: string) => void;
+
+  onCloseModal?: () => void;
 
   handleDelete: () => void;
 
@@ -95,6 +97,7 @@ export default function CardDetailSidebar({
   handleAssign,
   handleUnassign,
   handleDelete,
+  onCloseModal,
   showBrands,
   setShowBrands,
   showLabels,
@@ -164,6 +167,7 @@ export default function CardDetailSidebar({
                 <MemberSection
                   cardId={card.id}
                   users={users}
+                  onCloseModal={onCloseModal}
                   assignees={assignees}
                   memberSearch={memberSearch}
                   setMemberSearch={setMemberSearch}

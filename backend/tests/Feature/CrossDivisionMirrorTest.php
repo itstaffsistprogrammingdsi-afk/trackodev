@@ -308,8 +308,9 @@ class CrossDivisionMirrorTest extends TestCase
         $this->assertSame($risaCampaign->id, $copy->board->campaign_id);
         $this->assertSame('todo', $copy->board->type);
 
-        // Actor tidak dijadikan member campaign milik assignee.
-        $this->assertDatabaseMissing('campaign_user', [
+        // Pengassign dijadikan member campaign tujuan agar bisa membuka
+        // copy-nya (tombol "Lihat campaign" di frontend).
+        $this->assertDatabaseHas('campaign_user', [
             'campaign_id' => $risaCampaign->id,
             'user_id' => $dmStaff->id,
         ]);
@@ -355,12 +356,13 @@ class CrossDivisionMirrorTest extends TestCase
         $this->assertSame($dkvStaff->id, $campaign->created_by);
         $this->assertSame($project['dkvDivision']->id, $campaign->workspace->division_id);
 
-        // Assignee jadi member + pemilik; actor tidak ikut campur.
+        // Assignee jadi member + pemilik; pengassign ikut jadi member agar
+        // bisa membuka copy (tombol "Lihat campaign").
         $this->assertDatabaseHas('campaign_user', [
             'campaign_id' => $campaign->id,
             'user_id' => $dkvStaff->id,
         ]);
-        $this->assertDatabaseMissing('campaign_user', [
+        $this->assertDatabaseHas('campaign_user', [
             'campaign_id' => $campaign->id,
             'user_id' => $dmStaff->id,
         ]);
@@ -398,6 +400,71 @@ class CrossDivisionMirrorTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('copy_campaign.name', 'Proyek Khusus (2)');
+    }
+
+    public function test_store_honors_assignee_targets_and_create_campaigns(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+        $chosen = $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Pilihan DM');
+        $other = $this->staffIn($project['dkvDivision'], 'Budi');
+        $project['campaign']->members()->attach($other->id);
+
+        Sanctum::actingAs($dmStaff);
+
+        // Target eksplisit dipakai, bukan auto-match.
+        $response = $this->postJson("/api/boards/{$project['todo']->id}/cards", [
+            'title' => 'Tugas Target',
+            'assignees' => [$dkvStaff->id],
+            'assignee_targets' => [$dkvStaff->id => $chosen->id],
+        ])->assertCreated();
+
+        $cardId = $response->json('data.id');
+        $copy = Card::query()->where('parent_card_id', $cardId)->firstOrFail();
+        $this->assertSame($chosen->id, $copy->board->campaign_id);
+        $this->assertArrayHasKey($dkvStaff->id, $response->json('copy_campaigns'));
+
+        // Minta buatkan campaign personal.
+        $response = $this->postJson("/api/boards/{$project['todo']->id}/cards", [
+            'title' => 'Tugas Buatkan',
+            'assignees' => [$other->id],
+            'create_campaigns' => [$other->id => 'Fokus Budi'],
+        ])->assertCreated();
+
+        $personal = Campaign::query()->where('name', 'Fokus Budi')->firstOrFail();
+        $this->assertSame('personal', $personal->type);
+        $this->assertSame($other->id, $personal->created_by);
+        $copy2 = Card::query()->where('parent_card_id', $response->json('data.id'))->firstOrFail();
+        $this->assertSame($personal->id, $copy2->board->campaign_id);
+
+        // Target tidak valid → 422 dan card tidak dibuat.
+        $this->postJson("/api/boards/{$project['todo']->id}/cards", [
+            'title' => 'Tugas Gagal',
+            'assignees' => [$dkvStaff->id],
+            'assignee_targets' => [$dkvStaff->id => $project['campaign']->id],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('assignee_targets.'.$dkvStaff->id);
+
+        $this->assertDatabaseMissing('cards', ['title' => 'Tugas Gagal']);
+    }
+
+    public function test_board_receiving_campaigns_matches_card_version(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+        $risaCampaign = $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Risa 2026');
+
+        Sanctum::actingAs($dmStaff);
+
+        $cardData = $this->getJson(
+            "/api/cards/{$this->createCard($project, $dmStaff, 'X')->id}/receiving-campaigns?user_id={$dkvStaff->id}"
+        )->assertOk();
+        $boardData = $this->getJson(
+            "/api/boards/{$project['todo']->id}/receiving-campaigns?user_id={$dkvStaff->id}"
+        )->assertOk();
+
+        $this->assertSame($cardData->json('data'), $boardData->json('data'));
+        $this->assertSame($cardData->json('suggested_name'), $boardData->json('suggested_name'));
+        $this->assertSame($risaCampaign->id, $boardData->json('data.0.id'));
+        $this->assertTrue($boardData->json('data.0.is_name_match'));
     }
 
     public function test_assign_with_invalid_target_campaign_is_rejected(): void
