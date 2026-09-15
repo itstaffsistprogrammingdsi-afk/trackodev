@@ -252,6 +252,10 @@ class McpIntegrationController extends Controller
             ->with(['board.campaign.workspace.division', 'assignees:id,name,email'])
             ->withCount(['tasks', 'comments']);
 
+        // Copy lintas divisi privat: hanya 5 pihak yang boleh melihat.
+        app(\App\Services\CrossDivisionMirrorService::class)
+            ->applyCopyVisibility($query, $request->user());
+
         if (! empty($validated['query'])) {
             $term = $validated['query'];
             $query->where(fn (Builder $cardQuery) => $cardQuery

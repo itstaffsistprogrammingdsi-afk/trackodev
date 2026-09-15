@@ -832,6 +832,11 @@ Route::middleware([
         [CardController::class, 'memberCandidates']
     )->middleware('permission:card.view|task.view');
 
+    Route::get(
+        'cards/{card}/receiving-campaigns',
+        [CardController::class, 'receivingCampaigns']
+    )->middleware('permission:card.assign|task.assign');
+
     Route::put(
         'cards/{card}',
         [CardController::class, 'update']

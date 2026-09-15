@@ -31,8 +31,19 @@ class BoardController extends Controller
         // column order returned to the frontend is whatever the DB
         // happens to return, which doesn't always match the intended
         // (and drag-and-drop-reorderable) column order.
+        //
+        // Copy lintas divisi bersifat privat (5 pihak): batasi eager-load
+        // cards agar non-peserta tidak melihat copy orang lain.
+        $mirror = app(\App\Services\CrossDivisionMirrorService::class);
         $boards = $campaign->boards()
-            ->with('cards.creator')
+            ->with([
+                'cards' => function ($cardQuery) use ($mirror, $user) {
+                    $mirror->applyCopyVisibility($cardQuery, $user);
+                },
+                'cards.creator',
+                'cards.sourceDivision:id,name',
+                'cards.mirroredBy:id,name',
+            ])
             ->orderBy('order')
             ->get();
 
@@ -61,7 +72,7 @@ class BoardController extends Controller
         // max(order)+1 and collide.
         //
         // NOTE: PostgreSQL tidak mengizinkan `FOR UPDATE` dibarengi
-        // fungsi agregat (max/count/sum/dst) dalam satu query — beda
+        // fungsi agregat (max/count/sum/dst) dalam satu query ï¿½ beda
         // dengan MySQL yang tetap meloloskannya. Jadi di sini dipakai
         // `orderByDesc()->value()` (bukan agregat) untuk hasil yang
         // sama persis ("order" tertinggi saat ini), tapi tetap boleh

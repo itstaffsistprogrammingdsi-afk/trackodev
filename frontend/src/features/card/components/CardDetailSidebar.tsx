@@ -45,7 +45,11 @@ interface Props {
   memberSearch: string;
   setMemberSearch: React.Dispatch<React.SetStateAction<string>>;
 
-  handleAssign: (userId: string) => void;
+  handleAssign: (
+    userId: string,
+    targetCampaignId?: string,
+    createOpts?: { createCampaign?: boolean; campaignName?: string },
+  ) => Promise<unknown>;
   handleUnassign: (userId: string) => void;
 
   handleDelete: () => void;
@@ -158,6 +162,7 @@ export default function CardDetailSidebar({
             {showMembers && (
               <div className="mt-2 animate-in fade-in duration-200">
                 <MemberSection
+                  cardId={card.id}
                   users={users}
                   assignees={assignees}
                   memberSearch={memberSearch}

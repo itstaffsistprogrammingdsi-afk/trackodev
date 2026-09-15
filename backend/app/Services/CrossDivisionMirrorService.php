@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
@@ -28,6 +29,14 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
  *  - bisa digerakkan/diubah dari dua sisi dan terpropagasi dua arah,
  *  - real-time mengikuti broadcast model yang sudah ada (setiap write pada
  *    copy memicu ApplicationDataChanged seperti card biasa).
+ *
+ * Destinasi copy: campaign milik assignee yang namanya cocok (mis. Risa →
+ * "Risa 2026"), atau campaign yang dipilih pengassign, atau fallback ke
+ * campaign "Inbox Lintas Divisi".
+ *
+ * Visibilitas copy bersifat privat (5 pihak): assignee, pemberi assign,
+ * admin division pemilik, pemegang permission card.mirror.view di division
+ * pemilik, dan Super Admin.
  *
  * Aturan konflik (disepakati UAT): perubahan bersamaan pada satu family
  * ditolak dengan 409 agar frontend menampilkan popup "tunggu beberapa
@@ -99,7 +108,336 @@ class CrossDivisionMirrorService
     }
 
     // ============================================
-    // DESTINASI COPY
+    // VISIBILITAS COPY (5 PIHAK)
+    // ============================================
+
+    public function canViewCopy(User $viewer, Card $copy): bool
+    {
+        if (! $copy->is_cross_division_copy) {
+            return true;
+        }
+
+        if ($viewer->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($copy->assignees()->where('users.id', $viewer->id)->exists()) {
+            return true;
+        }
+
+        if ($copy->mirrored_by && (string) $copy->mirrored_by === (string) $viewer->id) {
+            return true;
+        }
+
+        $divisionId = $copy->board?->campaign?->workspace?->division_id
+            ? (string) $copy->board->campaign->workspace->division_id
+            : null;
+
+        if (! $divisionId || ! $viewer->inDivision($divisionId)) {
+            return false;
+        }
+
+        $isDivisionAdmin = $viewer->isAdmin()
+            || $viewer->divisions()->wherePivot('role', 'admin')->exists();
+
+        if ($isDivisionAdmin) {
+            return true;
+        }
+
+        return $viewer->can('card.mirror.view');
+    }
+
+    /**
+     * Batasi query Card agar copy lintas divisi hanya terlihat oleh 5 pihak
+     * di atas. Dipakai semua endpoint daftar (board, report, my-activity,
+     * daily-todo, calendar, analytics).
+     */
+    public function applyCopyVisibility($query, User $viewer): void
+    {
+        if ($viewer->isSuperAdmin()) {
+            return;
+        }
+
+        $viewerId = (string) $viewer->id;
+        $ownDivisionIds = $viewer->divisions()->pluck('divisions.id')->map(fn ($id) => (string) $id)->all();
+
+        $isDivisionAdmin = $viewer->isAdmin()
+            || $viewer->divisions()->wherePivot('role', 'admin')->exists();
+        $hasMirrorView = $viewer->can('card.mirror.view');
+
+        $query->where(function ($visibilityQuery) use (
+            $viewerId,
+            $ownDivisionIds,
+            $isDivisionAdmin,
+            $hasMirrorView
+        ) {
+            // Card biasa selalu terlihat (otorisasi campaign tetap berlaku).
+            $visibilityQuery->where('cards.is_cross_division_copy', false);
+
+            // Copy: assignee atau pemberi assign selalu boleh.
+            $visibilityQuery->orWhere(function ($copyQuery) use ($viewerId) {
+                $copyQuery->where('cards.is_cross_division_copy', true)
+                    ->where(function ($whoQuery) use ($viewerId) {
+                        $whoQuery->whereHas('assignees', fn ($assigneeQuery) => $assigneeQuery
+                            ->where('users.id', $viewerId))
+                            ->orWhere('cards.mirrored_by', $viewerId);
+                    });
+            });
+
+            // Copy: admin division pemilik / pemegang card.mirror.view.
+            if (($isDivisionAdmin || $hasMirrorView) && ! empty($ownDivisionIds)) {
+                $visibilityQuery->orWhere(function ($privilegedQuery) use ($ownDivisionIds) {
+                    $privilegedQuery->where('cards.is_cross_division_copy', true)
+                        ->whereHas('board.campaign.workspace', fn ($workspaceQuery) => $workspaceQuery
+                            ->whereIn('division_id', $ownDivisionIds));
+                });
+            }
+        });
+    }
+
+    // ============================================
+    // PENCARIAN CAMPAIGN MILIK ASSIGNEE (BY NAMA)
+    // ============================================
+
+    /**
+     * Kata kunci pencocokan: kata pertama nama assignee (lowercase).
+     * Null bila terlalu pendek (<3 karakter) agar tidak false-positive
+     * (mis. "Li" cocok ke mana-mana).
+     */
+    public static function nameToken(User $user): ?string
+    {
+        $first = preg_split('/\s+/u', trim((string) $user->name))[0] ?? '';
+        $first = mb_strtolower($first);
+
+        return mb_strlen($first) >= 3 ? $first : null;
+    }
+
+    /**
+     * Cocok sebagai kata utuh (case-insensitive, Unicode-safe): "Risa 2026"
+     * cocok untuk "risa", "Warisan" tidak.
+     */
+    public static function isNameMatch(string $campaignName, string $token): bool
+    {
+        return (bool) preg_match(
+            '/(?<!\p{L})'.preg_quote($token, '/').'(?!\p{L})/iu',
+            $campaignName
+        );
+    }
+
+    /**
+     * Kandidat campaign tujuan untuk assignee: campaign non-inbox di
+     * division-division miliknya di mana ia member/creator. Diurutkan:
+     * cocok-nama dulu, lalu buatan sendiri, lalu terbaru.
+     *
+     * @return \Illuminate\Support\Collection<int, Campaign>
+     */
+    public function receivingCandidates(User $assignee)
+    {
+        $divisionIds = $assignee->divisions()->pluck('divisions.id')->all();
+
+        if (empty($divisionIds)) {
+            return collect();
+        }
+
+        $token = self::nameToken($assignee);
+
+        $campaigns = Campaign::query()
+            ->where('name', '!=', self::INBOX_CAMPAIGN_NAME)
+            ->whereHas('workspace', fn ($workspaceQuery) => $workspaceQuery
+                ->whereIn('division_id', $divisionIds))
+            ->where(function ($accessQuery) use ($assignee) {
+                $accessQuery
+                    ->where('created_by', $assignee->id)
+                    ->orWhereHas('members', fn ($memberQuery) => $memberQuery
+                        ->where('users.id', $assignee->id));
+            })
+            ->with(['workspace:id,name,division_id', 'workspace.division:id,name'])
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $assigneeId = (string) $assignee->id;
+
+        return $campaigns
+            ->map(function (Campaign $campaign) use ($token, $assigneeId) {
+                $campaign->setAttribute(
+                    'is_name_match',
+                    $token !== null && self::isNameMatch($campaign->name, $token)
+                );
+                $campaign->setAttribute(
+                    'is_own',
+                    (string) $campaign->created_by === $assigneeId
+                );
+
+                return $campaign;
+            })
+            ->sortByDesc(fn (Campaign $campaign) => [
+                $campaign->getAttribute('is_name_match') ? 1 : 0,
+                $campaign->getAttribute('is_own') ? 1 : 0,
+                $campaign->updated_at?->timestamp ?? 0,
+            ])
+            ->values();
+    }
+
+    /**
+     * Campaign milik assignee yang cocok nama (otomatis, tanpa pilihan).
+     */
+    public function resolveOwnedCampaign(User $assignee, ?string $sourceDivisionId = null): ?Campaign
+    {
+        $candidates = $this->receivingCandidates($assignee);
+
+        if ($sourceDivisionId) {
+            $filtered = $candidates->filter(fn (Campaign $campaign) => (string) $campaign->workspace?->division_id !== (string) $sourceDivisionId);
+            if ($filtered->isNotEmpty()) {
+                $candidates = $filtered->values();
+            }
+        }
+
+        return $candidates->firstWhere('is_name_match', true);
+    }
+
+    /**
+     * Campaign tujuan final: pilihan eksplisit pengassign (divalidasi),
+     * pembuatan baru bila diminta, pencocokan otomatis, atau fallback Inbox.
+     */
+    public function resolveTargetCampaign(
+        Card $root,
+        User $assignee,
+        User $actor,
+        Division $targetDivision,
+        ?string $targetCampaignId = null,
+        bool $createCampaign = false,
+        ?string $campaignName = null
+    ): Campaign {
+        if ($targetCampaignId) {
+            $campaign = Campaign::query()
+                ->with('workspace.division')
+                ->whereKey($targetCampaignId)
+                ->first();
+
+            $valid = $campaign
+                && $campaign->name !== self::INBOX_CAMPAIGN_NAME
+                && (string) $campaign->workspace?->division_id === (string) $targetDivision->id
+                && ((string) $campaign->created_by === (string) $assignee->id
+                    || $campaign->members()->where('users.id', $assignee->id)->exists());
+
+            if (! $valid) {
+                throw ValidationException::withMessages([
+                    'target_campaign_id' => 'Campaign tujuan tidak valid untuk user yang dipilih.',
+                ]);
+            }
+
+            $campaign->members()->syncWithoutDetaching([$assignee->id]);
+
+            return $campaign;
+        }
+
+        if ($createCampaign) {
+            return $this->createPersonalCampaign($assignee, $targetDivision, $actor, $campaignName);
+        }
+
+        $owned = $this->resolveOwnedCampaign(
+            $assignee,
+            $root->board?->campaign?->workspace?->division_id
+                ? (string) $root->board->campaign->workspace->division_id
+                : null
+        );
+
+        if ($owned) {
+            $owned->members()->syncWithoutDetaching([$assignee->id]);
+
+            return $owned;
+        }
+
+        $workspace = $this->resolveWorkspace($targetDivision);
+
+        return $this->resolveInboxCampaign($workspace, $actor, $assignee);
+    }
+
+    /**
+     * Nama saran untuk campaign personal baru: "{NamaDepan} {Tahun}".
+     */
+    public static function suggestedCampaignName(User $assignee): string
+    {
+        $first = preg_split('/\s+/u', trim((string) $assignee->name))[0] ?? '';
+        $first = trim((string) $first);
+
+        if ($first === '') {
+            $first = 'Personal';
+        }
+
+        return $first.' '.now()->year;
+    }
+
+    /**
+     * Buatkan campaign personal untuk assignee di division tujuan bila ia
+     * belum punya campaign yang cocok. Pemilik (created_by) = assignee agar
+     * ia bisa mengelolanya sendiri; pengassign TIDAK dijadikan member.
+     */
+    public function createPersonalCampaign(
+        User $assignee,
+        Division $division,
+        User $actor,
+        ?string $name = null
+    ): Campaign {
+        $workspace = $this->resolveWorkspace($division);
+
+        $baseName = trim((string) ($name ?: self::suggestedCampaignName($assignee)));
+        if ($baseName === '') {
+            $baseName = self::suggestedCampaignName($assignee);
+        }
+
+        $campaignName = $baseName;
+        $suffix = 2;
+        while ($workspace->campaigns()->where('name', $campaignName)->exists()) {
+            $campaignName = $baseName.' ('.$suffix++.')';
+        }
+
+        return DB::transaction(function () use ($workspace, $assignee, $actor, $campaignName) {
+            $campaign = $workspace->campaigns()->create([
+                'name' => $campaignName,
+                'description' => 'Campaign personal otomatis untuk menampung tugas lintas divisi.',
+                'type' => 'personal',
+                'created_by' => $assignee->id,
+            ]);
+
+            collect([
+                ['name' => 'By Request', 'type' => 'request', 'order' => 1],
+                ['name' => 'Todo', 'type' => 'todo', 'order' => 2],
+                ['name' => 'Progress', 'type' => 'progress', 'order' => 3],
+                ['name' => 'Done', 'type' => 'done', 'order' => 4],
+            ])->each(fn ($board) => Board::create([
+                'campaign_id' => $campaign->id,
+                'name' => $board['name'],
+                'type' => $board['type'],
+                'order' => $board['order'],
+                'color' => '#6366f1',
+            ]));
+
+            $campaign->members()->sync([$assignee->id]);
+            $workspace->members()->syncWithoutDetaching([$assignee->id]);
+
+            $chatRoom = ChatRoom::create([
+                'campaign_id' => $campaign->id,
+                'type' => 'group',
+                'name' => $campaign->name,
+            ]);
+            $chatRoom->members()->sync([$assignee->id]);
+
+            ActivityLogService::log(
+                $actor,
+                'campaign',
+                (string) $campaign->id,
+                'created',
+                "Membuat campaign personal '{$campaign->name}' untuk {$assignee->name} (otomatis lintas divisi)",
+                ['campaign_id' => (string) $campaign->id, 'workspace_id' => (string) $workspace->id]
+            );
+
+            return $campaign;
+        });
+    }
+
+    // ============================================
+    // WORKSPACE & INBOX
     // ============================================
 
     /**
@@ -184,7 +522,7 @@ class CrossDivisionMirrorService
 
     /**
      * Board tujuan = board dengan type yang sama di campaign tujuan.
-     * Berlaku untuk semua kolom (request/todo/progress/done/dll).
+     * Berlaku untuk semua kolom (request/todo/progress/done/kustom).
      */
     public function resolveTargetBoard(Campaign $campaign, ?string $boardType): Board
     {
@@ -204,12 +542,18 @@ class CrossDivisionMirrorService
     // ============================================
 
     /**
-     * Pastikan ada copy di division assignee. Idempoten: mengembalikan copy
-     * yang sudah ada bila division tujuan sudah punya. Null bila tidak ada
-     * division tujuan (satu division yang sama).
+     * Pastikan ada copy di division assignee. Idempoten per campaign tujuan:
+     * mengembalikan copy yang sudah ada bila sudah punya. Null bila tidak
+     * ada division tujuan (satu division yang sama).
      */
-    public function ensureMirror(Card $source, User $assignee, User $actor): ?Card
-    {
+    public function ensureMirror(
+        Card $source,
+        User $assignee,
+        User $actor,
+        ?string $targetCampaignId = null,
+        bool $createCampaign = false,
+        ?string $campaignName = null
+    ): ?Card {
         if (Card::$isMirroring) {
             return null;
         }
@@ -229,31 +573,40 @@ class CrossDivisionMirrorService
             return null;
         }
 
-        $existing = Card::query()
-            ->where('parent_card_id', $rootId)
-            ->whereHas('board.campaign.workspace', fn ($workspaceQuery) => $workspaceQuery
-                ->where('division_id', $targetDivision->id))
-            ->first();
-
-        if ($existing) {
-            $existing->assignees()->syncWithoutDetaching([$assignee->id]);
-            $this->syncAssigneesToFamily($root, $actor);
-
-            return $existing;
-        }
-
         $lock = $this->acquireFamilyLock($root);
 
         try {
-            return DB::transaction(function () use ($root, $assignee, $actor, $targetDivision, $rootId, $sourceDivisionId) {
+            return DB::transaction(function () use (
+                $root,
+                $assignee,
+                $actor,
+                $targetDivision,
+                $rootId,
+                $sourceDivisionId,
+                $targetCampaignId,
+                $createCampaign,
+                $campaignName
+            ) {
                 Card::$isMirroring = true;
 
                 try {
-                    $workspace = $this->resolveWorkspace($targetDivision);
-                    $campaign = $this->resolveInboxCampaign($workspace, $actor, $assignee);
+                    $campaign = $this->resolveTargetCampaign($root, $assignee, $actor, $targetDivision, $targetCampaignId, $createCampaign, $campaignName);
                     $targetBoard = $this->resolveTargetBoard($campaign, $root->board?->type);
 
-                    $copy = $this->cloneCardRow($root, $targetBoard, $actor, $targetDivision, $sourceDivisionId);
+                    $existing = Card::query()
+                        ->where('parent_card_id', $rootId)
+                        ->whereHas('board', fn ($boardQuery) => $boardQuery
+                            ->where('campaign_id', $campaign->id))
+                        ->first();
+
+                    if ($existing) {
+                        $existing->assignees()->syncWithoutDetaching([$assignee->id]);
+                        $this->syncAssigneesToFamily($root, $actor);
+
+                        return $existing;
+                    }
+
+                    $copy = $this->cloneCardRow($root, $targetBoard, $actor, $sourceDivisionId);
                     $copy->assignees()->syncWithoutDetaching([$assignee->id]);
 
                     $this->cloneRelations($root, $copy);
@@ -263,12 +616,13 @@ class CrossDivisionMirrorService
                         'card',
                         (string) $copy->id,
                         'mirrored',
-                        "Membuat copy lintas divisi dari card '{$root->title}' (division {$root->board?->campaign?->workspace?->division?->name}) untuk {$assignee->name} ({$targetDivision->name})",
+                        "Membuat copy lintas divisi dari card '{$root->title}' (division {$root->board?->campaign?->workspace?->division?->name}) untuk {$assignee->name} di campaign '{$campaign->name}'",
                         [
                             'card_id' => (string) $copy->id,
                             'parent_card_id' => $rootId,
                             'source_division_id' => $sourceDivisionId ? (string) $sourceDivisionId : null,
                             'target_division_id' => (string) $targetDivision->id,
+                            'target_campaign_id' => (string) $campaign->id,
                         ]
                     );
 
@@ -286,7 +640,6 @@ class CrossDivisionMirrorService
         Card $root,
         Board $targetBoard,
         User $actor,
-        Division $targetDivision,
         $sourceDivisionId
     ): Card {
         $lastOrder = $targetBoard->cards()->max('order') ?? 0;
@@ -399,6 +752,89 @@ class CrossDivisionMirrorService
     }
 
     // ============================================
+    // RELOKASI COPY (MIGRASI INBOX -> CAMPAIGN)
+    // ============================================
+
+    /**
+     * Pindahkan copy ke campaign lain (mis. hasil pencocokan nama saat
+     * migrasi). Board dicocokkan by-type; order ditaruh paling akhir.
+     */
+    public function relocateCopy(Card $copy, Campaign $campaign, User $actor): Card
+    {
+        $copy->loadMissing('board.campaign.workspace.division');
+
+        $lock = $this->acquireFamilyLock($copy);
+
+        try {
+            Card::$isMirroring = true;
+
+            try {
+                $fromBoard = $copy->board;
+                $destination = $this->resolveTargetBoard($campaign, $fromBoard?->type);
+                $lastOrder = $destination->cards()->where('id', '!=', $copy->id)->max('order');
+
+                $copy->update([
+                    'board_id' => $destination->id,
+                    'campaign_id' => $destination->campaign_id,
+                    'order' => ($lastOrder ?? 0) + 1,
+                ]);
+
+                $campaign->members()->syncWithoutDetaching(
+                    $copy->assignees()->pluck('users.id')->all()
+                );
+
+                ActivityLogService::log(
+                    $actor,
+                    'card',
+                    (string) $copy->id,
+                    'mirror_moved',
+                    "Memindahkan copy '{$copy->title}' dari '{$fromBoard?->name}' ke campaign '{$campaign->name}' ({$destination->name})",
+                    [
+                        'card_id' => (string) $copy->id,
+                        'family_root_id' => $copy->familyRootId(),
+                        'from_board_id' => $fromBoard?->id ? (string) $fromBoard->id : null,
+                        'to_board_id' => (string) $destination->id,
+                        'to_campaign_id' => (string) $campaign->id,
+                    ]
+                );
+
+                return $copy->fresh(['board.campaign.workspace.division', 'assignees']);
+            } finally {
+                Card::$isMirroring = false;
+            }
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
+    /**
+     * Isi mirrored_by copy lama dari activity log 'mirrored' pertama bila
+     * masih kosong (copy dibuat sebelum kolom ada).
+     */
+    public function backfillMirroredBy(Card $copy): bool
+    {
+        if ($copy->mirrored_by) {
+            return false;
+        }
+
+        $log = \App\Models\ActivityLog::query()
+            ->where('entity_type', 'card')
+            ->where('entity_id', (string) $copy->id)
+            ->where('action', 'mirrored')
+            ->whereNotNull('user_id')
+            ->orderBy('created_at')
+            ->first();
+
+        if (! $log) {
+            return false;
+        }
+
+        $copy->update(['mirrored_by' => $log->user_id]);
+
+        return true;
+    }
+
+    // ============================================
     // PROPAGASI DUA ARAH
     // ============================================
 
@@ -505,7 +941,7 @@ class CrossDivisionMirrorService
 
     /**
      * Propagasi pindah board: setiap copy pindah ke board dengan TYPE yang
-     * sama di campaign-nya sendiri (berlaku semua kolom).
+     * sama di campaign-nya sendiri (berlaku semua kolom, termasuk kustom).
      */
     public function propagateMove(Card $card, Board $targetBoard, User $actor): void
     {
@@ -1172,6 +1608,63 @@ class CrossDivisionMirrorService
                 );
 
                 $member->delete();
+            }
+        } finally {
+            Card::$isMirroring = false;
+        }
+    }
+
+    /**
+     * Dipanggil saat campaign dihapus: catat orphan pada family sumber dan
+     * beri tahu assignee copy bahwa tugasnya ikut terhapus (cascade DB).
+     */
+    public function handleCampaignDeleted(Campaign $campaign, User $actor): void
+    {
+        $copies = Card::query()
+            ->where('is_cross_division_copy', true)
+            ->whereHas('board', fn ($boardQuery) => $boardQuery
+                ->where('campaign_id', $campaign->id))
+            ->with(['assignees:id', 'board'])
+            ->get();
+
+        if ($copies->isEmpty()) {
+            return;
+        }
+
+        Card::$isMirroring = true;
+
+        try {
+            foreach ($copies as $copy) {
+                $rootId = $copy->familyRootId();
+
+                ActivityLogService::log(
+                    $actor,
+                    'card',
+                    $rootId,
+                    'mirror_orphaned',
+                    "Copy '{$copy->title}' ikut terhapus karena campaign '{$campaign->name}' dihapus",
+                    [
+                        'card_id' => $rootId,
+                        'family_root_id' => $rootId,
+                        'copy_id' => (string) $copy->id,
+                        'campaign_id' => (string) $campaign->id,
+                    ]
+                );
+
+                foreach ($copy->assignees as $assignee) {
+                    \App\Models\Notification::create([
+                        'user_id' => $assignee->id,
+                        'type' => 'mirror_orphaned',
+                        'title' => 'Tugas lintas divisi terhapus',
+                        'body' => "Copy '{$copy->title}' ikut terhapus karena campaign '{$campaign->name}' dihapus.",
+                        'data' => [
+                            'family_root_id' => $rootId,
+                            'copy_id' => (string) $copy->id,
+                            'campaign_id' => (string) $campaign->id,
+                        ],
+                        'is_read' => false,
+                    ]);
+                }
             }
         } finally {
             Card::$isMirroring = false;

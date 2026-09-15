@@ -66,6 +66,7 @@ final class PermissionCatalog
                 'card.assign' => 'Assign user ke card',
                 'card.unassign' => 'Lepas assignee card',
                 'card.activity.view' => 'Lihat riwayat aktivitas card',
+                'card.mirror.view' => 'Lihat copy lintas divisi di divisinya',
             ]),
             'task' => self::module('Task Legacy', 'Permission kompatibilitas untuk akses task/card lama.', [
                 'task.view' => 'Lihat task/card',

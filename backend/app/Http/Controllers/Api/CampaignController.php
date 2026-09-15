@@ -362,10 +362,15 @@ class CampaignController extends Controller
             $campaign
         );
 
+        $viewer = request()->user();
+        $mirror = app(\App\Services\CrossDivisionMirrorService::class);
+
         $campaign->load([
             'creator',
             'members',
-            'boards.cards',
+            'boards.cards' => function ($cardQuery) use ($mirror, $viewer) {
+                $mirror->applyCopyVisibility($cardQuery, $viewer);
+            },
         ]);
 
         return response()->json([
@@ -444,6 +449,18 @@ class CampaignController extends Controller
             'delete',
             $campaign
         );
+
+        // Copy mirror aktif di dalam campaign ikut terhapus cascade — catat
+        // orphan pada family sumber + beri tahu assignee copy.
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)
+                ->handleCampaignDeleted($campaign, request()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('MIRROR CAMPAIGN DELETE HOOK ERROR', [
+                'campaign_id' => $campaign->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         $campaign->delete();
 
@@ -736,8 +753,14 @@ class CampaignController extends Controller
     {
         $this->authorize('view', $campaign);
 
+        // Copy lintas divisi orang lain tidak boleh bocor lewat judul gantt.
+        $mirror = app(\App\Services\CrossDivisionMirrorService::class);
+        $viewer = request()->user();
+
         $cards = $campaign->boards()
-            ->with('cards')
+            ->with(['cards' => function ($cardQuery) use ($mirror, $viewer) {
+                $mirror->applyCopyVisibility($cardQuery, $viewer);
+            }])
             ->get()
             ->flatMap(fn($board) => $board->cards)
             ->values();
@@ -821,11 +844,15 @@ class CampaignController extends Controller
     {
         $this->authorize('view', $campaign);
 
-        $cards = Card::query()
+        $cardsQuery = Card::query()
             ->join('boards', 'cards.board_id', '=', 'boards.id')
             ->where('boards.campaign_id', $campaign->id)
-            ->select('cards.*')
-            ->get();
+            ->select('cards.*');
+
+        app(\App\Services\CrossDivisionMirrorService::class)
+            ->applyCopyVisibility($cardsQuery, request()->user());
+
+        $cards = $cardsQuery->get();
 
         $overdue = $cards->filter(function ($card) {
             return $card->status !== 'completed'
@@ -856,11 +883,15 @@ class CampaignController extends Controller
     {
         $this->authorize('view', $campaign);
 
-        $cards = Card::query()
+        $cardsQuery = Card::query()
             ->join('boards', 'cards.board_id', '=', 'boards.id')
             ->where('boards.campaign_id', $campaign->id)
-            ->select('cards.*')
-            ->get();
+            ->select('cards.*');
+
+        app(\App\Services\CrossDivisionMirrorService::class)
+            ->applyCopyVisibility($cardsQuery, request()->user());
+
+        $cards = $cardsQuery->get();
 
         $now = Carbon::now()->startOfDay();
 
@@ -897,7 +928,7 @@ class CampaignController extends Controller
 
         $now = Carbon::now();
 
-        $cards = Card::query()
+        $cardsQuery = Card::query()
             ->join('boards', 'cards.board_id', '=', 'boards.id')
             ->where('boards.campaign_id', $campaign->id)
 
@@ -908,8 +939,12 @@ class CampaignController extends Controller
             ->where('cards.due_date', '<', $now)
 
             ->select('cards.*')
-            ->orderBy('cards.due_date', 'asc')
-            ->get();
+            ->orderBy('cards.due_date', 'asc');
+
+        app(\App\Services\CrossDivisionMirrorService::class)
+            ->applyCopyVisibility($cardsQuery, request()->user());
+
+        $cards = $cardsQuery->get();
 
         return response()->json([
             'data' => $cards->map(function ($card) use ($now) {
@@ -955,11 +990,15 @@ class CampaignController extends Controller
     {
         $this->authorize('view', $campaign);
 
-        $cards = Card::query()
+        $cardsQuery = Card::query()
             ->join('boards', 'cards.board_id', '=', 'boards.id')
             ->where('boards.campaign_id', $campaign->id)
-            ->select('cards.*')
-            ->get();
+            ->select('cards.*');
+
+        app(\App\Services\CrossDivisionMirrorService::class)
+            ->applyCopyVisibility($cardsQuery, request()->user());
+
+        $cards = $cardsQuery->get();
 
         $total = $cards->count();
 

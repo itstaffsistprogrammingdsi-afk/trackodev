@@ -31,6 +31,10 @@ $query = Card::query()
         });
     });
 
+// Copy lintas divisi privat: hanya 5 pihak yang boleh melihat.
+app(\App\Services\CrossDivisionMirrorService::class)
+    ->applyCopyVisibility($query, $user);
+
         // =========================
         // FILTER RANGE (CUSTOM)
         // =========================

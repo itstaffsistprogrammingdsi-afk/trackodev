@@ -205,8 +205,8 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
         <h3 className="min-w-0 flex-1 break-words text-[15px] font-bold leading-5 text-slate-800 md:pr-12 md:text-sm md:font-semibold md:text-gray-800 dark:text-slate-100">
           {card.title}
         </h3>
-
-        {card.priority ? (          <span
+        {card.priority ? (
+          <span
             className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide md:absolute md:right-2 md:top-2 md:mt-2 md:rounded-sm md:px-1.5 md:py-0.5 md:font-semibold md:leading-none ${priorityBadgeClass(card.priority)}`}
           >
             {card.priority}

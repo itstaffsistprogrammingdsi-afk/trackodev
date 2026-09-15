@@ -84,6 +84,14 @@ function activityCopy(activity: ActivityLog) {
     return { title: "menghapus copy lintas divisi", detail };
   }
 
+  if (activity.action === "mirror_moved") {
+    return { title: "memindahkan copy lintas divisi", detail };
+  }
+
+  if (activity.action === "mirror_orphaned") {
+    return { title: "copy lintas divisi ikut terhapus", detail };
+  }
+
   if (activity.entity_type === "task" || activity.entity_type === "subtask") {
     const noun = activity.entity_type;
     const verbs: Record<string, string> = {

@@ -4,6 +4,7 @@ import {
   CreateCardRequest,
   UpdateCardRequest,
   Brand,
+  ReceivingCampaign,
   User,
 } from "../types";
 
@@ -21,11 +22,8 @@ export const getCards = async (
 };
 
 // =====================================================
-// MY ASSIGNED CARDS
+// MY ASSIGNED CARDS (termasuk copy mirror lintas divisi)
 // =====================================================
-// A personal projection of directly assigned cards across divisions. Each
-// item still exposes its native board_id and source workflow; no card copy is
-// created for the recipient.
 export const getMyCards = async (): Promise<Card[]> => {
   const res = await api.get<{ data: Card[] }>("/cards/mine");
 
@@ -89,6 +87,23 @@ export const getCardMemberCandidates = async (
 };
 
 // =====================================================
+// RECEIVING CAMPAIGNS (kandidat campaign tujuan copy mirror)
+// =====================================================
+export const getReceivingCampaigns = async (
+  cardId: string,
+  userId: string,
+): Promise<{ campaigns: ReceivingCampaign[]; suggested_name: string }> => {
+  const res = await api.get(`/cards/${cardId}/receiving-campaigns`, {
+    params: { user_id: userId },
+  });
+
+  return {
+    campaigns: res.data.data,
+    suggested_name: res.data.suggested_name ?? "",
+  };
+};
+
+// =====================================================
 // MOVE CARD
 // =====================================================
 export const moveCard = (
@@ -133,11 +148,18 @@ export const addComment = (
 export const assignMember = async (
   cardId: string,
   userId: string,
+  targetCampaignId?: string,
+  createOpts?: { createCampaign?: boolean; campaignName?: string },
 ) => {
   const res = await api.post(
     `/cards/${cardId}/assign`,
     {
       user_id: userId,
+      ...(targetCampaignId ? { target_campaign_id: targetCampaignId } : {}),
+      ...(createOpts?.createCampaign ? { create_campaign: true } : {}),
+      ...(createOpts?.campaignName?.trim()
+        ? { campaign_name: createOpts.campaignName.trim() }
+        : {}),
     },
   );
 

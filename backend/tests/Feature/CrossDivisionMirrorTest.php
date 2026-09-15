@@ -9,6 +9,7 @@ use App\Models\Card;
 use App\Models\Division;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\CrossDivisionMirrorService;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -28,6 +29,10 @@ class CrossDivisionMirrorTest extends TestCase
         Bus::fake([SendCardAssignedEmailJob::class]);
     }
 
+    // ============================================
+    // MIRROR DASAR
+    // ============================================
+
     public function test_assign_cross_division_creates_mirror_copy(): void
     {
         [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
@@ -37,15 +42,14 @@ class CrossDivisionMirrorTest extends TestCase
         $card = $this->createCard($project, $dmStaff, 'Desain Banner');
 
         $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', CrossDivisionMirrorService::INBOX_CAMPAIGN_NAME);
 
-        // Card asli tetap di board DM.
         $this->assertDatabaseHas('cards', [
             'id' => $card->id,
             'board_id' => $project['todo']->id,
         ]);
 
-        // Copy fisik dibuat di division DKV dengan isi yang sama.
         $copy = Card::query()
             ->where('parent_card_id', $card->id)
             ->where('is_cross_division_copy', true)
@@ -56,8 +60,8 @@ class CrossDivisionMirrorTest extends TestCase
         $this->assertSame($project['dkvDivision']->id, $copy->board->campaign->workspace->division_id);
         $this->assertSame('todo', $copy->board->type);
         $this->assertSame('Inbox Lintas Divisi', $copy->board->campaign->name);
+        $this->assertSame($dmStaff->id, $copy->mirrored_by);
 
-        // Assignee DKV otomatis join campaign + workspace DM (akses baca).
         $this->assertDatabaseHas('campaign_user', [
             'campaign_id' => $project['campaign']->id,
             'user_id' => $dkvStaff->id,
@@ -74,7 +78,8 @@ class CrossDivisionMirrorTest extends TestCase
         $card = $this->createCard($project, $dmStaff, 'Tugas Internal');
 
         $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $peer->id])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('copy_campaign', null);
 
         $this->assertDatabaseMissing('cards', [
             'parent_card_id' => $card->id,
@@ -91,14 +96,12 @@ class CrossDivisionMirrorTest extends TestCase
 
         $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
 
-        // DM Todo -> Progress : copy DKV ikut ke board type progress.
         $this->patchJson("/api/cards/{$card->id}/move", ['board_id' => $project['progress']->id])
             ->assertOk();
 
         $this->assertSame('progress', $copy->fresh()->board->type);
         $this->assertSame('in_progress', $copy->fresh()->status);
 
-        // DKV Progress -> Done : card DM ikut ke board type done.
         Sanctum::actingAs($dkvStaff);
         $copyProgressBoard = $copy->fresh()->board;
         $inboxDoneBoard = $copyProgressBoard->campaign->boards()->where('type', 'done')->firstOrFail();
@@ -141,7 +144,6 @@ class CrossDivisionMirrorTest extends TestCase
         $card = $this->createCard($project, $dmStaff, 'Banner Konflik');
         $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])->assertOk();
 
-        // Simulasikan propagasi lain sedang berjalan pada family ini.
         $lock = Cache::lock('mirror-family:'.$card->id, 30);
         $this->assertTrue($lock->acquire());
 
@@ -170,11 +172,9 @@ class CrossDivisionMirrorTest extends TestCase
 
         $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
 
-        // Isi yang sudah ada sebelum assign ikut ter-clone.
         $this->assertTrue($copy->tasks()->where('title', 'Siapkan draft')->exists());
         $this->assertTrue($copy->comments()->where('content', 'Brief awal')->exists());
 
-        // Task + komentar baru setelah mirror ikut tersinkron.
         $this->postJson("/api/cards/{$card->id}/tasks", ['title' => 'Revisi final'])
             ->assertCreated();
 
@@ -198,10 +198,8 @@ class CrossDivisionMirrorTest extends TestCase
 
         $this->deleteJson("/api/cards/{$card->id}/assign/{$dkvStaff->id}")->assertOk();
 
-        // Copy ikut terhapus karena tak lagi punya assignee lintas divisi.
         $this->assertDatabaseMissing('cards', ['id' => $copy->id]);
 
-        // History tetap tersimpan (log tidak cascade).
         $this->assertDatabaseHas('activity_logs', [
             'entity_type' => 'card',
             'entity_id' => $card->id,
@@ -219,11 +217,9 @@ class CrossDivisionMirrorTest extends TestCase
 
         $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
 
-        // Assignee DKV tidak bisa asal hapus.
         Sanctum::actingAs($dkvStaff);
         $this->deleteJson("/api/cards/{$copy->id}")->assertForbidden();
 
-        // Pemilik menghapus asli => seluruh family ikut terhapus.
         Sanctum::actingAs($dmStaff);
         $this->deleteJson("/api/cards/{$card->id}")->assertOk();
 
@@ -269,15 +265,347 @@ class CrossDivisionMirrorTest extends TestCase
         $activities = $this->getJson("/api/cards/{$card->id}/activities")
             ->assertOk()->json('activities');
 
-        // Update deskripsi dari sisi DKV tercatat di history gabungan.
         $actions = collect($activities)->pluck('action');
         $this->assertContains('description_updated', $actions);
         $this->assertContains('mirror_synced', $actions);
 
-        // Format "Risa - DKV" tersedia lewat relasi user.divisions.
         $response = $this->getJson("/api/cards/{$card->id}/activities")->assertOk();
         $users = collect($response->json('activities'))->pluck('user')->filter();
         $this->assertTrue($users->isNotEmpty());
+    }
+
+    // ============================================
+    // ROUTING BY NAMA
+    // ============================================
+
+    public function test_assign_routes_copy_to_name_matched_campaign(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+
+        // Campaign milik Risa yang cocok nama + kolom kustom QC User.
+        $risaWorkspace = Workspace::create(['division_id' => $project['dkvDivision']->id, 'name' => 'Workspace Risa']);
+        $risaWorkspace->members()->attach($dkvStaff->id);
+        $risaCampaign = Campaign::create([
+            'workspace_id' => $risaWorkspace->id,
+            'created_by' => $dkvStaff->id,
+            'name' => 'Risa 2026',
+            'type' => 'group',
+        ]);
+        $risaCampaign->members()->attach($dkvStaff->id);
+        foreach ([['By Request', 'request', 1], ['Todo', 'todo', 2], ['Progress', 'progress', 3], ['QC User', 'qc_user', 4], ['Done', 'done', 5]] as [$name, $type, $order]) {
+            Board::create(['campaign_id' => $risaCampaign->id, 'name' => $name, 'type' => $type, 'order' => $order]);
+        }
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Risa');
+
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', 'Risa 2026')
+            ->assertJsonPath('copy_campaign.is_inbox', false);
+
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+        $this->assertSame($risaCampaign->id, $copy->board->campaign_id);
+        $this->assertSame('todo', $copy->board->type);
+
+        // Actor tidak dijadikan member campaign milik assignee.
+        $this->assertDatabaseMissing('campaign_user', [
+            'campaign_id' => $risaCampaign->id,
+            'user_id' => $dmStaff->id,
+        ]);
+    }
+
+    public function test_assign_with_explicit_target_campaign(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+
+        $otherCampaign = $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Arsip DKV');
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Arsip');
+
+        $this->postJson("/api/cards/{$card->id}/assign", [
+            'user_id' => $dkvStaff->id,
+            'target_campaign_id' => $otherCampaign->id,
+        ])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', 'Arsip DKV');
+
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+        $this->assertSame($otherCampaign->id, $copy->board->campaign_id);
+    }
+
+    public function test_assign_with_create_campaign_builds_personal_campaign(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Baru Budi');
+
+        $this->postJson("/api/cards/{$card->id}/assign", [
+            'user_id' => $dkvStaff->id,
+            'create_campaign' => true,
+        ])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', 'Risa '.now()->year)
+            ->assertJsonPath('copy_campaign.is_inbox', false);
+
+        $campaign = Campaign::query()->where('name', 'Risa '.now()->year)->firstOrFail();
+        $this->assertSame('personal', $campaign->type);
+        $this->assertSame($dkvStaff->id, $campaign->created_by);
+        $this->assertSame($project['dkvDivision']->id, $campaign->workspace->division_id);
+
+        // Assignee jadi member + pemilik; actor tidak ikut campur.
+        $this->assertDatabaseHas('campaign_user', [
+            'campaign_id' => $campaign->id,
+            'user_id' => $dkvStaff->id,
+        ]);
+        $this->assertDatabaseMissing('campaign_user', [
+            'campaign_id' => $campaign->id,
+            'user_id' => $dmStaff->id,
+        ]);
+
+        // 4 board default tersedia dan copy mendarat di Todo.
+        $this->assertSame(4, $campaign->boards()->count());
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+        $this->assertSame($campaign->id, $copy->board->campaign_id);
+        $this->assertSame('todo', $copy->board->type);
+    }
+
+    public function test_assign_with_create_campaign_uses_custom_name_and_dedupes(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+        $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Fokus 2026');
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Fokus');
+
+        // Nama kustom dipakai apa adanya.
+        $this->postJson("/api/cards/{$card->id}/assign", [
+            'user_id' => $dkvStaff->id,
+            'create_campaign' => true,
+            'campaign_name' => 'Proyek Khusus',
+        ])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', 'Proyek Khusus');
+
+        // Tabrakan nama di workspace yang sama diberi suffix otomatis.
+        $card2 = $this->createCard($project, $dmStaff, 'Tugas Fokus 2');
+        $this->postJson("/api/cards/{$card2->id}/assign", [
+            'user_id' => $dkvStaff->id,
+            'create_campaign' => true,
+            'campaign_name' => 'Proyek Khusus',
+        ])
+            ->assertOk()
+            ->assertJsonPath('copy_campaign.name', 'Proyek Khusus (2)');
+    }
+
+    public function test_assign_with_invalid_target_campaign_is_rejected(): void
+    {        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Salah Target');
+
+        // Campaign milik division sumber tidak boleh jadi tujuan.
+        $this->postJson("/api/cards/{$card->id}/assign", [
+            'user_id' => $dkvStaff->id,
+            'target_campaign_id' => $project['campaign']->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('target_campaign_id');
+
+        $this->assertDatabaseMissing('cards', ['parent_card_id' => $card->id]);
+    }
+
+    public function test_receiving_campaigns_endpoint_lists_candidates(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+        $risaCampaign = $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Risa 2026');
+        $otherCampaign = $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Arsip DKV');
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tanya Kandidat');
+
+        $data = $this->getJson("/api/cards/{$card->id}/receiving-campaigns?user_id={$dkvStaff->id}")
+            ->assertOk();
+
+        $this->assertSame('Risa '.now()->year, $data->json('suggested_name'));
+
+        $data = $data->json('data');
+
+        $byId = collect($data)->keyBy('id');
+        $this->assertTrue($byId->has($risaCampaign->id));
+        $this->assertTrue($byId->has($otherCampaign->id));
+        $this->assertTrue($byId[$risaCampaign->id]['is_name_match']);
+        $this->assertFalse($byId[$otherCampaign->id]['is_name_match']);
+        // Cocok nama diurutkan pertama.
+        $this->assertSame($risaCampaign->id, $data[0]['id']);
+    }
+
+    // ============================================
+    // VISIBILITAS 5 PIHAK
+    // ============================================
+
+    public function test_copy_visibility_matrix(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+        $dkvAdmin = $this->adminIn($project['dkvDivision'], 'Admin DKV');
+        $dkvPeer = $this->staffIn($project['dkvDivision'], 'Rekan DKV');
+        $putri = $this->staffIn($project['dkvDivision'], 'Putri');
+        $putri->givePermissionTo('card.mirror.view');
+        $superAdmin = User::factory()->create(['name' => 'Super']);
+        $superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Rahasia DKV');
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])->assertOk();
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+
+        $inboxCampaignId = $copy->board->campaign_id;
+
+        // Simulasi Inbox bersama: peer satu division ikut jadi member
+        // campaign (inilah kasus bocor yang ditutup aturan privasi).
+        $inboxCampaign = Campaign::findOrFail($inboxCampaignId);
+        $inboxCampaign->members()->syncWithoutDetaching([$dkvPeer->id]);
+        $inboxCampaign->workspace->members()->syncWithoutDetaching([$dkvPeer->id]);
+
+        // 1. Assignee bisa.
+        Sanctum::actingAs($dkvStaff);
+        $this->getJson("/api/cards/{$copy->id}")->assertOk();
+
+        // 2. Pemberi assign bisa.
+        Sanctum::actingAs($dmStaff);
+        $this->getJson("/api/cards/{$copy->id}")->assertOk();
+
+        // 3. Admin division pemilik bisa.
+        Sanctum::actingAs($dkvAdmin);
+        $this->getJson("/api/cards/{$copy->id}")->assertOk();
+
+        // 4. Pemegang card.mirror.view satu division bisa (Putri).
+        Sanctum::actingAs($putri);
+        $this->getJson("/api/cards/{$copy->id}")->assertOk();
+
+        // 5. Super Admin bisa.
+        Sanctum::actingAs($superAdmin);
+        $this->getJson("/api/cards/{$copy->id}")->assertOk();
+
+        // Staff biasa satu division TIDAK bisa (show 403).
+        Sanctum::actingAs($dkvPeer);
+        $this->getJson("/api/cards/{$copy->id}")->assertForbidden();
+
+        // Board list Inbox: copy tidak terlihat oleh staff biasa...
+        $peerBoards = $this->getJson("/api/campaigns/{$inboxCampaignId}/boards")
+            ->assertOk()->json('data');
+        $peerCardIds = collect($peerBoards)->flatMap(fn ($board) => $board['cards'] ?? [])->pluck('id');
+        $this->assertNotContains($copy->id, $peerCardIds);
+
+        // ...tapi terlihat oleh assignee.
+        Sanctum::actingAs($dkvStaff);
+        $staffBoards = $this->getJson("/api/campaigns/{$inboxCampaignId}/boards")
+            ->assertOk()->json('data');
+        $staffCardIds = collect($staffBoards)->flatMap(fn ($board) => $board['cards'] ?? [])->pluck('id');
+        $this->assertContains($copy->id, $staffCardIds);
+
+        // Gantt tidak membocorkan judul ke staff biasa.
+        $dkvStaff->givePermissionTo('campaign.gantt.view');
+        $dkvPeer->givePermissionTo('campaign.gantt.view');
+        Sanctum::actingAs($dkvPeer);
+        $peerGantt = $this->getJson("/api/campaigns/{$inboxCampaignId}/gantt")->assertOk()->json('tasks');
+        $this->assertNotContains($copy->id, collect($peerGantt)->pluck('id'));
+
+        Sanctum::actingAs($dkvStaff);
+        $staffGantt = $this->getJson("/api/campaigns/{$inboxCampaignId}/gantt")->assertOk()->json('tasks');
+        $this->assertContains($copy->id, collect($staffGantt)->pluck('id'));
+    }
+
+    public function test_mirror_view_permission_is_division_scoped(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+        $dmSnoop = $this->staffIn($project['dmDivision'], 'Snoop DM');
+        $dmSnoop->givePermissionTo('card.mirror.view');
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Rahasia Lagi');
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])->assertOk();
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+
+        // Isolasi cabang division-scope: beri akses campaign, privasi copy
+        // tetap harus menolak karena beda division.
+        $copy->board->campaign->members()->syncWithoutDetaching([$dmSnoop->id]);
+
+        // Permission tanpa keanggotaan division pemilik tetap ditolak.
+        Sanctum::actingAs($dmSnoop);
+        $this->getJson("/api/cards/{$copy->id}")->assertForbidden();
+    }
+
+    // ============================================
+    // MIGRASI & ORPHAN
+    // ============================================
+
+    public function test_migrate_command_moves_inbox_copies(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Copy Lama');
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])->assertOk();
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+        $this->assertSame(CrossDivisionMirrorService::INBOX_CAMPAIGN_NAME, $copy->board->campaign->name);
+
+        // Simulasi copy lama: kosongkan mirrored_by lalu backfill.
+        $copy->update(['mirrored_by' => null]);
+
+        // Campaign cocok baru dibuat SETELAH copy mendarat di Inbox
+        // (seperti kondisi data lama di produksi).
+        $risaCampaign = $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Risa 2026');
+
+        $this->artisan('mirror:migrate-inbox-copies', ['--dry-run' => true])
+            ->assertSuccessful();
+
+        // Dry-run tidak mengubah apa pun.
+        $this->assertSame($copy->id, Card::query()->where('parent_card_id', $card->id)->firstOrFail()->id);
+        $this->assertSame(
+            CrossDivisionMirrorService::INBOX_CAMPAIGN_NAME,
+            $copy->fresh()->board->campaign->name
+        );
+
+        $this->artisan('mirror:migrate-inbox-copies')->assertSuccessful();
+
+        $copy->refresh();
+        $this->assertSame($risaCampaign->id, $copy->board->campaign_id);
+        $this->assertSame($dmStaff->id, $copy->mirrored_by);
+        $this->assertDatabaseHas('activity_logs', [
+            'entity_type' => 'card',
+            'entity_id' => $copy->id,
+            'action' => 'mirror_moved',
+        ]);
+    }
+
+    public function test_campaign_delete_orphans_copies_with_log_and_notification(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+        $risaCampaign = $this->makeOwnedCampaign($project['dkvDivision'], $dkvStaff, 'Risa 2026');
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Yatim');
+        $this->postJson("/api/cards/{$card->id}/assign", [
+            'user_id' => $dkvStaff->id,
+            'target_campaign_id' => $risaCampaign->id,
+        ])->assertOk();
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+
+        Sanctum::actingAs($dkvStaff);
+        $this->deleteJson("/api/campaigns/{$risaCampaign->id}")->assertOk();
+
+        $this->assertDatabaseMissing('cards', ['id' => $copy->id]);
+        $this->assertDatabaseHas('activity_logs', [
+            'entity_type' => 'card',
+            'entity_id' => $card->id,
+            'action' => 'mirror_orphaned',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $dkvStaff->id,
+            'type' => 'mirror_orphaned',
+        ]);
     }
 
     // ============================================
@@ -331,6 +659,34 @@ class CrossDivisionMirrorTest extends TestCase
         $division->users()->attach($user->id, ['role' => 'member']);
 
         return $user;
+    }
+
+    private function adminIn(Division $division, string $name): User
+    {
+        $user = User::factory()->create(['name' => $name]);
+        $user->assignRole(User::ROLE_ADMIN);
+        $division->users()->attach($user->id, ['role' => 'admin']);
+
+        return $user;
+    }
+
+    private function makeOwnedCampaign(Division $division, User $owner, string $name): Campaign
+    {
+        $workspace = Workspace::create(['division_id' => $division->id, 'name' => 'Workspace '.$name]);
+        $workspace->members()->attach($owner->id);
+        $campaign = Campaign::create([
+            'workspace_id' => $workspace->id,
+            'created_by' => $owner->id,
+            'name' => $name,
+            'type' => 'group',
+        ]);
+        $campaign->members()->attach($owner->id);
+
+        foreach ([['By Request', 'request', 1], ['Todo', 'todo', 2], ['Progress', 'progress', 3], ['Done', 'done', 4]] as [$boardName, $type, $order]) {
+            Board::create(['campaign_id' => $campaign->id, 'name' => $boardName, 'type' => $type, 'order' => $order]);
+        }
+
+        return $campaign;
     }
 
     /** @param array $project */

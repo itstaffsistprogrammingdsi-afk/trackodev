@@ -46,7 +46,17 @@ export interface User {
   division_role?: "admin" | "member" | null;
   division_names?: string[];
   can_assign?: boolean;
+  has_division?: boolean;
   is_cross_division?: boolean;
+}
+
+export interface ReceivingCampaign {
+  id: string;
+  name: string;
+  type?: string | null;
+  is_name_match?: boolean;
+  workspace?: { id: string; name: string } | null;
+  division?: { id: string; name: string } | null;
 }
 
 export interface Label {
