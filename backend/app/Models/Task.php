@@ -11,7 +11,7 @@ class Task extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['card_id', 'title', 'is_completed', 'order'];
+    protected $fillable = ['card_id', 'source_task_id', 'title', 'is_completed', 'order'];
 
     protected $casts = ['is_completed' => 'boolean', 'due_date' => 'datetime',];
 

@@ -29,6 +29,22 @@ class CardResource extends JsonResource
 
             /*
             |------------------------------------------------
+            | CROSS-DIVISION MIRROR
+            |------------------------------------------------
+            | Badge "copy dari division X, ditugaskan oleh Y" di frontend
+            | memakai field ini. Eager-load dilakukan controller bila ada.
+            */
+            'is_cross_division_copy' => (bool) ($this->is_cross_division_copy ?? false),
+            'parent_card_id' => $this->parent_card_id,
+            'source_division' => $this->relationLoaded('sourceDivision') && $this->sourceDivision
+                ? ['id' => $this->sourceDivision->id, 'name' => $this->sourceDivision->name]
+                : null,
+            'mirrored_by' => $this->relationLoaded('mirroredBy') && $this->mirroredBy
+                ? ['id' => $this->mirroredBy->id, 'name' => $this->mirroredBy->name]
+                : null,
+
+            /*
+            |------------------------------------------------
             | CAMPAIGN CONTEXT - Ambil dari card atau board
             |------------------------------------------------
             */

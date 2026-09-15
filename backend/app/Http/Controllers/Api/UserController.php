@@ -848,25 +848,21 @@ class UserController extends Controller
         // ============================================
 
         if ($request->boolean('collaborator')) {
-            // Super Admin dapat memilih user mana pun sebagai collaborator.
-            // Admin dibatasi pada anggota division tempat campaign dibuat.
-            // User biasa tetap memakai aturan lama: hanya coordinator.
+            // Kebijakan lintas divisi (hasil UAT): user mana pun (admin
+            // maupun staff) dapat memilih collaborator dari division mana
+            // pun. Satu-satunya guard adalah kandidat wajib memiliki minimal
+            // satu membership division (super admin tanpa division tetap
+            // boleh dipilih untuk eskalasi).
             if ($user->isSuperAdmin()) {
                 // Tidak ada filter tambahan.
-            } elseif ($user->isDivisionAdmin()) {
-                // Campaign admin dapat memilih collaborator dari seluruh
-                // division. Kandidat tetap harus memiliki minimal satu
-                // membership division agar undangan dapat dilaporkan kepada
-                // admin divisi asalnya.
-                $query->whereHas('divisions');
             } else {
                 $query->where(function ($candidateQuery) {
                     $candidateQuery
-                        ->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', [
-                            User::ROLE_SUPER_ADMIN,
-                            User::ROLE_ADMIN,
-                        ]))
-                        ->orWhereHas('divisions', fn ($divisionQuery) => $divisionQuery->where('division_user.role', 'admin'));
+                        ->whereHas('divisions')
+                        ->orWhereHas('roles', fn ($roleQuery) => $roleQuery->where(
+                            'name',
+                            User::ROLE_SUPER_ADMIN
+                        ));
                 });
             }
         } elseif (! $user->isSuperAdmin()) {
@@ -899,7 +895,7 @@ class UserController extends Controller
                 'division_names' => $candidate->divisions->pluck('name')->values(),
                 'collaborator_label' => $candidate->isSuperAdmin()
                     ? 'Super Admin'
-                    : ($candidate->isAdmin() ? 'Admin Divisi' : 'Koordinator Divisi'),
+                    : ($candidate->isAdmin() ? 'Admin Divisi' : 'Member'),
             ]),
         ]);
     }

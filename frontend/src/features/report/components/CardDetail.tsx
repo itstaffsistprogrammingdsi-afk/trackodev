@@ -126,6 +126,13 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">{card.title}</h3>
+                        {card.is_cross_division_copy ? (
+                          <p className="mt-1 inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                            Lintas divisi
+                            {card.source_division ? ` · dari ${card.source_division.name}` : ""}
+                            {card.mirrored_by ? ` · oleh ${card.mirrored_by.name}` : ""}
+                          </p>
+                        ) : null}
                         {card.campaign && (
                           <p className="text-sm text-gray-500">Campaign: {card.campaign.name}</p>
                         )}

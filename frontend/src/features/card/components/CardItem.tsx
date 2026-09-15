@@ -13,6 +13,7 @@ import {
 import { isMobileApp } from "@/lib/mobileConfig";
 import { Card } from "../types";
 import NativeCardItem from "./NativeCardItem";
+import { alertIfMirrorConflict } from "../utils/mirrorConflict";
 import {
   dueDateBadgeClasses,
   getDueDateStatus,
@@ -150,6 +151,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
       setIsMoving(true);
       await onMove(card, boardId);
     } catch (error) {
+      if (alertIfMirrorConflict(error)) return;
       console.error("Move card failed", error);
       alert("Card gagal dipindahkan. Silakan coba lagi.");
     } finally {
@@ -203,7 +205,6 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
         <h3 className="min-w-0 flex-1 break-words text-[15px] font-bold leading-5 text-slate-800 md:pr-12 md:text-sm md:font-semibold md:text-gray-800 dark:text-slate-100">
           {card.title}
         </h3>
-
         {card.priority ? (
           <span
             className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide md:absolute md:right-2 md:top-2 md:mt-2 md:rounded-sm md:px-1.5 md:py-0.5 md:font-semibold md:leading-none ${priorityBadgeClass(card.priority)}`}
@@ -212,6 +213,24 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
           </span>
         ) : null}
       </div>
+
+      {card.is_cross_division_copy ? (
+        <div
+          className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
+          title={
+            card.mirrored_by
+              ? `Ditugaskan oleh ${card.mirrored_by.name}${card.source_division ? ` · dari divisi ${card.source_division.name}` : ""}`
+              : "Copy lintas divisi"
+          }
+        >
+          <ArrowRightLeft size={11} className="shrink-0" />
+          <span className="truncate">
+            Lintas divisi
+            {card.source_division ? ` · dari ${card.source_division.name}` : ""}
+            {card.mirrored_by ? ` · oleh ${card.mirrored_by.name}` : ""}
+          </span>
+        </div>
+      ) : null}
 
       {brands.length > 0 ? (
         <div className="mt-3 rounded-xl bg-slate-50 p-2.5 md:hidden dark:bg-slate-800/70">

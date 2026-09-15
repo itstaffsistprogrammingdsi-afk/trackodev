@@ -10,7 +10,7 @@ class Subtask extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['task_id', 'title', 'is_completed', 'order'];
+    protected $fillable = ['task_id', 'source_subtask_id', 'title', 'is_completed', 'order'];
 
     protected $casts = ['is_completed' => 'boolean', 'due_date' => 'datetime'];
 

@@ -16,6 +16,14 @@ final class ResourceAccess
 {
     public static function card(User $user, Card $card): bool
     {
+        // Copy lintas divisi memakai aturan visibilitas 5 pihak sendiri,
+        // bukan keanggotaan campaign.
+        if ($card->is_cross_division_copy) {
+            $card->loadMissing('board.campaign.workspace.division', 'assignees:id');
+
+            return app(\App\Services\CrossDivisionMirrorService::class)->canViewCopy($user, $card);
+        }
+
         $campaign = $card->board?->campaign;
 
         return $campaign?->canBeAccessedBy($user) ?? false;

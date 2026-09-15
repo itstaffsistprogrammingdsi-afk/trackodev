@@ -8,6 +8,7 @@ import {
 
 import type { Card } from "../types";
 import { getDueDateStatus } from "../utils/dueDate";
+import { alertIfMirrorConflict } from "../utils/mirrorConflict";
 
 interface NativeCardItemProps {
   card: Card;
@@ -71,6 +72,7 @@ export default function NativeCardItem({
       setIsMoving(true);
       await onMove(card, boardId);
     } catch (error) {
+      if (alertIfMirrorConflict(error)) return;
       console.error("Move card failed", error);
       alert("Card gagal dipindahkan. Silakan coba lagi.");
     } finally {
@@ -118,6 +120,17 @@ export default function NativeCardItem({
             <ChevronRight size={17} className="text-slate-300 dark:text-slate-600" />
           </span>
         </span>
+
+        {card.is_cross_division_copy ? (
+          <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+            <ArrowRightLeft size={11} className="shrink-0" />
+            <span className="truncate">
+              Lintas divisi
+              {card.source_division ? ` · dari ${card.source_division.name}` : ""}
+              {card.mirrored_by ? ` · oleh ${card.mirrored_by.name}` : ""}
+            </span>
+          </span>
+        ) : null}
 
         {visibleBrands.length > 0 || visibleLabels.length > 0 ? (
           <span className="mt-3 flex flex-wrap gap-1.5">

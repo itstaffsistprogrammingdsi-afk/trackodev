@@ -145,9 +145,19 @@ class CardMemberCandidatesTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->getJson('/api/cards/'.$card->id.'/member-candidates?search=Rizky')
+        $data = $this->getJson('/api/cards/'.$card->id.'/member-candidates?search=Rizky')
             ->assertOk()
-            ->assertJsonPath('data.0.id', $member->id)
-            ->assertJsonCount(1, 'data');
+            ->json('data');
+
+        // Anggota division tetap di urutan pertama...
+        $this->assertSame($member->id, $data[0]['id']);
+        $this->assertTrue($data[0]['can_assign']);
+
+        // ...tapi user tanpa division ikut ditemukan agar pencarian tidak
+        // misterius kosong; ia ditandai tidak bisa di-assign.
+        $this->assertCount(2, $data);
+        $this->assertSame($outside->id, $data[1]['id']);
+        $this->assertFalse($data[1]['can_assign']);
+        $this->assertFalse($data[1]['has_division']);
     }
 }

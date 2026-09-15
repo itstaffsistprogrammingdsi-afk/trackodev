@@ -100,7 +100,7 @@ class SecurityHardeningTest extends TestCase
         $this->assertNull($attachment->fresh()->qc_by);
     }
 
-    public function test_card_creation_cannot_bypass_assignment_hierarchy(): void
+    public function test_card_creation_enforces_assignment_guard(): void
     {
         $creator = $this->userWithRole(User::ROLE_USER);
         $otherStaff = $this->userWithRole(User::ROLE_USER);
@@ -112,9 +112,21 @@ class SecurityHardeningTest extends TestCase
         $foreignDivision->users()->attach($otherStaff->id, ['role' => 'member']);
         Sanctum::actingAs($creator);
 
+        // Kebijakan lintas divisi (hasil UAT): staff beda division boleh
+        // di-assign langsung; copy mirror dibuat otomatis.
+        $this->postJson('/api/boards/'.$project['board']->id.'/cards', [
+            'title' => 'Cross division assignment',
+            'assignees' => [$otherStaff->id],
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('cards', ['title' => 'Cross division assignment']);
+
+        // Guard tersisa: user tanpa division tetap ditolak.
+        $outsider = $this->userWithRole(User::ROLE_USER);
+
         $this->postJson('/api/boards/'.$project['board']->id.'/cards', [
             'title' => 'Unauthorized assignment',
-            'assignees' => [$otherStaff->id],
+            'assignees' => [$outsider->id],
         ])->assertForbidden();
 
         $this->assertDatabaseMissing('cards', ['title' => 'Unauthorized assignment']);

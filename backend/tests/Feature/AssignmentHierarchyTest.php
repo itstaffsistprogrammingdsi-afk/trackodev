@@ -26,7 +26,7 @@ class AssignmentHierarchyTest extends TestCase
         $this->seed(PermissionSeeder::class);
     }
 
-    public function test_assignment_hierarchy_allows_escalation_to_super_admin_and_cross_division_admin_only(): void
+    public function test_assignment_allows_cross_division_staff_targets(): void
     {
         $actor = $this->userWithRole(User::ROLE_USER);
         $adminA = $this->userWithRole(User::ROLE_ADMIN);
@@ -45,15 +45,21 @@ class AssignmentHierarchyTest extends TestCase
             [$staffB, 'member'],
         ]);
 
+        // Kebijakan lintas divisi (hasil UAT): siapa pun yang punya division
+        // boleh dipilih, termasuk staff lintas divisi. Guard tersisa hanya
+        // user tanpa division.
         $this->assertTrue($actor->canCoordinateAssignmentTo($superAdmin));
         $this->assertTrue($actor->canCoordinateAssignmentTo($adminA));
         $this->assertTrue($actor->canCoordinateAssignmentTo($adminB));
-        $this->assertFalse($actor->canCoordinateAssignmentTo($staffA));
-        $this->assertFalse($actor->canCoordinateAssignmentTo($staffB));
+        $this->assertTrue($actor->canCoordinateAssignmentTo($staffA));
+        $this->assertTrue($actor->canCoordinateAssignmentTo($staffB));
 
         $this->assertTrue($adminA->canCoordinateAssignmentTo($staffA));
         $this->assertTrue($adminA->canCoordinateAssignmentTo($adminB));
-        $this->assertFalse($adminA->canCoordinateAssignmentTo($staffB));
+        $this->assertTrue($adminA->canCoordinateAssignmentTo($staffB));
+
+        $outsider = $this->userWithRole(User::ROLE_USER);
+        $this->assertFalse($actor->canCoordinateAssignmentTo($outsider));
 
         Sanctum::actingAs($actor);
         $candidates = $this->getJson('/api/users/assignment-candidates?division_id='.$divisionB->id)
@@ -63,7 +69,7 @@ class AssignmentHierarchyTest extends TestCase
         $candidateIds = collect($candidates)->pluck('id');
         $this->assertContains($superAdmin->id, $candidateIds);
         $this->assertContains($adminB->id, $candidateIds);
-        $this->assertNotContains($staffB->id, $candidateIds);
+        $this->assertContains($staffB->id, $candidateIds);
 
         $project = $this->createProject($actor, $divisionA);
         Bus::fake([SendCardAssignedEmailJob::class]);
@@ -85,7 +91,13 @@ class AssignmentHierarchyTest extends TestCase
         ])->assertOk();
         $this->postJson('/api/cards/'.$card->id.'/assign', [
             'user_id' => $staffB->id,
-        ])->assertForbidden();
+        ])->assertOk();
+
+        // Copy mirror lintas divisi dibuat untuk staff division B.
+        $this->assertDatabaseHas('cards', [
+            'parent_card_id' => $card->id,
+            'is_cross_division_copy' => true,
+        ]);
     }
 
     public function test_form_pic_search_and_assignment_allow_any_member_of_selected_division(): void

@@ -99,6 +99,8 @@ class ReportController extends Controller
                 'board',
                 'labels',
                 'brands',
+                'sourceDivision:id,name',
+                'mirroredBy:id,name',
                 'attachments' => function ($attachmentQuery) {
                     $attachmentQuery
                         ->whereNull('archived_at')
@@ -320,6 +322,10 @@ class ReportController extends Controller
                 $a->where('users.id', $user->id);
             });
         });
+
+        // Copy lintas divisi privat: hanya 5 pihak yang boleh melihat.
+        app(\App\Services\CrossDivisionMirrorService::class)
+            ->applyCopyVisibility($query, $user);
     }
 
     /**
@@ -651,6 +657,8 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
                     'board',
                     'labels',
                     'brands',
+                    'sourceDivision:id,name',
+                    'mirroredBy:id,name',
                     'attachments' => function ($attQ) {
                         $attQ
                             ->whereNull('archived_at')

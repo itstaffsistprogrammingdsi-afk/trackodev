@@ -28,6 +28,14 @@ class Card extends Model
 
         'board_id',
 
+        'parent_card_id',
+
+        'is_cross_division_copy',
+
+        'source_division_id',
+
+        'mirrored_by',
+
         'campaign_id',
 
         'brand_id',
@@ -70,8 +78,84 @@ class Card extends Model
         'due_reminder_last_sent_at' => 'datetime',
         'due_reminder_lock_until'   => 'datetime',
 
+        'is_cross_division_copy'    => 'boolean',
+
         'status'                    => 'string',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | CROSS-DIVISION MIRROR
+    |--------------------------------------------------------------------------
+    | Satu pekerjaan (family) = card asli (parent_card_id null) + copy fisik
+    | di division lain (parent_card_id menunjuk card asli). Copy tetap card
+    | penuh di board division tujuan sehingga muncul di laporan user DKV.
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Guard re-entrancy propagasi mirror: saat service mengupdate copy,
+     * observer/propagasi tidak boleh memicu propagasi balik.
+     */
+    public static bool $isMirroring = false;
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(
+            Card::class,
+            'parent_card_id'
+        );
+    }
+
+    public function copies(): HasMany
+    {
+        return $this->hasMany(
+            Card::class,
+            'parent_card_id'
+        );
+    }
+
+    public function sourceDivision(): BelongsTo
+    {
+        return $this->belongsTo(
+            Division::class,
+            'source_division_id'
+        );
+    }
+
+    public function mirroredBy(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'mirrored_by'
+        );
+    }
+
+    /**
+     * Card akar family (card asli). Copy menunjuk ke sini, card asli
+     * mengembalikan dirinya sendiri.
+     */
+    public function familyRootId(): string
+    {
+        return (string) ($this->parent_card_id ?? $this->id);
+    }
+
+    /**
+     * Seluruh id dalam satu family (asli + semua copy).
+     */
+    public function familyIds(): array
+    {
+        $rootId = $this->familyRootId();
+
+        $copyIds = Card::query()
+            ->where('id', $rootId)
+            ->orWhere('parent_card_id', $rootId)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        return array_values(array_unique($copyIds));
+    }
 
     /*
     |--------------------------------------------------------------------------

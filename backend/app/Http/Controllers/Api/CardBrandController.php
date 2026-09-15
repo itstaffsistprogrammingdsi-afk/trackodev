@@ -24,6 +24,13 @@ class CardBrandController extends Controller
         // reload their card detail instead of keeping a stale brand list.
         ApplicationDataChanged::dispatch($card, 'updated');
 
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)
+                ->syncBrand($card, $brand, true, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION BRAND MIRROR ERROR', ['card_id' => $card->id, 'message' => $e->getMessage()]);
+        }
+
         ActivityLogService::log(
             auth()->user(),
 
@@ -47,6 +54,13 @@ class CardBrandController extends Controller
         // See attach(): detach also changes only the pivot table, therefore
         // explicitly publish a Card update for realtime consumers.
         ApplicationDataChanged::dispatch($card, 'updated');
+
+        try {
+            app(\App\Services\CrossDivisionMirrorService::class)
+                ->syncBrand($card, $brand, false, auth()->user());
+        } catch (\Throwable $e) {
+            \Log::warning('CROSS DIVISION BRAND MIRROR ERROR', ['card_id' => $card->id, 'message' => $e->getMessage()]);
+        }
 
         ActivityLogService::log(
             auth()->user(),

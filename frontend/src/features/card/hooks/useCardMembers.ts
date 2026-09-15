@@ -1,4 +1,6 @@
+import { AxiosError } from "axios";
 import { assignMember, unassignMember } from "../api/card.api";
+import { alertIfMirrorConflict } from "../utils/mirrorConflict";
 
 interface Props {
   cardId?: string;
@@ -19,20 +21,37 @@ export default function useCardMembers({
   // =========================================
   const handleAssign = async (
     userId: string,
+    targetCampaignId?: string,
+    createOpts?: { createCampaign?: boolean; campaignName?: string },
   ) => {
     if (!cardId) return;
 
     try {
-      await assignMember(cardId, userId);
+      const res = await assignMember(cardId, userId, targetCampaignId, createOpts);
 
       // 🔥 refresh realtime
       await fetchDetail();
       onUpdated?.();
+
+      return res.data as {
+        copy_campaign?: { id: string; name: string; is_inbox?: boolean } | null;
+      };
     } catch (err) {
+      if (alertIfMirrorConflict(err)) {
+        await fetchDetail();
+        onUpdated?.();
+        return;
+      }
       console.error(
         "FAILED ASSIGN MEMBER",
         err,
       );
+      if (err instanceof AxiosError) {
+        const message = err.response?.data?.message;
+        if (typeof message === "string" && message.trim().length > 0) {
+          window.alert(message);
+        }
+      }
     }
   };
 
