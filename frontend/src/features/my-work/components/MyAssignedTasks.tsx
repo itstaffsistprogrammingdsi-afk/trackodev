@@ -20,13 +20,19 @@ import {
   Inbox,
   Loader2,
   PlayCircle,
+  UserRound,
 } from "lucide-react";
 
 import CardDetailModal from "@/features/card/components/CardDetailModal";
 import CardItem from "@/features/card/components/CardItem";
-import { getMyCards, moveCard } from "@/features/card/api/card.api";
+import {
+  assignMember,
+  getMyCards,
+  moveCard,
+} from "@/features/card/api/card.api";
 import { alertIfMirrorConflict } from "@/features/card/utils/mirrorConflict";
 import type { Card, CardWorkflowBoard } from "@/features/card/types";
+import { useAuth } from "@/context/AuthContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 
 type WorkColumn = {
@@ -75,11 +81,15 @@ function MyTaskColumn({
   cards,
   onOpenCard,
   onMoveCard,
+  onClaimCard,
+  claimingCardId,
 }: {
   column: WorkColumn;
   cards: Card[];
   onOpenCard: (card: Card) => void;
   onMoveCard: (card: Card, boardId: string) => Promise<void>;
+  onClaimCard: (card: Card) => Promise<void>;
+  claimingCardId: string | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `my-task-${column.id}` });
   const Icon = column.icon;
@@ -114,6 +124,7 @@ function MyTaskColumn({
             const moveTargets = (card.source?.workflow_boards ?? [])
               .filter((board) => board.id !== card.board_id)
               .map((board) => ({ id: board.id, name: board.name }));
+            const hasOwner = (card.assignees ?? []).length > 0;
 
             return (
               <div key={card.id} className="space-y-1.5">
@@ -127,6 +138,25 @@ function MyTaskColumn({
                     </span>
                   </div>
                 ) : null}
+
+                {!hasOwner ? (
+                  <div className="flex flex-wrap items-center gap-1.5 px-1">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                      <UserRound size={11} aria-hidden="true" />
+                      Belum ada pemilik
+                      {card.created_by?.name ? ` · dibuat oleh ${card.created_by.name}` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={claimingCardId === card.id}
+                      onClick={() => void onClaimCard(card)}
+                      className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
+                    >
+                      {claimingCardId === card.id ? "Mengambil..." : "Ambil"}
+                    </button>
+                  </div>
+                ) : null}
+
                 <CardItem
                   card={card}
                   onOpen={onOpenCard}
@@ -149,6 +179,7 @@ function MyTaskColumn({
 }
 
 export default function MyAssignedTasks() {
+  const { user } = useAuth();
   const realtimeRevision = useRealtimeRevision([
     "ActivityLog",
     "Card",
@@ -161,14 +192,37 @@ export default function MyAssignedTasks() {
     refetch,
   } = useQuery<Card[]>({
     queryKey: ["my-cards"],
-    queryFn: getMyCards,
+    // Sertakan card tanpa pemilik di campaign user agar tugas yang dibuat
+    // admin di board anggota tetap terlihat dan bisa diambil.
+    queryFn: () => getMyCards(true),
     staleTime: 30_000,
   });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [movingCardId, setMovingCardId] = useState<string | null>(null);
+  const [claimingCardId, setClaimingCardId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
+
+  const handleClaimCard = async (card: Card) => {
+    if (!user?.id) return;
+
+    setClaimingCardId(card.id);
+
+    try {
+      await assignMember(card.id, user.id);
+      await refetch();
+    } catch (error) {
+      if (alertIfMirrorConflict(error)) {
+        await refetch();
+        return;
+      }
+      console.error("Claim card failed", error);
+      window.alert("Gagal mengambil tugas ini. Silakan coba lagi.");
+    } finally {
+      setClaimingCardId(null);
+    }
+  };
 
   useEffect(() => {
     if (realtimeRevision > 0) {
@@ -281,7 +335,7 @@ export default function MyAssignedTasks() {
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Tugas Saya</h2>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Semua card yang ditugaskan langsung kepada Anda, termasuk dari divisi lain.
+            Semua card yang ditugaskan langsung kepada Anda, termasuk dari divisi lain. Card tanpa pemilik di campaign Anda juga tampil agar bisa diambil.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 self-start rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-200 sm:self-auto">
@@ -320,6 +374,8 @@ export default function MyAssignedTasks() {
                 cards={groupedCards[column.id] ?? []}
                 onOpenCard={setSelectedCard}
                 onMoveCard={moveToNativeBoard}
+                onClaimCard={handleClaimCard}
+                claimingCardId={claimingCardId}
               />
             ))}
           </div>
