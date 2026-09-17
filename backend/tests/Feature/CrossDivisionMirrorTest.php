@@ -33,6 +33,49 @@ class CrossDivisionMirrorTest extends TestCase
     // MIRROR DASAR
     // ============================================
 
+    public function test_source_board_stays_visible_to_cross_division_assignee(): void
+    {
+        // Regresi: board campaign sumber tidak boleh kosong untuk assignee
+        // lintas divisi (hanya copy orang lain yang privat).
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Eggy');
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])->assertOk();
+
+        Sanctum::actingAs($dkvStaff);
+        $boards = $this->getJson("/api/campaigns/{$project['campaign']->id}/boards")
+            ->assertOk()->json('data');
+
+        $todoCards = collect($boards)->firstWhere('id', $project['todo']->id)['cards'];
+        $this->assertContains($card->id, collect($todoCards)->pluck('id'));
+
+        $this->getJson("/api/cards/{$card->id}")->assertOk();
+    }
+
+    public function test_destroy_cleans_up_assignment_notifications(): void
+    {
+        [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();
+
+        Sanctum::actingAs($dmStaff);
+        $card = $this->createCard($project, $dmStaff, 'Tugas Hapus Notif');
+        $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])->assertOk();
+        $copy = Card::query()->where('parent_card_id', $card->id)->firstOrFail();
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $dkvStaff->id,
+            'type' => 'task_assigned',
+        ]);
+
+        $this->deleteJson("/api/cards/{$card->id}")->assertOk();
+
+        $this->assertDatabaseMissing('notifications', [
+            'user_id' => $dkvStaff->id,
+            'type' => 'task_assigned',
+        ]);
+        $this->assertDatabaseMissing('cards', ['id' => $copy->id]);
+    }
+
     public function test_assign_cross_division_creates_mirror_copy(): void
     {
         [$dmStaff, $dkvStaff, $project] = $this->setUpScenario();

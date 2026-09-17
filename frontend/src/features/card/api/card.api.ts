@@ -24,8 +24,14 @@ export const getCards = async (
 // =====================================================
 // MY ASSIGNED CARDS (termasuk copy mirror lintas divisi)
 // =====================================================
-export const getMyCards = async (): Promise<Card[]> => {
-  const res = await api.get<{ data: Card[] }>("/cards/mine");
+// includeUnassigned: sertakan card tanpa assignee di campaign user agar
+// tugas yang dibuat admin di board anggota tetap terlihat di My Work.
+export const getMyCards = async (
+  includeUnassigned = false,
+): Promise<Card[]> => {
+  const res = await api.get<{ data: Card[] }>("/cards/mine", {
+    params: includeUnassigned ? { include_unassigned: 1 } : undefined,
+  });
 
   return res.data.data;
 };

@@ -19,6 +19,7 @@ type Props = {
   emptyMessage?: string;
   disableDrag?: boolean;
   fullWidth?: boolean;
+  suggestedAssignee?: { id: string; name: string } | null;
 };
 
 export default function SortableBoardColumn({

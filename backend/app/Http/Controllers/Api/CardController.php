@@ -185,8 +185,33 @@ class CardController extends Controller
     {
         $user = $request->user();
 
+        // include_unassigned: sertakan card yang BELUM punya assignee di
+        // campaign milik/ikuti user. Dipakai My Work agar card yang dibuat
+        // admin di board anggota (mis. di campaign "Eggy 2026") tetap
+        // terlihat dan bisa diambil sendiri oleh pemiliknya. Default tidak
+        // berubah demi kompatibilitas konsumen lama (mobile, dsb).
+        $includeUnassigned = $request->boolean('include_unassigned');
+
         $cards = Card::query()
-            ->whereHas('assignees', fn ($query) => $query->whereKey($user->id))
+            ->where(function ($scopeQuery) use ($user, $includeUnassigned) {
+                $scopeQuery->whereHas(
+                    'assignees',
+                    fn ($assigneeQuery) => $assigneeQuery->whereKey($user->id)
+                );
+
+                if (! $includeUnassigned) {
+                    return;
+                }
+
+                $scopeQuery->orWhere(function ($unassignedQuery) use ($user) {
+                    $unassignedQuery
+                        ->whereDoesntHave('assignees')
+                        ->whereHas('board.campaign', fn ($campaignQuery) => $campaignQuery
+                            ->where('created_by', $user->id)
+                            ->orWhereHas('members', fn ($memberQuery) => $memberQuery
+                                ->where('users.id', $user->id)));
+                });
+            })
             ->with([
                 'creator',
                 'assignees',
@@ -197,7 +222,14 @@ class CardController extends Controller
                 'board.campaign.boards',
                 'sourceDivision:id,name',
                 'mirroredBy:id,name',
-            ])
+            ]);
+
+        // Copy lintas divisi milik orang lain tetap tidak boleh bocor lewat
+        // jalur "belum ada pemilik".
+        app(\App\Services\CrossDivisionMirrorService::class)
+            ->applyCopyVisibility($cards, $user);
+
+        $cards = $cards
             ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
             ->orderBy('due_date')
             ->orderByDesc('created_at')
@@ -1135,8 +1167,25 @@ class CardController extends Controller
         $boardId = $card->board_id;
         $campaignId = $card->board?->campaign_id;
         $workspaceId = $card->board?->campaign?->workspace_id;
+        $familyIds = $card->familyIds();
 
         $mirror->deleteFamily($card, auth()->user());
+
+        // Notifikasi assignment yang menunjuk ke card yang baru dihapus
+        // (sumber maupun copy) ikut dibersihkan agar tidak menjadi link mati.
+        try {
+            foreach ($familyIds as $familyId) {
+                Notification::query()
+                    ->where('type', 'task_assigned')
+                    ->where('data->card_id', $familyId)
+                    ->delete();
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('DELETE FAMILY NOTIFICATIONS ERROR', [
+                'card_id' => $card->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         ActivityLogService::log(
             auth()->user(),

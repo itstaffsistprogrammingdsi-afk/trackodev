@@ -1,6 +1,7 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
 
 import {
   DndContext,
@@ -67,6 +68,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const id = campaignId ?? "";
   const requestedCardId = searchParams.get("card");
+  const { user } = useAuth();
 
   const { data, isLoading, refetch } = useBoards(id);
   const { data: campaign, isLoading: isCampaignLoading } = useQuery<Campaign>({
@@ -114,6 +116,9 @@ const { campaignId } = useParams<{ campaignId: string }>();
   }, [mobileApp, boards]);
 
   // Open a specific card when arriving from a dashboard insight deep-link.
+  // If the card is nowhere to be found (deleted or no access), tell the
+  // user instead of failing silently with a stale ?card= param.
+  const missingCardNotified = useRef<string | null>(null);
   useEffect(() => {
     if (
       !requestedCardId ||
@@ -129,10 +134,19 @@ const { campaignId } = useParams<{ campaignId: string }>();
       if (requestedCard) {
         setSelectedCard(requestedCard);
         if (mobileApp) setMobileBoardId(board.id);
+        missingCardNotified.current = null;
         return;
       }
     }
-  }, [boards, mobileApp, requestedCardId, selectedCard?.id]);
+
+    if (missingCardNotified.current !== requestedCardId) {
+      missingCardNotified.current = requestedCardId;
+      window.alert("Card tidak ditemukan. Mungkin sudah dihapus atau Anda tidak memiliki akses ke card tersebut.");
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("card");
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [boards, mobileApp, requestedCardId, selectedCard?.id, searchParams, setSearchParams]);
 
   const closeCardDetail = () => {
     setSelectedCard(null);
@@ -750,6 +764,11 @@ const { campaignId } = useParams<{ campaignId: string }>();
               onMoveCard={handleSelectMove}
               disableDrag={mobileApp}
               fullWidth={mobileApp}
+              suggestedAssignee={
+                campaign?.created_by && campaign.created_by.id !== user?.id
+                  ? { id: campaign.created_by.id, name: campaign.created_by.name }
+                  : null
+              }
             />
           ))}
         </div>
