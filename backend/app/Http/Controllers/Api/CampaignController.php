@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Http\Resources\CampaignResource;
 use App\Http\Resources\UserResource;
 
+use App\Models\Assignment;
 use App\Models\Campaign;
 use App\Models\ChatRoom;
 use App\Models\User;
@@ -194,24 +195,28 @@ class CampaignController extends Controller
                     'name'  => 'By Request',
                     'type'  => 'request',
                     'order' => 1,
+                    'color' => '#f59e0b',
                 ],
 
                 [
                     'name'  => 'Todo',
                     'type'  => 'todo',
                     'order' => 2,
+                    'color' => '#0ea5e9',
                 ],
 
                 [
                     'name'  => 'Progress',
                     'type'  => 'progress',
                     'order' => 3,
+                    'color' => '#6366f1',
                 ],
 
                 [
                     'name'  => 'Done',
                     'type'  => 'done',
                     'order' => 4,
+                    'color' => '#10b981',
                 ],
 
             ])->each(function (
@@ -235,7 +240,7 @@ class CampaignController extends Controller
                     $board['order'],
 
                     'color' =>
-                    '#6366f1',
+                    $board['color'],
                 ]);
             });
 
@@ -432,6 +437,230 @@ class CampaignController extends Controller
             new CampaignResource(
                 $campaign
             ),
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MOVE TARGETS
+    |--------------------------------------------------------------------------
+    | Daftar workspace tujuan yang boleh dipilih user ketika memindahkan
+    | campaign. Hanya workspace yang bisa diakses user dan bukan workspace
+    | tempat campaign berada sekarang.
+    */
+
+    public function moveTargets(
+        Campaign $campaign
+    ): JsonResponse {
+
+        $this->authorize(
+            'view',
+            $campaign
+        );
+
+        $user = request()->user();
+
+        $currentDivisionId = (string) $campaign->workspace->division_id;
+
+        $targets = Workspace::query()
+            ->with('division:id,name')
+            ->where('id', '!=', $campaign->workspace_id)
+            ->get()
+            ->filter(fn (Workspace $workspace) => $workspace->canBeAccessedBy($user))
+            ->map(fn (Workspace $workspace) => [
+                'id' => (string) $workspace->id,
+                'name' => $workspace->name,
+                'division_id' => (string) $workspace->division_id,
+                'division_name' => $workspace->division?->name,
+                'is_cross_division' => (string) $workspace->division_id !== $currentDivisionId,
+            ])
+            ->values();
+
+        return response()->json([
+            'data' => $targets,
+            'current_workspace_id' => (string) $campaign->workspace_id,
+            'current_division_id' => $currentDivisionId,
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MOVE
+    |--------------------------------------------------------------------------
+    | Memindahkan SATU campaign (beserta seluruh isinya: boards, cards, task,
+    | brand, chat, assignment, member) ke workspace lain. Workspace asal dan
+    | tujuan tidak dihapus/diubah, hanya campaigns.workspace_id yang berubah.
+    |--------------------------------------------------------------------------
+    */
+
+    public function move(
+        Request $request,
+        Campaign $campaign
+    ): JsonResponse {
+
+        $this->authorize(
+            'update',
+            $campaign
+        );
+
+        $request->validate([
+            'target_workspace_id'    => 'required|uuid|exists:workspaces,id',
+            'confirm_cross_division' => 'sometimes|boolean',
+        ]);
+
+        $user = $request->user();
+
+        $sourceWorkspace = $campaign->workspace;
+
+        $targetWorkspace = Workspace::with('division')->findOrFail(
+            $request->target_workspace_id
+        );
+
+        if ((string) $targetWorkspace->id === (string) $campaign->workspace_id) {
+
+            throw ValidationException::withMessages([
+                'target_workspace_id' => 'Campaign sudah berada pada workspace tersebut.',
+            ]);
+        }
+
+        abort_unless(
+            $targetWorkspace->canBeAccessedBy($user),
+            403,
+            'Anda tidak memiliki akses ke workspace tujuan.'
+        );
+
+        $isCrossDivision = (string) $targetWorkspace->division_id
+            !== (string) $sourceWorkspace->division_id;
+
+        if (
+            $isCrossDivision
+            && ! $user->isSuperAdmin()
+            && ! $request->boolean('confirm_cross_division')
+        ) {
+
+            throw ValidationException::withMessages([
+                'confirm_cross_division' => 'Pemindahan lintas divisi memerlukan konfirmasi.',
+            ]);
+        }
+
+        $result = DB::transaction(function () use (
+            $campaign,
+            $targetWorkspace
+        ) {
+
+            // ========================================
+            // PINDAH WORKSPACE
+            // ========================================
+
+            $campaign->update([
+                'workspace_id' => $targetWorkspace->id,
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | ASSIGNMENTS
+            |--------------------------------------------------------------------------
+            | assignments menyimpan workspace_id sendiri (denormalisasi), jadi
+            | wajib ikut diupdate. board_id/card_id tetap valid karena boards
+            | dan cards memang menempel ke campaign.
+            |--------------------------------------------------------------------------
+            */
+
+            $movedAssignments = Assignment::query()
+                ->where('campaign_id', $campaign->id)
+                ->update([
+                    'workspace_id' => $targetWorkspace->id,
+                ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | SINKRONISASI MEMBER
+            |--------------------------------------------------------------------------
+            | Member campaign, assignee kartu, dan orang yang terlibat di
+            | assignment ikut dijadikan member workspace tujuan supaya akses
+            | mereka tidak hilang setelah pindah.
+            |--------------------------------------------------------------------------
+            */
+
+            $memberIds = $campaign->members()->pluck('users.id');
+
+            $assigneeIds = DB::table('card_user')
+                ->join('cards', 'cards.id', '=', 'card_user.card_id')
+                ->where('cards.campaign_id', $campaign->id)
+                ->pluck('card_user.user_id');
+
+            $assignmentPeople = Assignment::query()
+                ->where('campaign_id', $campaign->id)
+                ->get(['assigned_by', 'coordinator_id', 'designer_id'])
+                ->flatMap(fn (Assignment $assignment) => [
+                    $assignment->assigned_by,
+                    $assignment->coordinator_id,
+                    $assignment->designer_id,
+                ])
+                ->filter();
+
+            $syncIds = $memberIds
+                ->merge($assigneeIds)
+                ->merge($assignmentPeople)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (! empty($syncIds)) {
+
+                $targetWorkspace
+                    ->members()
+                    ->syncWithoutDetaching($syncIds);
+
+                $campaign
+                    ->chatRoom
+                    ?->members()
+                    ->syncWithoutDetaching($syncIds);
+            }
+
+            return [
+                'boards_moved' => $campaign->boards()->count(),
+                'cards_moved' => Card::query()
+                    ->where('campaign_id', $campaign->id)
+                    ->count(),
+                'assignments_moved' => $movedAssignments,
+                'members_synced' => count($syncIds),
+            ];
+        });
+
+        ActivityLogService::log(
+            $user,
+            'campaign',
+            (string) $campaign->id,
+            'moved',
+            "Memindahkan campaign '{$campaign->name}' dari workspace '{$sourceWorkspace->name}' ke '{$targetWorkspace->name}'",
+            [
+                'campaign_id' => (string) $campaign->id,
+                'workspace_id' => (string) $targetWorkspace->id,
+                'source_workspace_id' => (string) $sourceWorkspace->id,
+                'target_workspace_id' => (string) $targetWorkspace->id,
+                'cross_division' => $isCrossDivision,
+            ]
+        );
+
+        return response()->json([
+            'message' => "Campaign berhasil dipindahkan ke workspace '{$targetWorkspace->name}'.",
+            'data' => new CampaignResource(
+                $campaign->fresh()->load([
+                    'creator',
+                    'members',
+                    'boards',
+                ])
+            ),
+            'summary' => [
+                'source_workspace_id' => (string) $sourceWorkspace->id,
+                'target_workspace_id' => (string) $targetWorkspace->id,
+                'target_workspace_name' => $targetWorkspace->name,
+                'target_division_id' => (string) $targetWorkspace->division_id,
+                'cross_division' => $isCrossDivision,
+                ...$result,
+            ],
         ]);
     }
 

@@ -727,6 +727,16 @@ Route::middleware([
         [CampaignController::class, 'update']
     )->middleware('permission:campaign.update');
 
+    Route::post(
+        'campaigns/{campaign}/move',
+        [CampaignController::class, 'move']
+    )->middleware('permission:campaign.update');
+
+    Route::get(
+        'campaigns/{campaign}/move-targets',
+        [CampaignController::class, 'moveTargets']
+    )->middleware('permission:campaign.view');
+
     Route::delete(
         'campaigns/{campaign}',
         [CampaignController::class, 'destroy']

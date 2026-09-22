@@ -5,6 +5,7 @@ import { ChevronRight, Menu } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import NotificationBell from "../components/header/NotificationBell";
 import { useSidebar } from "../context/SidebarContext";
+import { toast } from "@/lib/feedback";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -192,7 +193,7 @@ const AppHeader: React.FC = () => {
   const handleBackToAdmin = (): void => {
     const adminToken = localStorage.getItem("admin_token");
     if (!adminToken) {
-      alert("Admin token tidak ditemukan");
+      toast.error("Admin token tidak ditemukan");
       return;
     }
 

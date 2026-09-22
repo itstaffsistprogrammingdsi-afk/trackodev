@@ -34,6 +34,7 @@ import { alertIfMirrorConflict } from "@/features/card/utils/mirrorConflict";
 import type { Card, CardWorkflowBoard } from "@/features/card/types";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { toast } from "@/lib/feedback";
 
 type WorkColumn = {
   id: string;
@@ -218,7 +219,7 @@ export default function MyAssignedTasks() {
         return;
       }
       console.error("Claim card failed", error);
-      window.alert("Gagal mengambil tugas ini. Silakan coba lagi.");
+      toast.error("Gagal mengambil tugas ini. Silakan coba lagi.");
     } finally {
       setClaimingCardId(null);
     }
@@ -253,7 +254,10 @@ export default function MyAssignedTasks() {
 
     return [...workflowColumns.values()]
       .sort((left, right) => left.order - right.order || left.label.localeCompare(right.label))
-      .map(({ order: _order, ...column }) => column);
+      .map(({ order, ...column }) => {
+        void order;
+        return column;
+      });
   }, [cards]);
 
   const groupedCards = useMemo(() => {
@@ -296,7 +300,7 @@ export default function MyAssignedTasks() {
     );
 
     if (!targetBoard) {
-      window.alert(
+      toast.error(
         "Campaign sumber tidak memiliki kolom workflow ini. Gunakan pilihan status pada card untuk memilih board tujuan.",
       );
       return;

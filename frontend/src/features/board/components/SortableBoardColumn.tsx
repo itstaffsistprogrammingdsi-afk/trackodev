@@ -57,6 +57,7 @@ export default function SortableBoardColumn({
       <BoardColumn
         board={board}
         {...columnProps}
+        fullWidth={fullWidth}
         dragHandle={
           disableDrag ? undefined : isLocked ? (
             <span

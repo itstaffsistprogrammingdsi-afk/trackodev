@@ -3,6 +3,7 @@ import { Check, Copy, Link2, Loader2, MessageCircle, RefreshCw, ShieldCheck, Unl
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
 import api from "@/lib/axios";
+import { confirmDialog } from "@/lib/feedback";
 
 type ExternalIdentity = {
   id: string;
@@ -91,7 +92,7 @@ export default function IntegrationSettingsPage() {
   };
 
   const disconnect = async () => {
-    if (!currentIdentity || !window.confirm(`Putuskan akun ${copy.label} dari Traco?`)) return;
+    if (!currentIdentity || !(await confirmDialog({ message: `Putuskan akun ${copy.label} dari Traco?`, variant: "danger" }))) return;
     setWorking(true);
     setMessage(null);
     try {

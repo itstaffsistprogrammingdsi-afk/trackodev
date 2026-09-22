@@ -11,7 +11,7 @@ interface UseCardBrandReturn {
   attachBrand: (brandId: string) => Promise<void>;
   detachBrand: (brandId: string) => Promise<void>;
   createAndAttach: (name: string, color: string) => Promise<void>;
-  removeBrand: (brandId: string, brandName: string) => Promise<void>;
+  removeBrand: (brandId: string) => Promise<void>;
   error: string | null;
 }
 
@@ -178,11 +178,9 @@ export function useCardBrand(
     }
   };
 
-  const removeBrand = async (brandId: string, brandName: string) => {
-    if (!window.confirm(`Hapus brand "${brandName}" dari daftar master?`)) {
-      return;
-    }
-
+  // Konfirmasi hapus dilakukan di UI (konfirmasi inline dua langkah),
+  // hook ini hanya mengeksekusi penghapusan.
+  const removeBrand = async (brandId: string) => {
     setError(null);
 
     try {

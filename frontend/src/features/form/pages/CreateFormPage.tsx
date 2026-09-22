@@ -4,6 +4,8 @@ import {
 import { useNavigate } from "react-router";
 import { Pencil, Trash2, X } from "lucide-react";
 
+import { toast, confirmDialog } from "@/lib/feedback";
+
 import {
   createForm,
   createField,
@@ -124,7 +126,7 @@ export default function CreateFormBuilderPage() {
 
   const handleCreateForm = async () => {
     if (!formData.name.trim()) {
-      alert("Form name wajib diisi");
+      toast.error("Form name wajib diisi");
       return;
     }
 
@@ -165,13 +167,13 @@ export default function CreateFormBuilderPage() {
 
       setCreatedForm(response);
 
-      alert(
+      toast.success(
         "Form berhasil dibuat. Sekarang tambahkan field.",
       );
     } catch (error) {
       console.error(error);
 
-      alert("Gagal membuat form");
+      toast.error("Gagal membuat form");
     } finally {
       setLoadingForm(false);
     }
@@ -196,7 +198,7 @@ export default function CreateFormBuilderPage() {
     if (!createdForm?.id) return;
 
     if (!label.trim()) {
-      alert("Label field wajib diisi");
+      toast.error("Label field wajib diisi");
       return;
     }
 
@@ -246,7 +248,7 @@ export default function CreateFormBuilderPage() {
     } catch (error) {
       console.error(error);
 
-      alert(
+      toast.error(
         editingFieldId
           ? "Gagal mengubah field"
           : "Gagal menambahkan field",
@@ -263,9 +265,10 @@ export default function CreateFormBuilderPage() {
   const handleDeleteField = async (
     fieldId: string,
   ) => {
-    const confirmed = confirm(
-      "Hapus field ini?",
-    );
+    const confirmed = await confirmDialog({
+      message: "Hapus field ini?",
+      variant: "danger",
+    });
 
     if (!confirmed) return;
 
@@ -279,7 +282,7 @@ export default function CreateFormBuilderPage() {
     } catch (error) {
       console.error(error);
 
-      alert("Gagal menghapus field");
+      toast.error("Gagal menghapus field");
     }
   };
 

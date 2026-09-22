@@ -34,6 +34,8 @@ export default function useLabels({
   const [newColor, setNewColor] =
     useState("#3b82f6");
 
+  const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const messageFromError = (err: unknown, fallback: string): string => {
@@ -51,6 +53,8 @@ export default function useLabels({
   };
 
   const fetchLabels = useCallback(async () => {
+    setLoading(true);
+
     try {
       const data = await getLabels();
 
@@ -59,6 +63,8 @@ export default function useLabels({
     } catch (err) {
       console.error(err);
       setError("Gagal memuat daftar label.");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -66,23 +72,21 @@ export default function useLabels({
     void fetchLabels();
   }, [fetchLabels, realtimeRevision]);
 
-  async function handleCreateLabel() {
-    if (!newLabel.trim()) return;
+  async function createWith(name: string, color: string) {
+    if (!name.trim()) return;
 
     setError(null);
 
     try {
       const created = await createLabel({
-        name: newLabel,
-        color: newColor,
+        name: name.trim(),
+        color,
       });
 
       setLabels((prev) => [
         ...prev,
         { ...created, cards_count: created.cards_count ?? 0 },
       ]);
-
-      setNewLabel("");
 
       // 🔥 Auto-attach label baru ke card yang sedang dibuka,
       // supaya tidak perlu klik "add" manual lagi.
@@ -110,7 +114,16 @@ export default function useLabels({
     } catch (err) {
       console.error(err);
       setError(messageFromError(err, "Label gagal dibuat."));
+      throw err;
     }
+  }
+
+  async function handleCreateLabel() {
+    if (!newLabel.trim()) return;
+
+    await createWith(newLabel, newColor);
+
+    setNewLabel("");
   }
 
 async function attach(
@@ -175,11 +188,9 @@ async function detach(
   }
 }
 
-  async function remove(labelId: string, labelName: string) {
-    if (!window.confirm(`Hapus label "${labelName}" dari daftar master?`)) {
-      return;
-    }
-
+  // Konfirmasi hapus dilakukan di UI (konfirmasi inline dua langkah),
+  // hook ini hanya mengeksekusi penghapusan.
+  async function remove(labelId: string) {
     setError(null);
 
     try {
@@ -193,6 +204,7 @@ async function detach(
 
   return {
     labels,
+    loading,
 
     newLabel,
     setNewLabel,
@@ -201,6 +213,8 @@ async function detach(
     setNewColor,
 
     handleCreateLabel,
+
+    createWith,
 
     attach,
     detach,

@@ -582,16 +582,16 @@ class CrossDivisionMirrorService
             ]);
 
             collect([
-                ['name' => 'By Request', 'type' => 'request', 'order' => 1],
-                ['name' => 'Todo', 'type' => 'todo', 'order' => 2],
-                ['name' => 'Progress', 'type' => 'progress', 'order' => 3],
-                ['name' => 'Done', 'type' => 'done', 'order' => 4],
+                ['name' => 'By Request', 'type' => 'request', 'order' => 1, 'color' => '#f59e0b'],
+                ['name' => 'Todo', 'type' => 'todo', 'order' => 2, 'color' => '#0ea5e9'],
+                ['name' => 'Progress', 'type' => 'progress', 'order' => 3, 'color' => '#6366f1'],
+                ['name' => 'Done', 'type' => 'done', 'order' => 4, 'color' => '#10b981'],
             ])->each(fn ($board) => Board::create([
                 'campaign_id' => $campaign->id,
                 'name' => $board['name'],
                 'type' => $board['type'],
                 'order' => $board['order'],
-                'color' => '#6366f1',
+                'color' => $board['color'],
             ]));
 
             $campaign->members()->sync([$assignee->id]);
@@ -666,16 +666,16 @@ class CrossDivisionMirrorService
             ]);
 
             collect([
-                ['name' => 'By Request', 'type' => 'request', 'order' => 1],
-                ['name' => 'Todo', 'type' => 'todo', 'order' => 2],
-                ['name' => 'Progress', 'type' => 'progress', 'order' => 3],
-                ['name' => 'Done', 'type' => 'done', 'order' => 4],
+                ['name' => 'By Request', 'type' => 'request', 'order' => 1, 'color' => '#f59e0b'],
+                ['name' => 'Todo', 'type' => 'todo', 'order' => 2, 'color' => '#0ea5e9'],
+                ['name' => 'Progress', 'type' => 'progress', 'order' => 3, 'color' => '#6366f1'],
+                ['name' => 'Done', 'type' => 'done', 'order' => 4, 'color' => '#10b981'],
             ])->each(fn ($board) => Board::create([
                 'campaign_id' => $campaign->id,
                 'name' => $board['name'],
                 'type' => $board['type'],
                 'order' => $board['order'],
-                'color' => '#6366f1',
+                'color' => $board['color'],
             ]));
 
             $campaign->members()->sync([$actor->id, $assignee->id]);

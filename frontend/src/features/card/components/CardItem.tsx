@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 
 import { isMobileApp } from "@/lib/mobileConfig";
+import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
+import { toast } from "@/lib/feedback";
 import { Card } from "../types";
 import NativeCardItem from "./NativeCardItem";
 import { alertIfMirrorConflict } from "../utils/mirrorConflict";
@@ -33,6 +35,8 @@ interface Props {
 export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Props) {
   const [isMoving, setIsMoving] = useState(false);
   const mobileApp = isMobileApp();
+  const compactViewport = useIsCompactViewport();
+  const compactLayout = mobileApp || compactViewport;
   const {
     attributes,
     listeners,
@@ -43,7 +47,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   } = useSortable({
     id: card.id,
     data: { card },
-    disabled: mobileApp,
+    disabled: compactLayout,
   });
 
   // =========================================
@@ -153,7 +157,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
     } catch (error) {
       if (alertIfMirrorConflict(error)) return;
       console.error("Move card failed", error);
-      alert("Card gagal dipindahkan. Silakan coba lagi.");
+      toast.error("Card gagal dipindahkan. Silakan coba lagi.");
     } finally {
       setIsMoving(false);
     }
@@ -162,7 +166,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   // =========================================
   // RENDER
   // =========================================
-  if (mobileApp) {
+  if (compactLayout) {
     return (
       <NativeCardItem
         card={card}

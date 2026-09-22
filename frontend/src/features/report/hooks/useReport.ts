@@ -5,6 +5,7 @@ import api from '@/lib/axios';
 
 import { getDownloadFileName } from '@/lib/exportSecurity';
 import { useRealtimeRevision } from '@/hooks/useRealtimeRevision';
+import { toast, confirmDialog } from '@/lib/feedback';
 export const useReport = () => {
   const realtimeRevision = useRealtimeRevision([
     'ActivityLog', 'Assignment', 'Brand', 'Card', 'CardAttachment',
@@ -138,12 +139,12 @@ export const useReport = () => {
         setPreviewData(response.data);
         return response.data;
       } else {
-        alert(response.message || 'Gagal generate preview');
+        toast.error(response.message || 'Gagal generate preview');
         return null;
       }
     } catch (error) {
       console.error('Gagal preview data', error);
-      alert('Gagal generate preview. Silakan coba lagi.');
+      toast.error('Gagal generate preview. Silakan coba lagi.');
       return null;
     } finally {
       setLoadingPreview(false);
@@ -178,7 +179,7 @@ export const useReport = () => {
         const text = await data.text();
         try {
           const error = JSON.parse(text);
-          alert(error.message || 'Terjadi kesalahan saat export');
+          toast.error(error.message || 'Terjadi kesalahan saat export');
           return false;
         } catch {
           // Bukan JSON
@@ -204,7 +205,7 @@ export const useReport = () => {
     } catch (error: unknown) {
       console.error('Gagal export data:', error);
       const message = (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (error as { message?: string }).message || 'Gagal mengunduh file laporan';
-      alert(message);
+      toast.error(message);
       return false;
     } finally {
       setExporting(false);
@@ -224,9 +225,9 @@ export const useReport = () => {
 // LOGIN SEBAGAI USER (IMPERSONATION)
 // ===============================================
 const handleBypassUser = async (userId: string | number) => {
-  const confirmBypass = window.confirm(
-    "Apakah Anda yakin ingin login sebagai user ini?"
-  );
+  const confirmBypass = await confirmDialog({
+    message: "Apakah Anda yakin ingin login sebagai user ini?",
+  });
 
   if (!confirmBypass) return;
 
@@ -311,7 +312,7 @@ const handleBypassUser = async (userId: string | number) => {
     };
     console.error("BYPASS ERROR:", error);
 
-    alert(
+    toast.error(
       err.response?.data?.message ??
         err.message ??
         "Gagal melakukan bypass."
@@ -330,7 +331,7 @@ const handleLeaveImpersonation = async () => {
     const adminUser = localStorage.getItem("admin_user");
 
     if (!adminToken || !adminUser) {
-      alert("Session admin tidak ditemukan.");
+      toast.error("Session admin tidak ditemukan.");
       return;
     }
 
@@ -440,7 +441,7 @@ const handleLeaveImpersonation = async () => {
       error
     );
 
-    alert("Gagal kembali ke akun admin.");
+    toast.error("Gagal kembali ke akun admin.");
   }
 };
 

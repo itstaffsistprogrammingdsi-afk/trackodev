@@ -6,6 +6,7 @@ import MemberMentionInput from "./MemberMentionInput";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/lib/feedback";
 
 type Props = {
   workspaceId: string;
@@ -94,15 +95,20 @@ export default function CampaignForm({
       onSuccess();
     } catch (err) {
       console.error(err);
-      alert("Gagal membuat campaign");
+      toast.error("Gagal membuat campaign");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-xl w-[450px] space-y-5">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/40 p-0 sm:items-center sm:p-4"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-[450px] max-h-[90dvh] overflow-y-auto rounded-t-3xl bg-white p-6 space-y-5 dark:bg-gray-900 sm:rounded-2xl">
 
         <h2 className="font-semibold text-lg">
           Create Campaign

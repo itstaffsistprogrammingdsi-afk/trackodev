@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 
 import api from "@/lib/axios";
 import { resolveStorageUrl } from "@/lib/storageUrl";
+import { toast } from "@/lib/feedback";
 
 import DatePicker from "react-datepicker";
 
@@ -323,7 +324,7 @@ export default function PublicFormPage() {
 
       if (field.type === "file" && field.is_required) {
         if (!fileValues[field.name]) {
-          alert(`Field "${field.label}" wajib diisi`);
+          toast.error(`Field "${field.label}" wajib diisi`);
 
           return false;
         }
@@ -331,7 +332,7 @@ export default function PublicFormPage() {
 
       if (field.type === "checkbox" && field.is_required) {
         if (!Array.isArray(value) || value.length === 0) {
-          alert(`Field "${field.label}" wajib diisi`);
+          toast.error(`Field "${field.label}" wajib diisi`);
 
           return false;
         }
@@ -343,7 +344,7 @@ export default function PublicFormPage() {
         field.is_required
       ) {
         if (value === undefined || value === null || value === "") {
-          alert(`Field "${field.label}" wajib diisi`);
+          toast.error(`Field "${field.label}" wajib diisi`);
 
           return false;
         }
@@ -355,7 +356,7 @@ export default function PublicFormPage() {
           (Array.isArray(value) && value.includes("__other__")))
       ) {
         if (!otherValues[field.name]) {
-          alert(`Field "${field.label}" wajib diisi`);
+          toast.error(`Field "${field.label}" wajib diisi`);
 
           return false;
         }
@@ -449,9 +450,9 @@ export default function PublicFormPage() {
           };
         };
 
-        alert(err.response?.data?.message || "Gagal submit form");
+        toast.error(err.response?.data?.message || "Gagal submit form");
       } else {
-        alert("Gagal submit form");
+        toast.error("Gagal submit form");
       }
     } finally {
       setSubmitting(false);

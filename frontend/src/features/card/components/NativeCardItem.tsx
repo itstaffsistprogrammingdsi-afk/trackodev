@@ -9,6 +9,7 @@ import {
 import type { Card } from "../types";
 import { getDueDateStatus } from "../utils/dueDate";
 import { alertIfMirrorConflict } from "../utils/mirrorConflict";
+import { toast } from "@/lib/feedback";
 
 interface NativeCardItemProps {
   card: Card;
@@ -74,7 +75,7 @@ export default function NativeCardItem({
     } catch (error) {
       if (alertIfMirrorConflict(error)) return;
       console.error("Move card failed", error);
-      alert("Card gagal dipindahkan. Silakan coba lagi.");
+      toast.error("Card gagal dipindahkan. Silakan coba lagi.");
     } finally {
       setIsMoving(false);
     }

@@ -528,11 +528,25 @@ class DashboardController extends Controller
                 /** @var Board $firstBoard */
                 $firstBoard = $group->first();
 
+                /*
+                | Satu kolom dashboard menggabungkan board bertipe sama dari
+                | BANYAK campaign. Agar kustomisasi warna user pada satu campaign
+                | langsung terlihat (dan tidak tertimpa board lain yang kebetulan
+                | dibaca lebih dulu), warna kolom diambil dari board yang PALING
+                | TERAKHIR diubah dan punya warna.
+                */
+                $colorBoard = $group
+                    ->filter(fn (Board $board) => ! empty($board->color))
+                    ->sortByDesc(
+                        fn (Board $board) => $board->updated_at?->getTimestamp() ?? 0
+                    )
+                    ->first() ?? $firstBoard;
+
                 return [
                     'id' => $key,
                     'name' => $firstBoard->name,
                     'type' => $firstBoard->type,
-                    'color' => $firstBoard->color,
+                    'color' => $colorBoard->color,
                     'order' => (int) $group->min('order'),
                     'count' => (int) $group->sum(
                         fn (Board $board) => (int) ($cardCounts[$board->id] ?? 0)

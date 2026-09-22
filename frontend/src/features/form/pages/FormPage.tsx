@@ -4,6 +4,7 @@ import { getForms, deleteForm } from "../api/form.api";
 import type { Form } from "../types";
 import { useAuth } from '../../../context/AuthContext';
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { toast, confirmDialog } from "@/lib/feedback";
 
 export default function FormPage() {
   const navigate = useNavigate();
@@ -32,7 +33,10 @@ export default function FormPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    const confirmed = window.confirm("Hapus form ini?");
+    const confirmed = await confirmDialog({
+      message: "Hapus form ini?",
+      variant: "danger",
+    });
 
     if (!confirmed) return;
 
@@ -41,7 +45,7 @@ export default function FormPage() {
       await fetchForms();
     } catch (err) {
       console.error(err);
-      alert("Gagal menghapus form");
+      toast.error("Gagal menghapus form");
     }
   };
 
@@ -57,10 +61,10 @@ export default function FormPage() {
 
     try {
       await navigator.clipboard.writeText(publicLink);
-      alert("Link form berhasil disalin");
+      toast.success("Link form berhasil disalin");
     } catch (error) {
       console.error(error);
-      alert("Gagal menyalin link");
+      toast.error("Gagal menyalin link");
     }
   };
 

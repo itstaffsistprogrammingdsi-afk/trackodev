@@ -10,6 +10,7 @@ import {
 import type { Form, FormField } from "../types";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { toast, confirmDialog } from "@/lib/feedback";
 
 export default function FormBuilderPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,7 +50,7 @@ export default function FormBuilderPage() {
       setForm(data);
     } catch (error) {
       console.error(error);
-      alert("Gagal load form");
+      toast.error("Gagal load form");
     } finally {
       setLoading(false);
     }
@@ -98,7 +99,7 @@ export default function FormBuilderPage() {
 
   const handleSaveField = async () => {
     if (!id || !label.trim()) {
-      alert("Label wajib diisi");
+      toast.error("Label wajib diisi");
       return;
     }
 
@@ -135,7 +136,7 @@ export default function FormBuilderPage() {
       await fetchForm();
     } catch (error) {
       console.error(error);
-      alert(
+      toast.error(
         editingFieldId
           ? "Gagal mengubah field"
           : "Gagal menambahkan field",
@@ -146,7 +147,7 @@ export default function FormBuilderPage() {
   };
 
   const handleDeleteField = async (fieldId: string) => {
-    if (!confirm("Hapus field ini?")) return;
+    if (!(await confirmDialog({ message: "Hapus field ini?", variant: "danger" }))) return;
 
     try {
       await deleteField(fieldId);
@@ -154,7 +155,7 @@ export default function FormBuilderPage() {
       await fetchForm();
     } catch (error) {
       console.error(error);
-      alert("Gagal hapus field");
+      toast.error("Gagal hapus field");
     }
   };
 

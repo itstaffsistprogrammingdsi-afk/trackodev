@@ -30,6 +30,11 @@ type Props = {
   emptyMessage?: string;
   dragHandle?: ReactNode;
   /**
+   * Layout kompak (HP/tablet): kolom mengisi lebar penuh dan scroll vertikal
+   * dipegang parent, bukan di dalam kolom.
+   */
+  fullWidth?: boolean;
+  /**
    * Pemilik campaign (bila bukan pembuat card). Dipakai sebagai saran satu
    * klik agar card yang dibuat admin di board anggota tidak berakhir tanpa
    * assignee.
@@ -66,6 +71,7 @@ export default function BoardColumn({
   emptyMessage = "Belum ada task",
   dragHandle,
   suggestedAssignee,
+  fullWidth = false,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: board.id });
 
@@ -160,6 +166,7 @@ export default function BoardColumn({
     setAssigneeTargets((prev) => {
       if (!target || (!target.campaignId && !target.createName && !target.forceInbox)) {
         const { [userId]: _removed, ...rest } = prev;
+        void _removed;
         return rest;
       }
       return { ...prev, [userId]: target };
@@ -263,7 +270,9 @@ export default function BoardColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`flex max-h-none w-full shrink-0 flex-col rounded-2xl border bg-slate-50/70 shadow-sm backdrop-blur-xs transition-all duration-200 md:max-h-full md:w-80 ${
+      className={`flex max-h-none w-full shrink-0 flex-col rounded-2xl border bg-slate-50/70 shadow-sm backdrop-blur-xs transition-all duration-200 ${
+        fullWidth ? "max-w-none" : "md:max-h-full md:w-80"
+      } ${
         isOver
           ? "border-blue-400 bg-blue-50/30 ring-4 ring-blue-100"
           : "border-slate-200/80 hover:border-slate-300"

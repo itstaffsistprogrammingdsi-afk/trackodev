@@ -8,7 +8,9 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
+  KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -18,6 +20,7 @@ import {
   arrayMove,
   horizontalListSortingStrategy,
   SortableContext,
+  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 
 import { useBoards } from "../hooks/useBoards";
@@ -35,6 +38,8 @@ import { getCampaign } from "@/features/campaign/api/campaign.api";
 import type { Campaign } from "@/features/campaign/types";
 import { reorderBoards } from "../api/board.api";
 import { isMobileApp } from "@/lib/mobileConfig";
+import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
+import { toast } from "@/lib/feedback";
 
 import { Board } from "../types";
 import { Card } from "@/features/card/types";
@@ -94,6 +99,9 @@ const { campaignId } = useParams<{ campaignId: string }>();
   const [mobileBoardId, setMobileBoardId] = useState("");
   const [cardSearch, setCardSearch] = useState("");
   const mobileApp = isMobileApp();
+  const compactViewport = useIsCompactViewport();
+  // Layout kompak dipakai baik di aplikasi native maupun di browser HP/tablet.
+  const compactLayout = mobileApp || compactViewport;
   const deferredCardSearch = useDeferredValue(cardSearch);
   const normalizedCardSearch = deferredCardSearch.trim().toLocaleLowerCase();
   const isSearchActive = cardSearch.trim().length > 0;
@@ -108,12 +116,12 @@ const { campaignId } = useParams<{ campaignId: string }>();
   }, [data]);
 
   useEffect(() => {
-    if (!mobileApp || boards.length === 0) return;
+    if (!compactLayout || boards.length === 0) return;
 
     setMobileBoardId((current) =>
       boards.some((board) => board.id === current) ? current : boards[0].id,
     );
-  }, [mobileApp, boards]);
+  }, [compactLayout, boards]);
 
   // Open a specific card when arriving from a dashboard insight deep-link.
   // If the card is nowhere to be found (deleted or no access), tell the
@@ -133,7 +141,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
 
       if (requestedCard) {
         setSelectedCard(requestedCard);
-        if (mobileApp) setMobileBoardId(board.id);
+        if (compactLayout) setMobileBoardId(board.id);
         missingCardNotified.current = null;
         return;
       }
@@ -141,12 +149,12 @@ const { campaignId } = useParams<{ campaignId: string }>();
 
     if (missingCardNotified.current !== requestedCardId) {
       missingCardNotified.current = requestedCardId;
-      window.alert("Card tidak ditemukan. Mungkin sudah dihapus atau Anda tidak memiliki akses ke card tersebut.");
+      toast.error("Card tidak ditemukan. Mungkin sudah dihapus atau Anda tidak memiliki akses ke card tersebut.");
       const nextParams = new URLSearchParams(searchParams);
       nextParams.delete("card");
       setSearchParams(nextParams, { replace: true });
     }
-  }, [boards, mobileApp, requestedCardId, selectedCard?.id, searchParams, setSearchParams]);
+  }, [boards, compactLayout, requestedCardId, selectedCard?.id, searchParams, setSearchParams]);
 
   const closeCardDetail = () => {
     setSelectedCard(null);
@@ -218,7 +226,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
   );
 
   useEffect(() => {
-    if (!mobileApp || !normalizedCardSearch) return;
+    if (!compactLayout || !normalizedCardSearch) return;
 
     const selectedBoardHasMatch = filteredBoards.some(
       (board) => board.id === mobileBoardId && board.cards.length > 0,
@@ -228,7 +236,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
     if (!selectedBoardHasMatch && firstMatchingBoard && firstMatchingBoard.id !== mobileBoardId) {
       setMobileBoardId(firstMatchingBoard.id);
     }
-  }, [filteredBoards, mobileApp, mobileBoardId, normalizedCardSearch]);
+  }, [filteredBoards, compactLayout, mobileBoardId, normalizedCardSearch]);
 
   // =========================================
   // DND SENSOR
@@ -238,6 +246,18 @@ const { campaignId } = useParams<{ campaignId: string }>();
       activationConstraint: {
         distance: 5,
       },
+    }),
+    // Layar sentuh (tablet/hybrid): tahan sebentar sebelum drag supaya
+    // tidak bentrok dengan scroll. Di HP, drag tetap dinonaktifkan dan
+    // diganti pilihan status per card.
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 6,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
@@ -541,7 +561,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
   }
 
   const visibleKanbanBoards =
-    mobileApp && mobileBoardId
+    compactLayout && mobileBoardId
       ? filteredBoards.filter((board) => board.id === mobileBoardId)
       : filteredBoards;
 
@@ -671,7 +691,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
         ) : null}
       </label>
 
-      {mobileApp && viewMode === "kanban" && boards.length > 0 ? (
+      {compactLayout && viewMode === "kanban" && boards.length > 0 ? (
         <label className="block w-full sm:w-auto">
           <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
             Status yang ditampilkan
@@ -742,11 +762,11 @@ const { campaignId } = useParams<{ campaignId: string }>();
       >
         <div
           className={
-            mobileApp
+            compactLayout
               ? "block max-h-[calc(100dvh-14rem)] w-full overflow-y-auto overscroll-y-auto pb-[calc(env(safe-area-inset-bottom)+1.5rem)] [-webkit-overflow-scrolling:touch]"
               : "flex w-full gap-4 overflow-x-auto overflow-y-hidden pb-6 custom-scrollbar"
           }
-          style={{ touchAction: mobileApp ? "pan-y" : "pan-x" }}
+          style={{ touchAction: compactLayout ? "pan-y" : "pan-x" }}
         >
           {visibleKanbanBoards.map((board) => (
             <SortableBoardColumn
@@ -762,8 +782,8 @@ const { campaignId } = useParams<{ campaignId: string }>();
                 .filter((target) => target.id !== board.id)
                 .map((target) => ({ id: target.id, name: target.name }))}
               onMoveCard={handleSelectMove}
-              disableDrag={mobileApp}
-              fullWidth={mobileApp}
+              disableDrag={compactLayout}
+              fullWidth={compactLayout}
               suggestedAssignee={
                 campaign?.created_by && campaign.created_by.id !== user?.id
                   ? { id: campaign.created_by.id, name: campaign.created_by.name }

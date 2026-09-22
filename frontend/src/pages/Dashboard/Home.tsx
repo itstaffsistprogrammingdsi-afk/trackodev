@@ -3,6 +3,7 @@ import axios from "../../lib/axios";
 import DivisionRankingSection from "./DivisionRanking";
 import TaskStatusOverview from "./TaskStatusOverview";
 import DashboardPeriodFilter from "./DashboardPeriodFilter";
+import ScopeToggle, { type DashboardScope } from "./ScopeToggle";
 import SystemInsights, { type SystemInsight } from "./SystemInsights";
 import {
   toDashboardParams,
@@ -17,10 +18,7 @@ import {
   Layout,
   CreditCard,
   Zap,
-  Globe,
-  User,
   RefreshCcw,
-  ChevronRight,
   LucideIcon,
 } from "lucide-react";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
@@ -98,6 +96,22 @@ const initialFilterPayload: DashboardFilterPayload = {
   label: "Periode aktif",
 };
 
+// Preferensi cakupan dashboard diingat antar sesi supaya admin tidak perlu
+// memilih ulang tiap kali membuka dashboard.
+const DASHBOARD_SCOPE_KEY = "tracko:dashboard-scope";
+
+function readStoredScope(): DashboardScope {
+  if (typeof window === "undefined") return "global";
+
+  try {
+    return window.localStorage.getItem(DASHBOARD_SCOPE_KEY) === "me"
+      ? "me"
+      : "global";
+  } catch {
+    return "global";
+  }
+}
+
 // ============================================
 // COMPONENT
 // ============================================
@@ -138,9 +152,19 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(true);
   const [dashboardFilter, setDashboardFilter] = useState(initialFilter);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [scope, setScope] = useState<"global" | "me">("global");
+  const [scope, setScope] = useState<DashboardScope>(readStoredScope);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+
+  const handleScopeChange = useCallback((nextScope: DashboardScope) => {
+    setScope(nextScope);
+
+    try {
+      window.localStorage.setItem(DASHBOARD_SCOPE_KEY, nextScope);
+    } catch {
+      // localStorage bisa tidak tersedia (mode private) — abaikan.
+    }
+  }, []);
 
   const loadDashboard = useCallback(async (isManualRefresh = false) => {
     setIsUpdating(true);
@@ -208,31 +232,16 @@ export default function Home() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* SCOPE SELECTOR */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-              {scope === "global" ? (
-                <Globe className="w-4 h-4 text-slate-400" />
-              ) : (
-                <User className="w-4 h-4 text-slate-400" />
-              )}
-            </div>
-            <select
-              value={scope}
-              onChange={(e) => setScope(e.target.value as typeof scope)}
-              className="appearance-none border border-slate-200 rounded-xl pl-9 pr-10 py-2.5 text-sm bg-white font-medium text-slate-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer shadow-sm"
-            >
-              <option value="global">{isSuperAdmin ? "Global View" : "Division View"}</option>
-              <option value="me">My Workspace</option>
-            </select>
-            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-              <ChevronRight className="w-4 h-4 text-slate-400 rotate-90" />
-            </div>
-          </div>
+          {/* SCOPE TOGGLE */}
+          <ScopeToggle
+            value={scope}
+            onChange={handleScopeChange}
+            isSuperAdmin={isSuperAdmin}
+          />
 
           <button
             onClick={refreshAll}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-500/30 transition-all shadow-md shadow-indigo-500/20 active:scale-95"
+            className="flex items-center gap-2 bg-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-600 focus:ring-4 focus:ring-brand-500/30 transition-all shadow-md shadow-brand-500/20 active:scale-95"
           >
             <RefreshCcw
               className={`w-4 h-4 ${isRefreshing || isUpdating ? "animate-spin" : ""}`}

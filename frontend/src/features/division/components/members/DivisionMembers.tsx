@@ -31,6 +31,7 @@ import {
   getUserRole,
 } from "../../utils/getUserRole";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { toast, confirmDialog } from "@/lib/feedback";
 
 type Props = {
   divisionId: string;
@@ -92,7 +93,7 @@ export default function DivisionMembers({
           );
 
         if (exists) {
-          alert(
+          toast.info(
             "User is already assigned to this division."
           );
           return;
@@ -110,7 +111,7 @@ export default function DivisionMembers({
       } catch (err) {
         console.error(err);
 
-        alert(
+        toast.error(
           "Failed to add member."
         );
       }
@@ -119,8 +120,11 @@ export default function DivisionMembers({
   const handleRemove =
     async (id: string) => {
       const confirmed =
-        window.confirm(
-          "Remove this member from division?"
+        await confirmDialog(
+          {
+            message: "Remove this member from division?",
+            variant: "danger",
+          }
         );
 
       if (!confirmed) {
@@ -139,7 +143,7 @@ export default function DivisionMembers({
       } catch (err) {
         console.error(err);
 
-        alert(
+        toast.error(
           "Failed to remove member."
         );
       } finally {

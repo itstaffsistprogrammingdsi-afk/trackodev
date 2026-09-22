@@ -1,5 +1,5 @@
 import { Campaign, Member,  } from "../types";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useState, useMemo } from "react";
 import { AxiosError } from "axios";
 import {
@@ -8,13 +8,16 @@ import {
   addMember,
   removeMember,
   getMembers,
+  getCampaignMoveTargets,
+  moveCampaign,
 } from "../api/campaign.api"; // ⚠️ sesuaikan path ini dengan lokasi campaign.api.ts di project kamu
 import MemberMentionInput from "./MemberMentionInput";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, Pencil, Trash2, X, Check, } from "lucide-react";
+import { Users, Pencil, Trash2, X, Check, ArrowRightLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { toast, confirmDialog } from "@/lib/feedback";
 
 export default function CampaignCard({
   campaign,
@@ -25,13 +28,19 @@ export default function CampaignCard({
 }) {  const { workspaceId } = useParams<{
     workspaceId: string;
   }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const [showMembers, setShowMembers] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showMove, setShowMove] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const [moveTargetId, setMoveTargetId] = useState("");
+  const [confirmCrossDivision, setConfirmCrossDivision] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   const isSuperAdmin = user?.roles?.includes("super_admin") ?? false;
   const isAdmin = user?.roles?.includes("admin") ?? false;
@@ -75,7 +84,7 @@ export default function CampaignCard({
 
   // ================= DELETE =================
   const handleDeleteCampaign = async () => {
-    if (!confirm("Yakin ingin menghapus campaign ini?")) return;
+    if (!(await confirmDialog({ message: "Yakin ingin menghapus campaign ini?", variant: "danger" }))) return;
 
     try {
       setLoading(true);
@@ -86,7 +95,7 @@ export default function CampaignCard({
 
       onChanged?.();
     } catch (err) {
-      alert(getErrorMessage(err, "Gagal menghapus campaign"));
+      toast.error(getErrorMessage(err, "Gagal menghapus campaign"));
     } finally {
       setLoading(false);
     }
@@ -108,9 +117,63 @@ export default function CampaignCard({
       onChanged?.();
       setShowEdit(false);
     } catch (err) {
-      alert(getErrorMessage(err, "Gagal update campaign"));
+      toast.error(getErrorMessage(err, "Gagal update campaign"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ================= MOVE WORKSPACE =================
+  const { data: moveTargets = [], isLoading: loadingTargets } = useQuery({
+    queryKey: ["campaign-move-targets", campaign.id],
+    queryFn: () => getCampaignMoveTargets(campaign.id),
+    enabled: showMove,
+    staleTime: 0,
+  });
+
+  const selectedMoveTarget = useMemo(
+    () => moveTargets.find((t) => t.id === moveTargetId) ?? null,
+    [moveTargets, moveTargetId],
+  );
+
+  const handleMoveCampaign = async () => {
+    if (!moveTargetId) return;
+
+    if (
+      selectedMoveTarget?.is_cross_division &&
+      !confirmCrossDivision &&
+      !isSuperAdmin
+    ) {
+      toast.info("Centang konfirmasi untuk memindahkan campaign lintas divisi.");
+      return;
+    }
+
+    try {
+      setMoving(true);
+
+      const res = await moveCampaign(
+        campaign.id,
+        moveTargetId,
+        confirmCrossDivision,
+      );
+
+      await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["campaign-move-targets", campaign.id],
+      });
+
+      onChanged?.();
+      setShowMove(false);
+
+      toast.success(
+        `Campaign "${campaign.name}" berhasil dipindahkan ke workspace "${res.summary.target_workspace_name}".`,
+      );
+
+      navigate(`/workspaces/${moveTargetId}/campaigns`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Gagal memindahkan campaign"));
+    } finally {
+      setMoving(false);
     }
   };
 
@@ -144,14 +207,14 @@ export default function CampaignCard({
         queryKey: ["campaign-members", campaign.id],
       });
     } catch (err) {
-      alert(getErrorMessage(err, "Gagal tambah member"));
+      toast.error(getErrorMessage(err, "Gagal tambah member"));
     } finally {
       setLoading(false);
     }
   };
 
   const handleRemoveMember = async (id: string) => {
-    if (!confirm("Yakin hapus member?")) return;
+    if (!(await confirmDialog({ message: "Yakin hapus member?", variant: "danger" }))) return;
 
     try {
       setLoading(true);
@@ -162,7 +225,7 @@ export default function CampaignCard({
         queryKey: ["campaign-members", campaign.id],
       });
     } catch (err) {
-      alert(getErrorMessage(err, "Gagal hapus member"));
+      toast.error(getErrorMessage(err, "Gagal hapus member"));
     } finally {
       setLoading(false);
     }
@@ -232,6 +295,15 @@ export default function CampaignCard({
     title="Edit Campaign"
   >
     <Pencil size={16} />
+  </button>
+
+  {/* MOVE WORKSPACE */}
+  <button
+    onClick={() => setShowMove(true)}
+    className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600"
+    title="Pindah Workspace"
+  >
+    <ArrowRightLeft size={16} />
   </button>
 
   {/* DELETE */}
@@ -365,6 +437,89 @@ export default function CampaignCard({
                 className="px-3 py-1 bg-blue-500 text-white rounded-lg"
               >
                 Save
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showMove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <section className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4">
+            <header className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Pindah Workspace</h3>
+              <button
+                aria-label="Tutup dialog pindah workspace"
+                onClick={() => setShowMove(false)}
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <p className="text-sm text-gray-500">
+              Campaign <span className="font-medium text-gray-800">{campaign.name}</span>{" "}
+              beserta seluruh isinya (board, card, penugasan, dan member) akan
+              dipindahkan. Workspace asal dan tujuan tidak dihapus.
+            </p>
+
+            {loadingTargets ? (
+              <p className="text-sm text-gray-400">Memuat workspace tujuan...</p>
+            ) : moveTargets.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                Tidak ada workspace tujuan yang bisa Anda akses.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <select
+                  value={moveTargetId}
+                  onChange={(e) => {
+                    setMoveTargetId(e.target.value);
+                    setConfirmCrossDivision(false);
+                  }}
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="">Pilih workspace tujuan...</option>
+                  {moveTargets.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.division_name ? ` — ${t.division_name}` : ""}
+                      {t.is_cross_division ? " (beda divisi)" : ""}
+                    </option>
+                  ))}
+                </select>
+
+                {selectedMoveTarget?.is_cross_division && !isSuperAdmin && (
+                  <label className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <input
+                      type="checkbox"
+                      checked={confirmCrossDivision}
+                      onChange={(e) => setConfirmCrossDivision(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Workspace tujuan berada di divisi berbeda. Saya paham
+                      member yang tidak berhak bisa kehilangan akses setelah
+                      dipindahkan.
+                    </span>
+                  </label>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowMove(false)}
+                className="px-3 py-1 border rounded-lg"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleMoveCampaign}
+                disabled={!moveTargetId || moving}
+                className="px-3 py-1 bg-indigo-600 text-white rounded-lg disabled:opacity-50"
+              >
+                {moving ? "Memindahkan..." : "Pindahkan"}
               </button>
             </div>
           </section>

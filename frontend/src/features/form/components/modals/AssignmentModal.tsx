@@ -25,6 +25,8 @@ import { useCampaign } from "@/features/campaign/hooks/useCampaign";
 import { useDivisions } from "@/features/division/hooks/useDivisions";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 
+import { toast } from "@/lib/feedback";
+
 import type { Campaign } from "@/features/campaign/types";
 import type { Division } from "@/features/division/types";
 import type { Workspace } from "@/features/workspace/types";
@@ -195,27 +197,27 @@ export default function AssignmentModal({
     }
 
     if (!authUser?.id) {
-      alert("User tidak terautentikasi");
+      toast.error("User tidak terautentikasi");
       return;
     }
 
     if (!form.division_id) {
-      alert("Division wajib dipilih");
+      toast.error("Division wajib dipilih");
       return;
     }
 
     if (!form.workspace_id) {
-      alert("Workspace wajib dipilih");
+      toast.error("Workspace wajib dipilih");
       return;
     }
 
     if (!form.campaign_id) {
-      alert("Campaign wajib dipilih");
+      toast.error("Campaign wajib dipilih");
       return;
     }
 
     if (!form.designer_id) {
-      alert("PIC/anggota wajib dipilih");
+      toast.error("PIC/anggota wajib dipilih");
       return;
     }
 
@@ -255,7 +257,7 @@ const payload = {
         onError: (error: unknown) => {
           console.error(error);
 
-          alert(
+          toast.error(
             (
               error as {
                 response?: {

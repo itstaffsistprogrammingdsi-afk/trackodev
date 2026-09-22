@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { getForm, updateForm } from "../api/form.api";
+import { toast } from "@/lib/feedback";
 
 export default function EditFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +37,7 @@ export default function EditFormPage() {
       });
     } catch (error) {
       console.error(error);
-      alert("Gagal load form");
+      toast.error("Gagal load form");
     } finally {
       setLoading(false);
     }
@@ -61,11 +62,11 @@ export default function EditFormPage() {
 
       await updateForm(id, payload);
 
-      alert("Form berhasil diupdate");
+      toast.success("Form berhasil diupdate");
       navigate("/forms");
     } catch (error) {
       console.error(error);
-      alert("Gagal update form");
+      toast.error("Gagal update form");
     } finally {
       setSaving(false);
     }
