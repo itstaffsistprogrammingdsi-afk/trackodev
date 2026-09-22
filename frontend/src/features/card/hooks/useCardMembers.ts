@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import { assignMember, unassignMember } from "../api/card.api";
 import { alertIfMirrorConflict } from "../utils/mirrorConflict";
+import { toast } from "@/lib/feedback";
 
 interface Props {
   cardId?: string;
@@ -54,7 +55,7 @@ export default function useCardMembers({
       if (err instanceof AxiosError) {
         const message = err.response?.data?.message;
         if (typeof message === "string" && message.trim().length > 0) {
-          window.alert(message);
+          toast.error(message);
         }
       }
     }

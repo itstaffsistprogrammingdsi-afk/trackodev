@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PermissionRoute from "./components/auth/PermissionRoute";
 
 import MobileAppBridge from "@/components/common/MobileAppBridge";
+import FeedbackProvider from "@/components/ui/feedback/FeedbackProvider";
 import { getLastAppRoute, LAST_APP_ROUTE_KEY } from "@/lib/mobileApp";
 
 const SignIn = lazy(() => import("./pages/AuthPages/SignIn"));
@@ -110,6 +111,7 @@ export default function App() {
     <Router>
       <MobileAppBridge />
       <ScrollToTop />
+      <FeedbackProvider />
 
       <Suspense
         fallback={

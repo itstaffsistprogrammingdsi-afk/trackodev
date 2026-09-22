@@ -3,6 +3,8 @@ import {
   CreateCampaignRequest,
   UpdateCampaignRequest,
   Campaign,
+  CampaignMoveTarget,
+  CampaignMoveSummary,
   GanttResponse,
   BoardProgressData,
   CampaignHealthData,
@@ -38,6 +40,29 @@ export const updateCampaign = async (
 
 export const deleteCampaign = async (id: string) => {
   const res = await api.delete(`/campaigns/${id}`);
+  return res.data;
+};
+
+export const getCampaignMoveTargets = async (
+  id: string
+): Promise<CampaignMoveTarget[]> => {
+  const res = await api.get(`/campaigns/${id}/move-targets`);
+  return res.data.data;
+};
+
+export const moveCampaign = async (
+  id: string,
+  targetWorkspaceId: string,
+  confirmCrossDivision = false
+): Promise<{
+  message: string;
+  data: Campaign;
+  summary: CampaignMoveSummary;
+}> => {
+  const res = await api.post(`/campaigns/${id}/move`, {
+    target_workspace_id: targetWorkspaceId,
+    confirm_cross_division: confirmCrossDivision,
+  });
   return res.data;
 };
 

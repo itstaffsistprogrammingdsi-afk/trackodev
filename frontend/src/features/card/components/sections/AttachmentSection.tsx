@@ -9,6 +9,7 @@ import CreatableSelect from "react-select/creatable";
 import api from "@/lib/axios";
 import { resolveStorageUrl } from "@/lib/storageUrl";
 import { useAuth } from "@/context/AuthContext";
+import { toast, confirmDialog } from "@/lib/feedback";
 
 import {
   Upload,
@@ -358,7 +359,7 @@ export default function AttachmentSection({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
-      alert("Ukuran file maksimal 10,99 MB");
+      toast.error("Ukuran file maksimal 10,99 MB");
       e.target.value = "";
       return;
     }
@@ -372,12 +373,12 @@ export default function AttachmentSection({
     if (!uploadEndpoint) return;
 
     if (requiresQuantity && (!quantity || quantity <= 0)) {
-      alert("Quantity wajib diisi");
+      toast.error("Quantity wajib diisi");
       return;
     }
 
     if (supportsResultDescription && !resultDescription.trim()) {
-      alert("Result Description wajib diisi");
+      toast.error("Result Description wajib diisi");
       return;
     }
 
@@ -411,7 +412,7 @@ export default function AttachmentSection({
             : {}),
         });
       } else {
-        alert("Pilih file atau isi link");
+        toast.error("Pilih file atau isi link");
         return;
       }
 
@@ -442,7 +443,7 @@ export default function AttachmentSection({
   // DELETE
   // =========================================
   const handleDelete = async (id: string) => {
-    const ok = confirm("Hapus attachment?");
+    const ok = await confirmDialog({ message: "Hapus attachment?", variant: "danger" });
 
     if (!ok) return;
 
@@ -776,7 +777,7 @@ space-y-6
                           "Gagal membuat template result description:",
                           error,
                         );
-                        alert("Gagal membuat template Result Description");
+                        toast.error("Gagal membuat template Result Description");
                       }
                     }}
                     className="text-sm"

@@ -20,12 +20,12 @@ type FormData = {
 };
 
 const COLOR_OPTIONS: { value: string; label: string }[] = [
+  { value: "#f59e0b", label: "Amber" },
+  { value: "#0ea5e9", label: "Sky" },
   { value: "#6366f1", label: "Indigo" },
-  { value: "#2563eb", label: "Blue" },
-  { value: "#059669", label: "Emerald" },
-  { value: "#d97706", label: "Amber" },
+  { value: "#10b981", label: "Emerald" },
   { value: "#e11d48", label: "Rose" },
-  { value: "#4b5563", label: "Gray" },
+  { value: "#6b7280", label: "Gray" },
 ];
 
 export default function BoardFormModal({
@@ -44,7 +44,7 @@ export default function BoardFormModal({
     control,
     formState: { errors },
   } = useForm<FormData>({
-    defaultValues: { name: "", color: COLOR_OPTIONS[0].value },
+    defaultValues: { name: "", color: "#6366f1" },
   });
 
   const createMutation = useCreateBoard(campaignId);

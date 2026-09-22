@@ -185,6 +185,11 @@ export default function CardDetailSidebar({
               label="Brand"
               onClick={toggleBrands}
               expanded={showBrands}
+              badge={
+                (card.brands?.length ?? 0) > 0
+                  ? `${card.brands?.length} terpasang`
+                  : undefined
+              }
             />
             {showBrands && (
               <div className="mt-2 animate-in fade-in duration-200">
@@ -204,6 +209,11 @@ export default function CardDetailSidebar({
               label="Labels"
               onClick={toggleLabels}
               expanded={showLabels}
+              badge={
+                (card.labels?.length ?? 0) > 0
+                  ? `${card.labels?.length} terpasang`
+                  : undefined
+              }
             />
             {showLabels && (
               <div className="mt-2 animate-in fade-in duration-200">

@@ -27,7 +27,9 @@ export default function SignInForm() {
       const { user } = await login(email, password);
       await loadUser();
       const roles = Array.isArray(user.roles) ? user.roles : [];
-      navigate(roles.includes("super_admin") ? "/dashboard" : "/my-work", { replace: true });
+      const isDashboardFirst =
+        roles.includes("super_admin") || roles.includes("admin");
+      navigate(isDashboardFirst ? "/dashboard" : "/my-work", { replace: true });
     } catch (error: unknown) {
       const status = axios.isAxiosError(error)
         ? error.response?.status

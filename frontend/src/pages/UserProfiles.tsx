@@ -37,6 +37,7 @@ import api from "../lib/axios";
 import UserPermissionModal from '../features/user/components/UserPermissionModal';
 import UserActivityDetailModal from '../features/user/components/UserActivityDetailModal';
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { toast, confirmDialog } from "@/lib/feedback";
 
 // ============================================
 // TYPES
@@ -386,12 +387,12 @@ export default function UserProfiles() {
 
   const handleSubmit = async () => {
     if (!editingId && password.length < 8) {
-      alert("Password user baru minimal 8 karakter.");
+      toast.error("Password user baru minimal 8 karakter.");
       return;
     }
 
     if (password && password !== passwordConfirmation) {
-      alert("Konfirmasi password belum sama.");
+      toast.error("Konfirmasi password belum sama.");
       return;
     }
 
@@ -430,7 +431,7 @@ export default function UserProfiles() {
     } catch (err) {
       console.error(err);
 
-      alert(
+      toast.error(
         "Gagal menyimpan user"
       );
     } finally {
@@ -484,9 +485,10 @@ export default function UserProfiles() {
     id: string
   ) => {
     const confirmed =
-      window.confirm(
-        "Yakin hapus user ini?"
-      );
+      await confirmDialog({
+        message: "Yakin hapus user ini?",
+        variant: "danger",
+      });
 
     if (!confirmed) return;
 
@@ -499,7 +501,7 @@ export default function UserProfiles() {
     } catch (err) {
       console.error(err);
 
-      alert(
+      toast.error(
         "Gagal menghapus user"
       );
     }

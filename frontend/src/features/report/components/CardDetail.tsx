@@ -3,6 +3,7 @@ import { Attachment, Card, User } from '../types';
 import { X, Download, FileSpreadsheet, Eye, CheckCircle, Clock } from 'lucide-react';
 import { AttachmentPreviewModal } from './AttachmentPreviewModal';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from '@/lib/feedback';
 
 interface CardDetailProps {
   selectedUser: User;
@@ -40,7 +41,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
     const note = qcNotes[attachmentId] || '';
 
     if (isNaN(quantity) || quantity < 0) {
-      alert('Jumlah QC harus berupa angka positif');
+      toast.error('Jumlah QC harus berupa angka positif');
       return;
     }
 

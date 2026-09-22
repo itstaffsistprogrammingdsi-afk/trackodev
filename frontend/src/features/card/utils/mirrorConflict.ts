@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import { toast } from "@/lib/feedback";
 
 export const MIRROR_CONFLICT_FALLBACK =
   "Terdeteksi sedang melakukan tugas bersamaan (contoh pindah card), mohon tunggu beberapa saat lagi.";
@@ -31,7 +32,7 @@ export function getConflictMessage(
 export function alertIfMirrorConflict(error: unknown): boolean {
   if (!isConflictError(error)) return false;
 
-  window.alert(getConflictMessage(error));
+  toast.info(getConflictMessage(error));
 
   return true;
 }

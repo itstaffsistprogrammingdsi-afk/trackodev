@@ -14,6 +14,7 @@ import {
 import EditDivisionModal from "../modals/EditDivisionModal";
 
 import { useDeleteDivision } from "../../hooks/useDivisions";
+import { confirmDialog } from "@/lib/feedback";
 
 import type { Division } from "../../types";
 import type { User } from "../../../user/types";
@@ -58,8 +59,11 @@ export default function DivisionCard({
     e.stopPropagation();
 
     const confirmed =
-      window.confirm(
-        `Hapus divisi "${division.name}"?`
+      await confirmDialog(
+        {
+          message: `Hapus divisi "${division.name}"?`,
+          variant: "danger",
+        }
       );
 
     if (!confirmed) {

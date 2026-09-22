@@ -180,6 +180,65 @@ body {
 }
 
 /*
+  ==========================================================================
+  UI CONSISTENCY LAYER
+  ==========================================================================
+  Aplikasi ini historis memakai beberapa palet sekaligus: netral `gray-*`
+  (kanonik, dipakai sistem desain) bercampur `slate-*`, serta aksen
+  `brand-*`, `blue-*`, dan `indigo-*`. Hasilnya warna tombol, border, dan
+  teks terlihat tidak seragam antar halaman.
+
+  Blok ini menyeragamkan di level token (bukan mengedit ribuan class):
+    - `slate-*`  -> nilai `gray-*`  (satu skala netral)
+    - `blue-*`   -> nilai `brand-*` (satu warna aksi utama)
+    - `indigo-*` -> nilai `brand-*` (satu warna aksi utama)
+
+  Murni visual; tidak mengubah struktur, alur, maupun logika aplikasi.
+  Hapus blok ini untuk kembali ke palet default.
+  ==========================================================================
+*/
+@theme {
+  /* Neutral: slate -> gray */
+  --color-slate-50: #f9fafb;
+  --color-slate-100: #f2f4f7;
+  --color-slate-200: #e4e7ec;
+  --color-slate-300: #d0d5dd;
+  --color-slate-400: #98a2b3;
+  --color-slate-500: #667085;
+  --color-slate-600: #475467;
+  --color-slate-700: #344054;
+  --color-slate-800: #1d2939;
+  --color-slate-900: #101828;
+  --color-slate-950: #0c111d;
+
+  /* Accent: blue -> brand */
+  --color-blue-50: #ecf3ff;
+  --color-blue-100: #dde9ff;
+  --color-blue-200: #c2d6ff;
+  --color-blue-300: #9cb9ff;
+  --color-blue-400: #7592ff;
+  --color-blue-500: #465fff;
+  --color-blue-600: #3641f5;
+  --color-blue-700: #2a31d8;
+  --color-blue-800: #252dae;
+  --color-blue-900: #262e89;
+  --color-blue-950: #161950;
+
+  /* Accent: indigo -> brand */
+  --color-indigo-50: #ecf3ff;
+  --color-indigo-100: #dde9ff;
+  --color-indigo-200: #c2d6ff;
+  --color-indigo-300: #9cb9ff;
+  --color-indigo-400: #7592ff;
+  --color-indigo-500: #465fff;
+  --color-indigo-600: #3641f5;
+  --color-indigo-700: #2a31d8;
+  --color-indigo-800: #252dae;
+  --color-indigo-900: #262e89;
+  --color-indigo-950: #161950;
+}
+
+/*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.
@@ -826,4 +885,27 @@ span.flatpickr-weekday,
 
 .simplebar-scrollbar.simplebar-visible:before {
   @apply opacity-100;
+}
+
+/* Animasi untuk toast & dialog konfirmasi global (FeedbackProvider). */
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ui-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

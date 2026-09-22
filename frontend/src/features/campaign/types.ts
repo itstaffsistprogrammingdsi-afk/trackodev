@@ -83,3 +83,23 @@ export type CampaignHealthData = {
   status: "Healthy" | "At Risk" | "Critical";
 };
 export type UpdateCampaignRequest = Partial<CreateCampaignRequest>;
+
+export type CampaignMoveTarget = {
+  id: string;
+  name: string;
+  division_id: string;
+  division_name?: string | null;
+  is_cross_division: boolean;
+};
+
+export type CampaignMoveSummary = {
+  source_workspace_id: string;
+  target_workspace_id: string;
+  target_workspace_name: string;
+  target_division_id: string;
+  cross_division: boolean;
+  boards_moved: number;
+  cards_moved: number;
+  assignments_moved: number;
+  members_synced: number;
+};
