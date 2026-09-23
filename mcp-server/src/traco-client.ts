@@ -1,7 +1,11 @@
 import type { AppConfig } from "./config.js";
-import type { ExternalActor } from "./discord-actor.js";
-import type { GoogleChatActor } from "./google-chat-actor.js";
-type TracoActor = ExternalActor | GoogleChatActor;
+
+/**
+ * Bentuk minimal actor yang dibutuhkan TracoClient. `ExternalActor` (Discord)
+ * dan `GoogleChatActor` sama-sama memenuhi kontrak ini, sehingga gateway bisa
+ * memakai tipe ringan tanpa menandatangani assertion saat memanggil API.
+ */
+export type TracoActor = { provider: string; sub: string };
 
 const DEFAULT_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_EXPORT_BYTES = 20 * 1024 * 1024;
