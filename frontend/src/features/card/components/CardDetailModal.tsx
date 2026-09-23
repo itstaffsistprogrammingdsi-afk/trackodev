@@ -361,10 +361,11 @@ export default function CardDetailModal({
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Add a detailed description..."
                       className="
-                        w-full min-h-[160px] rounded-2xl border border-slate-200 dark:border-slate-700/80 
-                        bg-slate-50/50 dark:bg-slate-800/40 p-4 text-sm text-slate-800 dark:text-slate-100 
-                        placeholder-slate-400 resize-y transition-all duration-200 
+                        w-full min-h-[300px] max-h-[70dvh] resize-y rounded-2xl border border-slate-200 dark:border-slate-700/80 
+                        bg-slate-50/50 dark:bg-slate-800/40 p-5 text-[15px] leading-relaxed text-slate-800 dark:text-slate-100 
+                        placeholder-slate-400 transition-all duration-200 
                         focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400
+                        sm:min-h-[440px] sm:text-base lg:min-h-[560px]
                       "
                     />
                   </section>
