@@ -249,7 +249,11 @@ class ActivityLogController extends Controller
                         $q->where('entity_type', 'campaign')
                             ->where(function (Builder $scope) use ($campaignIds, $workspaceIds) {
                                 $scope->whereIn('entity_id', $campaignIds)
-                                    ->orWhereIn('meta->workspace_id', $workspaceIds);
+                                    ->orWhereIn('meta->workspace_id', $workspaceIds)
+                                    // Campaign yang DIPINDAHKAN keluar dari workspace
+                                    // divisi ini tetap tercatat: log 'moved' menyimpan
+                                    // sumbernya di meta->source_workspace_id.
+                                    ->orWhereIn('meta->source_workspace_id', $workspaceIds);
                             });
                     })
                     ->orWhere(function (Builder $q) use ($boardIds, $campaignIds) {
