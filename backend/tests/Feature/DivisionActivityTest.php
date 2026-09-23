@@ -10,6 +10,7 @@ use App\Models\CardComment;
 use App\Models\Division;
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -195,5 +196,68 @@ class DivisionActivityTest extends TestCase
 
         $this->assertCount(1, $activities);
         $this->assertSame($ownWorkspace->id, $activities[0]['entity_id']);
+    }
+
+    public function test_moved_campaign_is_logged_in_source_and_target_division_feeds(): void
+    {
+        $this->seed(PermissionSeeder::class);
+
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
+
+        $sourceDivision = Division::create([
+            'name' => 'Source Division',
+            'slug' => 'source-division',
+        ]);
+        $targetDivision = Division::create([
+            'name' => 'Target Division',
+            'slug' => 'target-division',
+        ]);
+
+        $sourceWorkspace = Workspace::create([
+            'division_id' => $sourceDivision->id,
+            'name' => 'Source Workspace',
+        ]);
+        $targetWorkspace = Workspace::create([
+            'division_id' => $targetDivision->id,
+            'name' => 'Target Workspace',
+        ]);
+
+        $campaign = Campaign::create([
+            'workspace_id' => $sourceWorkspace->id,
+            'created_by' => $superAdmin->id,
+            'name' => 'Relocated Campaign',
+            'type' => 'group',
+        ]);
+
+        Sanctum::actingAs($superAdmin);
+
+        $this->postJson('/api/campaigns/'.$campaign->id.'/move', [
+            'target_workspace_id' => $targetWorkspace->id,
+        ])->assertOk();
+
+        $sourceFeed = collect(
+            $this->getJson('/api/divisions/'.$sourceDivision->id.'/activities?limit=50')
+                ->assertOk()
+                ->json('activities')
+        );
+        $targetFeed = collect(
+            $this->getJson('/api/divisions/'.$targetDivision->id.'/activities?limit=50')
+                ->assertOk()
+                ->json('activities')
+        );
+
+        $isMoveLog = fn ($activity) => $activity['entity_type'] === 'campaign'
+            && $activity['entity_id'] === $campaign->id
+            && $activity['action'] === 'moved';
+
+        $this->assertTrue(
+            $sourceFeed->contains($isMoveLog),
+            'Log perpindahan tidak muncul di feed divisi asal.'
+        );
+        $this->assertTrue(
+            $targetFeed->contains($isMoveLog),
+            'Log perpindahan tidak muncul di feed divisi tujuan.'
+        );
     }
 }
