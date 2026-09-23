@@ -34,6 +34,48 @@ Pada menu Integrations Traco, user membuat link code dengan provider
 `google_chat`. Kode hanya berlaku sekali dan 10 menit. Simpan code untuk
 perintah onboarding agent; jangan simpan di source code atau log.
 
+## Mode relay dua arah (tanpa AI agent)
+
+Gateway bisa dipakai **tanpa AI agent**: pesan Google Chat ditulis langsung ke
+ruang chat Traco, dan user bisa menghubungkan akunnya sendiri dari Google Chat.
+Perintah (prefix/mention) baru diteruskan ke agent bila agent dikonfigurasi.
+
+```text
+Google Chat MESSAGE (pesan biasa)
+  -> traco-google-chat (verify Google JWT)
+  -> Traco MCP API (POST /mcp/v1/chat/rooms/{room}/messages, provider=google_chat)
+  -> pesan tampil di ruang chat Traco
+```
+
+Aktifkan dengan env berikut (lihat `.env.example`):
+
+```dotenv
+GOOGLE_CHAT_RELAY_ENABLED=true
+# Salah satu wajib diisi:
+GOOGLE_CHAT_RELAY_DEFAULT_ROOM_ID=<uuid-ruang-chat-traco>
+GOOGLE_CHAT_RELAY_SPACE_ROOM_MAP=spaces/AAA=<uuid>,spaces/BBB=<uuid>
+# Pesan diawali prefix ini (atau menyebut mention) diteruskan ke agent.
+GOOGLE_CHAT_COMMAND_PREFIX=/
+GOOGLE_CHAT_MENTION=@traco
+```
+
+Perilaku gateway:
+
+| Kondisi pesan | Aksi |
+| --- | --- |
+| `/link KODE` | Menghubungkan akun Google ke user Traco (tanpa agent). |
+| Pesan biasa + relay aktif | Ditulis ke ruang chat Traco sebagai user ter-link. |
+| Prefix `/` atau mention `@traco` | Diteruskan ke AI agent (bila dikonfigurasi). |
+| Prefix/mention tanpa agent | Balasan: perintah AI belum diaktifkan. |
+| Space belum dipetakan | Balasan: hubungi admin Traco. |
+| Akun belum ter-link | Balasan: buat kode di Traco → Integrations lalu `/link KODE`. |
+
+Idempotensi memakai UUID deterministik dari `message.name` Google, sehingga
+retry delivery Google Chat tidak membuat pesan ganda di Traco.
+
+> Catatan: arah Traco → Google Chat (notifikasi/chat keluar) belum termasuk
+> gateway ini; perlu webhook/API Google Chat di sisi Laravel.
+
 ## Konfigurasi Google Cloud
 
 1. Enable **Google Chat API** pada Google Cloud project.
@@ -49,6 +91,9 @@ boleh meneruskan ke loopback `127.0.0.1:3443`; jangan mengekspos port internal
 MCP atau agent tanpa autentikasi.
 
 ## Konfigurasi agent dan menjalankan gateway
+
+AI agent bersifat **opsional**. Bagian ini hanya perlu bila Anda ingin perintah
+`/` atau `@traco` dijawab oleh agent; relay pesan biasa tetap berjalan tanpanya.
 
 Salin `.env.example` menjadi `.env`, lalu isi sekurang-kurangnya:
 

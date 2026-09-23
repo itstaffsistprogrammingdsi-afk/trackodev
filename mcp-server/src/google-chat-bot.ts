@@ -1,14 +1,33 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { OAuth2Client } from "google-auth-library";
 import { randomUUID } from "node:crypto";
-import { loadGoogleChatConfig, type GoogleChatConfig } from "./google-chat-config.js";
+import {
+  isAgentCommand,
+  loadGoogleChatConfig,
+  type GoogleChatConfig,
+} from "./google-chat-config.js";
 import { signGoogleChatActor } from "./google-chat-actor.js";
+import {
+  parseLinkCommand,
+  type GoogleChatLinker,
+  type GoogleChatRelay,
+} from "./google-chat-relay.js";
 
 const CHAT_ISSUER = "chat@system.gserviceaccount.com";
 const certsUrl = `https://www.googleapis.com/service_accounts/v1/metadata/x509/${CHAT_ISSUER}`;
 let cachedCerts: { expiresAt: number; certs: Record<string, string> } | undefined;
 
 type JsonObject = Record<string, unknown>;
+
+export type GoogleChatHandlerDeps = {
+  /** Relay dua arah ke ruang chat Traco (aktif bila relayEnabled). */
+  relay?: GoogleChatRelay;
+  /** Linking mandiri via /link KODE tanpa AI agent. */
+  linker?: GoogleChatLinker;
+  /** Override untuk pengujian. */
+  verify?: (authorization: string | undefined, audience: string) => Promise<boolean>;
+  fetchImpl?: typeof fetch;
+};
 
 export async function verifyGoogleChatRequest(
   authorization: string | undefined,
@@ -31,7 +50,13 @@ export async function verifyGoogleChatRequest(
   }
 }
 
-export function createGoogleChatHandler(config: GoogleChatConfig) {
+export function createGoogleChatHandler(
+  config: GoogleChatConfig,
+  deps: GoogleChatHandlerDeps = {},
+) {
+  const verify = deps.verify ?? verifyGoogleChatRequest;
+  const fetchImpl = deps.fetchImpl ?? fetch;
+
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     if (request.method === "GET" && (request.url ?? "").split("?", 1)[0] === "/healthz") {
       sendJson(response, 200, { status: "ok", service: "traco-google-chat" });
@@ -41,7 +66,7 @@ export function createGoogleChatHandler(config: GoogleChatConfig) {
       sendJson(response, 404, { error: "Not found" });
       return;
     }
-    if (!await verifyGoogleChatRequest(request.headers.authorization, config.audience)) {
+    if (!await verify(request.headers.authorization, config.audience)) {
       sendJson(response, 401, { error: "Unauthorized" });
       return;
     }
@@ -55,7 +80,7 @@ export function createGoogleChatHandler(config: GoogleChatConfig) {
     }
     const type = typeof event.type === "string" ? event.type : "";
     if (type === "ADDED_TO_SPACE") {
-      sendJson(response, 200, { text: "Traco siap membantu. Kirim pesan atau gunakan perintah Chat untuk mengelola pekerjaan." });
+      sendJson(response, 200, { text: "Traco siap membantu. Kirim pesan untuk berkolaborasi, atau /link KODE untuk menghubungkan akun." });
       return;
     }
     if (type === "REMOVED_FROM_SPACE") {
@@ -75,15 +100,50 @@ export function createGoogleChatHandler(config: GoogleChatConfig) {
       sendJson(response, 400, { error: "Google Chat user identity is required" });
       return;
     }
-    const actorContext = signGoogleChatActor({
-      sub: subject,
-      username: firstString(user.displayName, user.email),
-      space_name: firstString(space.name),
-    }, config.actorSigningSecret, 120);
+    const displayName = firstString(user.displayName, user.email);
+    const spaceName = firstString(space.name);
     const text = firstString(message.argumentText, message.text, event.text) ?? "";
 
+    // 1. Linking mandiri: "/link KODE" (tanpa AI agent).
+    const linkCode = parseLinkCommand(text);
+    if (linkCode && deps.linker) {
+      const outcome = await deps.linker({
+        actorSub: subject,
+        code: linkCode,
+        ...(displayName ? { displayName } : {}),
+      });
+      sendJson(response, 200, { text: linkOutcomeText(outcome) });
+      return;
+    }
+
+    // 2. Relay pesan biasa ke ruang chat Traco (tanpa AI agent).
+    if (config.relayEnabled && deps.relay && !isAgentCommand(text, config)) {
+      const outcome = await deps.relay({
+        actorSub: subject,
+        text,
+        ...(spaceName ? { spaceName } : {}),
+        idempotencySeed: firstString(message.name) ?? `${spaceName ?? "space"}:${subject}:${text}`,
+      });
+      sendJson(response, 200, { text: relayOutcomeText(outcome) });
+      return;
+    }
+
+    // 3. Perintah AI diteruskan ke agent eksternal (bila dikonfigurasi).
+    if (!config.agentUrl || !config.agentBearerToken) {
+      sendJson(response, 200, {
+        text: "Perintah AI belum diaktifkan pada integrasi ini. Kirim pesan biasa untuk mencatat ke Traco, atau hubungi admin.",
+      });
+      return;
+    }
+
+    const actorContext = signGoogleChatActor({
+      sub: subject,
+      ...(displayName ? { username: displayName } : {}),
+      ...(spaceName ? { space_name: spaceName } : {}),
+    }, config.actorSigningSecret, 120);
+
     try {
-      const agentResponse = await fetch(config.agentUrl, {
+      const agentResponse = await fetchImpl(config.agentUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -96,8 +156,8 @@ export function createGoogleChatHandler(config: GoogleChatConfig) {
           event_type: type,
           message: text,
           actor_context: actorContext,
-          actor: { id: subject, display_name: firstString(user.displayName, user.email) },
-          space: { name: firstString(space.name), type: firstString(space.type) },
+          actor: { id: subject, display_name: displayName },
+          space: { name: spaceName, type: firstString(space.type) },
         }),
         signal: AbortSignal.timeout(config.requestTimeoutMs),
         redirect: "error",
@@ -115,12 +175,54 @@ export function createGoogleChatHandler(config: GoogleChatConfig) {
   };
 }
 
+function relayOutcomeText(outcome: Awaited<ReturnType<GoogleChatRelay>>): string {
+  switch (outcome.status) {
+    case "sent":
+      return "✅ Pesan diteruskan ke ruang chat Traco.";
+    case "unmapped":
+      return "Space ini belum dihubungkan ke ruang chat Traco. Hubungi admin Traco.";
+    case "not_linked":
+      return "Akun Google Anda belum terhubung ke Traco. Buka Traco → Integrations, buat kode, lalu kirim di sini: /link KODE";
+    case "failed":
+      return `Gagal mengirim ke Traco: ${outcome.message}`;
+  }
+}
+
+function linkOutcomeText(outcome: Awaited<ReturnType<GoogleChatLinker>>): string {
+  switch (outcome.status) {
+    case "linked":
+      return "✅ Akun Google Anda berhasil dihubungkan ke Traco.";
+    case "invalid_code":
+      return "Kode link tidak valid atau sudah kedaluwarsa. Buat kode baru di Traco → Integrations.";
+    case "failed":
+      return `Gagal menghubungkan akun: ${outcome.message}`;
+  }
+}
+
 export async function startGoogleChatBot(config = loadGoogleChatConfig()): Promise<ReturnType<typeof createServer>> {
+  const deps: GoogleChatHandlerDeps = {};
+
+  if (config.relayEnabled) {
+    // Dimuat lazy agar gateway tetap bisa jalan tanpa kredensial Traco saat
+    // relay dimatikan.
+    const [{ loadConfig }, { TracoClient }, relayModule] = await Promise.all([
+      import("./config.js"),
+      import("./traco-client.js"),
+      import("./google-chat-relay.js"),
+    ]);
+    const api = new TracoClient(loadConfig());
+    deps.relay = relayModule.createGoogleChatRelay(api, relayModule.buildRelayMapping({
+      spaceRoomMap: config.spaceRoomMap,
+      ...(config.defaultRoomId ? { defaultRoomId: config.defaultRoomId } : {}),
+    }));
+    deps.linker = relayModule.createGoogleChatLinker(api);
+  }
+
   const server = createServer({ requestTimeout: config.requestTimeoutMs }, (request, response) => {
-    void createGoogleChatHandler(config)(request, response);
+    void createGoogleChatHandler(config, deps)(request, response);
   });
   await new Promise<void>((resolve) => server.listen(config.port, config.host, resolve));
-  console.error(`Traco Google Chat gateway listening on http://${config.host}:${config.port}${config.path}`);
+  console.error(`Traco Google Chat gateway listening on http://${config.host}:${config.port}${config.path} (relay=${config.relayEnabled ? "on" : "off"})`);
   return server;
 }
 
