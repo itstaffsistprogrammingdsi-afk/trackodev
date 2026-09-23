@@ -80,6 +80,39 @@ export default function CardDetailModal({
     flushPendingChanges,
   } = useCardDescription(detail, onUpdated);
 
+  /*
+  |--------------------------------------------------------------------------
+  | DESKRIPSI AUTO-GROW
+  |--------------------------------------------------------------------------
+  | Textarea deskripsi bertambah tinggi otomatis mengikuti isi, dan menyusut
+  | kembali saat teks dikurangi. Tinggi dibatasi 70% tinggi layar agar modal
+  | tetap terkendali; lebih dari itu area teks punya scroll internal sendiri.
+  */
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const autoGrowDescription = useCallback(() => {
+    const element = descriptionRef.current;
+    if (!element) return;
+
+    element.style.height = "auto";
+    const maxHeight = Math.round(window.innerHeight * 0.7);
+    element.style.height = `${Math.min(element.scrollHeight, maxHeight)}px`;
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    autoGrowDescription();
+  }, [autoGrowDescription, description, detail?.id, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleResize = () => autoGrowDescription();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, [autoGrowDescription, isOpen]);
+
   const closeModal = useCallback(async () => {
     const saved = await flushPendingChanges();
     if (!saved) return;
@@ -357,13 +390,17 @@ export default function CardDetailModal({
                     ) : null}
 
                     <textarea
+                      ref={descriptionRef}
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      onChange={(e) => {
+                        setDescription(e.target.value);
+                        autoGrowDescription();
+                      }}
                       placeholder="Add a detailed description..."
                       className="
-                        w-full min-h-[300px] max-h-[70dvh] resize-y rounded-2xl border border-slate-200 dark:border-slate-700/80 
+                        w-full min-h-[300px] resize-none overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700/80 
                         bg-slate-50/50 dark:bg-slate-800/40 p-5 text-[15px] leading-relaxed text-slate-800 dark:text-slate-100 
-                        placeholder-slate-400 transition-all duration-200 
+                        placeholder-slate-400 transition-colors duration-200 
                         focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 dark:focus:border-blue-400
                         sm:min-h-[440px] sm:text-base lg:min-h-[560px]
                       "
