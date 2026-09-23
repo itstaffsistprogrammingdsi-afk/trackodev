@@ -11,9 +11,11 @@ import {
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
-  closestCenter,
+  closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 
 import {
@@ -67,6 +69,38 @@ function isCard(value: unknown): value is Card {
     "title" in value
   );
 }
+
+/**
+ * Deteksi tumbukan untuk papan kanban.
+ *
+ * `pointerWithin` mengikuti posisi kursor sehingga drop terasa tepat di tempat
+ * yang ditunjuk. Item yang sedang digeser WAJIB dikecualikan: tanpa itu `over`
+ * bisa menunjuk balik ke kartu asal sehingga drop tidak konsisten dan reorder
+ * mengenai kartu lain. Kartu di bawah kursor diprioritaskan agar urutan sisip
+ * presisi; kolom dipakai saat kursor di area kosong. `closestCorners` menjadi
+ * fallback terakhir.
+ */
+const kanbanCollisionDetection: CollisionDetection = (args) => {
+  const isActive = (id: string | number) => id === args.active.id;
+
+  const pointerCollisions = pointerWithin(args).filter(
+    (collision) => !isActive(collision.id),
+  );
+
+  if (pointerCollisions.length === 0) {
+    return closestCorners(args).filter((collision) => !isActive(collision.id));
+  }
+
+  const cardCollision = pointerCollisions.find((collision) =>
+    args.droppableContainers.some(
+      (container) =>
+        container.id === collision.id && Boolean(container.data.current?.card),
+    ),
+  );
+
+  // Selalu kembalikan SATU target agar dnd-kit tidak ambigu.
+  return [cardCollision ?? pointerCollisions[0]];
+};
 
 export default function BoardPage() {
 const { campaignId } = useParams<{ campaignId: string }>();
@@ -348,6 +382,9 @@ const { campaignId } = useParams<{ campaignId: string }>();
       const activeId = String(active.id);
       const overId = String(over.id);
 
+      // Drop ke atas item itu sendiri = tidak ada perubahan.
+      if (activeId === overId) return;
+
       if (active.data.current?.entityType === "board") {
         const activeBoardId = getBoardIdFromSortableId(activeId);
         const draggedBoard = boards.find((board) => board.id === activeBoardId);
@@ -568,7 +605,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
   return (
     <DndContext
       sensors={isSearchActive ? [] : sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={kanbanCollisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={() => {
@@ -869,7 +906,12 @@ const { campaignId } = useParams<{ campaignId: string }>();
       {/* ===================================== */}
       {/* DRAG OVERLAY */}
       {/* ===================================== */}
-      <DragOverlay>
+      <DragOverlay
+        dropAnimation={{
+          duration: 240,
+          easing: "cubic-bezier(0.18, 0.67, 0.6, 1.12)",
+        }}
+      >
         {activeBoard ? (
           <div className="w-[300px] rounded-2xl border border-blue-500/30 bg-white p-4 shadow-2xl ring-2 ring-blue-500/20 dark:bg-slate-900">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
