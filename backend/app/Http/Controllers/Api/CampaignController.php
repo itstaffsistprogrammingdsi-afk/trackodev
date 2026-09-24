@@ -1093,11 +1093,12 @@ class CampaignController extends Controller
 
         $overdue = $cards->filter(function ($card) use ($now) {
 
+            // Detik-per-detik, selaras dengan dashboard & badge kartu: kartu
+            // yang deadline-nya sudah lewat (walau baru beberapa jam) terhitung
+            // overdue selama belum selesai.
             return $card->status !== 'completed'
                 && $card->due_date
-                && Carbon::parse($card->due_date)
-                ->startOfDay()
-                ->lt($now);
+                && Carbon::parse($card->due_date)->lt($now);
         })->count();
 
         return response()->json([
@@ -1194,11 +1195,10 @@ class CampaignController extends Controller
 
         $overdue = $cards->filter(function ($card) {
 
+            // Selaras dengan dashboard & badge: perbandingan detik, bukan hari.
             return $card->status !== 'completed'
                 && $card->due_date
-                && Carbon::parse($card->due_date)
-                ->startOfDay()
-                ->lt(now()->startOfDay());
+                && Carbon::parse($card->due_date)->lt(now());
         })->count();
 
         $activeMembers = $campaign

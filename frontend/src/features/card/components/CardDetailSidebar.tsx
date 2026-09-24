@@ -19,6 +19,7 @@ import { useAuth } from '../../../context/AuthContext';
 import {
   dueDateBadgeClasses,
   getDueDateStatus,
+  isCardCompleted,
   isCardOverdue,
 } from "../utils/dueDate";
 
@@ -134,8 +135,10 @@ export default function CardDetailSidebar({
     files: briefAttachments.filter((a) => a.attachment_type === "file").length,
     links: briefAttachments.filter((a) => a.attachment_type === "link").length,
   };
-  const dueStatus = getDueDateStatus(card.due_date);
-  const deleteDisabled = card.is_overdue === true || isCardOverdue(card.due_date);
+  const cardCompleted = isCardCompleted(card);
+  const dueStatus = getDueDateStatus(card.due_date, { completed: cardCompleted });
+  const deleteDisabled =
+    card.is_overdue === true || isCardOverdue(card.due_date, { completed: cardCompleted });
   const canEditDueDate =
     card.created_by?.id === user?.id ||
     hasRole("admin") ||

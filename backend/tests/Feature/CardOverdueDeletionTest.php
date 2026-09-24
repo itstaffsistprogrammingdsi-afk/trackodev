@@ -44,6 +44,30 @@ class CardOverdueDeletionTest extends TestCase
         $this->assertDatabaseMissing('cards', ['id' => $card->id]);
     }
 
+    public function test_completed_card_with_past_due_date_is_not_overdue_and_can_be_deleted(): void
+    {
+        [$user, $board] = $this->createCampaignMember();
+        // Deadline sudah lewat, TAPI kartu sudah selesai (dipindah ke Done).
+        $card = $this->createCard($board, $user, now()->subDay());
+        $card->update([
+            'status' => 'completed',
+            'completed_at' => now()->subHours(2),
+        ]);
+
+        $this->assertFalse($card->fresh()->isOverdue());
+
+        $user->givePermissionTo(Permission::findOrCreate('task.view', 'web'));
+        Sanctum::actingAs($user);
+
+        // Badge/flag dari API juga tidak lagi menandai overdue.
+        $this->getJson('/api/cards/'.$card->id)
+            ->assertOk()
+            ->assertJsonPath('data.is_overdue', false);
+
+        $this->deleteJson('/api/cards/'.$card->id)->assertOk();
+        $this->assertDatabaseMissing('cards', ['id' => $card->id]);
+    }
+
     public function test_only_card_creator_admin_assignee_and_super_admin_can_edit_due_date(): void
     {
         [$creator, $board] = $this->createCampaignMember();

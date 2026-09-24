@@ -161,6 +161,7 @@ export type Card = {
 
   due_date?: string | null;
   is_overdue?: boolean;
+  is_completed?: boolean;
   completed_at?: string | null;
 
   comments?: CardComment[];

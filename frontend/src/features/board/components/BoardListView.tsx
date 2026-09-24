@@ -3,6 +3,7 @@ import { Card } from "@/features/card/types";
 import {
   dueDateBadgeClasses,
   getDueDateStatus,
+  isCardCompleted,
 } from "@/features/card/utils/dueDate";
 
 interface Props {
@@ -38,8 +39,14 @@ const formatDate = (value?: string | null): string =>
       })
     : "-";
 
-function DueDateBadge({ value }: { value?: string | null }) {
-  const status = getDueDateStatus(value);
+function DueDateBadge({
+  value,
+  completed = false,
+}: {
+  value?: string | null;
+  completed?: boolean;
+}) {
+  const status = getDueDateStatus(value, { completed });
 
   if (status === "none") {
     return <span className="text-gray-400">-</span>;
@@ -118,7 +125,7 @@ export default function BoardListView({
                   {board.name}
                 </span>
 
-                <DueDateBadge value={card.due_date} />
+                <DueDateBadge value={card.due_date} completed={isCardCompleted(card)} />
               </div>
             </button>
           );
@@ -197,7 +204,7 @@ export default function BoardListView({
 
                   {/* Due Date Column - whitespace-nowrap agar tanggal tidak patah ke baris dua */}
                   <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
-                    <DueDateBadge value={card.due_date} />
+                    <DueDateBadge value={card.due_date} completed={isCardCompleted(card)} />
                   </td>
 
                   {/* Created Column - whitespace-nowrap */}

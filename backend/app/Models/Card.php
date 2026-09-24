@@ -278,9 +278,16 @@ class Card extends Model
         || !is_null($this->completed_at);
 }
 
+/**
+ * Kartu dianggap overdue hanya bila BELUM selesai dan deadline-nya lewat.
+ * Sengaja memakai `isCompleted()` agar kartu yang sudah dipindah ke board
+ * Done tidak lagi dicap "terlambat" — konsisten dengan dashboard/stats yang
+ * mengecualikan kartu `completed`.
+ */
 public function isOverdue(): bool
 {
     return $this->due_date !== null
+        && ! $this->isCompleted()
         && $this->due_date->isPast();
 }
 
