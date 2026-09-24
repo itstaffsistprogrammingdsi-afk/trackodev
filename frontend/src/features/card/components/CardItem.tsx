@@ -93,7 +93,10 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   // =========================================
   // DUE DATE STATUS
   // =========================================
-  const dueStatus = getDueDateStatus(card.due_date, { completed: isCardCompleted(card) });
+  const dueStatus = getDueDateStatus(card.due_date, {
+    completed: isCardCompleted(card),
+    completedAt: card.completed_at,
+  });
   const dueClasses = dueDateBadgeClasses[dueStatus];
   const brands = card.brands ?? [];
   const labels = card.labels ?? [];

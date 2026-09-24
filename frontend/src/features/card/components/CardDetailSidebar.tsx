@@ -136,9 +136,16 @@ export default function CardDetailSidebar({
     links: briefAttachments.filter((a) => a.attachment_type === "link").length,
   };
   const cardCompleted = isCardCompleted(card);
-  const dueStatus = getDueDateStatus(card.due_date, { completed: cardCompleted });
+  const dueStatus = getDueDateStatus(card.due_date, {
+    completed: cardCompleted,
+    completedAt: card.completed_at,
+  });
   const deleteDisabled =
-    card.is_overdue === true || isCardOverdue(card.due_date, { completed: cardCompleted });
+    card.is_overdue === true ||
+    isCardOverdue(card.due_date, {
+      completed: cardCompleted,
+      completedAt: card.completed_at,
+    });
   const canEditDueDate =
     card.created_by?.id === user?.id ||
     hasRole("admin") ||
