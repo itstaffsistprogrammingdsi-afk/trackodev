@@ -19,6 +19,7 @@ import { alertIfMirrorConflict } from "../utils/mirrorConflict";
 import {
   dueDateBadgeClasses,
   getDueDateStatus,
+  isCardCompleted,
 } from "../utils/dueDate";
 
 // =========================================
@@ -92,7 +93,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   // =========================================
   // DUE DATE STATUS
   // =========================================
-  const dueStatus = getDueDateStatus(card.due_date);
+  const dueStatus = getDueDateStatus(card.due_date, { completed: isCardCompleted(card) });
   const dueClasses = dueDateBadgeClasses[dueStatus];
   const brands = card.brands ?? [];
   const labels = card.labels ?? [];

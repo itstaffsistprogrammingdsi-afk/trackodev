@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 import type { Card } from "../types";
-import { getDueDateStatus } from "../utils/dueDate";
+import { getDueDateStatus, isCardCompleted } from "../utils/dueDate";
 import { alertIfMirrorConflict } from "../utils/mirrorConflict";
 import { toast } from "@/lib/feedback";
 
@@ -61,7 +61,7 @@ export default function NativeCardItem({
     Math.max(0, labels.length - visibleLabels.length);
   const createdDate = formatCreatedDate(card.created_at);
   const dueDate = formatDueDate(card.due_date);
-  const dueStatus = getDueDateStatus(card.due_date);
+  const dueStatus = getDueDateStatus(card.due_date, { completed: isCardCompleted(card) });
   const priority = card.priority?.toLowerCase() ?? "";
   const accentColor =
     brands[0]?.color || (priority === "urgent" ? "#e11d48" : "#3b82f6");
