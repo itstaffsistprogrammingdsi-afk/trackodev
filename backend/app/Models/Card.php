@@ -279,16 +279,26 @@ class Card extends Model
 }
 
 /**
- * Kartu dianggap overdue hanya bila BELUM selesai dan deadline-nya lewat.
- * Sengaja memakai `isCompleted()` agar kartu yang sudah dipindah ke board
- * Done tidak lagi dicap "terlambat" — konsisten dengan dashboard/stats yang
- * mengecualikan kartu `completed`.
+ * Overdue = deadline lewat DAN belum selesai, ATAU selesai setelah deadline
+ * (keterlambatan adalah fakta riwayat yang tetap ditandai walau kartu sudah
+ * dipindah ke Done).
+ *
+ * Kartu selesai TANPA `completed_at` (data lama) dianggap tepat waktu supaya
+ * tidak salah dikunci dari penghapusan. Dashboard/stats tetap menghitung
+ * overdue hanya untuk kartu yang belum selesai.
  */
 public function isOverdue(): bool
 {
-    return $this->due_date !== null
-        && ! $this->isCompleted()
-        && $this->due_date->isPast();
+    if ($this->due_date === null) {
+        return false;
+    }
+
+    if (! $this->isCompleted()) {
+        return $this->due_date->isPast();
+    }
+
+    return $this->completed_at !== null
+        && $this->completed_at->greaterThan($this->due_date);
 }
 
 public function reminderLocked(): bool

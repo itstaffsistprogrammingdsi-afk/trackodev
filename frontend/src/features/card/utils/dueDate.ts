@@ -10,8 +10,10 @@ export const parseDueDate = (value?: string | null): Date | null => {
 };
 
 type DueDateOptions = {
-  /** Kartu yang sudah selesai tidak pernah dianggap terlambat. */
+  /** Kartu sudah selesai (status completed atau completed_at terisi). */
   completed?: boolean;
+  /** Waktu kartu benar-benar selesai; dipakai menilai telat vs tepat waktu. */
+  completedAt?: string | null;
   now?: Date;
 };
 
@@ -27,9 +29,17 @@ export const getDueDateStatus = (
   const dueDate = parseDueDate(value);
   if (!dueDate) return "none";
 
-  // Kartu selesai (mis. sudah dipindah ke Done) tidak pernah overdue walau
-  // deadline-nya sudah lewat — selaras dengan dashboard/stats.
-  if (options.completed) return "safe";
+  // Kartu selesai: keterlambatan yang sudah terjadi tetap ditandai sebagai
+  // riwayat (selesai setelah deadline), sedangkan selesai tepat waktu tampil
+  // normal. Kartu selesai tanpa completed_at (data lama) dianggap tepat waktu.
+  if (options.completed) {
+    const completedAt = parseDueDate(options.completedAt);
+    if (completedAt && completedAt.getTime() > dueDate.getTime()) {
+      return "overdue";
+    }
+
+    return "safe";
+  }
 
   const now = options.now ?? new Date();
   const remainingMs = dueDate.getTime() - now.getTime();

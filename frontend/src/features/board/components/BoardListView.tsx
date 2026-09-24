@@ -42,11 +42,13 @@ const formatDate = (value?: string | null): string =>
 function DueDateBadge({
   value,
   completed = false,
+  completedAt,
 }: {
   value?: string | null;
   completed?: boolean;
+  completedAt?: string | null;
 }) {
-  const status = getDueDateStatus(value, { completed });
+  const status = getDueDateStatus(value, { completed, completedAt });
 
   if (status === "none") {
     return <span className="text-gray-400">-</span>;
@@ -125,7 +127,7 @@ export default function BoardListView({
                   {board.name}
                 </span>
 
-                <DueDateBadge value={card.due_date} completed={isCardCompleted(card)} />
+                <DueDateBadge value={card.due_date} completed={isCardCompleted(card)} completedAt={card.completed_at} />
               </div>
             </button>
           );
@@ -204,7 +206,7 @@ export default function BoardListView({
 
                   {/* Due Date Column - whitespace-nowrap agar tanggal tidak patah ke baris dua */}
                   <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
-                    <DueDateBadge value={card.due_date} completed={isCardCompleted(card)} />
+                    <DueDateBadge value={card.due_date} completed={isCardCompleted(card)} completedAt={card.completed_at} />
                   </td>
 
                   {/* Created Column - whitespace-nowrap */}

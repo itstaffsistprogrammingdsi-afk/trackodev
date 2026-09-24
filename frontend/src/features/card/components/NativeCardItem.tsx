@@ -61,7 +61,10 @@ export default function NativeCardItem({
     Math.max(0, labels.length - visibleLabels.length);
   const createdDate = formatCreatedDate(card.created_at);
   const dueDate = formatDueDate(card.due_date);
-  const dueStatus = getDueDateStatus(card.due_date, { completed: isCardCompleted(card) });
+  const dueStatus = getDueDateStatus(card.due_date, {
+    completed: isCardCompleted(card),
+    completedAt: card.completed_at,
+  });
   const priority = card.priority?.toLowerCase() ?? "";
   const accentColor =
     brands[0]?.color || (priority === "urgent" ? "#e11d48" : "#3b82f6");
