@@ -92,9 +92,16 @@ class CollaborationHierarchyTest extends TestCase
         $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $outsider->id])
             ->assertForbidden();
 
-        // Pimpinan division tujuan yang belum menjadi member tidak punya
-        // akses ke card (otorisasi card tetap berlaku).
-        Sanctum::actingAs($dkvLeader);
+        // Admin divisi LAIN yang tidak terkait (bukan divisi asal assignee)
+        // tetap tidak punya akses ke card (otorisasi card tetap berlaku).
+        // Catatan: admin divisi asal assignee memang sengaja di-auto-join
+        // agar bisa memonitoring pekerjaan anggotanya.
+        $hrLeader = User::factory()->create(['name' => 'Admin HR']);
+        $hrLeader->assignRole(User::ROLE_ADMIN);
+        $hrDivision = $this->createDivision('HR');
+        $hrDivision->users()->attach($hrLeader->id, ['role' => 'admin']);
+
+        Sanctum::actingAs($hrLeader);
 
         $this->postJson("/api/cards/{$card->id}/assign", ['user_id' => $dkvStaff->id])
             ->assertForbidden();

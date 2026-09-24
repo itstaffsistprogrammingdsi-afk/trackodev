@@ -32,6 +32,11 @@ class NotificationCreated implements ShouldBroadcast
     public function broadcastWith(): array
     {
         $actionUrl = $this->notification->action_url;
+        $isCrossDivisionTask = in_array(
+            $this->notification->type,
+            ['task_assigned', 'card.cross_division_assigned'],
+            true
+        ) && (bool) data_get($this->notification->data, 'cross_division');
 
         return [
             'notification' => [
@@ -42,7 +47,9 @@ class NotificationCreated implements ShouldBroadcast
                 'data' => $this->notification->data,
                 'action_url' => $actionUrl,
                 'action_label' => $actionUrl
-                    ? ($this->notification->type === 'campaign.cross_division_member_added' ? 'Buka campaign' : 'Buka card')
+                    ? ($this->notification->type === 'campaign.cross_division_member_added'
+                        ? 'Buka campaign'
+                        : ($isCrossDivisionTask ? 'Buka tugas lintas divisi' : 'Buka card'))
                     : null,
                 'is_read' => $this->notification->is_read,
                 'created_at' => $this->notification->created_at?->toDateTimeString(),
