@@ -15,8 +15,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\Board;
 use App\Models\Card;
-use App\Models\Division;
-use App\Models\Notification;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -918,62 +916,21 @@ class CampaignController extends Controller
 
     /**
      * Beri tahu admin divisi asal ketika anggotanya diundang ke campaign
-     * milik divisi lain. Notifikasi dibuat per admin dan peristiwa undangan.
+     * milik divisi lain, sekaligus jadikan mereka member campaign agar bisa
+     * memonitoring anggotanya. Logika dipusatkan di DivisionAdminNotifier
+     * supaya dipakai bersama alur assign card.
      */
     private function notifyCrossDivisionAdmins(
         Campaign $campaign,
         $memberIds,
         string $actorId
     ): void {
-        $owningDivisionId = (string) $campaign->workspace->division_id;
-        $members = User::query()
-            ->with(['divisions', 'roles'])
-            ->whereIn('id', collect($memberIds)->unique())
-            ->get();
-
-        $sourceDivisions = $members
-            ->flatMap(fn (User $member) => $member->divisions)
-            ->filter(fn (Division $division) => (string) $division->id !== $owningDivisionId)
-            ->unique('id')
-            ->values();
-
-        if ($sourceDivisions->isEmpty()) {
-            return;
-        }
-
-        $workspace = $campaign->workspace;
-        $recipients = collect();
-
-        foreach ($sourceDivisions as $division) {
-            $division->loadMissing(['users.roles']);
-            $recipients = $recipients->merge(
-                $division->users->filter(fn (User $admin) =>
-                    (string) $admin->id !== (string) $actorId
-                    && ($admin->isAdmin() || $admin->pivot?->role === 'admin')
-                )
-            );
-        }
-
-        $recipients->unique('id')->each(function (User $admin) use ($campaign, $workspace, $sourceDivisions): void {
-            $divisionNames = $sourceDivisions
-                ->filter(fn (Division $division) => $division->users->contains('id', $admin->id))
-                ->pluck('name')
-                ->implode(', ');
-
-            Notification::create([
-                'user_id' => $admin->id,
-                'type' => 'campaign.cross_division_member_added',
-                'title' => 'Anggota divisi ditambahkan ke campaign lintas divisi',
-                'body' => "Anggota divisi {$divisionNames} ditambahkan ke campaign '{$campaign->name}' milik divisi {$workspace->division->name}.",
-                'data' => [
-                    'campaign_id' => (string) $campaign->id,
-                    'workspace_id' => (string) $workspace->id,
-                    'source_division_ids' => $sourceDivisions->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
-                    'cross_division' => true,
-                ],
-                'is_read' => false,
-            ]);
-        });
+        app(\App\Services\DivisionAdminNotifier::class)->notifyAndJoin(
+            $campaign,
+            $memberIds,
+            $actorId,
+            ['type' => 'campaign.cross_division_member_added']
+        );
     }
 
 

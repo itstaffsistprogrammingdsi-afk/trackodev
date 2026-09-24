@@ -9,7 +9,7 @@ class NotificationResource extends JsonResource
     public function toArray(Request $request): array
     {
         $actionUrl = $this->action_url;
-        $isCrossDivisionTask = $this->type === 'task_assigned'
+        $isCrossDivisionTask = in_array($this->type, ['task_assigned', 'card.cross_division_assigned'], true)
             && (bool) data_get($this->data, 'cross_division');
 
         return [

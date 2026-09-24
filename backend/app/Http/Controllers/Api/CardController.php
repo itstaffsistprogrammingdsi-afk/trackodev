@@ -417,6 +417,29 @@ class CardController extends Controller
             }
         }
 
+        // ========================================
+        // NOTIFIKASI + AUTO-JOIN ADMIN DIVISI ASAL
+        // ========================================
+        // Saat assignee berasal dari divisi lain, admin divisi asal diberi
+        // tahu dan dijadikan member campaign agar bisa memonitoring.
+        // Kegagalan tidak boleh menggagalkan pembuatan card.
+
+        if (! empty($assignees) && $board->campaign) {
+            try {
+                app(\App\Services\DivisionAdminNotifier::class)->notifyAndJoin(
+                    $board->campaign,
+                    $assignees,
+                    (string) $user->id,
+                    ['type' => 'card.cross_division_assigned', 'card' => $card]
+                );
+            } catch (\Throwable $e) {
+                \Log::warning('DIVISION ADMIN NOTIFY (CARD STORE) ERROR', [
+                    'card_id' => $card->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
         ActivityLogService::log(
             $user,
             'card',
@@ -1342,6 +1365,30 @@ class CardController extends Controller
                 'user_id' => $assignedUser->id,
                 'message' => $e->getMessage(),
             ]);
+        }
+
+        // ========================================
+        // NOTIFIKASI + AUTO-JOIN ADMIN DIVISI ASAL
+        // ========================================
+        // Assignee lintas divisi: beri tahu admin divisi asal dan jadikan
+        // mereka member campaign agar bisa memonitoring. Tidak boleh
+        // menggagalkan assignment.
+
+        if ($card->board?->campaign) {
+            try {
+                app(\App\Services\DivisionAdminNotifier::class)->notifyAndJoin(
+                    $card->board->campaign,
+                    [$assignedUser->id],
+                    (string) $request->user()->id,
+                    ['type' => 'card.cross_division_assigned', 'card' => $card]
+                );
+            } catch (\Throwable $e) {
+                \Log::warning('DIVISION ADMIN NOTIFY (CARD ASSIGN) ERROR', [
+                    'card_id' => $card->id,
+                    'user_id' => $assignedUser->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
         }
 
         // ========================================
