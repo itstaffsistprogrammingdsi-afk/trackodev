@@ -49,7 +49,7 @@ export default function SortableBoardColumn({
       className={`${
         fullWidth
           ? "w-full max-w-none"
-          : "w-[85vw] max-w-[320px] shrink-0 sm:w-[320px] sm:max-w-none"
+          : "w-[85vw] max-w-[320px] shrink-0 sm:w-[320px] sm:max-w-none md:h-full"
       } ${
         isDragging ? "z-20 opacity-40" : ""
       }`}
