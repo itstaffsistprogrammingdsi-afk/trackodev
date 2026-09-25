@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Support\PermissionCatalog;
+use App\Support\UserSearch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -43,21 +44,7 @@ class UserController extends Controller
         // ============================================
 
         if ($request->filled('search')) {
-
-            $search = $request->search;
-
-            $query->where(function ($q) use ($search) {
-
-                $q->where(
-                    'name',
-                    'like',
-                    "%{$search}%"
-                )->orWhere(
-                    'email',
-                    'like',
-                    "%{$search}%"
-                );
-            });
+            UserSearch::apply($query, $request->search);
         }
 
         // ============================================
@@ -828,21 +815,7 @@ class UserController extends Controller
         // ============================================
 
         if (! empty($validated['search'])) {
-
-            $search = $validated['search'];
-
-            $query->where(function ($q) use ($search) {
-
-                $q->where(
-                    'name',
-                    'like',
-                    "%{$search}%"
-                )->orWhere(
-                    'email',
-                    'like',
-                    "%{$search}%"
-                );
-            });
+            UserSearch::apply($query, $validated['search']);
         }
 
         // ============================================
@@ -938,12 +911,7 @@ class UserController extends Controller
             ->with(['roles', 'divisions:id,name']);
 
         if (! empty($validated['search'])) {
-            $search = $validated['search'];
-            $query->where(function ($candidateQuery) use ($search) {
-                $candidateQuery
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
+            UserSearch::apply($query, $validated['search']);
         }
 
         if ($divisionId) {

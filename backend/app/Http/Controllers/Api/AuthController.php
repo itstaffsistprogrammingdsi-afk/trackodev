@@ -186,8 +186,11 @@ class AuthController extends Controller
             return response()->json(['message' => 'Tidak bisa bypass ke akun sendiri.'], 400);
         }
 
+        // Akun dengan hak istimewa hanya boleh di-bypass oleh Super Admin.
+        // Admin/manager tetap dilarang menargetkan akun istimewa lain.
         abort_if(
-            $user->managesDivision() || $user->isSuperAdmin(),
+            ! $adminUser->isSuperAdmin()
+                && ($user->managesDivision() || $user->isSuperAdmin()),
             403,
             'Akun dengan hak istimewa tidak dapat menjadi target bypass.'
         );
