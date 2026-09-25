@@ -46,6 +46,7 @@ import { toast, confirmDialog } from "@/lib/feedback";
 type RoleType =
   | "super_admin"
   | "admin"
+  | "manager"
   | "user";
 
 type User = {
@@ -116,6 +117,9 @@ const roleStyle: Record<
   admin:
     "bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
 
+  manager:
+    "bg-teal-100 text-teal-700 border border-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20",
+
   user:
     "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-500/10 dark:text-gray-300 dark:border-gray-700",
 
@@ -142,6 +146,7 @@ const getUserRole = (
     [
       "super_admin",
       "admin",
+      "manager",
       "user",
     ].includes(user.role)
   ) {
@@ -160,6 +165,7 @@ const getUserRole = (
       [
         "super_admin",
         "admin",
+        "manager",
         "user",
       ].includes(firstRole)
     ) {
@@ -795,6 +801,10 @@ export default function UserProfiles() {
 
               <option value="admin">
                 Admin
+              </option>
+
+              <option value="manager">
+                Manager
               </option>
 
               <option value="user">

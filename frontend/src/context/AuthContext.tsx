@@ -35,6 +35,12 @@ type AuthContextType = {
     role: string
   ) => boolean;
 
+  /**
+   * Otoritas penuh atas divisi: role admin ATAU manager.
+   * Cerminan dari User::managesDivision() di backend.
+   */
+  managesDivision: () => boolean;
+
   can: (
     permission: string
   ) => boolean;
@@ -131,6 +137,12 @@ const loadUser = async (): Promise<void> => {
     );
   };
 
+  const managesDivision = (): boolean => {
+    const roles = user?.roles ?? [];
+
+    return roles.includes("admin") || roles.includes("manager");
+  };
+
   // ==========================================
   // PERMISSION CHECK
   // ==========================================
@@ -162,6 +174,7 @@ const can = (
         setUser,
         loadUser,
         hasRole,
+        managesDivision,
         can,
       }}
     >

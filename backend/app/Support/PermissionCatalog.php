@@ -269,7 +269,25 @@ final class PermissionCatalog
         return array_values(array_unique(array_merge($dependencies, $parentViews)));
     }
 
+    /**
+     * Admin = otoritas penuh divisi TANPA report.
+     *
+     * Nama role & wewenangnya sengaja ditukar (permintaan produk): `admin`
+     * kini peran terbatas, `manager` peran penuh termasuk report. Otoritas
+     * divisi keduanya diatur lewat User::managesDivision(), bukan permission.
+     */
     public static function adminPermissions(): array
+    {
+        return array_values(array_filter(
+            self::managerPermissions(),
+            fn (string $permission) => ! str_starts_with($permission, 'report.'),
+        ));
+    }
+
+    /**
+     * Manager = otoritas penuh divisi termasuk report (setara admin lama).
+     */
+    public static function managerPermissions(): array
     {
         return array_values(array_diff(self::names(), [
             'user.view',

@@ -75,7 +75,7 @@ public function store(Request $request, Division $division): JsonResponse
     if ($user->isSuperAdmin()) {
         $canManageDivision = true;
     } elseif (
-        $user->isAdmin() &&
+        $user->managesDivision() &&
         $user->divisions()
             ->where('divisions.id', $division->id)
             ->exists()

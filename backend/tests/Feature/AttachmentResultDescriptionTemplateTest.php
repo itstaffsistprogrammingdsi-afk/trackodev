@@ -68,7 +68,7 @@ class AttachmentResultDescriptionTemplateTest extends TestCase
 
     public function test_admin_can_create_a_template_that_regular_users_can_use(): void
     {
-        $adminRole = Role::create([
+        $adminRole = Role::firstOrCreate([
             'name' => 'admin',
             'guard_name' => 'web',
         ]);
@@ -95,7 +95,7 @@ class AttachmentResultDescriptionTemplateTest extends TestCase
 
     public function test_super_admin_can_create_a_result_description_template(): void
     {
-        $superAdminRole = Role::create([
+        $superAdminRole = Role::firstOrCreate([
             'name' => 'super_admin',
             'guard_name' => 'web',
         ]);

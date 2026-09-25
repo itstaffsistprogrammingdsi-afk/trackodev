@@ -60,7 +60,7 @@ class CampaignPolicy
      */
     public function update(User $user, Campaign $campaign): bool
     {
-        if ($user->isAdmin()) {
+        if ($user->managesDivision()) {
             return $user->divisions()
                 ->where('divisions.id', $campaign->workspace->division_id)
                 ->exists();
@@ -74,7 +74,7 @@ class CampaignPolicy
      */
     public function delete(User $user, Campaign $campaign): bool
     {
-        if ($user->isAdmin()) {
+        if ($user->managesDivision()) {
             return $user->divisions()
                 ->where('divisions.id', $campaign->workspace->division_id)
                 ->exists();

@@ -47,7 +47,7 @@ export default function CampaignForm({
 
   const memberIds = watch("member_ids");
   const isSuperAdmin = user?.roles?.includes("super_admin") ?? false;
-  const isAdmin = user?.roles?.includes("admin") ?? false;
+  const isAdmin = user?.roles?.some((role) => ["admin", "manager"].includes(role)) ?? false;
 
   // ADD MEMBER
   const handleSelectUser = (user: User) => {

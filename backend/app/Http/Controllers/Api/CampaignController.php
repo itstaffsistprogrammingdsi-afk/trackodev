@@ -73,7 +73,7 @@ class CampaignController extends Controller
         // campaign di workspace tersebut. Admin dari division lain tetap
         // boleh membuka workspace jika ia diundang, tetapi hanya campaign
         // yang memang ia buat/ikuti yang boleh dikembalikan.
-        $hasOwningDivision = $user->isAdmin()
+        $hasOwningDivision = $user->managesDivision()
             && $user->divisions()
                 ->where('divisions.id', $workspace->division_id)
                 ->exists();

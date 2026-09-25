@@ -422,7 +422,7 @@ class MyActivityController extends Controller
         $viewer = $request->user();
 
         abort_unless(
-            $viewer?->isAdmin() || $viewer?->isSuperAdmin(),
+            $viewer?->managesDivision() || $viewer?->isSuperAdmin(),
             403,
             'Ranking hanya tersedia untuk super admin dan admin.'
         );

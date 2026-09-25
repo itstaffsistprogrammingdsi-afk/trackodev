@@ -286,6 +286,7 @@ class UserController extends Controller
                 Rule::in([
                     User::ROLE_SUPER_ADMIN,
                     User::ROLE_ADMIN,
+                    User::ROLE_MANAGER,
                     User::ROLE_USER,
                 ]),
                 'exists:roles,name',
@@ -499,6 +500,7 @@ class UserController extends Controller
                 Rule::in([
                     User::ROLE_SUPER_ADMIN,
                     User::ROLE_ADMIN,
+                    User::ROLE_MANAGER,
                     User::ROLE_USER,
                 ]),
                 'exists:roles,name',
@@ -895,7 +897,9 @@ class UserController extends Controller
                 'division_names' => $candidate->divisions->pluck('name')->values(),
                 'collaborator_label' => $candidate->isSuperAdmin()
                     ? 'Super Admin'
-                    : ($candidate->isAdmin() ? 'Admin Divisi' : 'Member'),
+                    : ($candidate->isManager()
+                        ? 'Manager Divisi'
+                        : ($candidate->isAdmin() ? 'Admin Divisi' : 'Member')),
             ]),
         ]);
     }

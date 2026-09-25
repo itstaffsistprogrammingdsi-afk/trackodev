@@ -177,7 +177,7 @@ class AuthController extends Controller
         $adminUser = $request->user();
 
         abort_unless(
-            $adminUser->isAdmin() || $adminUser->isSuperAdmin(),
+            $adminUser->managesDivision() || $adminUser->isSuperAdmin(),
             403,
             'Hanya Admin dan Super Admin yang dapat melakukan bypass.'
         );
@@ -187,7 +187,7 @@ class AuthController extends Controller
         }
 
         abort_if(
-            $user->isAdmin() || $user->isSuperAdmin(),
+            $user->managesDivision() || $user->isSuperAdmin(),
             403,
             'Akun dengan hak istimewa tidak dapat menjadi target bypass.'
         );

@@ -80,7 +80,7 @@ public function canBeAccessedBy(
         return true;
     }
 
-    if ($user->isAdmin()) {
+    if ($user->managesDivision()) {
         return $user->divisions()
             ->where(
                 'divisions.id',

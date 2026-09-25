@@ -792,7 +792,7 @@ class CardController extends Controller
     {
         if (
             $user->isSuperAdmin()
-            || $user->isAdmin()
+            || $user->managesDivision()
             || (string) $card->created_by === (string) $user->id
         ) {
             return true;

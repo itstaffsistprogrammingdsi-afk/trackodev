@@ -187,8 +187,9 @@ class HrisSyncService
             // dibuat oleh alur HRIS sebelumnya, dan tidak menyentuh akun admin.
             if (
                 $resetExistingPasswords
-                && ! $user->hasAnyRole([
+                && !                 $user->hasAnyRole([
                     User::ROLE_ADMIN,
+                    User::ROLE_MANAGER,
                     User::ROLE_SUPER_ADMIN,
                 ])
             ) {

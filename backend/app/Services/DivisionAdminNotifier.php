@@ -60,7 +60,7 @@ class DivisionAdminNotifier
             $recipients = $recipients->merge(
                 $division->users->filter(fn (User $admin) =>
                     (string) $admin->id !== (string) $actorId
-                    && ($admin->isAdmin() || $admin->pivot?->role === 'admin')
+                    && ($admin->managesDivision() || $admin->pivot?->role === 'admin')
                 )
             );
         }
