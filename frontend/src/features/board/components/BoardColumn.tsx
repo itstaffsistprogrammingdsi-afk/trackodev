@@ -271,7 +271,7 @@ export default function BoardColumn({
     <div
       ref={setNodeRef}
       className={`flex max-h-none w-full shrink-0 flex-col rounded-2xl border bg-slate-50/70 shadow-sm backdrop-blur-xs transition-all duration-200 ${
-        fullWidth ? "max-w-none" : "md:max-h-full md:w-80"
+        fullWidth ? "max-w-none" : "md:h-full md:w-80"
       } ${
         isOver
           ? "border-blue-400 bg-blue-50/30 ring-4 ring-blue-100"
@@ -634,7 +634,7 @@ export default function BoardColumn({
       </div>
 
       {/* CARDS CONTAINER (SCROLLABLE) */}
-      <div className="flex-none overflow-visible px-3 pb-3 md:flex-1 md:overflow-y-auto custom-scrollbar">
+      <div className="flex-none overflow-visible px-3 pb-3 md:min-h-0 md:flex-1 md:overflow-y-auto custom-scrollbar">
         <SortableContext
           items={board.cards.map((c) => c.id)}
           strategy={verticalListSortingStrategy}
