@@ -10,9 +10,9 @@ import MyAssignedTasks from "../components/MyAssignedTasks";
 import { useAuth } from "@/context/AuthContext";
 
 export default function MyWorkPage() {
-  const { can, hasRole } = useAuth();
+  const { can, hasRole, managesDivision } = useAuth();
   const canViewRanking =
-    (hasRole("super_admin") || hasRole("admin"))
+    (hasRole("super_admin") || managesDivision())
     && can("my_work.ranking.view");
   const {
     loading,

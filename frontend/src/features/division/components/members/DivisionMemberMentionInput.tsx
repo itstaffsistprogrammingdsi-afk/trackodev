@@ -121,7 +121,7 @@ export default function DivisionMemberMentionInput({
           const filteredCandidates = role === "admin"
             ? candidates.filter((user) =>
                 user.roles?.some((candidateRole) =>
-                  ["admin", "super_admin"].includes(candidateRole.toLowerCase())
+                  ["admin", "manager", "super_admin"].includes(candidateRole.toLowerCase())
                 )
               )
             : candidates;

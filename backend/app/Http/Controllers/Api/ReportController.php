@@ -276,7 +276,7 @@ class ReportController extends Controller
             return;
         }
 
-        $allowed = $viewer->isAdmin()
+        $allowed = $viewer->managesDivision()
             && $target->divisions()
                 ->whereIn('divisions.id', $viewer->divisions()->pluck('divisions.id'))
                 ->exists();
@@ -733,7 +733,7 @@ private function restrictDivisionVisibility($query, Request $request): void
     }
 
     // Admin hanya boleh melihat user dalam divisinya.
-    if ($currentUser->isAdmin()) {
+    if ($currentUser->managesDivision()) {
         $divisionIds = $currentUser->divisions()
             ->pluck('divisions.id');
 

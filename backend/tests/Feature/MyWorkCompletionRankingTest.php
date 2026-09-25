@@ -26,8 +26,8 @@ class MyWorkCompletionRankingTest extends TestCase
             'guard_name' => 'web',
         ]);
 
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
-        $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
 
         $admin = User::factory()->create();
         $admin->assignRole($adminRole);
@@ -113,7 +113,7 @@ class MyWorkCompletionRankingTest extends TestCase
 
     public function test_super_admin_can_open_completion_ranking(): void
     {
-        $superAdminRole = Role::create([
+        $superAdminRole = Role::firstOrCreate([
             'name' => 'super_admin',
             'guard_name' => 'web',
         ]);

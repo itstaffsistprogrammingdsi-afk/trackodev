@@ -137,7 +137,7 @@ class CrossDivisionMirrorService
             return false;
         }
 
-        $isDivisionAdmin = $viewer->isAdmin()
+        $isDivisionAdmin = $viewer->managesDivision()
             || $viewer->divisions()->wherePivot('role', 'admin')->exists();
 
         if ($isDivisionAdmin) {
@@ -161,7 +161,7 @@ class CrossDivisionMirrorService
         $viewerId = (string) $viewer->id;
         $ownDivisionIds = $viewer->divisions()->pluck('divisions.id')->map(fn ($id) => (string) $id)->all();
 
-        $isDivisionAdmin = $viewer->isAdmin()
+        $isDivisionAdmin = $viewer->managesDivision()
             || $viewer->divisions()->wherePivot('role', 'admin')->exists();
         $hasMirrorView = $viewer->can('card.mirror.view');
 
@@ -1766,7 +1766,7 @@ class CrossDivisionMirrorService
      */
     public function canDeleteFamily(User $actor, Card $card): bool
     {
-        if ($actor->isSuperAdmin() || $actor->isAdmin()) {
+        if ($actor->isSuperAdmin() || $actor->managesDivision()) {
             return true;
         }
 

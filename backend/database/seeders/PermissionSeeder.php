@@ -33,6 +33,10 @@ class PermissionSeeder extends Seeder
             'name' => 'admin',
             'guard_name' => 'web',
         ]);
+        $manager = Role::firstOrCreate([
+            'name' => 'manager',
+            'guard_name' => 'web',
+        ]);
         $user = Role::firstOrCreate([
             'name' => 'user',
             'guard_name' => 'web',
@@ -41,6 +45,7 @@ class PermissionSeeder extends Seeder
         // Super Admin selalu memperoleh seluruh permission yang terdaftar.
         $superAdmin->syncPermissions(Permission::where('guard_name', 'web')->get());
         $admin->syncPermissions(PermissionCatalog::adminPermissions());
+        $manager->syncPermissions(PermissionCatalog::managerPermissions());
         $user->syncPermissions(PermissionCatalog::userPermissions());
 
         $registrar->forgetCachedPermissions();

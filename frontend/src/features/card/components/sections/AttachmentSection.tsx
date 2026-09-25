@@ -81,12 +81,12 @@ export default function AttachmentSection({
   supportsResultDescription = false,
   requiresQuantity = false,
 }: Props) {
-  const { can, hasRole } = useAuth();
+  const { can, hasRole, managesDivision } = useAuth();
   const canManageResultAttachments =
     can("attachment.delete") || can("task.update");
   const canCreateResultDescriptionTemplate =
     supportsResultDescription &&
-    (hasRole("admin") || hasRole("super_admin"));
+    (managesDivision() || hasRole("super_admin"));
   const [uploading, setUploading] = useState(false);
 
   const [linkUrl, setLinkUrl] = useState("");

@@ -1,6 +1,7 @@
 export type RoleType =
   | "super_admin"
   | "admin"
+  | "manager"
   | "user";
 
 export interface User {

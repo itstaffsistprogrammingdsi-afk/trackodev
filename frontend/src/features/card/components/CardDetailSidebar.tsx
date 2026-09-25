@@ -118,7 +118,7 @@ export default function CardDetailSidebar({
   briefLoading,
   fetchBriefAttachments,
 }: Props) {
-  const { can, hasRole, user } = useAuth();
+  const { can, hasRole, managesDivision, user } = useAuth();
   const toggleMembers = () => setShowMembers((prev) => !prev);
   const toggleDueDate = () => setShowDueDate((prev) => !prev);
   const toggleBrief = () => setShowBrief((prev) => !prev);
@@ -148,7 +148,7 @@ export default function CardDetailSidebar({
     });
   const canEditDueDate =
     card.created_by?.id === user?.id ||
-    hasRole("admin") ||
+    managesDivision() ||
     hasRole("super_admin");
   const dueDatePermissionMessage =
     "Hanya pembuat card, Admin, atau Super Admin yang dapat mengubah due date.";

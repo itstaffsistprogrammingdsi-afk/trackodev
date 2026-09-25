@@ -17,7 +17,9 @@ class ReportExportRoleScopeTest extends TestCase
     public function test_report_batch_downloads_follow_the_viewers_role_and_divisions(): void
     {
         $this->seed(PermissionSeeder::class);
-        $adminRole = Role::findByName(User::ROLE_ADMIN);
+        // Report kini melekat pada role `manager` (peran penuh). `admin`
+        // adalah peran terbatas tanpa report setelah penukaran nama role.
+        $adminRole = Role::findByName(User::ROLE_MANAGER);
         $superAdminRole = Role::findByName(User::ROLE_SUPER_ADMIN);
         $userRole = Role::findByName(User::ROLE_USER);
 

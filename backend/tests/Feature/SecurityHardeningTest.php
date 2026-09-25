@@ -64,9 +64,10 @@ class SecurityHardeningTest extends TestCase
         $this->assertTrue($superAdmin->fresh()->hasRole(User::ROLE_SUPER_ADMIN));
     }
 
-    public function test_report_detail_qc_activity_and_filters_are_scoped_to_admin_divisions(): void
+    public function test_report_detail_qc_activity_and_filters_are_scoped_to_division_manager(): void
     {
-        $admin = $this->userWithRole(User::ROLE_ADMIN);
+        // Report dipegang role `manager` (peran penuh) setelah penukaran nama.
+        $admin = $this->userWithRole(User::ROLE_MANAGER);
         $ownUser = $this->userWithRole(User::ROLE_USER);
         $foreignUser = $this->userWithRole(User::ROLE_USER);
         $own = $this->createProject($ownUser, 'Own');

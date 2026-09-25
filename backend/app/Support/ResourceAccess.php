@@ -79,7 +79,7 @@ final class ResourceAccess
             return true;
         }
 
-        return $user->isAdmin()
+        return $user->managesDivision()
             && $division->users()->where('users.id', $user->id)->exists();
     }
 }

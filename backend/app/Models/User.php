@@ -32,6 +32,8 @@ class User extends Authenticatable
 
     public const ROLE_ADMIN = 'admin';
 
+    public const ROLE_MANAGER = 'manager';
+
     public const ROLE_USER = 'user';
 
     // ============================================
@@ -95,13 +97,33 @@ class User extends Authenticatable
         );
     }
 
+    public function isManager(): bool
+    {
+        return $this->hasRole(
+            self::ROLE_MANAGER
+        );
+    }
+
+    /**
+     * Otoritas penuh atas divisi: role admin ATAU manager.
+     *
+     * Dipakai di semua gerbang otoritas divisi (policy, ResourceAccess,
+     * kepemilikan workspace/campaign) supaya manager diperlakukan sama
+     * seperti admin — KECUALI untuk report yang dikunci lewat permission
+     * (manager tidak memiliki permission report.*).
+     */
+    public function managesDivision(): bool
+    {
+        return $this->isAdmin() || $this->isManager();
+    }
+
     /**
      * Admin division dapat didefinisikan oleh role sistem maupun role pada
      * pivot division_user (data produksi lama memakai keduanya).
      */
     public function isDivisionAdmin(): bool
     {
-        return $this->isAdmin() || $this->divisions()
+        return $this->managesDivision() || $this->divisions()
             ->wherePivot('role', 'admin')
             ->exists();
     }
@@ -204,7 +226,7 @@ class User extends Authenticatable
     /** Kepala Bagian sampai SPV direpresentasikan oleh admin divisi. */
     public function isCollaborationLeader(): bool
     {
-        return $this->isSuperAdmin() || $this->isAdmin() || $this->divisions()
+        return $this->isSuperAdmin() || $this->managesDivision() || $this->divisions()
             ->wherePivot('role', 'admin')
             ->exists();
     }
@@ -285,7 +307,7 @@ public function accessibleCampaigns()
     }
 
     $userId = $this->id;
-    $divisionIds = $this->isAdmin()
+    $divisionIds = $this->managesDivision()
         ? $this->divisions()->pluck('divisions.id')
         : collect();
 

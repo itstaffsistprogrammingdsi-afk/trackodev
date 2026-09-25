@@ -24,7 +24,7 @@ export default function WorkspacePage() {
   // 🛡️ Safety Check Roles & Access Control
   const canManageWorkspace = useMemo(() => {
     if (!user?.roles || !Array.isArray(user.roles)) return false;
-    return user.roles.some((role) => ["super_admin", "admin"].includes(role));
+    return user.roles.some((role) => ["super_admin", "admin", "manager"].includes(role));
   }, [user]);
 
   // 🛡️ Safe array fallback untuk mencegah crash

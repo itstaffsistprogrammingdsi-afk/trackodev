@@ -19,9 +19,9 @@ class UserPermissionManagementTest extends TestCase
             Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         }
 
-        $superAdmin = Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
         $superAdmin->givePermissionTo(['user.update', 'form.view', 'form.create']);
-        $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
+        $userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
 
         $actor = User::factory()->create();
         $actor->assignRole($superAdmin);
@@ -50,13 +50,13 @@ class UserPermissionManagementTest extends TestCase
             Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         }
 
-        $superAdmin = Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
         $superAdmin->givePermissionTo([
             'user.update',
             'dashboard.view',
             'dashboard.system_insights.view',
         ]);
-        $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
+        $userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
         $actor = User::factory()->create();
         $actor->assignRole($superAdmin);
         $target = User::factory()->create();
@@ -78,9 +78,9 @@ class UserPermissionManagementTest extends TestCase
     {
         Permission::firstOrCreate(['name' => 'user.update', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'form.delete', 'guard_name' => 'web']);
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $adminRole->givePermissionTo('user.update');
-        $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
+        $userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
 
         $admin = User::factory()->create();
         $admin->assignRole($adminRole);
@@ -100,9 +100,9 @@ class UserPermissionManagementTest extends TestCase
         foreach (['user.update', 'form.view', 'report.view'] as $name) {
             Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         }
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $adminRole->givePermissionTo(['user.update', 'form.view']);
-        $userRole = Role::create(['name' => 'user', 'guard_name' => 'web']);
+        $userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
         $admin = User::factory()->create();
         $admin->assignRole($adminRole);
         $target = User::factory()->create();

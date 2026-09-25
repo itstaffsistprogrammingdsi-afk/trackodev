@@ -43,7 +43,7 @@ export default function CampaignCard({
   const [moving, setMoving] = useState(false);
 
   const isSuperAdmin = user?.roles?.includes("super_admin") ?? false;
-  const isAdmin = user?.roles?.includes("admin") ?? false;
+  const isAdmin = user?.roles?.some((role) => ["admin", "manager"].includes(role)) ?? false;
 
   const [name, setName] = useState(campaign.name ?? "");
   const [description, setDescription] = useState(campaign.description ?? "");
