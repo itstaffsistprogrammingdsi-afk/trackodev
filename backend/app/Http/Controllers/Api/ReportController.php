@@ -710,11 +710,7 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
 
         $search = $request->input('search');
 
-        $query->where(function ($userQuery) use ($search) {
-            $userQuery
-                ->where('users.name', 'like', "%{$search}%")
-                ->orWhere('users.email', 'like', "%{$search}%");
-        });
+        \App\Support\UserSearch::apply($query, $search, 'users.name', 'users.email');
     }
 
 private function restrictDivisionVisibility($query, Request $request): void
