@@ -346,16 +346,28 @@ class BoardController extends Controller
             'Unauthorized'
         );
 
-        ActivityLogService::log(
-            $user,
-            'board',
-            (string) $board->id,
-            'deleted',
-            "Menghapus board '{$board->name}' di campaign '{$board->campaign->name}'",
-            ['board_id' => $board->id, 'campaign_id' => $board->campaign_id]
-        );
+        $boardName = $board->name;
+        $campaignName = $board->campaign?->name;
 
         $board->delete();
+
+        // Log hanya dicatat SETELAH delete benar-benar berhasil, agar tidak ada
+        // log "dihapus" untuk board yang masih ada.
+        try {
+            ActivityLogService::log(
+                $user,
+                'board',
+                (string) $board->id,
+                'deleted',
+                "Menghapus board '{$boardName}' di campaign '{$campaignName}'",
+                ['board_id' => $board->id, 'campaign_id' => $board->campaign_id]
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('BOARD DELETE LOG ERROR', [
+                'board_id' => $board->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         return response()->json(['message' => 'Board berhasil dihapus.']);
     }

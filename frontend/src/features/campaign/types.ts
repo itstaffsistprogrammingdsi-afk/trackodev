@@ -98,6 +98,7 @@ export type CampaignMoveSummary = {
   target_workspace_name: string;
   target_division_id: string;
   cross_division: boolean;
+  can_access_target?: boolean;
   boards_moved: number;
   cards_moved: number;
   assignments_moved: number;

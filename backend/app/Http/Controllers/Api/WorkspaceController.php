@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Services\ActivityLogService;
 
 class WorkspaceController extends Controller
@@ -217,36 +218,49 @@ public function store(Request $request, Division $division): JsonResponse
 
         $user = User::findOrFail($validated['user_id']);
 
-        // Tandai sebagai "manual" agar muncul di grup "dibagikan langsung",
-        // walau sebelumnya ia masuk otomatis lewat campaign/task.
-        $alreadyMember = $workspace->members()
-            ->whereKey($user->id)
-            ->exists();
+        // Transaksi agar perubahan pivot + sinkronisasi konten tidak setengah
+        // jalan bila salah satu langkah gagal.
+        DB::transaction(function () use ($workspace, $user, $validated) {
+            // Tandai sebagai "manual" agar muncul di grup "dibagikan langsung",
+            // walau sebelumnya ia masuk otomatis lewat campaign/task.
+            $alreadyMember = $workspace->members()
+                ->whereKey($user->id)
+                ->exists();
 
-        if ($alreadyMember) {
-            $workspace->members()->updateExistingPivot($user->id, [
-                'access' => $validated['access'],
-                'source' => Workspace::SOURCE_MANUAL,
-            ]);
-        } else {
-            $workspace->members()->attach($user->id, [
-                'access' => $validated['access'],
-                'source' => Workspace::SOURCE_MANUAL,
+            if ($alreadyMember) {
+                $workspace->members()->updateExistingPivot($user->id, [
+                    'access' => $validated['access'],
+                    'source' => Workspace::SOURCE_MANUAL,
+                ]);
+            } else {
+                $workspace->members()->attach($user->id, [
+                    'access' => $validated['access'],
+                    'source' => Workspace::SOURCE_MANUAL,
+                ]);
+            }
+
+            if ($validated['access'] === Workspace::ACCESS_FULL) {
+                $this->syncFullAccessToContent($workspace, $user);
+            }
+        });
+
+        // Audit log tidak boleh menggagalkan operasi yang sudah ter-commit.
+        try {
+            ActivityLogService::log(
+                $request->user(),
+                'workspace',
+                (string) $workspace->id,
+                'member_added',
+                "Menambahkan '{$user->name}' ke workspace '{$workspace->name}' (akses: {$validated['access']})",
+                ['user_id' => (string) $user->id, 'access' => $validated['access']]
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('WORKSPACE MEMBER LOG ERROR', [
+                'workspace_id' => $workspace->id,
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
             ]);
         }
-
-        if ($validated['access'] === Workspace::ACCESS_FULL) {
-            $this->syncFullAccessToContent($workspace, $user);
-        }
-
-        ActivityLogService::log(
-            $request->user(),
-            'workspace',
-            (string) $workspace->id,
-            'member_added',
-            "Menambahkan '{$user->name}' ke workspace '{$workspace->name}' (akses: {$validated['access']})",
-            ['user_id' => (string) $user->id, 'access' => $validated['access']]
-        );
 
         return response()->json(['message' => 'Anggota workspace berhasil ditambahkan.'], 201);
     }
@@ -265,22 +279,32 @@ public function store(Request $request, Division $division): JsonResponse
             'User bukan anggota workspace ini.'
         );
 
-        $workspace->members()->updateExistingPivot($user->id, [
-            'access' => $validated['access'],
-        ]);
+        DB::transaction(function () use ($workspace, $user, $validated) {
+            $workspace->members()->updateExistingPivot($user->id, [
+                'access' => $validated['access'],
+            ]);
 
-        if ($validated['access'] === Workspace::ACCESS_FULL) {
-            $this->syncFullAccessToContent($workspace, $user);
+            if ($validated['access'] === Workspace::ACCESS_FULL) {
+                $this->syncFullAccessToContent($workspace, $user);
+            }
+        });
+
+        try {
+            ActivityLogService::log(
+                $request->user(),
+                'workspace',
+                (string) $workspace->id,
+                'member_updated',
+                "Mengubah akses '{$user->name}' di workspace '{$workspace->name}' menjadi {$validated['access']}",
+                ['user_id' => (string) $user->id, 'access' => $validated['access']]
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('WORKSPACE MEMBER LOG ERROR', [
+                'workspace_id' => $workspace->id,
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
         }
-
-        ActivityLogService::log(
-            $request->user(),
-            'workspace',
-            (string) $workspace->id,
-            'member_updated',
-            "Mengubah akses '{$user->name}' di workspace '{$workspace->name}' menjadi {$validated['access']}",
-            ['user_id' => (string) $user->id, 'access' => $validated['access']]
-        );
 
         return response()->json(['message' => 'Level akses anggota diperbarui.']);
     }
@@ -289,17 +313,27 @@ public function store(Request $request, Division $division): JsonResponse
     {
         $this->authorizeManageMembers($request, $workspace);
 
-        $workspace->members()->detach($user->id);
-        $this->revokeContentMembership($workspace, $user);
+        DB::transaction(function () use ($workspace, $user) {
+            $workspace->members()->detach($user->id);
+            $this->revokeContentMembership($workspace, $user);
+        });
 
-        ActivityLogService::log(
-            $request->user(),
-            'workspace',
-            (string) $workspace->id,
-            'member_removed',
-            "Mengeluarkan '{$user->name}' dari workspace '{$workspace->name}'",
-            ['user_id' => (string) $user->id]
-        );
+        try {
+            ActivityLogService::log(
+                $request->user(),
+                'workspace',
+                (string) $workspace->id,
+                'member_removed',
+                "Mengeluarkan '{$user->name}' dari workspace '{$workspace->name}'",
+                ['user_id' => (string) $user->id]
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('WORKSPACE MEMBER LOG ERROR', [
+                'workspace_id' => $workspace->id,
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         return response()->json(['message' => 'Anggota workspace berhasil dikeluarkan.']);
     }

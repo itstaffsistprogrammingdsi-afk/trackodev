@@ -76,7 +76,9 @@ class CampaignWorkspaceMoveTest extends TestCase
             ->assertJsonPath('summary.target_workspace_id', $target->id)
             ->assertJsonPath('summary.boards_moved', 1)
             ->assertJsonPath('summary.cards_moved', 1)
-            ->assertJsonPath('summary.assignments_moved', 1);
+            ->assertJsonPath('summary.assignments_moved', 1)
+            // Kontrak untuk frontend agar tidak navigate ke halaman 403.
+            ->assertJsonPath('summary.can_access_target', true);
 
         $this->assertDatabaseHas('campaigns', [
             'id' => $campaign->id,

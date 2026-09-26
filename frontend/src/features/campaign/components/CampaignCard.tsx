@@ -157,19 +157,33 @@ export default function CampaignCard({
         confirmCrossDivision,
       );
 
-      await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["campaign-move-targets", campaign.id],
-      });
-
       onChanged?.();
       setShowMove(false);
+
+      // Pindah SUDAH berhasil pada titik ini. Kegagalan refresh daftar tidak
+      // boleh dilaporkan sebagai kegagalan pemindahan.
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+        await queryClient.invalidateQueries({
+          queryKey: ["campaign-move-targets", campaign.id],
+        });
+      } catch {
+        // abaikan; data sudah tersimpan di server
+      }
 
       toast.success(
         `Campaign "${campaign.name}" berhasil dipindahkan ke workspace "${res.summary.target_workspace_name}".`,
       );
 
-      navigate(`/workspaces/${moveTargetId}/campaigns`);
+      // Navigate hanya bila aktor memang masih punya akses ke workspace tujuan.
+      // Jika tidak, tetap di halaman ini agar tidak menabrak halaman 403.
+      if (res.summary.can_access_target !== false) {
+        navigate(`/workspaces/${moveTargetId}/campaigns`);
+      } else {
+        toast.info(
+          "Anda tidak memiliki akses ke workspace tujuan. Minta admin workspace tersebut untuk memberi akses bila perlu memantau campaign ini.",
+        );
+      }
     } catch (err) {
       toast.error(getErrorMessage(err, "Gagal memindahkan campaign"));
     } finally {
@@ -194,20 +208,39 @@ export default function CampaignCard({
     try {
       setLoading(true);
 
-      await Promise.all(
-        selectedUsers.map((user) =>
-          addMember(campaign.id, user.id),
-        ),
-      );
+      const failed: string[] = [];
+      let successCount = 0;
+
+      // Proses per orang agar hasilnya jujur: sebagian bisa berhasil.
+      for (const user of selectedUsers) {
+        try {
+          await addMember(campaign.id, user.id);
+          successCount += 1;
+        } catch (err) {
+          failed.push(`${user.name}: ${getErrorMessage(err, "gagal")}`);
+        }
+      }
 
       setSelectedUsers([]);
       setShowMembers(false);
 
-      await queryClient.invalidateQueries({
-        queryKey: ["campaign-members", campaign.id],
-      });
-    } catch (err) {
-      toast.error(getErrorMessage(err, "Gagal tambah member"));
+      try {
+        await queryClient.invalidateQueries({
+          queryKey: ["campaign-members", campaign.id],
+        });
+      } catch {
+        // abaikan; daftar bisa di-refresh manual
+      }
+
+      if (failed.length === 0) {
+        toast.success(`${successCount} member berhasil ditambahkan.`);
+      } else if (successCount === 0) {
+        toast.error(`Gagal menambahkan member. ${failed.join("; ")}`);
+      } else {
+        toast.info(
+          `${successCount} berhasil, ${failed.length} gagal — ${failed.join("; ")}`,
+        );
+      }
     } finally {
       setLoading(false);
     }

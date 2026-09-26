@@ -206,18 +206,32 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
   const handleAdd = async () => {
     if (selected.length === 0) return;
 
+    const failed: string[] = [];
+    let successCount = 0;
+
     for (const item of selected) {
       try {
         await addMember.mutateAsync({ userId: item.user.id, access: item.access });
+        successCount += 1;
       } catch (err) {
-        toast.error(errorMessage(err, `Gagal memberi akses ke ${item.user.name}.`));
+        failed.push(`${item.user.name}: ${errorMessage(err, "gagal")}`);
       }
     }
 
     setSelected([]);
     setQuery("");
     setResults([]);
-    toast.success("Akses workspace diperbarui.");
+
+    // Ringkasan jujur: sukses sebagian tidak boleh dilaporkan sebagai sukses penuh.
+    if (failed.length === 0) {
+      toast.success(`${successCount} orang berhasil diberi akses.`);
+    } else if (successCount === 0) {
+      toast.error(`Gagal memberi akses. ${failed.join("; ")}`);
+    } else {
+      toast.info(
+        `${successCount} berhasil, ${failed.length} gagal — ${failed.join("; ")}`,
+      );
+    }
   };
 
   const handleChangeAccess = async (userId: string, access: WorkspaceAccessLevel) => {
