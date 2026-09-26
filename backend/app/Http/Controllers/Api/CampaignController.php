@@ -341,21 +341,31 @@ class CampaignController extends Controller
             return $campaign;
         });
 
-        $this->notifyCrossDivisionAdmins(
-            $campaign,
-            collect($request->member_ids ?? []),
-            $request->user()->id
-        );
+        // Notifikasi + audit log tidak boleh menggagalkan pembuatan campaign
+        // yang sudah ter-commit.
+        try {
+            $this->notifyCrossDivisionAdmins(
+                $campaign,
+                collect($request->member_ids ?? []),
+                $request->user()->id
+            );
 
-        ActivityLogService::log(
-            $request->user(),
+            ActivityLogService::log(
+                $request->user(),
 
-            'campaign',
-            (string) $campaign->id,
-            'created',
-            "Membuat campaign '{$campaign->name}' di workspace '{$workspace->name}'",
-            ['campaign_id' => $campaign->id, 'workspace_id' => $workspace->id]
-        );
+                'campaign',
+                (string) $campaign->id,
+                'created',
+                "Membuat campaign '{$campaign->name}' di workspace '{$workspace->name}'",
+                ['campaign_id' => $campaign->id, 'workspace_id' => $workspace->id]
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('CAMPAIGN STORE POST-COMMIT ERROR', [
+                'campaign_id' => $campaign->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json([
 
             'message' =>
@@ -651,20 +661,28 @@ class CampaignController extends Controller
             ];
         });
 
-        ActivityLogService::log(
-            $user,
-            'campaign',
-            (string) $campaign->id,
-            'moved',
-            "Memindahkan campaign '{$campaign->name}' dari workspace '{$sourceWorkspace->name}' ke '{$targetWorkspace->name}'",
-            [
-                'campaign_id' => (string) $campaign->id,
-                'workspace_id' => (string) $targetWorkspace->id,
-                'source_workspace_id' => (string) $sourceWorkspace->id,
-                'target_workspace_id' => (string) $targetWorkspace->id,
-                'cross_division' => $isCrossDivision,
-            ]
-        );
+        // Log audit tidak boleh menggagalkan respons: data sudah ter-commit.
+        try {
+            ActivityLogService::log(
+                $user,
+                'campaign',
+                (string) $campaign->id,
+                'moved',
+                "Memindahkan campaign '{$campaign->name}' dari workspace '{$sourceWorkspace->name}' ke '{$targetWorkspace->name}'",
+                [
+                    'campaign_id' => (string) $campaign->id,
+                    'workspace_id' => (string) $targetWorkspace->id,
+                    'source_workspace_id' => (string) $sourceWorkspace->id,
+                    'target_workspace_id' => (string) $targetWorkspace->id,
+                    'cross_division' => $isCrossDivision,
+                ]
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('ACTIVITY LOG (CAMPAIGN MOVE) ERROR', [
+                'campaign_id' => $campaign->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         return response()->json([
             'message' => "Campaign berhasil dipindahkan ke workspace '{$targetWorkspace->name}'.",
@@ -681,6 +699,9 @@ class CampaignController extends Controller
                 'target_workspace_name' => $targetWorkspace->name,
                 'target_division_id' => (string) $targetWorkspace->division_id,
                 'cross_division' => $isCrossDivision,
+                // Apakah aktor masih bisa membuka workspace tujuan setelah
+                // pindah? Dipakai frontend agar tidak navigate ke halaman 403.
+                'can_access_target' => $targetWorkspace->canBeAccessedBy($user),
                 ...$result,
             ],
         ]);
@@ -826,23 +847,34 @@ class CampaignController extends Controller
             return ! $wasAlreadyMember;
         });
 
-        if ($wasAdded) {
-            $this->notifyCrossDivisionAdmins(
-                $campaign,
-                collect([$userId]),
-                $request->user()->id
+        // Notifikasi + audit log tidak boleh menggagalkan penambahan member yang
+        // sudah ter-commit.
+        try {
+            if ($wasAdded) {
+                $this->notifyCrossDivisionAdmins(
+                    $campaign,
+                    collect([$userId]),
+                    $request->user()->id
+                );
+            }
+
+            ActivityLogService::log(
+                $request->user(),
+
+                'campaign',
+                (string) $campaign->id,
+                'added_member',
+                "Menambahkan member ke campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
+                ['campaign_id' => (string) $campaign->id, 'workspace_id' => (string) $campaign->workspace->id]
             );
+        } catch (\Throwable $e) {
+            \Log::warning('CAMPAIGN ADD MEMBER POST-COMMIT ERROR', [
+                'campaign_id' => $campaign->id,
+                'user_id' => $userId,
+                'message' => $e->getMessage(),
+            ]);
         }
 
-        ActivityLogService::log(
-            $request->user(),
-
-            'campaign',
-            (string) $campaign->id,
-            'added_member',
-            "Menambahkan member ke campaign '{$campaign->name}' di workspace '{$campaign->workspace->name}'",
-            ['campaign_id' => (string) $campaign->id, 'workspace_id' => (string) $campaign->workspace->id]
-        );
         return response()->json([
             'message' =>
             'Member berhasil ditambahkan ke campaign.',
