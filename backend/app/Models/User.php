@@ -336,7 +336,7 @@ public function workspaces(): BelongsToMany
         'workspace_user',
         'user_id',
         'workspace_id'
-    )->withTimestamps();
+    )->withPivot('access', 'source')->withTimestamps();
 }
 
 // ============================================

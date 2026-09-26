@@ -80,6 +80,12 @@ public function canBeAccessedBy(
         return true;
     }
 
+    // Tamu lintas divisi dengan level view_all/full boleh melihat seluruh isi
+    // workspace (semua campaign), bukan hanya campaign tempat ia diundang.
+    if ($this->workspace?->grantsFullContentAccessTo($user)) {
+        return true;
+    }
+
     if ($user->managesDivision()) {
         return $user->divisions()
             ->where(

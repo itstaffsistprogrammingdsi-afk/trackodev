@@ -33,6 +33,10 @@ final class PermissionCatalog
                 'workspace.create' => 'Buat workspace',
                 'workspace.update' => 'Ubah workspace',
                 'workspace.delete' => 'Hapus workspace',
+                'workspace.member.view' => 'Lihat anggota workspace',
+                'workspace.member.add' => 'Tambah anggota workspace',
+                'workspace.member.update' => 'Ubah level akses anggota workspace',
+                'workspace.member.remove' => 'Keluarkan anggota workspace',
             ]),
             'campaign' => self::module('Campaign', 'Kelola campaign, anggota, dan analitik.', [
                 'campaign.view' => 'Lihat campaign',

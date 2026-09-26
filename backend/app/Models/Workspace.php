@@ -12,6 +12,21 @@ class Workspace extends Model
 {
     use HasUuids;
 
+    /** Level akses member workspace (undangan lintas divisi). */
+    public const ACCESS_JOIN_ONLY = 'join_only';
+    public const ACCESS_VIEW_ALL = 'view_all';
+    public const ACCESS_FULL = 'full';
+
+    public const ACCESS_LEVELS = [
+        self::ACCESS_JOIN_ONLY,
+        self::ACCESS_VIEW_ALL,
+        self::ACCESS_FULL,
+    ];
+
+    /** Asal keanggotaan workspace. */
+    public const SOURCE_MANUAL = 'manual';
+    public const SOURCE_AUTO = 'auto';
+
     protected $fillable = [
         'division_id',
         'name',
@@ -53,7 +68,7 @@ class Workspace extends Model
             'workspace_user',
             'workspace_id',
             'user_id'
-        )->withTimestamps();
+        )->withPivot('access', 'source')->withTimestamps();
     }
 
     /*
@@ -130,5 +145,46 @@ class Workspace extends Model
         }
 
         return false;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | LEVEL AKSES MEMBER (join_only | view_all | full)
+    |--------------------------------------------------------------------------
+    */
+
+    public function accessLevelFor(User $user): ?string
+    {
+        $member = $this->members()
+            ->where('users.id', $user->id)
+            ->first();
+
+        return $member?->pivot?->access;
+    }
+
+    /**
+     * view_all & full: boleh melihat SELURUH isi workspace (semua campaign).
+     */
+    public function grantsFullContentAccessTo(User $user): bool
+    {
+        return in_array(
+            $this->accessLevelFor($user),
+            [self::ACCESS_VIEW_ALL, self::ACCESS_FULL],
+            true
+        );
+    }
+
+    /**
+     * full: boleh membuat campaign + mengedit isi konten.
+     */
+    public function grantsFullAccessTo(User $user): bool
+    {
+        return $this->accessLevelFor($user) === self::ACCESS_FULL;
+    }
+
+    /** Member yang boleh mengedit isi konten (level full). */
+    public function fullAccessMembers(): BelongsToMany
+    {
+        return $this->members()->wherePivot('access', self::ACCESS_FULL);
     }
 }
