@@ -1,11 +1,12 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
 import { useNavigate } from "react-router";
-import { Trash2, FolderKanban, Pencil } from "lucide-react";
+import { Trash2, FolderKanban, Pencil, Users } from "lucide-react";
 
 import { Workspace } from "../types";
 import { useDeleteWorkspace } from "../hooks/useWorkspaces";
 import ConfirmDialog from "./ConfirmDialog";
+import WorkspaceMembersModal from "./WorkspaceMembersModal";
 
 type Props = {
   workspace: Workspace;
@@ -23,6 +24,7 @@ export default function WorkspaceCard({
 }: Props) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
 
   const deleteWorkspace = useDeleteWorkspace(divisionId);
 
@@ -38,6 +40,11 @@ export default function WorkspaceCard({
   const handleDeleteClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setConfirmOpen(true);
+  };
+
+  const handleMembersClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setMembersOpen(true);
   };
 
   const handleConfirmDelete = () => {
@@ -81,6 +88,16 @@ export default function WorkspaceCard({
             <div className="flex items-center gap-3">
               <button
                 type="button"
+                onClick={handleMembersClick}
+                title="Bagikan workspace ini ke user lain (termasuk lintas divisi) dan atur level aksesnya"
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 transition"
+              >
+                <Users size={14} />
+                Share
+              </button>
+
+              <button
+                type="button"
                 onClick={handleEditClick}
                 className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 transition"
               >
@@ -111,6 +128,12 @@ export default function WorkspaceCard({
         isLoading={deleteWorkspace.isPending}
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmOpen(false)}
+      />
+
+      <WorkspaceMembersModal
+        open={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        workspace={workspace}
       />
     </>
   );

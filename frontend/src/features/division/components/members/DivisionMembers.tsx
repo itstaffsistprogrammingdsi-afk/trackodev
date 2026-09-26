@@ -190,6 +190,12 @@ export default function DivisionMembers({
             <option value="admin">Division Admin</option>
           </select>
         </div>
+
+        <p className="mt-2 text-[11px] leading-4 text-gray-500">
+          <strong>Division Admin</strong> dapat mengelola workspace/campaign divisi ini dan
+          menerima notifikasi saat anggotanya dilibatkan lintas divisi.{" "}
+          <strong>Member</strong> hanya melihat campaign/task yang dibuat atau diikutinya.
+        </p>
       </div>
 
       {/* Add Member */}

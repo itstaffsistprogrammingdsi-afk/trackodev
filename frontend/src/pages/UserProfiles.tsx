@@ -811,6 +811,13 @@ export default function UserProfiles() {
                 User
               </option>
             </select>
+
+            <p className="text-[11px] leading-5 text-gray-500 dark:text-gray-400">
+              <strong>Manager</strong>: akses penuh 1 divisi termasuk Report.{" "}
+              <strong>Admin</strong>: akses penuh divisi, tanpa Report.{" "}
+              <strong>User</strong>: terbatas pada campaign/task yang dibuat atau diikuti.{" "}
+              <strong>Super Admin</strong>: seluruh sistem.
+            </p>
           </div>
         </div>
 

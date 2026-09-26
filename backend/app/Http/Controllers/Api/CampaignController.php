@@ -78,7 +78,11 @@ class CampaignController extends Controller
                 ->where('divisions.id', $workspace->division_id)
                 ->exists();
 
-        if ($hasOwningDivision) {
+        // Tamu lintas divisi dengan level view_all/full boleh melihat semua
+        // campaign di workspace ini.
+        $hasFullWorkspaceView = $workspace->grantsFullContentAccessTo($user);
+
+        if ($hasOwningDivision || $hasFullWorkspaceView) {
             $campaigns = $query
                 ->latest()
                 ->get();
@@ -144,6 +148,21 @@ class CampaignController extends Controller
             'member_ids'   => 'nullable|array',
             'member_ids.*' => 'uuid|exists:users,id',
         ]);
+
+        // Membuat campaign = aksi tingkat workspace. Anggota divisi pemilik
+        // bebas; tamu lintas divisi wajib punya level "full".
+        $actor = $request->user();
+        $belongsToOwningDivision = $actor->divisions()
+            ->where('divisions.id', $workspace->division_id)
+            ->exists();
+
+        abort_unless(
+            $actor->isSuperAdmin()
+                || $belongsToOwningDivision
+                || $workspace->grantsFullAccessTo($actor),
+            403,
+            'Anda tidak memiliki hak untuk membuat campaign di workspace ini.'
+        );
 
         $this->ensureEligibleCollaborators(
             $request->user(),
@@ -253,6 +272,11 @@ class CampaignController extends Controller
             )
                 ->push(
                     $request->user()->id
+                )
+                ->merge(
+                    // Member workspace dengan level "full" otomatis menjadi
+                    // member campaign baru agar hak edit kontennya berlaku.
+                    $workspace->fullAccessMembers()->pluck('users.id')
                 )
                 ->unique()
                 ->values();

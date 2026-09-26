@@ -703,6 +703,26 @@ Route::middleware([
         [WorkspaceController::class, 'destroy']
     )->middleware('permission:workspace.delete');
 
+    Route::get(
+        'workspaces/{workspace}/members',
+        [WorkspaceController::class, 'members']
+    )->middleware('permission:workspace.member.view|workspace.update');
+
+    Route::post(
+        'workspaces/{workspace}/members',
+        [WorkspaceController::class, 'addMember']
+    )->middleware('permission:workspace.member.add|workspace.update');
+
+    Route::put(
+        'workspaces/{workspace}/members/{user}',
+        [WorkspaceController::class, 'updateMember']
+    )->middleware('permission:workspace.member.update|workspace.update');
+
+    Route::delete(
+        'workspaces/{workspace}/members/{user}',
+        [WorkspaceController::class, 'removeMember']
+    )->middleware('permission:workspace.member.remove|workspace.update');
+
     // ========================================
     // CAMPAIGNS
     // ========================================
