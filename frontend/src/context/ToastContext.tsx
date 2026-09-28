@@ -71,6 +71,13 @@ const inferVariant = (message: string): ToastVariant => {
 };
 
 const inferTitle = (message: string, variant: ToastVariant): string => {
+  // Judul khusus hanya berlaku untuk varian error/warning. Sebelumnya pesan
+  // sukses seperti "Level akses diperbarui." ikut berjudul "Akses ditolak"
+  // hanya karena mengandung kata "akses".
+  if (variant !== "error" && variant !== "warning") {
+    return defaultTitles[variant];
+  }
+
   const normalized = message.toLowerCase();
 
   if (/(akses|izin|unauthorized|forbidden|403)/.test(normalized)) {

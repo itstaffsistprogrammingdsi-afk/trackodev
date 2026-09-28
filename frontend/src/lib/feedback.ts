@@ -53,13 +53,13 @@ export function getConfirm(): ConfirmState | null {
 
 export const toast = {
   success: (message: string, durationMs?: number) =>
-    emitToast({ message, variant: "success", durationMs }),
+    emitToast({ message, variant: "success", title: "Berhasil", durationMs }),
   error: (message: string, durationMs?: number) =>
-    emitToast({ message, variant: "error", durationMs }),
+    emitToast({ message, variant: "error", title: "Gagal", durationMs }),
   warning: (message: string, durationMs?: number) =>
-    emitToast({ message, variant: "warning", durationMs }),
+    emitToast({ message, variant: "warning", title: "Perlu perhatian", durationMs }),
   info: (message: string, durationMs?: number) =>
-    emitToast({ message, variant: "info", durationMs }),
+    emitToast({ message, variant: "info", title: "Informasi", durationMs }),
 };
 
 /**

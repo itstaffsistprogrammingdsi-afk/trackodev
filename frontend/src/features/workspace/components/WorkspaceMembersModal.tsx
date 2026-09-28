@@ -228,7 +228,7 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
     } else if (successCount === 0) {
       toast.error(`Gagal memberi akses. ${failed.join("; ")}`);
     } else {
-      toast.info(
+      toast.warning(
         `${successCount} berhasil, ${failed.length} gagal — ${failed.join("; ")}`,
       );
     }

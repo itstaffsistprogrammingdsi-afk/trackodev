@@ -237,7 +237,7 @@ export default function CampaignCard({
       } else if (successCount === 0) {
         toast.error(`Gagal menambahkan member. ${failed.join("; ")}`);
       } else {
-        toast.info(
+        toast.warning(
           `${successCount} berhasil, ${failed.length} gagal — ${failed.join("; ")}`,
         );
       }

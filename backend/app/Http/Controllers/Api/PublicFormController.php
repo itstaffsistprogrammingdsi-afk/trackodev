@@ -99,6 +99,7 @@ class PublicFormController extends Controller
                 $rules[$field->name] = match ($field->type) {
                     'number' => [$presence, 'numeric'],
                     'date' => [$presence, 'date_format:Y-m-d'],
+                    'email' => [$presence, 'email', 'max:255'],
                     'file' => [
                         $presence,
                         'file',
