@@ -20,6 +20,7 @@ class FormField extends Model
         'label',
         'name',
         'type',
+        'description',
         'is_required',
         'options',
         'allow_other',

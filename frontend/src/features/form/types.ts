@@ -7,6 +7,7 @@ export type FieldType =
   | "checkbox"
   | "select"
   | "radio"
+  | "email"
   | "section";
 
 export interface FormField {
@@ -17,6 +18,9 @@ export interface FormField {
   name: string;
 
   type: FieldType;
+
+  /** Teks bantuan / hasil yang diharapkan (opsional). */
+  description?: string | null;
 
   is_required: boolean;
 
