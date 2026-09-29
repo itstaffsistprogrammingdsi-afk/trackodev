@@ -59,7 +59,7 @@ class ManagerRoleTest extends TestCase
         $this->getJson('/api/reports/users')->assertOk();
     }
 
-    public function test_admin_has_division_access_and_can_access_reports(): void
+    public function test_admin_reports_are_opt_in_via_user_management(): void
     {
         [$admin, $division] = $this->userInDivisionWithRole('Admin', User::ROLE_ADMIN);
         $workspace = $this->workspaceInDivision($division);
@@ -72,10 +72,16 @@ class ManagerRoleTest extends TestCase
             'description' => 'Diubah admin.',
         ])->assertOk();
 
-        // ...dan report diperlakukan sama seperti manager (scope divisi).
+        // ...tetapi Report TIDAK aktif secara bawaan.
+        $this->getJson('/api/reports/filters-options')->assertForbidden();
+        $this->getJson('/api/reports/users')->assertForbidden();
+        $this->getJson('/api/reports/preview/pdf')->assertForbidden();
+
+        // Setelah Super Admin mencentang akses report di User Management
+        // (permission tambahan), admin bisa membuka Report.
+        $admin->givePermissionTo('report.view');
         $this->getJson('/api/reports/filters-options')->assertOk();
         $this->getJson('/api/reports/users')->assertOk();
-        $this->getJson('/api/reports/preview/pdf')->assertOk();
     }
 
     public function test_role_permissions_reflect_the_swap(): void
@@ -86,10 +92,11 @@ class ManagerRoleTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole(User::ROLE_ADMIN);
 
-        // Admin diperlakukan setara manager: keduanya memegang Report.
+        // Manager memiliki Report; admin mendapatkannya hanya bila dicentang
+        // sebagai akses tambahan di User Management.
         foreach (['report.view', 'report.export', 'report.export.excel', 'report.export.pdf', 'report.preview', 'report.preview.pdf', 'report.qc', 'report.activity.view'] as $permission) {
             $this->assertTrue($manager->can($permission), "Manager seharusnya memiliki {$permission}.");
-            $this->assertTrue($admin->can($permission), "Admin seharusnya memiliki {$permission}.");
+            $this->assertFalse($admin->can($permission), "Admin seharusnya TIDAK memiliki {$permission} secara bawaan.");
         }
 
         foreach (['campaign.view', 'campaign.create', 'campaign.update', 'campaign.delete', 'board.create', 'card.assign', 'workspace.view', 'division.view'] as $permission) {

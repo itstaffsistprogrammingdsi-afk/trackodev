@@ -274,21 +274,23 @@ final class PermissionCatalog
     }
 
     /**
-     * Admin = otoritas penuh divisi termasuk report.
+     * Admin = otoritas penuh divisi, TANPA report secara bawaan.
      *
-     * Sesuai keputusan produk, `admin` diperlakukan setara `manager`: keduanya
-     * pemegang otoritas divisi penuh, termasuk seluruh permission `report.*`.
-     * Cakupan datanya dibatasi per divisi lewat User::managesDivision(), bukan
-     * lewat permission. Kedua daftar sengaja dijaga identik agar tidak ada
-     * perbedaan hak yang membingungkan.
+     * Report untuk admin bersifat opt-in: Super Admin mencentangnya lewat
+     * User Management ("Atur akses"), sehingga tersimpan sebagai permission
+     * tambahan (direct permission) pada user admin tersebut. Otoritas
+     * divisinya tetap diatur lewat User::managesDivision(), bukan permission.
      */
     public static function adminPermissions(): array
     {
-        return self::managerPermissions();
+        return array_values(array_filter(
+            self::managerPermissions(),
+            fn (string $permission) => ! str_starts_with($permission, 'report.'),
+        ));
     }
 
     /**
-     * Manager = otoritas penuh divisi termasuk report (setara admin).
+     * Manager = otoritas penuh divisi termasuk report (setara admin lama).
      */
     public static function managerPermissions(): array
     {
