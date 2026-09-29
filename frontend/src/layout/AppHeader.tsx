@@ -42,7 +42,7 @@ const breadcrumbRoutes: BreadcrumbRoute[] = [
   { pattern: "/forms/create", label: "Create Form" },
   { pattern: "/forms/:id/responses", label: "Responses" },
   { pattern: "/chats", label: "Chats" },
-  { pattern: "/report", label: "Report" },
+  { pattern: "/reports", label: "Report" },
   { pattern: "/profile", label: "Profile" },
   { pattern: "/integrations", label: "Integrations" },
 ];

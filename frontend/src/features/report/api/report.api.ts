@@ -28,6 +28,14 @@ export const reportApi = {
     return response.data;
   },
 
+  // Unduh lampiran lewat endpoint ber-otorisasi (bukan URL storage publik).
+  downloadAttachment: async (attachmentId: string): Promise<Blob> => {
+    const response = await api.get(`/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+
   // Preview PDF
   previewPdf: async (params: FilterParams) => {
     const response = await api.get('/reports/preview/pdf', {

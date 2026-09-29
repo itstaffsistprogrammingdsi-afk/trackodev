@@ -49,6 +49,18 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 7.5px;
+            table-layout: fixed;
+        }
+
+        /* Ulangi header tabel di setiap halaman dan cegah baris terpotong
+           page-break (rowspan yang terbelah membuat kolom setelahnya hilang). */
+        thead {
+            display: table-header-group;
+        }
+
+        tr,
+        .attachment-item {
+            page-break-inside: avoid;
         }
 
         table th {
@@ -270,19 +282,25 @@
                 @if ($cardCount > 0)
                     @foreach ($cards as $cardIndex => $card)
                         <tr class="{{ $rowClass }}">
-                            {{-- Kolom No, Nama User, Divisi menggunakan rowspan hanya jika ada lebih dari 1 card --}}
+                            {{-- No, Nama User, dan Divisi diulang pada baris
+                                 pertama tiap user. Sengaja TANPA rowspan agar
+                                 dompdf tidak kehilangan kolom saat page-break. --}}
                             @if ($cardIndex === 0)
-                                <td class="col-no text-center" rowspan="{{ $cardCount }}">{{ $index + 1 }}</td>
-                                <td class="col-user" rowspan="{{ $cardCount }}">
+                                <td class="col-no text-center">{{ $index + 1 }}</td>
+                                <td class="col-user">
                                     <span class="user-name">{{ $user->name ?? '-' }}</span>
                                 </td>
-                                <td class="col-divisi" rowspan="{{ $cardCount }}">
+                                <td class="col-divisi">
                                     @if ($user->divisions && $user->divisions->count() > 0)
                                         <span class="divisi-list">{{ $user->divisions->pluck('name')->implode(', ') }}</span>
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif
                                 </td>
+                            @else
+                                <td class="col-no text-center"></td>
+                                <td class="col-user"></td>
+                                <td class="col-divisi"></td>
                             @endif
 
                             {{-- Workspace --}}

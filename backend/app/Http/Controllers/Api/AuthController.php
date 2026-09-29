@@ -179,7 +179,7 @@ class AuthController extends Controller
         abort_unless(
             $adminUser->managesDivision() || $adminUser->isSuperAdmin(),
             403,
-            'Hanya Admin dan Super Admin yang dapat melakukan bypass.'
+            'Hanya Admin, Manager, dan Super Admin yang dapat melakukan bypass.'
         );
 
         if ($adminUser->id === $user->id) {
