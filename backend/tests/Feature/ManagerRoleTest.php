@@ -59,7 +59,7 @@ class ManagerRoleTest extends TestCase
         $this->getJson('/api/reports/users')->assertOk();
     }
 
-    public function test_admin_has_division_access_but_cannot_access_reports(): void
+    public function test_admin_reports_are_opt_in_via_user_management(): void
     {
         [$admin, $division] = $this->userInDivisionWithRole('Admin', User::ROLE_ADMIN);
         $workspace = $this->workspaceInDivision($division);
@@ -67,17 +67,21 @@ class ManagerRoleTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        // Masih punya otoritas divisi (kelola campaign/workspace)...
+        // Punya otoritas divisi (kelola campaign/workspace)...
         $this->putJson("/api/campaigns/{$campaign->id}", [
             'description' => 'Diubah admin.',
         ])->assertOk();
 
-        // ...tetapi report ditolak.
+        // ...tetapi Report TIDAK aktif secara bawaan.
         $this->getJson('/api/reports/filters-options')->assertForbidden();
         $this->getJson('/api/reports/users')->assertForbidden();
-        $this->getJson('/api/reports/export/excel')->assertForbidden();
-        $this->getJson('/api/reports/export/pdf')->assertForbidden();
         $this->getJson('/api/reports/preview/pdf')->assertForbidden();
+
+        // Setelah Super Admin mencentang akses report di User Management
+        // (permission tambahan), admin bisa membuka Report.
+        $admin->givePermissionTo('report.view');
+        $this->getJson('/api/reports/filters-options')->assertOk();
+        $this->getJson('/api/reports/users')->assertOk();
     }
 
     public function test_role_permissions_reflect_the_swap(): void
@@ -88,14 +92,22 @@ class ManagerRoleTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole(User::ROLE_ADMIN);
 
+        // Manager memiliki Report; admin mendapatkannya hanya bila dicentang
+        // sebagai akses tambahan di User Management.
         foreach (['report.view', 'report.export', 'report.export.excel', 'report.export.pdf', 'report.preview', 'report.preview.pdf', 'report.qc', 'report.activity.view'] as $permission) {
             $this->assertTrue($manager->can($permission), "Manager seharusnya memiliki {$permission}.");
-            $this->assertFalse($admin->can($permission), "Admin seharusnya TIDAK memiliki {$permission}.");
+            $this->assertFalse($admin->can($permission), "Admin seharusnya TIDAK memiliki {$permission} secara bawaan.");
         }
 
         foreach (['campaign.view', 'campaign.create', 'campaign.update', 'campaign.delete', 'board.create', 'card.assign', 'workspace.view', 'division.view'] as $permission) {
             $this->assertTrue($manager->can($permission));
             $this->assertTrue($admin->can($permission));
+        }
+
+        // Permission istimewa yang tetap eksklusif Super Admin.
+        foreach (['user.view', 'user.create', 'user.delete', 'profile.view'] as $permission) {
+            $this->assertFalse($manager->can($permission));
+            $this->assertFalse($admin->can($permission));
         }
 
         $this->assertTrue($manager->managesDivision());

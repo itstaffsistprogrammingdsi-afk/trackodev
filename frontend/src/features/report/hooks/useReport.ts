@@ -69,7 +69,14 @@ export const useReport = () => {
       setUsers(response.data);
       setPagination(response.meta);
     } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message =
+        err.response?.data?.message ??
+        'Gagal memuat data user. Silakan coba lagi.';
       console.error('Failed to fetch users', error);
+      setUsers([]);
+      setPagination({ current_page: 1, last_page: 1, total: 0 });
+      toast.error(message);
     } finally {
       setLoadingUsers(false);
     }
@@ -80,10 +87,23 @@ export const useReport = () => {
     async (userId: string ) => {
       setLoadingCards(true);
       try {
-        const response = await reportApi.getUserCards(userId, filters);
+        // Endpoint card hanya mengenali filter card-level. Parameter user
+        // (search, division_id, page) sengaja tidak dikirim agar tidak
+        // membingungkan dan tidak memicu validasi yang tak relevan.
+        const cardParams: FilterParams = { ...filters };
+        delete cardParams.search;
+        delete cardParams.division_id;
+        delete cardParams.page;
+
+        const response = await reportApi.getUserCards(userId, cardParams);
         setCards(response.data);
       } catch (error) {
+        const err = error as { response?: { data?: { message?: string } } };
         console.error('Failed to fetch user cards', error);
+        setCards([]);
+        toast.error(
+          err.response?.data?.message ?? 'Gagal memuat detail card user.'
+        );
       } finally {
         setLoadingCards(false);
       }
@@ -92,7 +112,13 @@ export const useReport = () => {
   );
 
   useEffect(() => {
-    fetchUsers();
+    // Debounce ringan agar mengetik di kolom pencarian tidak memicu
+    // request pada setiap ketikan.
+    const timer = setTimeout(() => {
+      fetchUsers();
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [fetchUsers, realtimeRevision]);
 
   useEffect(() => {
@@ -289,21 +315,22 @@ const handleBypassUser = async (userId: string | number) => {
 
     const role =
       Array.isArray(user.roles) && user.roles.length
-        ? user.roles[0]
-        : user.role;
+        ? typeof user.roles[0] === "string"
+          ? user.roles[0]
+          : user.roles[0]?.name
+        : typeof user.role === "string"
+          ? user.role
+          : user.role?.name;
 
-    switch (role) {
-      case "super_admin":
-        window.location.replace("/dashboard");
-        break;
-
-      case "admin":
-        window.location.replace("/dashboard");
-        break;
-
-      default:
-        window.location.replace("/my-work");
-        break;
+    // super_admin, admin, dan manager sama-sama mendarat di dashboard.
+    if (
+      role === "super_admin" ||
+      role === "admin" ||
+      role === "manager"
+    ) {
+      window.location.replace("/dashboard");
+    } else {
+      window.location.replace("/my-work");
     }
   } catch (error: unknown) {
     const err = error as {
@@ -428,7 +455,8 @@ const handleLeaveImpersonation = async () => {
     setTimeout(() => {
       if (
         role === "super_admin" ||
-        role === "admin"
+        role === "admin" ||
+        role === "manager"
       ) {
         window.location.assign("/dashboard");
       } else {

@@ -238,6 +238,13 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
         $this->assertSame($active->id, $attachments[0]['id']);
         $this->assertSame('hasil-terbaru.xlsx', $attachments[0]['file_name']);
 
+        // URL storage publik tidak boleh bocor dari endpoint Report.
+        $this->assertArrayNotHasKey('file_url', $attachments[0]);
+        $this->assertSame(
+            '/attachments/'.$active->id.'/download',
+            $attachments[0]['download_endpoint']
+        );
+
         $this->postJson('/api/reports/attachments/'.$archived->id.'/qc', [
             'qc_quantity' => 1,
             'qc_note' => 'Tidak boleh diproses',
@@ -246,5 +253,39 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
                 'message',
                 'Versi arsip tidak dapat diproses QC. Gunakan hasil aktif terbaru.'
             );
+    }
+
+    public function test_attachment_download_requires_authentication(): void
+    {
+        $owner = User::factory()->create();
+        $division = Division::create([
+            'name' => 'Download Guard',
+            'slug' => 'download-guard',
+        ]);
+        $workspace = Workspace::create(['division_id' => $division->id, 'name' => 'Guard WS']);
+        $campaign = Campaign::create([
+            'workspace_id' => $workspace->id,
+            'created_by' => $owner->id,
+            'name' => 'Guard Campaign',
+            'type' => 'personal',
+        ]);
+        $board = Board::create(['campaign_id' => $campaign->id, 'name' => 'Todo', 'type' => 'todo']);
+        $card = Card::create([
+            'board_id' => $board->id,
+            'created_by' => $owner->id,
+            'title' => 'Guard Card',
+        ]);
+        $attachment = CardAttachment::create([
+            'card_id' => $card->id,
+            'uploaded_by' => $owner->id,
+            'file_name' => 'rahasia.pdf',
+            'file_path' => 'attachments/rahasia.pdf',
+            'file_type' => 'application/pdf',
+            'file_size' => 1024,
+            'attachment_type' => 'file',
+            'quantity' => 1,
+        ]);
+
+        $this->getJson('/api/attachments/'.$attachment->id.'/download')->assertUnauthorized();
     }
 }

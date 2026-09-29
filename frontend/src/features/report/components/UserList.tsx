@@ -165,6 +165,14 @@ export const UserList: React.FC<UserListProps> = ({
             <option value="">Semua Label</option>
             {masterData.labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
+
+          <input
+            type="text"
+            placeholder="Cari judul card..."
+            value={filters.search_card || ''}
+            onChange={(e) => onFilterChange({ search_card: e.target.value })}
+            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-sm"
+          />
         </div>
 
         <p className="mt-3 text-xs leading-5 text-gray-500">

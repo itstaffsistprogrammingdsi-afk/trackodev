@@ -108,9 +108,9 @@ class User extends Authenticatable
      * Otoritas penuh atas divisi: role admin ATAU manager.
      *
      * Dipakai di semua gerbang otoritas divisi (policy, ResourceAccess,
-     * kepemilikan workspace/campaign) supaya manager diperlakukan sama
-     * seperti admin — KECUALI untuk report yang dikunci lewat permission
-     * (manager tidak memiliki permission report.*).
+     * kepemilikan workspace/campaign) supaya admin & manager diperlakukan
+     * sama, termasuk untuk report. Cakupan datanya dibatasi per divisi,
+     * bukan lewat permission.
      */
     public function managesDivision(): bool
     {
@@ -326,6 +326,18 @@ public function accessibleCampaigns()
                 $workspaceQuery->whereIn('division_id', $divisionIds);
             });
         }
+
+        // Undangan workspace lintas divisi dengan akses view_all/full: boleh
+        // melihat seluruh campaign di workspace tersebut, selaras dengan
+        // Workspace::grantsFullContentAccessTo().
+        $campaignQuery->orWhereHas('workspace.members', function ($memberQuery) use ($userId) {
+            $memberQuery
+                ->where('users.id', $userId)
+                ->whereIn('workspace_user.access', [
+                    Workspace::ACCESS_VIEW_ALL,
+                    Workspace::ACCESS_FULL,
+                ]);
+        });
     });
 }
 

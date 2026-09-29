@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Attachment, Card, User } from '../types';
 import { X, Download, FileSpreadsheet, Eye, CheckCircle, Clock } from 'lucide-react';
 import { AttachmentPreviewModal } from './AttachmentPreviewModal';
+import { reportApi } from '../api/report.api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/lib/feedback';
 
@@ -35,6 +36,42 @@ export const CardDetail: React.FC<CardDetailProps> = ({
   const [qcNotes, setQcNotes] = useState<{ [key: string]: string }>({});
   const [submittingQc, setSubmittingQc] = useState<{ [key: string]: boolean }>({});
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    };
+  }, [previewObjectUrl]);
+
+  const openPreview = async (attachment: Attachment) => {
+    if (attachment.attachment_type !== 'file') return;
+
+    setPreviewLoadingId(attachment.id);
+    try {
+      const blob = await reportApi.downloadAttachment(attachment.id);
+      const objectUrl = URL.createObjectURL(blob);
+      setPreviewObjectUrl((previous) => {
+        if (previous) URL.revokeObjectURL(previous);
+        return objectUrl;
+      });
+      setPreviewAttachment(attachment);
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? 'Gagal memuat lampiran.');
+    } finally {
+      setPreviewLoadingId(null);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewAttachment(null);
+    setPreviewObjectUrl((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return null;
+    });
+  };
 
   const handleQcSubmit = async (attachmentId: string) => {
     const quantity = parseInt(qcValues[attachmentId] || '0');
@@ -199,16 +236,17 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                                       <div className="flex items-center gap-2">
                                         <button
                                           type="button"
-                                          onClick={() => setPreviewAttachment(attachment)}
-                                          disabled={attachment.attachment_type !== 'file' || !attachment.file_url}
+                                          onClick={() => void openPreview(attachment)}
+                                          disabled={attachment.attachment_type !== 'file' || previewLoadingId === attachment.id}
                                           className="max-w-full truncate text-left font-medium text-blue-700 underline decoration-blue-200 underline-offset-4 transition hover:text-blue-800 disabled:cursor-default disabled:text-gray-800 disabled:no-underline"
                                           title={
-                                            attachment.file_url
+                                            attachment.attachment_type === 'file'
                                               ? `Preview ${attachment.file_name}`
                                               : attachment.file_name
                                           }
                                         >
                                           {attachment.file_name}
+                                          {previewLoadingId === attachment.id ? ' (memuat...)' : ''}
                                         </button>
                                         {isQcDone ? (
                                           <CheckCircle className="w-4 h-4 text-green-600" />
@@ -327,15 +365,15 @@ export const CardDetail: React.FC<CardDetailProps> = ({
 
       <AttachmentPreviewModal
         attachment={
-          previewAttachment?.file_url
+          previewAttachment && previewObjectUrl
             ? {
                 name: previewAttachment.file_name,
-                url: previewAttachment.file_url,
+                url: previewObjectUrl,
                 fileType: previewAttachment.file_type,
               }
             : null
         }
-        onClose={() => setPreviewAttachment(null)}
+        onClose={closePreview}
       />
     </div>
   );

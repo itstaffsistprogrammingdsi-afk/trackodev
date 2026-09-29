@@ -119,6 +119,10 @@ function PreviewMessage({
 
 function getSafePreviewUrl(value: string): string | null {
   try {
+    if (value.startsWith('blob:')) {
+      return value;
+    }
+
     const resolved = resolveStorageUrl(value);
     const url = new URL(resolved, window.location.origin);
     return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;

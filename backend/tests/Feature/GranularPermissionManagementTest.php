@@ -223,6 +223,33 @@ class GranularPermissionManagementTest extends TestCase
             ->assertHeader('X-Export-Encryption', 'NONE');
     }
 
+    public function test_super_admin_can_grant_report_access_to_an_admin_user(): void
+    {
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole('super_admin');
+
+        $admin = User::factory()->create(['name' => 'Admin Opt-in Report']);
+        $admin->assignRole('admin');
+
+        // Bawaan: admin tidak bisa membuka Report.
+        Sanctum::actingAs($admin);
+        $this->getJson('/api/reports/users')->assertForbidden();
+
+        // Super Admin mencentang Report di User Management.
+        Sanctum::actingAs($superAdmin);
+        $response = $this->putJson('/api/users/'.$admin->id.'/permissions', [
+            'permissions' => ['report.view'],
+        ])->assertOk();
+
+        $this->assertContains('report.view', $response->json('data.direct_permissions'));
+
+        // Setelah dicentang, admin dapat membuka Report.
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        Sanctum::actingAs(User::query()->findOrFail($admin->id));
+        $this->getJson('/api/reports/users')->assertOk();
+        $this->getJson('/api/reports/filters-options')->assertOk();
+    }
+
     public function test_nested_form_permission_dependencies_are_added_automatically(): void
     {
         $superAdmin = User::factory()->create();

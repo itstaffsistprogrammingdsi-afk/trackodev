@@ -36,6 +36,7 @@ export interface Attachment {
   id: string;
   file_name: string;
   file_url: string | null;
+  download_endpoint?: string | null;
   file_type: string;
   attachment_type: string;
   quantity: number;

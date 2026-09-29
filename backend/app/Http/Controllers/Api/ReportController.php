@@ -21,6 +21,7 @@ use App\Services\ReportPdfService;
 use App\Support\ResourceAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelWriter;
@@ -39,6 +40,7 @@ class ReportController extends Controller
     public function index(Request $request): JsonResponse
     {
         $this->validateReportFilters($request);
+        $this->authorizeDivisionFilter($request);
 
         try {
             $query = User::with('divisions');
@@ -110,6 +112,7 @@ class ReportController extends Controller
             ]);
 
             $this->scopeCardsForUser($query, $user);
+            $this->restrictCardsToViewerDivisions($query, $request, $user);
             $this->applyCardFilters($query, $request);
 
             $cards = $query
@@ -117,7 +120,9 @@ class ReportController extends Controller
                 ->get();
 
             return response()->json([
-                'data' => CardResource::collection($cards)
+                'data' => $this->stripPublicAttachmentUrls(
+                    json_decode(CardResource::collection($cards)->toJson(), true)
+                )
             ]);
         } catch (\Exception $e) {
             Log::error('Error fetching user cards: ' . $e->getMessage());
@@ -185,6 +190,33 @@ class ReportController extends Controller
             Log::error('Error submitting QC: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal menyimpan QC'], 500);
         }
+    }
+
+    /**
+     * Hapus URL storage publik dari payload Report dan ganti dengan endpoint
+     * unduh ber-otorisasi. Dengan begitu lampiran tidak bisa diunduh tanpa
+     * login/akses walau URL-nya pernah terlihat.
+     *
+     * @param  array<int, array<string, mixed>>  $cards
+     * @return array<int, array<string, mixed>>
+     */
+    private function stripPublicAttachmentUrls(array $cards): array
+    {
+        foreach ($cards as &$card) {
+            if (empty($card['attachments'])) {
+                continue;
+            }
+
+            foreach ($card['attachments'] as &$attachment) {
+                unset($attachment['file_url']);
+                $attachment['download_endpoint'] = '/attachments/'
+                    .$attachment['id'].'/download';
+            }
+            unset($attachment);
+        }
+        unset($card);
+
+        return $cards;
     }
 
     /**
@@ -256,16 +288,73 @@ class ReportController extends Controller
             $query->where('created_at', '<=', $request->end_date.' 23:59:59');
         }
 
-        $logs = $query->paginate(50);
+        $logs = $this->filterActivityLogsForViewer($query->get(), $request, $user);
+
+        $perPage = 50;
+        $page = max(1, (int) $request->input('page', 1));
+
+        $paginated = new LengthAwarePaginator(
+            $logs->forPage($page, $perPage)->values(),
+            $logs->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()],
+        );
 
         return response()->json([
-            'data' => $logs->items(),
+            'data' => $paginated->items(),
             'meta' => [
-                'current_page' => $logs->currentPage(),
-                'last_page' => $logs->lastPage(),
-                'total' => $logs->total(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'total' => $paginated->total(),
             ],
         ]);
+    }
+
+    /**
+     * Sembunyikan activity log yang menyentuh campaign/workspace di luar
+     * divisi viewer. Catatan tanpa rujukan campaign/workspace (mis. aktivitas
+     * akun umum) tetap ditampilkan karena target sudah dibatasi ke divisi
+     * viewer oleh authorizeReportUser().
+     */
+    private function filterActivityLogsForViewer($logs, Request $request, User $target)
+    {
+        $viewer = $request->user();
+
+        if ($viewer->isSuperAdmin() || $viewer->is($target)) {
+            return $logs;
+        }
+
+        if (! $viewer->managesDivision()) {
+            return $logs->filter(fn ($log) => false)->values();
+        }
+
+        $campaigns = $viewer->accessibleCampaigns()
+            ->select(['campaigns.id', 'campaigns.workspace_id'])
+            ->get();
+
+        $campaignIds = $campaigns->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $workspaceIds = $campaigns->pluck('workspace_id')
+            ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->unique()
+            ->all();
+
+        return $logs->filter(function ($log) use ($campaignIds, $workspaceIds) {
+            $meta = $log->meta ?? [];
+
+            if (! empty($meta['campaign_id'])
+                && ! in_array((string) $meta['campaign_id'], $campaignIds, true)) {
+                return false;
+            }
+
+            if (! empty($meta['workspace_id'])
+                && ! in_array((string) $meta['workspace_id'], $workspaceIds, true)) {
+                return false;
+            }
+
+            return true;
+        })->values();
     }
 
     private function authorizeReportUser(Request $request, User $target): void
@@ -336,6 +425,7 @@ class ReportController extends Controller
     private function scopeUsersWithMatchingCards($query, Request $request): void
     {
         $applyFilters = function ($cardQuery) use ($request) {
+            $this->restrictCardQueryToViewerDivisions($cardQuery, $request);
             $this->applyCardFilters($cardQuery, $request);
         };
 
@@ -471,6 +561,7 @@ class ReportController extends Controller
 public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonResponse
     {
         $this->validateReportFilters($request);
+        $this->authorizeDivisionFilter($request);
 
         try {
             $users = $this->getExportData($request);
@@ -515,6 +606,7 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
     )
     {
         $this->validateReportFilters($request);
+        $this->authorizeDivisionFilter($request);
 
         $password = trim((string) $request->header('X-Export-Password'));
         $request->merge([
@@ -568,6 +660,7 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
     public function exportExcel(Request $request, EncryptedExportService $encryptedExport)
     {
         $this->validateReportFilters($request);
+        $this->authorizeDivisionFilter($request);
 
         $password = trim((string) $request->header('X-Export-Password'));
         $request->merge([
@@ -668,6 +761,7 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
                 ]);
 
                 $this->scopeCardsForUser($cardsQuery, $user);
+                $this->restrictCardsToViewerDivisions($cardsQuery, $request, $user);
 
                 if ($request->filled('campaign_id')) {
                     $cardsQuery->whereHas('board', function ($q) use ($request) {
@@ -713,6 +807,77 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
         \App\Support\UserSearch::apply($query, $search, 'users.name', 'users.email');
     }
 
+    /**
+     * Tolak filter division_id yang berada di luar divisi viewer. Super Admin
+     * bebas; admin/manager hanya boleh memfilter divisinya sendiri; user biasa
+     * hanya divisinya sendiri (dan datanya sudah dibatasi ke dirinya).
+     */
+    private function authorizeDivisionFilter(Request $request): void
+    {
+        if (! $request->filled('division_id')) {
+            return;
+        }
+
+        $viewer = $request->user();
+
+        if (! $viewer || $viewer->isSuperAdmin()) {
+            return;
+        }
+
+        $allowed = $viewer->divisions()
+            ->where('divisions.id', $request->division_id)
+            ->exists();
+
+        abort_unless($allowed, 403, 'Anda tidak memiliki akses ke divisi ini.');
+    }
+
+    /**
+     * Batasi query Card ke card milik target yang tetap berada di dalam
+     * divisi viewer. Super Admin bebas; saat viewer melihat dirinya sendiri
+     * tidak dibatasi (card lintas divisi miliknya tetap terlihat).
+     */
+    private function restrictCardsToViewerDivisions($query, Request $request, User $target): void
+    {
+        if ($request->user()->is($target)) {
+            return;
+        }
+
+        $this->restrictCardQueryToViewerDivisions($query, $request);
+    }
+
+    /**
+     * Inti pembatasan campaign untuk query Card berdasarkan viewer:
+     * - Super Admin: tanpa batas.
+     * - Admin/manager: hanya campaign yang dapat diaksesnya — seluruh campaign
+     *   di divisinya, campaign yang ia ikuti, dan workspace yang di-share
+     *   (view_all/full) lewat accessibleCampaigns().
+     * - User biasa / role custom: tanpa pembatasan tambahan (sudah dibatasi
+     *   ke dirinya sendiri oleh restrictDivisionVisibility()).
+     */
+    private function restrictCardQueryToViewerDivisions($query, Request $request): void
+    {
+        $viewer = $request->user();
+
+        if (! $viewer || $viewer->isSuperAdmin() || ! $viewer->managesDivision()) {
+            return;
+        }
+
+        $campaignIds = $viewer->accessibleCampaigns()->pluck('campaigns.id');
+
+        if ($campaignIds->isEmpty()) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        $query->where(function ($campaignQuery) use ($campaignIds) {
+            $campaignQuery
+                ->whereIn('cards.campaign_id', $campaignIds)
+                ->orWhereHas('board', function ($boardQuery) use ($campaignIds) {
+                    $boardQuery->whereIn('boards.campaign_id', $campaignIds);
+                });
+        });
+    }
+
 private function restrictDivisionVisibility($query, Request $request): void
 {
     $currentUser = $request->user();
@@ -728,7 +893,7 @@ private function restrictDivisionVisibility($query, Request $request): void
         return;
     }
 
-    // Admin hanya boleh melihat user dalam divisinya.
+    // Admin/manager hanya boleh melihat user dalam divisinya.
     if ($currentUser->managesDivision()) {
         $divisionIds = $currentUser->divisions()
             ->pluck('divisions.id');
