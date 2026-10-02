@@ -43,7 +43,10 @@ class ReportDataLoader
 
     public function chunks(Request $request, int $chunkSize = 75): LazyCollection
     {
-        $chunkSize = max(50, min(100, $chunkSize));
+        // PDF/DomPDF needs smaller chunks on servers with a 128 MB PHP
+        // memory limit. Callers that do not need PDF rendering keep the
+        // higher default of 75 users per batch.
+        $chunkSize = max(10, min(100, $chunkSize));
         $query = $this->userQuery($request)
             ->select('users.*')
             ->orderBy('users.name')
