@@ -121,6 +121,54 @@ function hasText(value: string): boolean {
   );
 }
 
+type SelectionAnchors = {
+  select: () => boolean;
+  cleanup: () => void;
+};
+
+function createSelectionAnchors(range: Range): SelectionAnchors | null {
+  if (range.collapsed) return null;
+
+  const start = document.createElement("span");
+  const end = document.createElement("span");
+  [start, end].forEach((anchor) => {
+    anchor.setAttribute("data-rich-text-selection-anchor", "true");
+    anchor.setAttribute("aria-hidden", "true");
+    anchor.textContent = "\u200B";
+    anchor.style.cssText = "display: inline-block; width: 0; height: 0; overflow: hidden; line-height: 0;";
+  });
+
+  // Insert the end first so a range whose boundaries share one text node is
+  // not invalidated before the start anchor is inserted.
+  const endRange = range.cloneRange();
+  endRange.collapse(false);
+  endRange.insertNode(end);
+
+  const startRange = range.cloneRange();
+  startRange.collapse(true);
+  startRange.insertNode(start);
+
+  return {
+    select: () => {
+      if (!start.isConnected || !end.isConnected) return false;
+
+      const selection = window.getSelection();
+      if (!selection) return false;
+
+      const anchoredRange = document.createRange();
+      anchoredRange.setStartAfter(start);
+      anchoredRange.setEndBefore(end);
+      selection.removeAllRanges();
+      selection.addRange(anchoredRange);
+      return true;
+    },
+    cleanup: () => {
+      start.remove();
+      end.remove();
+    },
+  };
+}
+
 function editorHtml(value: string): string {
   return sanitizeRichTextHtml(value);
 }
@@ -186,6 +234,20 @@ export function RichTextEditor({
     const editor = editorRef.current;
     if (!editor) return;
 
+    const typingMarker = typingMarkerRef.current;
+    const hasEmptyTypingMarker = typingMarker?.textContent?.replace(/\u200B/g, "") === "";
+    if (!hasText(editor.innerHTML) && !hasEmptyTypingMarker) {
+      setToolbarState((current) => (
+        current.bold ||
+        current.italic ||
+        current.alignment !== "left" ||
+        current.fontSize !== ""
+          ? { bold: false, italic: false, alignment: "left", fontSize: "" }
+          : current
+      ));
+      return;
+    }
+
     const selection = window.getSelection();
     const anchor = selection?.anchorNode ?? null;
     const focus = selection?.focusNode ?? null;
@@ -213,8 +275,9 @@ export function RichTextEditor({
           ? "justify"
           : "left";
 
-    const styledElement = anchorElement?.closest("span") as HTMLElement | null;
-    const styledElementStyle = styledElement ? window.getComputedStyle(styledElement) : null;
+    const styledElement = anchorElement?.closest("span, strong, b, em, i") as HTMLElement | null;
+    const formatElement = hasEmptyTypingMarker && typingMarker ? typingMarker : styledElement;
+    const styledElementStyle = formatElement ? window.getComputedStyle(formatElement) : null;
     if (styledElementStyle?.fontWeight) {
       bold = styledElementStyle.fontWeight === "bold" || Number.parseInt(styledElementStyle.fontWeight, 10) >= 600;
     }
@@ -222,7 +285,7 @@ export function RichTextEditor({
       italic = styledElementStyle.fontStyle === "italic";
     }
 
-    const computedFontSize = styledElement?.style.fontSize && styledElementStyle
+    const computedFontSize = formatElement?.style.fontSize && styledElementStyle
       ? Math.round(Number.parseFloat(styledElementStyle.fontSize))
       : 0;
     const fontSize = [12, 14, 16, 18, 20, 24, 32].includes(computedFontSize)
@@ -334,7 +397,8 @@ export function RichTextEditor({
     const existingMarker = typingMarkerRef.current;
     if (existingMarker && existingMarker.textContent?.replace(/\u200B/g, "") === "") {
       let marker = existingMarker;
-      if (marker.tagName.toLowerCase() !== tag) {
+      const keepBlockMarker = marker.tagName.toLowerCase() === "div" && tag === "span";
+      if (marker.tagName.toLowerCase() !== tag && !keepBlockMarker) {
         const replacement = document.createElement(tag);
         replacement.setAttribute("data-rich-text-typing", "true");
         replacement.style.cssText = marker.style.cssText;
@@ -408,6 +472,9 @@ export function RichTextEditor({
       editor.contains(selection.anchorNode) &&
       editor.contains(selection.focusNode),
     );
+    const commandSelection = selection?.rangeCount
+      ? selection.getRangeAt(0).cloneRange()
+      : selectionRef.current?.cloneRange() ?? null;
     const typingMarker = typingMarkerRef.current;
     const hasEmptyTypingMarker = typingMarker?.textContent?.replace(/\u200B/g, "") === "";
     const currentBold = hasEmptyTypingMarker && typingMarker?.style.fontWeight
@@ -449,8 +516,23 @@ export function RichTextEditor({
       }
     }
 
-    document.execCommand("styleWithCSS", false, "true");
-    document.execCommand(command, false);
+    const anchors = commandSelection && !isCollapsed
+      ? createSelectionAnchors(commandSelection)
+      : null;
+    anchors?.select();
+    try {
+      document.execCommand("styleWithCSS", false, "true");
+      document.execCommand(command, false);
+    } finally {
+      if (anchors) {
+        anchors.select();
+        const restoredSelection = window.getSelection();
+        if (restoredSelection?.rangeCount) {
+          selectionRef.current = restoredSelection.getRangeAt(0).cloneRange();
+        }
+        anchors.cleanup();
+      }
+    }
     emitChange();
   }, [
     emitChange,
@@ -463,7 +545,8 @@ export function RichTextEditor({
 
   const applyFontSize = useCallback((size: string) => {
     const selection = window.getSelection();
-    if (selection?.rangeCount && selection.isCollapsed && insertTypingMarker("span", {
+    const isCollapsed = Boolean(selection?.rangeCount && selection.isCollapsed);
+    if (isCollapsed && insertTypingMarker("span", {
       fontSize: `${size}px`,
       fontWeight: toolbarState.bold ? "700" : "400",
       fontStyle: toolbarState.italic ? "italic" : "normal",
@@ -473,16 +556,35 @@ export function RichTextEditor({
     }
 
     restoreSelection();
+    const fontSizeSelection = window.getSelection();
+    const fontSizeRange = fontSizeSelection?.rangeCount
+      ? fontSizeSelection.getRangeAt(0).cloneRange()
+      : selectionRef.current?.cloneRange() ?? null;
+    const anchors = fontSizeRange && !isCollapsed
+      ? createSelectionAnchors(fontSizeRange)
+      : null;
+    anchors?.select();
     // execCommand uses a legacy size scale. Convert the generated marker to
     // an explicit pixel value so the saved HTML is predictable.
-    document.execCommand("styleWithCSS", false, "false");
-    document.execCommand("fontSize", false, "7");
-    editorRef.current?.querySelectorAll('font[size="7"]').forEach((font) => {
-      const span = document.createElement("span");
-      span.style.fontSize = `${size}px`;
-      while (font.firstChild) span.appendChild(font.firstChild);
-      font.replaceWith(span);
-    });
+    try {
+      document.execCommand("styleWithCSS", false, "false");
+      document.execCommand("fontSize", false, "7");
+      editorRef.current?.querySelectorAll('font[size="7"]').forEach((font) => {
+        const span = document.createElement("span");
+        span.style.fontSize = `${size}px`;
+        while (font.firstChild) span.appendChild(font.firstChild);
+        font.replaceWith(span);
+      });
+    } finally {
+      if (anchors) {
+        anchors.select();
+        const restoredSelection = window.getSelection();
+        if (restoredSelection?.rangeCount) {
+          selectionRef.current = restoredSelection.getRangeAt(0).cloneRange();
+        }
+        anchors.cleanup();
+      }
+    }
     emitChange();
   }, [emitChange, insertTypingMarker, restoreSelection, toolbarState.bold, toolbarState.italic]);
 
