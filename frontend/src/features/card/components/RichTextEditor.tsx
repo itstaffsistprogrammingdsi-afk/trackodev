@@ -112,7 +112,13 @@ export function sanitizeRichTextHtml(value: string): string {
 
 function hasText(value: string): boolean {
   const documentParser = new DOMParser();
-  return Boolean(documentParser.parseFromString(value, "text/html").body.textContent?.trim());
+  return Boolean(
+    documentParser
+      .parseFromString(value, "text/html")
+      .body.textContent
+      ?.replace(/\u200B/g, "")
+      .trim(),
+  );
 }
 
 function editorHtml(value: string): string {
@@ -165,6 +171,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const selectionRef = useRef<Range | null>(null);
+  const typingMarkerRef = useRef<HTMLElement | null>(null);
   const localValueRef = useRef<string | null>(null);
   const [empty, setEmpty] = useState(() => !hasText(value));
   const [toolbarState, setToolbarState] = useState({
@@ -206,9 +213,17 @@ export function RichTextEditor({
           ? "justify"
           : "left";
 
-    const formattedElement = anchorElement?.closest("[style*='font-size']") as HTMLElement | null;
-    const computedFontSize = formattedElement
-      ? Math.round(Number.parseFloat(window.getComputedStyle(formattedElement).fontSize))
+    const styledElement = anchorElement?.closest("span") as HTMLElement | null;
+    const styledElementStyle = styledElement ? window.getComputedStyle(styledElement) : null;
+    if (styledElementStyle?.fontWeight) {
+      bold = styledElementStyle.fontWeight === "bold" || Number.parseInt(styledElementStyle.fontWeight, 10) >= 600;
+    }
+    if (styledElementStyle?.fontStyle) {
+      italic = styledElementStyle.fontStyle === "italic";
+    }
+
+    const computedFontSize = styledElement?.style.fontSize && styledElementStyle
+      ? Math.round(Number.parseFloat(styledElementStyle.fontSize))
       : 0;
     const fontSize = [12, 14, 16, 18, 20, 24, 32].includes(computedFontSize)
       ? String(computedFontSize)
@@ -281,6 +296,97 @@ export function RichTextEditor({
     editor.focus();
   }, []);
 
+  const clearTypingMarker = useCallback((removeEmptyMarker = false) => {
+    const marker = typingMarkerRef.current;
+    if (!marker) return;
+
+    if (removeEmptyMarker && marker.textContent?.replace(/\u200B/g, "") === "") {
+      const parent = marker.parentNode;
+      const markerIndex = parent ? Array.prototype.indexOf.call(parent.childNodes, marker) : -1;
+      marker.remove();
+      if (parent && markerIndex >= 0) {
+        const range = document.createRange();
+        range.setStart(parent, Math.min(markerIndex, parent.childNodes.length));
+        range.collapse(true);
+        selectionRef.current = range;
+      }
+    } else {
+      const walker = document.createTreeWalker(marker, NodeFilter.SHOW_TEXT);
+      const textNodes: Text[] = [];
+      let node = walker.nextNode();
+      while (node) {
+        textNodes.push(node as Text);
+        node = walker.nextNode();
+      }
+      textNodes.forEach((textNode) => {
+        textNode.textContent = textNode.textContent?.replace(/\u200B/g, "") ?? "";
+      });
+      marker.removeAttribute("data-rich-text-typing");
+    }
+
+    typingMarkerRef.current = null;
+  }, []);
+
+  const insertTypingMarker = useCallback((
+    tag: "div" | "span",
+    styles: Partial<Pick<CSSStyleDeclaration, "fontWeight" | "fontStyle" | "fontSize" | "textAlign">>,
+  ): boolean => {
+    const existingMarker = typingMarkerRef.current;
+    if (existingMarker && existingMarker.textContent?.replace(/\u200B/g, "") === "") {
+      let marker = existingMarker;
+      if (marker.tagName.toLowerCase() !== tag) {
+        const replacement = document.createElement(tag);
+        replacement.setAttribute("data-rich-text-typing", "true");
+        replacement.style.cssText = marker.style.cssText;
+        while (marker.firstChild) replacement.appendChild(marker.firstChild);
+        marker.replaceWith(replacement);
+        marker = replacement;
+        typingMarkerRef.current = marker;
+      }
+
+      Object.assign(marker.style, styles);
+      const placeholder = Array.from(marker.childNodes).find(
+        (node): node is Text => node.nodeType === Node.TEXT_NODE && node.textContent?.includes("\u200B") === true,
+      );
+      const editor = editorRef.current;
+      const selection = window.getSelection();
+      if (!editor || !placeholder || !selection) return false;
+
+      const range = document.createRange();
+      range.setStart(placeholder, 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      editor.focus();
+      selectionRef.current = range.cloneRange();
+      return true;
+    }
+
+    clearTypingMarker(true);
+    restoreSelection();
+
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) return false;
+
+    const marker = document.createElement(tag);
+    marker.setAttribute("data-rich-text-typing", "true");
+    Object.assign(marker.style, styles);
+    const placeholder = document.createTextNode("\u200B");
+    marker.appendChild(placeholder);
+    range.insertNode(marker);
+    range.setStart(placeholder, 0);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    selectionRef.current = range.cloneRange();
+    typingMarkerRef.current = marker;
+    return true;
+  }, [clearTypingMarker, restoreSelection]);
+
   const emitChange = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -293,12 +399,79 @@ export function RichTextEditor({
 
   const runCommand = useCallback((command: string) => {
     restoreSelection();
+    const selection = window.getSelection();
+    const editor = editorRef.current;
+    const isCollapsed = Boolean(
+      editor &&
+      selection?.rangeCount &&
+      selection.isCollapsed &&
+      editor.contains(selection.anchorNode) &&
+      editor.contains(selection.focusNode),
+    );
+    const typingMarker = typingMarkerRef.current;
+    const hasEmptyTypingMarker = typingMarker?.textContent?.replace(/\u200B/g, "") === "";
+    const currentBold = hasEmptyTypingMarker && typingMarker?.style.fontWeight
+      ? typingMarker.style.fontWeight === "bold" || Number.parseInt(typingMarker.style.fontWeight, 10) >= 600
+      : toolbarState.bold;
+    const currentItalic = hasEmptyTypingMarker && typingMarker?.style.fontStyle
+      ? typingMarker.style.fontStyle === "italic"
+      : toolbarState.italic;
+
+    if (isCollapsed && (command === "bold" || command === "italic")) {
+      const bold = command === "bold" ? !currentBold : currentBold;
+      const italic = command === "italic" ? !currentItalic : currentItalic;
+      if (insertTypingMarker("span", {
+        fontWeight: bold ? "700" : "400",
+        fontStyle: italic ? "italic" : "normal",
+      })) {
+        setToolbarState((current) => ({ ...current, bold, italic }));
+        return;
+      }
+    }
+
+    if (isCollapsed && command.startsWith("justify") && !hasText(editorRef.current?.innerHTML ?? "")) {
+      const alignment = command === "justifyCenter"
+        ? "center"
+        : command === "justifyRight"
+          ? "right"
+          : command === "justifyFull"
+            ? "justify"
+            : "left";
+      const alignmentStyles: Partial<Pick<CSSStyleDeclaration, "fontWeight" | "fontStyle" | "fontSize" | "textAlign">> = {
+        textAlign: alignment,
+        fontWeight: currentBold ? "700" : "400",
+        fontStyle: currentItalic ? "italic" : "normal",
+      };
+      if (toolbarState.fontSize) alignmentStyles.fontSize = `${toolbarState.fontSize}px`;
+      if (insertTypingMarker("div", alignmentStyles)) {
+        setToolbarState((current) => ({ ...current, alignment }));
+        return;
+      }
+    }
+
     document.execCommand("styleWithCSS", false, "true");
     document.execCommand(command, false);
     emitChange();
-  }, [emitChange, restoreSelection]);
+  }, [
+    emitChange,
+    insertTypingMarker,
+    restoreSelection,
+    toolbarState.bold,
+    toolbarState.fontSize,
+    toolbarState.italic,
+  ]);
 
   const applyFontSize = useCallback((size: string) => {
+    const selection = window.getSelection();
+    if (selection?.rangeCount && selection.isCollapsed && insertTypingMarker("span", {
+      fontSize: `${size}px`,
+      fontWeight: toolbarState.bold ? "700" : "400",
+      fontStyle: toolbarState.italic ? "italic" : "normal",
+    })) {
+      setToolbarState((current) => ({ ...current, fontSize: size }));
+      return;
+    }
+
     restoreSelection();
     // execCommand uses a legacy size scale. Convert the generated marker to
     // an explicit pixel value so the saved HTML is predictable.
@@ -311,9 +484,12 @@ export function RichTextEditor({
       font.replaceWith(span);
     });
     emitChange();
-  }, [emitChange, restoreSelection]);
+  }, [emitChange, insertTypingMarker, restoreSelection, toolbarState.bold, toolbarState.italic]);
 
-  const handleInput = () => emitChange();
+  const handleInput = () => {
+    clearTypingMarker();
+    emitChange();
+  };
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
     event.preventDefault();
