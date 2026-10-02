@@ -326,7 +326,7 @@
                             <td class="col-card">
                                 <span class="card-title">{{ $card->title ?? '-' }}</span>
                                 @if (!empty($card->description))
-                                    <span class="card-desc">{{ Str::limit($card->description, 50) }}</span>
+                                    <span class="card-desc">{{ Str::limit(\App\Services\RichTextService::plainText($card->description), 50) }}</span>
                                 @endif
                                 <span class="card-date">
                                     Created: {{ $card->created_at ? \Carbon\Carbon::parse($card->created_at)->format('d/m/Y') : '-' }} 

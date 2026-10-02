@@ -17,6 +17,7 @@ use App\Models\Label;
 use App\Models\User;
 use App\Models\Notification;
 use App\Services\ActivityLogService;
+use App\Services\RichTextService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -274,7 +275,7 @@ class CardController extends Controller
                 'board_id' => (string) $card->board_id,
                 'campaign_id' => (string) $card->board?->campaign_id,
                 'title' => $card->title,
-                'description' => $card->description,
+                'description' => RichTextService::sanitize($card->description),
                 'labels' => $card->labels->map(fn ($label) => [
                     'id' => (string) $label->id,
                     'name' => $label->name,
@@ -313,7 +314,7 @@ class CardController extends Controller
 
         $validated = $request->validate([
             'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'nullable|string|max:50000',
             'priority'    => 'nullable|in:low,medium,high,urgent',
             'due_date'    => 'nullable|date',
             'duplicate_from_card_id' => 'nullable|uuid|exists:cards,id',
@@ -413,7 +414,7 @@ class CardController extends Controller
 
             $card = $board->cards()->create([
                 'title'       => $validated['title'],
-                'description' => $validated['description'] ?? null,
+                'description' => RichTextService::sanitize($validated['description'] ?? null),
                 'priority'    => $validated['priority'] ?? 'medium',
                 'due_date'    => $validated['due_date'] ?? null,
                 'copied_from_card_id' => $sourceCard?->id,
@@ -745,7 +746,7 @@ class CardController extends Controller
 
         $request->validate([
             'title'       => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'nullable|string|max:50000',
             'priority'    => 'nullable|in:low,medium,high,urgent',
             'due_date'    => 'nullable|date',
         ]);
@@ -770,6 +771,10 @@ class CardController extends Controller
             'priority',
             'due_date',
         ]);
+
+        if ($request->has('description')) {
+            $data['description'] = RichTextService::sanitize($request->input('description'));
+        }
 
         $card->update($data);
 
