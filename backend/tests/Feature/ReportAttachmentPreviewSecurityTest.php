@@ -45,6 +45,22 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
         }
     }
 
+    public function test_pdf_preview_accepts_empty_filter_parameters(): void
+    {
+        $manager = User::factory()->create();
+        $manager->assignRole('super_admin');
+        Sanctum::actingAs($manager);
+
+        $response = $this->getJson(
+            '/api/reports/preview/pdf?search=&division_id=&start_date=&end_date='
+            .'&campaign_id=&workspace_id=&label_id=&brand_id=&search_card='
+        )->assertOk();
+
+        $response->assertJsonPath('success', true);
+        $this->assertIsString($response->json('data.html'));
+        $this->assertIsString($response->json('data.pdf_base64'));
+    }
+
     public function test_report_preview_uses_internal_modal_trigger_instead_of_external_file_link(): void
     {
         $viewer = User::factory()->create();

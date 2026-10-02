@@ -28,7 +28,17 @@ class ReportDataLoader
 
     public function load(Request $request, int $chunkSize = 75): Collection
     {
-        return $this->chunks($request, $chunkSize)->flatten(1)->collect()->values();
+        // Keep this eager compatibility helper explicitly backed by a normal
+        // Collection. The export paths use chunks() directly, while preview
+        // and older callers use load() and must never receive a LazyCollection
+        // despite the method's declared return type.
+        $users = collect();
+
+        foreach ($this->chunks($request, $chunkSize) as $chunk) {
+            $users = $users->concat($chunk);
+        }
+
+        return $users->values();
     }
 
     public function chunks(Request $request, int $chunkSize = 75): LazyCollection
