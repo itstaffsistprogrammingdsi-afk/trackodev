@@ -571,7 +571,10 @@ class ReportController extends Controller
             gc_collect_cycles();
 
             $pdfContent = $reportPdf->renderChunks(
-                $this->reportDataLoader->chunks($request),
+                $this->reportDataLoader->chunks(
+                    $request,
+                    (int) config('report.pdf_chunk_size', 10),
+                ),
                 $totalUsers,
             );
             $base64Pdf = base64_encode($pdfContent);
@@ -627,7 +630,13 @@ class ReportController extends Controller
             $fileName = $prefix . '_' . date('Ymd_His') . '.pdf';
 
             $download = $encryptedExport->downloadPdf(
-                $reportPdf->renderChunks($this->reportDataLoader->chunks($request), $totalUsers),
+                $reportPdf->renderChunks(
+                    $this->reportDataLoader->chunks(
+                        $request,
+                        (int) config('report.pdf_chunk_size', 10),
+                    ),
+                    $totalUsers,
+                ),
                 $fileName,
                 $validated['export_password'] ?? null
             );
