@@ -11,6 +11,7 @@ import {
 } from "../api/card.api";
 import type { Card, DuplicateDraft, User } from "../types";
 import { toast } from "@/lib/feedback";
+import RichTextEditor from "./RichTextEditor";
 
 interface Props {
   card: Card;
@@ -322,7 +323,13 @@ export default function DuplicateCardModal({ card, isOpen, onClose, onCreated }:
 
               <label className="block">
                 <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Deskripsi</span>
-                <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={5} className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                <RichTextEditor
+                  value={description}
+                  onChange={setDescription}
+                  placeholder="Tulis deskripsi card..."
+                  ariaLabel="Deskripsi card duplicate"
+                  className="border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950"
+                />
               </label>
 
               <div>

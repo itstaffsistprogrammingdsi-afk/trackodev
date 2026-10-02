@@ -61,7 +61,7 @@
                             <td>
                                 <strong>{{ $card->title ?? '-' }}</strong>
                                 @if($card->description)
-                                    <br><span style="color: #666;">{{ Str::limit($card->description, 50) }}</span>
+                                    <br><span style="color: #666;">{{ Str::limit(\App\Services\RichTextService::plainText($card->description), 50) }}</span>
                                 @endif
                             </td>
                             

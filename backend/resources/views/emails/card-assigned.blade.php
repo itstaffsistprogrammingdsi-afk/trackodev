@@ -53,7 +53,7 @@
         <h4>Deskripsi</h4>
 
         <p>
-            {{ $card->description }}
+            {{ \App\Services\RichTextService::plainText($card->description) }}
         </p>
     @endif
 

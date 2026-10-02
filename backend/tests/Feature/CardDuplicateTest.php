@@ -187,6 +187,26 @@ class CardDuplicateTest extends TestCase
         $this->assertFalse($created->brands()->where('brands.name', 'Reusable Brand')->exists());
     }
 
+    public function test_card_description_keeps_supported_formatting_and_removes_unsafe_markup(): void
+    {
+        [$owner, , , $source] = $this->makeScenario();
+
+        Sanctum::actingAs($owner);
+
+        $this->putJson("/api/cards/{$source->id}", [
+            'description' => '<p style="text-align: center"><strong>Bold</strong> <em>Italic</em> <span style="font-size: 24px">Large</span></p><script>alert(1)</script><a href="https://evil.test">Link</a>',
+        ])->assertOk();
+
+        $saved = (string) $source->fresh()->description;
+
+        $this->assertStringContainsString('<strong>Bold</strong>', $saved);
+        $this->assertStringContainsString('<em>Italic</em>', $saved);
+        $this->assertStringContainsString('font-size:24px', str_replace(' ', '', $saved));
+        $this->assertStringContainsString('text-align:center', str_replace(' ', '', $saved));
+        $this->assertStringNotContainsString('<script', strtolower($saved));
+        $this->assertStringNotContainsString('href=', strtolower($saved));
+    }
+
     /** @return array{0: User, 1: User, 2: Board, 3: Card} */
     private function makeScenario(): array
     {
