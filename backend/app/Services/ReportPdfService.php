@@ -13,14 +13,15 @@ class ReportPdfService
 
     public function render(Collection $users): string
     {
-        if ($users->count() <= self::USERS_PER_CHUNK) {
-            return $this->renderChunk($users, $users->count());
-        }
-
-        return $this->renderAndMergeChunks($users);
+        return $this->renderChunks([$users], $users->count());
     }
 
-    private function renderAndMergeChunks(Collection $users): string
+    /**
+     * Render already chunked users while preserving a global row number.
+     * Chunks are consumed lazily, so callers can release each batch after it
+     * has been merged into the temporary PDF.
+     */
+    public function renderChunks(iterable $chunks, int $totalUsers): string
     {
         $merged = new Fpdi('L', 'mm');
         $merged->setPrintHeader(false);
@@ -31,7 +32,15 @@ class ReportPdfService
         $temporaryFiles = [];
 
         try {
-            foreach ($users->chunk(self::USERS_PER_CHUNK) as $chunk) {
+            $userOffset = 0;
+
+            foreach ($chunks as $chunk) {
+                $chunk = $chunk instanceof Collection ? $chunk->values() : collect($chunk);
+
+                if ($chunk->isEmpty()) {
+                    continue;
+                }
+
                 $sourcePath = tempnam(sys_get_temp_dir(), 'tracko-report-chunk-');
 
                 if ($sourcePath === false) {
@@ -39,7 +48,7 @@ class ReportPdfService
                 }
 
                 $temporaryFiles[] = $sourcePath;
-                $contents = $this->renderChunk($chunk->values(), $users->count());
+                $contents = $this->renderChunk($chunk, $totalUsers, $userOffset);
 
                 if (file_put_contents($sourcePath, $contents) === false) {
                     throw new RuntimeException('Potongan PDF laporan tidak dapat disimpan.');
@@ -56,6 +65,7 @@ class ReportPdfService
 
                 unset($contents);
                 gc_collect_cycles();
+                $userOffset += $chunk->count();
             }
 
             $contents = $merged->Output('report.pdf', 'S');
@@ -72,9 +82,14 @@ class ReportPdfService
         }
     }
 
-    private function renderChunk(Collection $users, int $totalUsers): string
+    private function renderChunk(Collection $users, int $totalUsers, int $userOffset = 0): string
     {
-        $contents = Pdf::loadView('exports.report_pdf', compact('users', 'totalUsers'))
+        $contents = Pdf::loadView('exports.report_pdf', [
+            'users' => $users,
+            'totalUsers' => $totalUsers,
+            'userOffset' => $userOffset,
+            'signedLinks' => true,
+        ])
             ->setPaper('a4', 'landscape')
             ->setOptions([
                 'defaultFont' => 'DejaVu Sans',

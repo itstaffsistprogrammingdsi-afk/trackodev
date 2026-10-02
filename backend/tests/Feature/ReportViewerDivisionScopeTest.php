@@ -6,7 +6,9 @@ use App\Models\ActivityLog;
 use App\Models\Board;
 use App\Models\Campaign;
 use App\Models\Card;
+use App\Models\CardAttachment;
 use App\Models\Division;
+use App\Models\Task;
 use App\Models\User;
 use App\Models\Workspace;
 use Database\Seeders\PermissionSeeder;
@@ -81,6 +83,7 @@ class ReportViewerDivisionScopeTest extends TestCase
             'name' => 'Campaign Divisi B',
             'type' => 'group',
         ]);
+
         $boardB = Board::create([
             'campaign_id' => $campaignB->id,
             'name' => 'Todo B',
@@ -167,6 +170,27 @@ class ReportViewerDivisionScopeTest extends TestCase
             'type' => 'group',
         ]);
 
+        $boardA = Board::create(['campaign_id' => $campaignA->id, 'name' => 'Log Board A', 'type' => 'todo']);
+        $boardB = Board::create(['campaign_id' => $campaignB->id, 'name' => 'Log Board B', 'type' => 'todo']);
+        $cardA = Card::create(['board_id' => $boardA->id, 'campaign_id' => $campaignA->id, 'created_by' => $target->id, 'title' => 'Log Card A']);
+        $cardB = Card::create(['board_id' => $boardB->id, 'campaign_id' => $campaignB->id, 'created_by' => $target->id, 'title' => 'Log Card B']);
+        $taskA = Task::create(['card_id' => $cardA->id, 'title' => 'Log Task A']);
+        $taskB = Task::create(['card_id' => $cardB->id, 'title' => 'Log Task B']);
+        $attachmentA = CardAttachment::create([
+            'card_id' => $cardA->id,
+            'uploaded_by' => $target->id,
+            'file_name' => 'log-a.txt',
+            'file_path' => 'logs/log-a.txt',
+            'attachment_type' => 'file',
+        ]);
+        $attachmentB = CardAttachment::create([
+            'card_id' => $cardB->id,
+            'uploaded_by' => $target->id,
+            'file_name' => 'log-b.txt',
+            'file_path' => 'logs/log-b.txt',
+            'attachment_type' => 'file',
+        ]);
+
         ActivityLog::create([
             'user_id' => $target->id,
             'entity_type' => 'campaign',
@@ -190,6 +214,54 @@ class ReportViewerDivisionScopeTest extends TestCase
             'description' => 'Aktivitas akun umum',
             'meta' => null,
         ]);
+        ActivityLog::create([
+            'user_id' => $target->id,
+            'entity_type' => 'card',
+            'entity_id' => $cardA->id,
+            'action' => 'updated',
+            'description' => 'Aktivitas card A tanpa campaign metadata',
+            'meta' => ['card_id' => $cardA->id],
+        ]);
+        ActivityLog::create([
+            'user_id' => $target->id,
+            'entity_type' => 'card',
+            'entity_id' => $cardB->id,
+            'action' => 'updated',
+            'description' => 'Aktivitas card B tanpa campaign metadata',
+            'meta' => ['card_id' => $cardB->id],
+        ]);
+        ActivityLog::create([
+            'user_id' => $target->id,
+            'entity_type' => 'task',
+            'entity_id' => $taskA->id,
+            'action' => 'updated',
+            'description' => 'Aktivitas task A tanpa campaign metadata',
+            'meta' => ['task_id' => $taskA->id],
+        ]);
+        ActivityLog::create([
+            'user_id' => $target->id,
+            'entity_type' => 'task',
+            'entity_id' => $taskB->id,
+            'action' => 'updated',
+            'description' => 'Aktivitas task B tanpa campaign metadata',
+            'meta' => ['task_id' => $taskB->id],
+        ]);
+        ActivityLog::create([
+            'user_id' => $target->id,
+            'entity_type' => 'card_attachment',
+            'entity_id' => $attachmentA->id,
+            'action' => 'uploaded',
+            'description' => 'Aktivitas attachment A tanpa campaign metadata',
+            'meta' => ['attachment_id' => $attachmentA->id],
+        ]);
+        ActivityLog::create([
+            'user_id' => $target->id,
+            'entity_type' => 'card_attachment',
+            'entity_id' => $attachmentB->id,
+            'action' => 'uploaded',
+            'description' => 'Aktivitas attachment B tanpa campaign metadata',
+            'meta' => ['attachment_id' => $attachmentB->id],
+        ]);
 
         Sanctum::actingAs($manager);
 
@@ -198,7 +270,13 @@ class ReportViewerDivisionScopeTest extends TestCase
 
         $this->assertContains('Aktivitas di divisi A', $descriptions);
         $this->assertContains('Aktivitas akun umum', $descriptions);
+        $this->assertContains('Aktivitas card A tanpa campaign metadata', $descriptions);
+        $this->assertContains('Aktivitas task A tanpa campaign metadata', $descriptions);
+        $this->assertContains('Aktivitas attachment A tanpa campaign metadata', $descriptions);
         $this->assertNotContains('Aktivitas di divisi B', $descriptions);
+        $this->assertNotContains('Aktivitas card B tanpa campaign metadata', $descriptions);
+        $this->assertNotContains('Aktivitas task B tanpa campaign metadata', $descriptions);
+        $this->assertNotContains('Aktivitas attachment B tanpa campaign metadata', $descriptions);
     }
 
     /**

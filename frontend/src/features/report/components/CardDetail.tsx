@@ -106,10 +106,10 @@ export const CardDetail: React.FC<CardDetailProps> = ({
               <h2 className="text-xl font-bold text-gray-900">{selectedUser.name}</h2>
               <p className="text-sm text-gray-500">Detail Laporan Pekerjaan</p>
             </div>
-            <div className="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               <button
                 onClick={() => onPreview?.(selectedUser.id)}
-                className={`${canPreview ? 'flex' : 'hidden'} px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors items-center gap-1`}
+                className={`${canPreview ? 'flex' : 'hidden'} shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-blue-50 px-3 py-1.5 text-sm text-blue-600 transition-colors hover:bg-blue-100`}
               >
                 <Eye className="w-4 h-4" />
                 Preview
@@ -117,7 +117,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
               <button
                 onClick={() => onExport?.('pdf', selectedUser.id)}
                 disabled={exporting}
-                className={`${canExportPdf ? 'flex' : 'hidden'} px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors items-center gap-1 disabled:opacity-50`}
+                className={`${canExportPdf ? 'flex' : 'hidden'} shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-red-50 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50`}
               >
                 <Download className="w-4 h-4" />
                 PDF
@@ -125,7 +125,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
               <button
                 onClick={() => onExport?.('excel', selectedUser.id)}
                 disabled={exporting}
-                className={`${canExportExcel ? 'flex' : 'hidden'} px-3 py-1.5 text-sm text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors items-center gap-1 disabled:opacity-50`}
+                className={`${canExportExcel ? 'flex' : 'hidden'} shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-green-50 px-3 py-1.5 text-sm text-green-600 transition-colors hover:bg-green-100 disabled:opacity-50`}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 Excel

@@ -60,6 +60,11 @@ class SystemNegativeFlowTest extends TestCase
             'api/public/forms',
             'api/public/forms/{slug}',
             'api/public/forms/{slug}/submit',
+            // Tautan lampiran di dalam file export PDF/Excel. Tanpa Bearer
+            // (pembuka File tidak membawa token), tetapi dibatasi middleware
+            // `signed`: hanya tanda tangan kriptografis server yang valid dan
+            // belum kedaluwarsa yang bisa mengunduh.
+            'api/attachments/{attachment}/signed-download',
         ];
 
         foreach (Route::getRoutes() as $route) {
@@ -374,6 +379,37 @@ class SystemNegativeFlowTest extends TestCase
         ], $submission->data);
         $this->assertArrayNotHasKey('hidden_details', $submission->data);
         $this->assertArrayNotHasKey('ignored_admin_field', $submission->data);
+    }
+
+    public function test_public_form_accepts_zero_defect_count_and_rejects_negative_or_fractional_counts(): void
+    {
+        $owner = User::factory()->create();
+        $form = Form::create([
+            'name' => 'UAT form',
+            'slug' => 'uat-form',
+            'created_by' => $owner->id,
+            'is_active' => true,
+        ]);
+        FormField::create([
+            'form_id' => $form->id,
+            'label' => 'Defect count',
+            'name' => 'defect_count',
+            'type' => 'number',
+            'is_required' => true,
+            'order' => 1,
+        ]);
+
+        $this->postJson('/api/public/forms/uat-form/submit', [
+            'defect_count' => '0',
+        ])->assertCreated();
+
+        $this->postJson('/api/public/forms/uat-form/submit', [
+            'defect_count' => '-1',
+        ])->assertUnprocessable()->assertJsonValidationErrors('defect_count');
+
+        $this->postJson('/api/public/forms/uat-form/submit', [
+            'defect_count' => '1.5',
+        ])->assertUnprocessable()->assertJsonValidationErrors('defect_count');
     }
 
     public function test_division_lists_notifications_and_bypass_are_scoped_to_the_current_user(): void

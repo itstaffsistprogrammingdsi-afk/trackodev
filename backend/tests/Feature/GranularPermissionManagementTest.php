@@ -223,6 +223,18 @@ class GranularPermissionManagementTest extends TestCase
             ->assertHeader('X-Export-Encryption', 'NONE');
     }
 
+    public function test_user_without_report_permission_can_still_export_my_work(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('user');
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/reports/users')->assertForbidden();
+        $this->getJson('/api/my-activities/export?type=daily&format=pdf')
+            ->assertOk()
+            ->assertHeader('X-Export-Encryption', 'NONE');
+    }
+
     public function test_super_admin_can_grant_report_access_to_an_admin_user(): void
     {
         $superAdmin = User::factory()->create();

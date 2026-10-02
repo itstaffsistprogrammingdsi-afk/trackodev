@@ -97,7 +97,9 @@ class PublicFormController extends Controller
                 $presence = $field->is_required ? 'required' : 'nullable';
 
                 $rules[$field->name] = match ($field->type) {
-                    'number' => [$presence, 'numeric'],
+                    'number' => $field->name === 'defect_count'
+                        ? [$presence, 'integer', 'min:0']
+                        : [$presence, 'numeric'],
                     'date' => [$presence, 'date_format:Y-m-d'],
                     'email' => [$presence, 'email', 'max:255'],
                     'file' => [

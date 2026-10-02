@@ -78,6 +78,48 @@ class EncryptedExportService
         );
     }
 
+    /**
+     * Process a workbook from a temporary file. The caller can build the
+     * workbook on disk first, keeping the spreadsheet writer from retaining
+     * all source rows in memory; the temporary file is always removed here.
+     */
+    public function downloadSpreadsheetFile(
+        string $path,
+        string $fileName,
+        ?string $password = null
+    ): Response {
+        if (! is_file($path)) {
+            throw new RuntimeException('File Excel sementara tidak ditemukan.');
+        }
+
+        $password = $this->normalizePassword($password);
+        $safeFileName = $this->sanitizeFileName($fileName, 'xlsx');
+
+        if ($password === null) {
+            try {
+                $contents = file_get_contents($path);
+                if (! is_string($contents)) {
+                    throw new RuntimeException('Dokumen Excel sementara tidak dapat dibaca.');
+                }
+
+                return $this->downloadSpreadsheet($contents, $safeFileName, null);
+            } finally {
+                @unlink($path);
+            }
+        }
+
+        try {
+            $contents = file_get_contents($path);
+            if (! is_string($contents)) {
+                throw new RuntimeException('Dokumen Excel sementara tidak dapat dibaca.');
+            }
+
+            return $this->downloadSpreadsheet($contents, $safeFileName, $password);
+        } finally {
+            @unlink($path);
+        }
+    }
+
     private function encryptPdf(string $contents, string $password): string
     {
         if (! str_starts_with($contents, '%PDF-')) {

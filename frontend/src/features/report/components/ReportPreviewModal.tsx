@@ -51,6 +51,19 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
     if (!isOpen) setPreviewAttachment(null);
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleHtmlClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -75,38 +88,41 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-[100] overflow-hidden">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+      <div
+        className="absolute inset-0 z-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="absolute inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
-        <div className="relative flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[90dvh] sm:rounded-2xl">
+      <div className="absolute inset-0 z-10 flex items-end justify-center p-0 sm:items-center sm:p-4">
+        <div
+          className="relative z-10 flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[90dvh] sm:rounded-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
           
           {/* Header */}
-          <div className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+          <div className="relative z-20 flex shrink-0 flex-col gap-3 border-b border-gray-200 bg-gray-50/90 px-4 py-3 pointer-events-auto sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <FileText className="h-5 w-5 shrink-0 text-blue-600" />
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-bold text-gray-900">{title}</h2>
                 {previewData && (
-                  <p className="text-sm text-gray-500">
+                  <p className="truncate text-sm text-gray-500">
                     {previewData.users_count} User · {previewData.total_cards} Card
                   </p>
                 )}
               </div>
             </div>
             
-            <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:flex-wrap sm:overflow-visible sm:pb-0">
+            <div className="ml-auto flex w-full max-w-full shrink-0 flex-wrap items-center justify-end gap-2 pb-1 sm:w-auto sm:pb-0">
               {/* Toggle View Mode */}
-              <div className="flex overflow-hidden rounded-lg border border-gray-200">
+              <div className="flex shrink-0 overflow-hidden rounded-lg border border-gray-200">
                 <button
                   type="button"
                   onClick={() => setViewMode('html')}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium transition-colors ${
+                    className={`flex h-9 shrink-0 items-center gap-1 whitespace-nowrap px-2.5 text-sm font-medium transition-colors ${
                     viewMode === 'html'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
@@ -118,7 +134,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setViewMode('pdf')}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium transition-colors ${
+                    className={`flex h-9 shrink-0 items-center gap-1 whitespace-nowrap px-2.5 text-sm font-medium transition-colors ${
                     viewMode === 'pdf'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
@@ -132,7 +148,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
               {/* Action Buttons */}
               <button
                 onClick={onExportExcel}
-                className={`${canExportExcel ? 'flex' : 'hidden'} items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700`}
+                className={`${canExportExcel ? 'flex' : 'hidden'} h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700`}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 Excel
@@ -140,7 +156,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
               
               <button
                 onClick={onDownload}
-                className={`${canExportPdf ? 'flex' : 'hidden'} items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700`}
+                className={`${canExportPdf ? 'flex' : 'hidden'} h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700`}
               >
                 <Download className="w-4 h-4" />
                 Download PDF
@@ -148,7 +164,8 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
               
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                className="h-9 w-9 shrink-0 rounded-lg p-2 transition-colors hover:bg-gray-200"
+                aria-label="Tutup preview laporan"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>

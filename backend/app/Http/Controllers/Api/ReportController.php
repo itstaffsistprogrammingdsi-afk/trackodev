@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exports\ReportExportArray;
+use App\Exports\ReportWorkbookExport;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CardResource;
 use App\Http\Resources\UserResource;
@@ -13,21 +13,32 @@ use App\Models\CardAttachment;
 use App\Models\ActivityLog;
 use App\Models\Division;
 use App\Models\Label;
+use App\Models\Task;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
 use App\Services\ReportPdfService;
+use App\Services\ReportDataLoader;
+use App\Services\ReportScopeService;
 use App\Support\ResourceAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelWriter;
 
 class ReportController extends Controller
 {
+    public function __construct(
+        private readonly ReportDataLoader $reportDataLoader,
+        private readonly ReportScopeService $reportScope,
+    ) {
+    }
+
     /**
      * Nama role yang dianggap "Super Admin" — harus persis sama dengan
      * kolom `name` di tabel roles milik Spatie Permission.
@@ -312,10 +323,9 @@ class ReportController extends Controller
     }
 
     /**
-     * Sembunyikan activity log yang menyentuh campaign/workspace di luar
-     * divisi viewer. Catatan tanpa rujukan campaign/workspace (mis. aktivitas
-     * akun umum) tetap ditampilkan karena target sudah dibatasi ke divisi
-     * viewer oleh authorizeReportUser().
+     * Sembunyikan activity log yang menyentuh resource di luar scope viewer.
+     * UUID bukan kontrol akses: resource direlasikan kembali ke campaign dan
+     * workspace sebelum log boleh dikirim ke client.
      */
     private function filterActivityLogsForViewer($logs, Request $request, User $target)
     {
@@ -329,9 +339,7 @@ class ReportController extends Controller
             return $logs->filter(fn ($log) => false)->values();
         }
 
-        $campaigns = $viewer->accessibleCampaigns()
-            ->select(['campaigns.id', 'campaigns.workspace_id'])
-            ->get();
+        $campaigns = $viewer->accessibleCampaigns()->select(['campaigns.id', 'campaigns.workspace_id'])->get();
 
         $campaignIds = $campaigns->pluck('id')->map(fn ($id) => (string) $id)->all();
         $workspaceIds = $campaigns->pluck('workspace_id')
@@ -340,7 +348,55 @@ class ReportController extends Controller
             ->unique()
             ->all();
 
-        return $logs->filter(function ($log) use ($campaignIds, $workspaceIds) {
+        $cardIds = collect();
+        $taskIds = collect();
+        $attachmentIds = collect();
+        $logResourceKeys = [];
+
+        foreach ($logs as $log) {
+            $meta = is_array($log->meta) ? $log->meta : [];
+            $keys = [];
+
+            foreach (['card_id', 'task_id', 'attachment_id'] as $key) {
+                if (! empty($meta[$key])) {
+                    $keys[$key] = (string) $meta[$key];
+                }
+            }
+
+            $entityType = strtolower((string) $log->entity_type);
+            $entityId = $log->entity_id ? (string) $log->entity_id : null;
+
+            if ($entityId && in_array($entityType, ['card', 'card_comment', 'card_assignment', 'card_mirror'], true)) {
+                $keys['card_id'] ??= $entityId;
+            } elseif ($entityId && str_contains($entityType, 'attachment')) {
+                $keys['attachment_id'] ??= $entityId;
+            } elseif ($entityId && $entityType === 'task') {
+                $keys['task_id'] ??= $entityId;
+            }
+
+            if ($keys !== []) {
+                $logResourceKeys[(string) $log->id] = $keys;
+                $cardIds = $cardIds->merge($keys['card_id'] ?? []);
+                $taskIds = $taskIds->merge($keys['task_id'] ?? []);
+                $attachmentIds = $attachmentIds->merge($keys['attachment_id'] ?? []);
+            }
+        }
+
+        $cardRelations = [
+            'campaign.workspace:id,division_id',
+            'board.campaign.workspace:id,division_id',
+        ];
+        $cards = Card::with($cardRelations)->whereKey($cardIds->unique()->values())->get()->keyBy(fn (Card $card) => (string) $card->id);
+        $tasks = Task::with(['card' => fn ($query) => $query->with($cardRelations)])
+            ->whereKey($taskIds->unique()->values())
+            ->get()
+            ->keyBy(fn (Task $task) => (string) $task->id);
+        $attachments = CardAttachment::with(['card' => fn ($query) => $query->with($cardRelations)])
+            ->whereKey($attachmentIds->unique()->values())
+            ->get()
+            ->keyBy(fn (CardAttachment $attachment) => (string) $attachment->id);
+
+        return $logs->filter(function ($log) use ($campaignIds, $workspaceIds, $logResourceKeys, $cards, $tasks, $attachments) {
             $meta = $log->meta ?? [];
 
             if (! empty($meta['campaign_id'])
@@ -351,6 +407,34 @@ class ReportController extends Controller
             if (! empty($meta['workspace_id'])
                 && ! in_array((string) $meta['workspace_id'], $workspaceIds, true)) {
                 return false;
+            }
+
+            $resourceKeys = $logResourceKeys[(string) $log->id] ?? [];
+
+            if ($resourceKeys !== []) {
+                $card = null;
+
+                if (! empty($resourceKeys['card_id'])) {
+                    $card = $cards->get((string) $resourceKeys['card_id']);
+                } elseif (! empty($resourceKeys['task_id'])) {
+                    $card = $tasks->get((string) $resourceKeys['task_id'])?->card;
+                } elseif (! empty($resourceKeys['attachment_id'])) {
+                    $card = $attachments->get((string) $resourceKeys['attachment_id'])?->card;
+                }
+
+                // A resource reference that cannot be resolved is not safe to
+                // expose. General account logs have no resourceKeys and remain
+                // visible below.
+                if (! $card) {
+                    return false;
+                }
+
+                $campaign = $card->campaign ?: $card->board?->campaign;
+                $campaignId = $campaign?->id ?? $card->campaign_id;
+                $workspaceId = $campaign?->workspace_id ?? $campaign?->workspace?->id;
+
+                return in_array((string) $campaignId, $campaignIds, true)
+                    || in_array((string) $workspaceId, $workspaceIds, true);
             }
 
             return true;
@@ -401,20 +485,7 @@ class ReportController extends Controller
      */
     private function scopeCardsForUser($query, $user): void
     {
-        $query->where(function ($q) use ($user) {
-            $q->whereHas('board.campaign', function ($c) use ($user) {
-                $c->where('created_by', $user->id)
-                    ->orWhereHas('members', function ($m) use ($user) {
-                        $m->where('users.id', $user->id);
-                    });
-            })->orWhereHas('assignees', function ($a) use ($user) {
-                $a->where('users.id', $user->id);
-            });
-        });
-
-        // Copy lintas divisi privat: hanya 5 pihak yang boleh melihat.
-        app(\App\Services\CrossDivisionMirrorService::class)
-            ->applyCopyVisibility($query, $user);
+        $this->reportScope->scopeCardsForUser($query, $user);
     }
 
     /**
@@ -455,104 +526,16 @@ class ReportController extends Controller
     }
 
     /**
-     * Filter periode hasil kerja. Card selesai mengikuti completed_at supaya
-     * pekerjaan yang dibuat lebih awal tetap muncul pada hari penyelesaiannya.
-     * Card yang belum selesai mengikuti created_at, sama seperti My Work.
-     */
-    private function applyWorkPeriodFilter($query, Request $request): void
-    {
-        $start = $request->filled('start_date')
-            ? $request->start_date . ' 00:00:00'
-            : null;
-        $end = $request->filled('end_date')
-            ? $request->end_date . ' 23:59:59'
-            : null;
-
-        $query->where(function ($periodQuery) use ($start, $end) {
-            $periodQuery
-                ->where(function ($completedQuery) use ($start, $end) {
-                    $completedQuery->whereNotNull('cards.completed_at');
-                    $this->applyDateBoundaries(
-                        $completedQuery,
-                        'cards.completed_at',
-                        $start,
-                        $end
-                    );
-                })
-                ->orWhere(function ($ongoingQuery) use ($start, $end) {
-                    $ongoingQuery->whereNull('cards.completed_at');
-                    $this->applyDateBoundaries(
-                        $ongoingQuery,
-                        'cards.created_at',
-                        $start,
-                        $end
-                    );
-                });
-        });
-    }
-
-    private function applyDateBoundaries(
-        $query,
-        string $column,
-        ?string $start,
-        ?string $end
-    ): void {
-        if ($start && $end) {
-            $query->whereBetween($column, [$start, $end]);
-        } elseif ($start) {
-            $query->where($column, '>=', $start);
-        } elseif ($end) {
-            $query->where($column, '<=', $end);
-        }
-    }
-
-    /**
      * HELPER: Terapkan filter pada query Card
      */
     private function applyCardFilters($query, Request $request): void
     {
-        if ($request->filled('search_card')) {
-            $query->where('cards.title', 'like', "%{$request->search_card}%");
-        }
-
-        if ($request->filled('campaign_id')) {
-            $query->whereHas('board', function ($q) use ($request) {
-                $q->where('boards.campaign_id', $request->campaign_id);
-            });
-        }
-
-        if ($request->filled('workspace_id')) {
-            $query->whereHas('board.campaign', function ($q) use ($request) {
-                $q->where('campaigns.workspace_id', $request->workspace_id);
-            });
-        }
-
-        if ($request->filled('start_date') || $request->filled('end_date')) {
-            $this->applyWorkPeriodFilter($query, $request);
-        }
-
-        if ($request->filled('label_id')) {
-            $query->whereHas('labels', function ($q) use ($request) {
-                $q->where('labels.id', $request->label_id);
-            });
-        }
-
-        if ($request->filled('brand_id')) {
-            $query->whereHas('brands', function ($q) use ($request) {
-                $q->where('brands.id', $request->brand_id);
-            });
-        }
+        $this->reportScope->applyCardFilters($query, $request);
     }
 
     private function hasCardFilters(Request $request): bool
     {
-        return $request->filled('start_date') ||
-            $request->filled('end_date') ||
-            $request->filled('campaign_id') ||
-            $request->filled('workspace_id') ||
-            $request->filled('label_id') ||
-            $request->filled('brand_id') ||
-            $request->filled('search_card');
+        return $this->reportScope->hasCardFilters($request);
     }
 
     /**
@@ -618,9 +601,9 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
         ]);
 
         try {
-            $users = $this->getExportData($request);
+            $totalUsers = $this->reportDataLoader->count($request);
 
-            if ($users->isEmpty()) {
+            if ($totalUsers === 0) {
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
@@ -629,7 +612,7 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
             $fileName = $prefix . '_' . date('Ymd_His') . '.pdf';
 
             $download = $encryptedExport->downloadPdf(
-                $reportPdf->render($users),
+                $reportPdf->renderChunks($this->reportDataLoader->chunks($request), $totalUsers),
                 $fileName,
                 $validated['export_password'] ?? null
             );
@@ -671,10 +654,12 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
             'export_password' => 'nullable|string|min:12|max:128',
         ]);
 
-        try {
-            $users = $this->getExportData($request);
+        $temporaryName = null;
 
-            if ($users->isEmpty()) {
+        try {
+            $totalUsers = $this->reportDataLoader->count($request);
+
+            if ($totalUsers === 0) {
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
@@ -682,10 +667,21 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.xlsx';
 
-            $contents = Excel::raw(new ReportExportArray($users), ExcelWriter::XLSX);
+            $temporaryName = 'report-export-' . Str::uuid() . '.xlsx';
+            Excel::store(
+                new ReportWorkbookExport(
+                    fn () => $this->reportDataLoader->chunks($request),
+                    $totalUsers,
+                    true,
+                ),
+                $temporaryName,
+                'local',
+                ExcelWriter::XLSX,
+            );
 
-            $download = $encryptedExport->downloadSpreadsheet(
-                $contents,
+            $temporaryPath = Storage::disk('local')->path($temporaryName);
+            $download = $encryptedExport->downloadSpreadsheetFile(
+                $temporaryPath,
                 $fileName,
                 $validated['export_password'] ?? null
             );
@@ -705,6 +701,9 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
 
             return $download;
         } catch (\Exception $e) {
+            if ($temporaryName) {
+                Storage::disk('local')->delete($temporaryName);
+            }
             Log::error('Export Excel error: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal export Excel: ' . $e->getMessage()], 500);
         }
@@ -715,82 +714,7 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
      */
     private function getExportData(Request $request)
     {
-        try {
-            $query = User::with('divisions');
-
-            // Admin biasa tidak boleh export/preview data milik Super Admin.
-            $this->restrictSuperAdminVisibility($query, $request);
-            $this->restrictDivisionVisibility($query, $request);
-
-            if ($request->filled('user_id')) {
-                $query->where('users.id', $request->user_id);
-            }
-
-            $this->applyUserSearch($query, $request);
-
-            if ($request->filled('division_id')) {
-                $query->whereHas('divisions', function ($q) use ($request) {
-                    $q->where('divisions.id', $request->division_id);
-                });
-            }
-
-            $users = $query
-                ->orderBy('users.name', 'asc')
-                ->get();
-
-            // Untuk tiap user, ambil card lewat definisi yang SAMA dengan
-            // scopeCardsForUser() (creator campaign ATAU anggota campaign
-            // ATAU assignee langsung) — bukan cuma lewat relasi cards()
-            // (pivot card_user) seperti sebelumnya, supaya konsisten dengan
-            // data yang user lihat sendiri di My Work.
-            $users->each(function ($user) use ($request) {
-                $cardsQuery = Card::with([
-                    'campaign',
-                    'board.campaign', // 🔥 Load campaign dari board
-                    'board',
-                    'labels',
-                    'brands',
-                    'sourceDivision:id,name',
-                    'mirroredBy:id,name',
-                    'attachments' => function ($attQ) {
-                        $attQ
-                            ->whereNull('archived_at')
-                            ->with(['uploader', 'qcBy'])
-                            ->latest('created_at');
-                    }
-                ]);
-
-                $this->scopeCardsForUser($cardsQuery, $user);
-                $this->restrictCardsToViewerDivisions($cardsQuery, $request, $user);
-
-                if ($request->filled('campaign_id')) {
-                    $cardsQuery->whereHas('board', function ($q) use ($request) {
-                        $q->where('boards.campaign_id', $request->campaign_id);
-                    });
-                }
-
-                $this->applyCardFilters($cardsQuery, $request);
-
-                $user->setRelation(
-                    'cards',
-                    $cardsQuery
-                        ->orderByRaw('COALESCE(cards.completed_at, cards.created_at) DESC')
-                        ->get()
-                );
-            });
-
-            // Kalau ada filter yang mensyaratkan card cocok (campaign/label/
-            // brand/tanggal/search_card), user yang setelah difilter jadi
-            // tidak punya card sama sekali dibuang dari hasil akhir.
-            if ($this->hasCardFilters($request)) {
-                $users = $users->filter(fn ($user) => $user->cards->isNotEmpty())->values();
-            }
-
-            return $users;
-        } catch (\Exception $e) {
-            Log::error('Error getting export data: ' . $e->getMessage());
-            throw $e;
-        }
+        return $this->reportDataLoader->load($request);
     }
 
     /**
@@ -838,11 +762,7 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
      */
     private function restrictCardsToViewerDivisions($query, Request $request, User $target): void
     {
-        if ($request->user()->is($target)) {
-            return;
-        }
-
-        $this->restrictCardQueryToViewerDivisions($query, $request);
+        $this->reportScope->restrictCardsToViewerDivisions($query, $request, $target);
     }
 
     /**
@@ -858,24 +778,9 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
     {
         $viewer = $request->user();
 
-        if (! $viewer || $viewer->isSuperAdmin() || ! $viewer->managesDivision()) {
-            return;
+        if ($viewer) {
+            $this->reportScope->restrictCardQueryToViewerDivisions($query, $viewer);
         }
-
-        $campaignIds = $viewer->accessibleCampaigns()->pluck('campaigns.id');
-
-        if ($campaignIds->isEmpty()) {
-            $query->whereRaw('1 = 0');
-            return;
-        }
-
-        $query->where(function ($campaignQuery) use ($campaignIds) {
-            $campaignQuery
-                ->whereIn('cards.campaign_id', $campaignIds)
-                ->orWhereHas('board', function ($boardQuery) use ($campaignIds) {
-                    $boardQuery->whereIn('boards.campaign_id', $campaignIds);
-                });
-        });
     }
 
 private function restrictDivisionVisibility($query, Request $request): void

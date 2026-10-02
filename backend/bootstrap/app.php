@@ -9,6 +9,7 @@ use App\Providers\AuthServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
@@ -88,8 +89,15 @@ return Application::configure(
     ->withExceptions(function (
         Exceptions $exceptions
     ): void {
+        $exceptions->render(function (InvalidSignatureException $exception, $request) {
+            $message = 'Tautan sudah kedaluwarsa. Buka kembali laporan dari sistem.';
 
-        //
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 403);
+            }
+
+            return response($message, 403)->header('Content-Type', 'text/plain; charset=UTF-8');
+        });
     })
 
     // ============================================

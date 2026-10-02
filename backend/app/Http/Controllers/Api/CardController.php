@@ -1953,6 +1953,39 @@ class CardController extends Controller
         );
     }
 
+    /**
+     * Download an attachment through a signed link embedded in an export.
+     */
+    public function downloadSigned(CardAttachment $attachment)
+    {
+        if ($attachment->archived_at) {
+            return response()->json([
+                'message' => 'Versi arsip tidak dapat diunduh. Gunakan hasil aktif terbaru.',
+            ], 422);
+        }
+
+        if (
+            ! $attachment->file_path
+            || ! Storage::disk('public')->exists($attachment->file_path)
+        ) {
+            return response()->json(['message' => 'File tidak tersedia.'], 404);
+        }
+
+        ActivityLogService::log(
+            null,
+            'card_attachment',
+            (string) $attachment->id,
+            'downloaded',
+            "Mengunduh attachment '{$attachment->file_name}' lewat tautan laporan.",
+            ['source' => 'report_signed_link']
+        );
+
+        return Storage::disk('public')->download(
+            $attachment->file_path,
+            $attachment->file_name
+        );
+    }
+
     /*
     |--------------------------------------------------------------------------
     | COMMENT
