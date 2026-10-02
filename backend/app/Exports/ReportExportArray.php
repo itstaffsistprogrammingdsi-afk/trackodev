@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Services\ReportWatermarkService;
+use App\Services\AttachmentSignedUrlService;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -19,11 +20,14 @@ class ReportExportArray implements FromArray, ShouldAutoSize, WithStyles, WithTi
 {
     protected $users;
     protected $totalUsers;
+    protected bool $signedLinks;
+    protected array $attachmentHyperlinks = [];
 
-    public function __construct($users)
+    public function __construct($users, bool $signedLinks = false)
     {
         $this->users = $users;
         $this->totalUsers = $users->count();
+        $this->signedLinks = $signedLinks;
     }
 
     /**
@@ -84,6 +88,19 @@ class ReportExportArray implements FromArray, ShouldAutoSize, WithStyles, WithTi
                             $detailParts[] = "{$displayName} (Total: {$qty}, QC: {$qcQty}, Oleh: {$qcBy}, Tgl QC: {$qcAt})";
                         }
                         $attachmentDetail = implode("\n", $detailParts);
+
+                        if ($this->signedLinks) {
+                            $fileAttachment = $attachments->first(
+                                fn ($attachment) => $attachment->attachment_type === 'file'
+                                    && ! empty($attachment->file_path)
+                            );
+
+                            if ($fileAttachment) {
+                                $this->attachmentHyperlinks[$rowIndex] = app(
+                                    AttachmentSignedUrlService::class
+                                )->for($fileAttachment);
+                            }
+                        }
                     } else {
                         $attachmentDetail = 'Tidak ada file';
                     }
@@ -219,9 +236,21 @@ class ReportExportArray implements FromArray, ShouldAutoSize, WithStyles, WithTi
                 // ========================================
                 // 5. STRIPED ROWS (baris data mulai baris 5)
                 // ========================================
-// Set hyperlink untuk kolom Attachment & QC (kolom H) jika ada link_url
+// Set hyperlink untuk file attachment bertanda tangan atau link eksternal.
 $row = 5;
 while ($row <= $lastRow) {
+    $dataIndex = $row - 4;
+    $signedUrl = $this->attachmentHyperlinks[$dataIndex] ?? null;
+
+    if ($signedUrl) {
+        $sheet->getCell('H' . $row)->getHyperlink()->setUrl($signedUrl);
+        $sheet->getStyle('H' . $row)->applyFromArray([
+            'font' => ['color' => ['rgb' => '0000FF'], 'underline' => true],
+        ]);
+        $row++;
+        continue;
+    }
+
     $cellValue = $sheet->getCell('H' . $row)->getValue();
     // Cek apakah ada link_url di dalam cell (cari pola "http")
     if (strpos($cellValue, 'http') !== false) {

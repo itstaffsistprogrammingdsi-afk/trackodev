@@ -552,6 +552,17 @@ Route::prefix('auth')->group(function () {
 });
 
 // ============================================
+// PUBLIC: TAUTAN LAMPIRAN BERTANDA TANGAN
+// ============================================
+// Dipakai oleh tautan lampiran di file export PDF/Excel. Tautan hanya valid
+// selama TTL dan terikat pada satu attachment. Sengaja di luar auth:sanctum
+// karena pembuka file PDF/Excel tidak membawa token Bearer.
+Route::get(
+    'attachments/{attachment}/signed-download',
+    [CardController::class, 'downloadSigned']
+)->middleware(['signed', 'throttle:120,1'])->name('attachments.signed-download');
+
+// ============================================
 // AUTHENTICATED ROUTES
 // ============================================
 

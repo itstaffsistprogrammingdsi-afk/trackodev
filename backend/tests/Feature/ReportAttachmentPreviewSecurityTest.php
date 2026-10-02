@@ -105,6 +105,8 @@ class ReportAttachmentPreviewSecurityTest extends TestCase
         $html = $response->json('data.html');
 
         $this->assertIsString($html);
+        $this->assertStringContainsString('class="report-document"', $html);
+        $this->assertStringNotContainsString("\n        * {", $html);
         $this->assertStringContainsString('data-attachment-preview="true"', $html);
         $this->assertStringContainsString('data-attachment-name="security-review.pdf"', $html);
         $this->assertStringContainsString('data-attachment-file-type="application/pdf"', $html);

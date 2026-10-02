@@ -635,13 +635,25 @@ export default function PublicFormPage() {
 
     // NUMBER
     if (field.type === "number") {
+      const isNonNegativeInteger = field.name === "defect_count";
+
       return (
         <input
           id={`field-${field.id}`}
-          type="number"
-          value={String(values[field.name] || "")}
+          type={isNonNegativeInteger ? "text" : "number"}
+          inputMode={isNonNegativeInteger ? "numeric" : "decimal"}
+          pattern={isNonNegativeInteger ? "[0-9]*" : undefined}
+          min={isNonNegativeInteger ? 0 : undefined}
+          step={isNonNegativeInteger ? 1 : undefined}
+          value={values[field.name] == null ? "" : String(values[field.name])}
           onChange={(e) => {
             const rawValue = e.target.value;
+
+            // Jumlah defect harus berupa bilangan bulat >= 0. Gunakan input
+            // text + numeric keyboard agar karakter sementara seperti "-",
+            // titik, atau koma tidak bisa masuk ke state form.
+            if (isNonNegativeInteger && !/^\d*$/.test(rawValue)) return;
+
             handleChange(field.name, rawValue === "" ? "" : Number(rawValue));
           }}
           className={`h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none transition focus:border-[#673ab7] focus:ring-0 ${highlightClass}`}

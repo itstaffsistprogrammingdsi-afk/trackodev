@@ -6,28 +6,30 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>Laporan Kinerja & QC</title>
     <style>
-        * {
+        .report-document,
+        .report-document * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        body {
+        .report-document {
             font-family: 'DejaVu Sans', 'Arial', 'Helvetica', sans-serif;
             font-size: 8px;
             color: #333;
             line-height: 1.4;
             padding: 5px;
+            background: #fff;
         }
 
-        .header {
+        .report-document .header {
             text-align: center;
             margin-bottom: 12px;
             padding-bottom: 8px;
             border-bottom: 2px solid #333;
         }
 
-        .header h2 {
+        .report-document .header h2 {
             font-size: 16px;
             font-weight: bold;
             color: #1a237e;
@@ -35,17 +37,17 @@
             letter-spacing: 0.5px;
         }
 
-        .header .subtitle {
+        .report-document .header .subtitle {
             font-size: 9px;
             color: #555;
             margin-top: 4px;
         }
 
-        .header .subtitle span {
+        .report-document .header .subtitle span {
             margin: 0 6px;
         }
 
-        table {
+        .report-document table {
             width: 100%;
             border-collapse: collapse;
             font-size: 7.5px;
@@ -54,16 +56,16 @@
 
         /* Ulangi header tabel di setiap halaman dan cegah baris terpotong
            page-break (rowspan yang terbelah membuat kolom setelahnya hilang). */
-        thead {
+        .report-document thead {
             display: table-header-group;
         }
 
-        tr,
-        .attachment-item {
+        .report-document tr,
+        .report-document .attachment-item {
             page-break-inside: avoid;
         }
 
-        table th {
+        .report-document table th {
             background-color: #e8eaf6;
             color: #1a237e;
             font-weight: bold;
@@ -74,7 +76,7 @@
             vertical-align: middle;
         }
 
-        table td {
+        .report-document table td {
             padding: 3px;
             border: 1px solid #999;
             vertical-align: top;
@@ -83,47 +85,47 @@
         }
 
         /* Lebar kolom disesuaikan untuk 11 kolom */
-        .col-no { width: 3%; text-align: center; }
-        .col-user { width: 8%; }
-        .col-divisi { width: 7%; }
-        .col-workspace { width: 8%; }
-        .col-campaign { width: 8%; }
-        .col-board { width: 7%; }
-        .col-card { width: 12%; }
-        .col-labels { width: 9%; }
-        .col-attachment { width: 14%; }
-        .col-qc-qty { width: 7%; text-align: center; }
-        .col-qc-note { width: 17%; }
+        .report-document .col-no { width: 3%; text-align: center; }
+        .report-document .col-user { width: 8%; }
+        .report-document .col-divisi { width: 7%; }
+        .report-document .col-workspace { width: 8%; }
+        .report-document .col-campaign { width: 8%; }
+        .report-document .col-board { width: 7%; }
+        .report-document .col-card { width: 12%; }
+        .report-document .col-labels { width: 9%; }
+        .report-document .col-attachment { width: 14%; }
+        .report-document .col-qc-qty { width: 7%; text-align: center; }
+        .report-document .col-qc-note { width: 17%; }
 
-        .text-center { text-align: center; }
-        .text-muted { color: #999; font-style: italic; }
-        .font-bold { font-weight: bold; }
+        .report-document .text-center { text-align: center; }
+        .report-document .text-muted { color: #999; font-style: italic; }
+        .report-document .font-bold { font-weight: bold; }
 
-        .user-name {
+        .report-document .user-name {
             font-weight: bold;
             font-size: 8px;
             color: #1a237e;
         }
-        .divisi-list {
+        .report-document .divisi-list {
             font-size: 7px;
             display: block;
             line-height: 1.3;
         }
 
-        .card-title {
+        .report-document .card-title {
             font-weight: bold;
             font-size: 8px;
             color: #0d47a1;
         }
-        .card-desc,
-        .card-date {
+        .report-document .card-desc,
+        .report-document .card-date {
             font-size: 6.5px;
             color: #666;
             display: block;
             margin-top: 1px;
         }
 
-        .label-item {
+        .report-document .label-item {
             display: inline-block;
             padding: 1px 4px;
             margin: 1px 2px 1px 0;
@@ -132,7 +134,7 @@
             font-weight: bold;
             white-space: nowrap;
         }
-        .brand-item {
+        .report-document .brand-item {
             display: inline-block;
             padding: 1px 4px;
             margin: 1px 2px 1px 0;
@@ -142,45 +144,45 @@
             white-space: nowrap;
         }
 
-        .attachment-item {
+        .report-document .attachment-item {
             margin-bottom: 3px;
             padding-bottom: 3px;
             border-bottom: 1px dotted #ddd;
         }
-        .attachment-item:last-child {
+        .report-document .attachment-item:last-child {
             border-bottom: none;
             margin-bottom: 0;
             padding-bottom: 0;
         }
 
-        .attachment-name {
+        .report-document .attachment-name {
             font-size: 7px;
             font-weight: bold;
             color: #333;
         }
-        .attachment-name a {
+        .report-document .attachment-name a {
             color: #1a237e;
             text-decoration: underline;
             word-break: break-all;
         }
 
-        .attachment-qc {
+        .report-document .attachment-qc {
             font-size: 7px;
             margin-top: 1px;
         }
-        .attachment-qc .qc-approved {
+        .report-document .attachment-qc .qc-approved {
             color: #2e7d32;
             font-weight: bold;
         }
-        .attachment-qc .qc-pending {
+        .report-document .attachment-qc .qc-pending {
             color: #f57f17;
         }
-        .attachment-qc .qc-by {
+        .report-document .attachment-qc .qc-by {
             font-size: 6.5px;
             color: #888;
         }
 
-        .attachment-type {
+        .report-document .attachment-type {
             font-size: 6px;
             color: #888;
             display: inline-block;
@@ -189,20 +191,20 @@
             border-radius: 2px;
         }
 
-        .no-data {
+        .report-document .no-data {
             text-align: center;
             color: #999;
             font-style: italic;
             padding: 15px;
         }
-        .no-data-card {
+        .report-document .no-data-card {
             color: #999;
             font-style: italic;
             font-size: 7px;
             padding: 5px;
         }
 
-        .footer {
+        .report-document .footer {
             margin-top: 12px;
             padding-top: 6px;
             border-top: 1px solid #ddd;
@@ -211,15 +213,15 @@
             text-align: center;
         }
 
-        .row-even {
+        .report-document .row-even {
             background-color: #fafafa;
         }
-        .row-odd {
+        .report-document .row-odd {
             background-color: #ffffff;
         }
 
         @media print {
-            body {
+            .report-document {
                 padding: 0;
             }
         }
@@ -227,6 +229,7 @@
 </head>
 
 <body>
+<div class="report-document">
     @include('exports.partials.ownership-watermark')
 
 
@@ -276,7 +279,8 @@
                 @php
                     $cards = $user->cards ?? collect();
                     $cardCount = $cards->count();
-                    $rowClass = $index % 2 == 0 ? 'row-even' : 'row-odd';
+                    $globalIndex = (int) ($userOffset ?? 0) + (int) $index;
+                    $rowClass = $globalIndex % 2 == 0 ? 'row-even' : 'row-odd';
                 @endphp
 
                 @if ($cardCount > 0)
@@ -286,7 +290,7 @@
                                  pertama tiap user. Sengaja TANPA rowspan agar
                                  dompdf tidak kehilangan kolom saat page-break. --}}
                             @if ($cardIndex === 0)
-                                <td class="col-no text-center">{{ $index + 1 }}</td>
+                                <td class="col-no text-center">{{ $globalIndex + 1 }}</td>
                                 <td class="col-user">
                                     <span class="user-name">{{ $user->name ?? '-' }}</span>
                                 </td>
@@ -382,7 +386,15 @@
                                                     }
                                                 @endphp
 
-                                                @if ($hasUrl && $url && $attachment->attachment_type === 'file')
+                                                @if (isset($signedLinks) && $signedLinks && $attachment->attachment_type === 'file' && ! empty($attachment->file_path))
+                                                    <a
+                                                        href="{{ app(\App\Services\AttachmentSignedUrlService::class)->for($attachment) }}"
+                                                        style="color:#1a237e;text-decoration:underline;word-break:break-all;"
+                                                    >{{ $displayName }}</a>
+                                                    @if ($attachment->attachment_type)
+                                                        <span class="attachment-type">{{ $attachment->attachment_type }}</span>
+                                                    @endif
+                                                @elseif ($hasUrl && $url && $attachment->attachment_type === 'file')
                                                     <a
                                                         href="#attachment-preview"
                                                         data-attachment-preview="true"
@@ -450,7 +462,7 @@
                 @else
                     {{-- User tanpa card --}}
                     <tr class="{{ $rowClass }}">
-                        <td class="col-no text-center">{{ $index + 1 }}</td>
+                        <td class="col-no text-center">{{ $globalIndex + 1 }}</td>
                         <td class="col-user"><span class="user-name">{{ $user->name ?? '-' }}</span></td>
                         <td class="col-divisi">
                             @if ($user->divisions && $user->divisions->count() > 0)
@@ -478,5 +490,6 @@
         <span>Generated: {{ now()->format('d/m/Y H:i:s') }}</span>
     </div>
 
+</div>
 </body>
 </html>

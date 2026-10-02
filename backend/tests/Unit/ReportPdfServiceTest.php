@@ -34,6 +34,22 @@ class ReportPdfServiceTest extends TestCase
         }
     }
 
+    public function test_chunk_offset_keeps_global_user_numbering(): void
+    {
+        $html = view('exports.report_pdf', [
+            'users' => collect([(object) [
+                'name' => 'User 101',
+                'divisions' => collect(),
+                'cards' => collect(),
+            ]]),
+            'userOffset' => 100,
+            'totalUsers' => 101,
+        ])->render();
+
+        $this->assertStringContainsString('>101</td>', $html);
+        $this->assertStringNotContainsString('>1</td>', $html);
+    }
+
     public function test_single_user_with_many_cards_keeps_columns_across_pages(): void
     {
         $attachment = (object) [
