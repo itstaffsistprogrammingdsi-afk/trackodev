@@ -541,7 +541,7 @@ class ReportController extends Controller
     /**
      * PREVIEW PDF
      */
-public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonResponse
+    public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonResponse
     {
         $this->validateReportFilters($request);
         $this->authorizeDivisionFilter($request);
@@ -556,9 +556,24 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
                 ], 404);
             }
 
-            $html = view('exports.report_pdf', compact('users'))->render();
+            $totalUsers = $users->count();
+            $totalCards = $users->sum(fn ($user) => $user->cards->count());
+            $html = view('exports.report_pdf', [
+                'users' => $users,
+                'totalUsers' => $totalUsers,
+            ])->render();
 
-            $pdfContent = $reportPdf->render($users);
+            // HTML preview still needs the complete document, but PDF
+            // generation must use the bounded loader. Rendering all users in
+            // one DomPDF instance makes the batch preview exceed memory on
+            // large reports.
+            unset($users);
+            gc_collect_cycles();
+
+            $pdfContent = $reportPdf->renderChunks(
+                $this->reportDataLoader->chunks($request),
+                $totalUsers,
+            );
             $base64Pdf = base64_encode($pdfContent);
 
             return response()->json([
@@ -566,8 +581,8 @@ public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonR
                 'data' => [
                     'html'         => $html,
                     'pdf_base64'   => $base64Pdf,
-                    'users_count'  => $users->count(),
-                    'total_cards'  => $users->sum(fn($user) => $user->cards->count()),
+                    'users_count'  => $totalUsers,
+                    'total_cards'  => $totalCards,
                 ]
             ]);
         } catch (\Exception $e) {
