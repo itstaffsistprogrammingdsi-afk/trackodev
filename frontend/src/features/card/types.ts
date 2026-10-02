@@ -16,6 +16,10 @@ export type CreateCardRequest = {
   assignee_targets?: Record<string, string>;
   create_campaigns?: Record<string, string>;
   force_inbox?: string[];
+  /** Server-validated source reference for duplicate-card creation. */
+  duplicate_from_card_id?: string;
+  label_ids?: string[];
+  brand_ids?: string[];
 };
 
 export interface AssignTarget {
@@ -182,11 +186,32 @@ export type Card = {
 
   parent_card_id?: string | null;
 
+  copied_from_card_id?: string | null;
+
   source_division?: { id: string; name: string } | null;
 
   mirrored_by?: { id: string; name: string } | null;
 
   board?: Board;
+};
+
+export type DuplicateDraftTask = {
+  title: string;
+  order: number;
+  subtasks: Array<{ title: string; order: number }>;
+};
+
+export type DuplicateDraft = {
+  source_card_id: string;
+  board_id: string;
+  campaign_id: string;
+  title: string;
+  description?: string | null;
+  labels: Array<{ id: string; name: string; color?: string | null }>;
+  brands: Array<{ id: string; name: string; color?: string | null }>;
+  available_labels: Array<{ id: string; name: string; color?: string | null }>;
+  available_brands: Array<{ id: string; name: string; color?: string | null }>;
+  tasks: DuplicateDraftTask[];
 };
 
 export type Brand = {

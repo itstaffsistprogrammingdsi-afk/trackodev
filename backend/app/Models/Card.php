@@ -30,6 +30,8 @@ class Card extends Model
 
         'parent_card_id',
 
+        'copied_from_card_id',
+
         'is_cross_division_copy',
 
         'source_division_id',
@@ -105,6 +107,16 @@ class Card extends Model
             Card::class,
             'parent_card_id'
         );
+    }
+
+    /**
+     * Original card used as the source for a user-requested duplicate.
+     * This is intentionally separate from parent_card_id, which represents
+     * a live cross-division mirror family and participates in propagation.
+     */
+    public function copiedFrom(): BelongsTo
+    {
+        return $this->belongsTo(Card::class, 'copied_from_card_id');
     }
 
     public function copies(): HasMany

@@ -36,6 +36,7 @@ class CardResource extends JsonResource
             */
             'is_cross_division_copy' => (bool) ($this->is_cross_division_copy ?? false),
             'parent_card_id' => $this->parent_card_id,
+            'copied_from_card_id' => $this->copied_from_card_id,
             'source_division' => $this->relationLoaded('sourceDivision') && $this->sourceDivision
                 ? ['id' => $this->sourceDivision->id, 'name' => $this->sourceDivision->name]
                 : null,

@@ -19,6 +19,7 @@ import AttachmentSection from "./sections/AttachmentSection";
 import ActivitySection from "./sections/activitySection";
 import CardDetailHeader from "./CardDetailHeader";
 import CardDetailSidebar from "./CardDetailSidebar";
+import DuplicateCardModal from "./DuplicateCardModal";
 
 import {
   AlignLeft,
@@ -44,6 +45,7 @@ export default function CardDetailModal({
 }: Props) {
   const [showLabels, setShowLabels] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
 
   // =========================================
   // UI SIDEBAR STATE
@@ -341,6 +343,7 @@ export default function CardDetailModal({
                   setShowMembers(true);
                   setMobileSidebarOpen(true);
                 }}
+                onDuplicate={() => setDuplicateOpen(true)}
               />
             </div>
 
@@ -557,6 +560,14 @@ export default function CardDetailModal({
           </div>
         ) : null}
       </div>
+      <DuplicateCardModal
+        card={detail || card}
+        isOpen={duplicateOpen}
+        onClose={() => setDuplicateOpen(false)}
+        onCreated={async () => {
+          await onUpdated?.();
+        }}
+      />
     </div>
   );
 }

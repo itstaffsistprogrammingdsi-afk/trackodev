@@ -869,6 +869,11 @@ Route::middleware([
     )->middleware('permission:card.view|task.view');
 
     Route::get(
+        'cards/{card}/duplicate-draft',
+        [CardController::class, 'duplicateDraft']
+    )->middleware('permission:card.view|task.view');
+
+    Route::get(
         'cards/{card}/member-candidates',
         [CardController::class, 'memberCandidates']
     )->middleware('permission:card.view|task.view');

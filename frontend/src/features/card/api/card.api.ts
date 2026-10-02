@@ -6,6 +6,8 @@ import {
   Brand,
   ReceivingCampaign,
   User,
+  DuplicateDraft,
+  Label,
 } from "../types";
 
 // =====================================================
@@ -49,6 +51,13 @@ export const createCard = async (
   );
 
   return res.data.data as Card;
+};
+
+export const getDuplicateDraft = async (
+  cardId: string,
+): Promise<DuplicateDraft> => {
+  const res = await api.get(`/cards/${cardId}/duplicate-draft`);
+  return res.data.data as DuplicateDraft;
 };
 
 // =====================================================
@@ -220,10 +229,10 @@ export const unassignMember = async (
 // =====================================================
 // LABELS
 // =====================================================
-export async function getLabels() {
+export async function getLabels(): Promise<Label[]> {
   const res = await api.get("/labels");
 
-  return res.data;
+  return res.data as Label[];
 }
 
 export async function createLabel(data: {
@@ -337,9 +346,10 @@ export const detachBrand = async (
 // =========================================
 // GET BRANDS
 // =========================================
-export const getBrands = async () => {
+export const getBrands = async (campaignId?: string): Promise<Brand[]> => {
   const res = await api.get(
     "/brands",
+    { params: campaignId ? { campaign_id: campaignId } : undefined },
   );
 
   return res.data as Brand[];
