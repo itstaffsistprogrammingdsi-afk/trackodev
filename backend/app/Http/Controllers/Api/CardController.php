@@ -7,11 +7,13 @@ use App\Http\Resources\CardResource;
 use App\Jobs\SendCardAssignedEmailJob;
 // use App\Mail\CardAssignedMail;
 use App\Models\Board;
+use App\Models\Brand;
 use App\Models\Campaign;
 use App\Models\Card;
 use App\Models\CardAttachment;
 use App\Models\CardBriefAttachment;
 use App\Models\CardComment;
+use App\Models\Label;
 use App\Models\User;
 use App\Models\Notification;
 use App\Services\ActivityLogService;
@@ -240,6 +242,71 @@ class CardController extends Controller
         ]);
     }
 
+    /**
+     * Return only the safe, reusable fields for the duplicate-card form.
+     * Reusable taxonomy (labels and brands) is included so the form can show
+     * preselected values and let the user adjust them. Operational data
+     * (assignees, dates, attachments, comments, QC and submission fields) is
+     * deliberately not exposed as a copy payload.
+     */
+    public function duplicateDraft(Card $card): JsonResponse
+    {
+        $this->authorizeCard($card);
+
+        $card->load(['board', 'tasks.subtasks', 'labels', 'brands']);
+
+        $availableLabels = Label::query()
+            ->select(['id', 'name', 'color'])
+            ->orderBy('name')
+            ->get();
+        // Brand is a shared catalog in the card UI. Cards may attach a brand
+        // from another campaign, so do not narrow duplicate choices to the
+        // source card's campaign. This matches CardBrandController::attach.
+        $availableBrands = Brand::query()
+            ->select(['id', 'name', 'color', 'campaign_id'])
+            ->orderByRaw('LOWER(name)')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'source_card_id' => (string) $card->id,
+                'board_id' => (string) $card->board_id,
+                'campaign_id' => (string) $card->board?->campaign_id,
+                'title' => $card->title,
+                'description' => $card->description,
+                'labels' => $card->labels->map(fn ($label) => [
+                    'id' => (string) $label->id,
+                    'name' => $label->name,
+                    'color' => $label->color,
+                ])->values()->all(),
+                'brands' => $card->brands->map(fn ($brand) => [
+                    'id' => (string) $brand->id,
+                    'name' => $brand->name,
+                    'color' => $brand->color,
+                ])->values()->all(),
+                'available_labels' => $availableLabels->map(fn ($label) => [
+                    'id' => (string) $label->id,
+                    'name' => $label->name,
+                    'color' => $label->color,
+                ])->values()->all(),
+                'available_brands' => $availableBrands->map(fn ($brand) => [
+                    'id' => (string) $brand->id,
+                    'name' => $brand->name,
+                    'color' => $brand->color,
+                ])->values()->all(),
+                'tasks' => $card->tasks->map(fn ($task) => [
+                    'title' => $task->title,
+                    'order' => (int) $task->order,
+                    'subtasks' => $task->subtasks->map(fn ($subtask) => [
+                        'title' => $subtask->title,
+                        'order' => (int) $subtask->order,
+                    ])->values()->all(),
+                ])->values()->all(),
+            ],
+        ]);
+    }
+
     public function store(Request $request, Board $board): JsonResponse
     {
         $this->authorizeBoard($board);
@@ -249,6 +316,11 @@ class CardController extends Controller
             'description' => 'nullable|string',
             'priority'    => 'nullable|in:low,medium,high,urgent',
             'due_date'    => 'nullable|date',
+            'duplicate_from_card_id' => 'nullable|uuid|exists:cards,id',
+            'label_ids' => 'sometimes|array',
+            'label_ids.*' => 'uuid|exists:labels,id',
+            'brand_ids' => 'sometimes|array',
+            'brand_ids.*' => 'uuid|exists:brands,id',
 
             'assignees'   => 'nullable|array',
             'assignees.*' => 'uuid|exists:users,id',
@@ -264,6 +336,29 @@ class CardController extends Controller
         ]);
 
         $user = auth()->user();
+
+        $sourceCard = null;
+        if (! empty($validated['duplicate_from_card_id'])) {
+            $sourceCard = Card::query()
+                ->whereKey($validated['duplicate_from_card_id'])
+                ->with(['tasks.subtasks', 'labels', 'brands'])
+                ->firstOrFail();
+
+            // A duplicate is created in the source card's board in v1. This
+            // prevents a forged source id from cloning a card into another
+            // campaign/board and keeps board status normalization consistent.
+            abort_unless(
+                (string) $sourceCard->board_id === (string) $board->id,
+                422,
+                'Card sumber harus berada di board yang sama.'
+            );
+
+            $this->authorizeCard($sourceCard);
+
+            $selectedBrandIds = array_key_exists('brand_ids', $validated)
+                ? array_values(array_unique($validated['brand_ids']))
+                : $sourceCard->brands->modelKeys();
+        }
 
         $lastOrder = $board->cards()->max('order') ?? 0;
 
@@ -321,6 +416,7 @@ class CardController extends Controller
                 'description' => $validated['description'] ?? null,
                 'priority'    => $validated['priority'] ?? 'medium',
                 'due_date'    => $validated['due_date'] ?? null,
+                'copied_from_card_id' => $sourceCard?->id,
                 'created_by'  => $user->id,
                 'order'       => $lastOrder + 1,
                 'status'      => $initialStatus,
@@ -330,6 +426,31 @@ class CardController extends Controller
             \Log::info('CARD CREATED', [
                 'card_id' => $card->id,
             ]);
+
+            if ($sourceCard) {
+                $selectedLabelIds = array_key_exists('label_ids', $validated)
+                    ? array_values(array_unique($validated['label_ids']))
+                    : $sourceCard->labels->modelKeys();
+
+                $card->labels()->sync($selectedLabelIds);
+                $card->brands()->sync($selectedBrandIds);
+
+                foreach ($sourceCard->tasks as $sourceTask) {
+                    $task = $card->tasks()->create([
+                        'title' => $sourceTask->title,
+                        'is_completed' => false,
+                        'order' => $sourceTask->order,
+                    ]);
+
+                    foreach ($sourceTask->subtasks as $sourceSubtask) {
+                        $task->subtasks()->create([
+                            'title' => $sourceSubtask->title,
+                            'is_completed' => false,
+                            'order' => $sourceSubtask->order,
+                        ]);
+                    }
+                }
+            }
 
             if (!empty($assignees)) {
 
@@ -451,6 +572,7 @@ class CardController extends Controller
                 'board_id' => $board->id,
                 'campaign_id' => $board->campaign?->id,
                 'workspace_id' => $board->campaign?->workspace_id,
+                'copied_from_card_id' => $sourceCard?->id,
             ]
         );
 

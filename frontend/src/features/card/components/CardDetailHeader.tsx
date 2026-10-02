@@ -1,8 +1,9 @@
-import { X, CheckSquare, Clock3, Pencil, Loader2, Plus } from "lucide-react";
+import { X, CheckSquare, Clock3, Pencil, Loader2, Plus, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { updateCard } from "../api/card.api";
 import { Brand, User, Label, Card, CardPriority } from "../types";
 import PrioritySection from "./sections/PrioritySection";
+import { useAuth } from "@/context/AuthContext";
 
 interface Props {
   cardId: string;
@@ -17,6 +18,7 @@ interface Props {
   onUpdated: (updated?: Partial<Card>) => Promise<void> | void;
   onClose: () => void;
   onToggleMembers: () => void;
+  onDuplicate: () => void;
 }
 
 export default function CardDetailHeader({
@@ -32,7 +34,10 @@ export default function CardDetailHeader({
   onUpdated,
   onClose,
   onToggleMembers,
+  onDuplicate,
 }: Props) {
+  const { can } = useAuth();
+  const canDuplicate = can("card.create") || can("task.create");
   // =========================================
   // TITLE EDIT STATE
   // =========================================
@@ -291,18 +296,33 @@ export default function CardDetailHeader({
           ) : null}
         </div>
 
-        {/* CLOSE BUTTON */}
-        <button
-          onClick={onClose}
-          className="
-            flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 md:h-8 md:w-8 md:rounded-lg xl:hidden
-            transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 
-            dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300
-          "
-          aria-label="Close"
-        >
-          <X size={18} strokeWidth={2.2} />
-        </button>
+        {/* CARD ACTIONS */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {canDuplicate ? (
+            <button
+              type="button"
+              onClick={onDuplicate}
+              className="flex h-9 items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-500/15 dark:border-blue-800 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
+              aria-label="Duplicate card"
+              title="Duplicate card"
+            >
+              <Copy size={15} />
+              <span className="hidden sm:inline">Duplicate</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onClose}
+            className="
+              flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 md:h-8 md:w-8 md:rounded-lg xl:hidden
+              transition-all duration-200 hover:bg-slate-100 hover:text-slate-600
+              dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300
+            "
+            aria-label="Close"
+          >
+            <X size={18} strokeWidth={2.2} />
+          </button>
+        </div>
       </div>
     </div>
   );
