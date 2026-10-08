@@ -50,6 +50,7 @@ const MyWorkPage = lazy(() => import("@/features/my-work/pages/MyWorkPage"));
 const LandingPage = lazy(() => import("@/features/landing/pages/LandingPage"));
 const EditAccountPage = lazy(() => import("@/features/account/pages/EditAccountPage"));
 const IntegrationSettingsPage = lazy(() => import("@/features/integration/pages/IntegrationSettingsPage"));
+const AssistantPreview = lazy(() => import("@/features/ai/AssistantPreview"));
 
 function isSuperAdminUser(auth: ReturnType<typeof useAuth>) {
   try {
@@ -197,6 +198,7 @@ export default function App() {
           />
 
           <Route path="/integrations" element={<IntegrationSettingsPage />} />
+          <Route path="/assistant/preview" element={<AssistantPreview />} />
 
           {/* User Management */}
           <Route

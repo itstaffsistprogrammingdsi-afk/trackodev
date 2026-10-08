@@ -532,6 +532,11 @@ const AppSidebar: React.FC = () => {
               },
             ]
           : []),
+        {
+          icon: <BoxCubeIcon />,
+          name: "Studio Maskot",
+          path: "/assistant/preview",
+        },
       ];
     } catch (error) {
       console.error("Gagal membangun menu sidebar:", error);

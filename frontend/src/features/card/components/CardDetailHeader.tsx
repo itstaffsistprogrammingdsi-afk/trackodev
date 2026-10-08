@@ -1,9 +1,10 @@
-import { X, CheckSquare, Clock3, Pencil, Loader2, Plus, Copy } from "lucide-react";
+import { X, CheckSquare, Clock3, Pencil, Loader2, Plus, Copy, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { updateCard } from "../api/card.api";
 import { Brand, User, Label, Card, CardPriority } from "../types";
 import PrioritySection from "./sections/PrioritySection";
 import { useAuth } from "@/context/AuthContext";
+import { openAssistant } from "@/features/ai/assistant";
 
 interface Props {
   cardId: string;
@@ -298,6 +299,9 @@ export default function CardDetailHeader({
 
         {/* CARD ACTIONS */}
         <div className="flex shrink-0 items-center gap-1.5">
+          <button type="button" onClick={() => openAssistant({ id: cardId, title })} aria-label="Tanya AI tentang card ini" title="Tanya AI" className="flex h-9 items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
+            <Sparkles size={15} /><span className="hidden sm:inline">Tanya AI</span>
+          </button>
           {canDuplicate ? (
             <button
               type="button"

@@ -1,10 +1,12 @@
 import React from "react";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import { SidebarProvider, useSidebar } from "../context/SidebarContext";
 import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
 import Backdrop from "./Backdrop";
 import RealtimeSync from "../components/realtime/RealtimeSync";
+import AiAssistant from "../features/ai/AiAssistant";
+import { useAuth } from "../context/AuthContext";
 
 /* -------------------------------------------------------------------------- */
 /*                               LAYOUT CONTENT                               */
@@ -54,10 +56,13 @@ const LayoutContent: React.FC = () => {
 /* -------------------------------------------------------------------------- */
 
 const AppLayout: React.FC = () => {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
   return (
     <SidebarProvider>
       <RealtimeSync />
       <LayoutContent />
+      {pathname !== "/assistant/preview" && <AiAssistant key={user?.id} />}
     </SidebarProvider>
   );
 };

@@ -45,6 +45,7 @@ const breadcrumbRoutes: BreadcrumbRoute[] = [
   { pattern: "/reports", label: "Report" },
   { pattern: "/profile", label: "Profile" },
   { pattern: "/integrations", label: "Integrations" },
+  { pattern: "/assistant/preview", label: "Studio Maskot" },
 ];
 
 /* -------------------------------------------------------------------------- */
