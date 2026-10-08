@@ -66,7 +66,7 @@ export default function CardDetailModal({
     setMemberSearch,
   } = useCardSidebar();
 
-  const { detail, users, loading, refreshing, fetchDetail, setDetail } =
+  const { detail, users, loading, refreshing, error: detailError, fetchDetail, setDetail } =
     useCardDetail(card, isOpen, showMembers);
   // Hanya tampilkan skeleton saat initial load (belum ada data sama sekali).
   // Background realtime refresh harus silent agar textarea deskripsi tidak
@@ -278,12 +278,12 @@ export default function CardDetailModal({
         {/* ========================================= */}
         {/* MAIN LAYOUT WRAPPER */}
         {/* ========================================= */}
-        <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           
           {/* ========================================= */}
           {/* LEFT CONTENT AREA */}
           {/* ========================================= */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col xl:overflow-y-auto xl:overscroll-contain">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-y-auto lg:overscroll-contain">
             {/* STICKY HEADER */}
             <div className="z-20 shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90">
               <CardDetailHeader
@@ -316,7 +316,7 @@ export default function CardDetailModal({
             </div>
 
             {/* INNER BODY CONTENT */}
-            <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-6 sm:space-y-6 sm:p-6 sm:pb-6 lg:space-y-8 lg:p-8 lg:pb-8 xl:flex-none xl:overflow-visible xl:overscroll-auto xl:pb-8">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-6 sm:space-y-6 sm:p-6 sm:pb-6 lg:flex-none lg:space-y-8 lg:overflow-visible lg:overscroll-auto lg:p-8 lg:pb-8">
               {showInitialLoading ? (
                 <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
@@ -324,6 +324,24 @@ export default function CardDetailModal({
                 </div>
               ) : (
                 <>
+                  {detailError && !detail ? (
+                    <div
+                      role="alert"
+                      className="flex flex-col gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 sm:flex-row sm:items-center sm:justify-between dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
+                    >
+                      <span>
+                        Detail card gagal dimuat. Deskripsi mungkin belum tampil.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void fetchDetail()}
+                        className="shrink-0 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
+                      >
+                        Coba lagi
+                      </button>
+                    </div>
+                  ) : null}
+
                   {/* ========================================= */}
                   {/* DESCRIPTION SECTION */}
                   {/* ========================================= */}
@@ -453,7 +471,7 @@ export default function CardDetailModal({
           {/* ========================================= */}
           {/* RIGHT SIDEBAR PANEL */}
           {/* ========================================= */}
-          <div className="hidden w-[340px] max-w-[340px] shrink-0 flex-col overflow-hidden border-l border-slate-200/80 bg-white/70 backdrop-blur-xl xl:flex dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="hidden w-[340px] max-w-[340px] shrink-0 flex-col overflow-hidden border-l border-slate-200/80 bg-white/70 backdrop-blur-xl lg:flex dark:border-slate-800 dark:bg-slate-900/70">
             <div className="flex shrink-0 justify-end px-6 pt-5">
               <button
                 type="button"
@@ -470,7 +488,7 @@ export default function CardDetailModal({
           </div>
 
         </div>
-        <div className="relative z-30 shrink-0 border-t border-slate-200/80 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl xl:hidden dark:border-slate-800 dark:bg-slate-900/95">
+        <div className="relative z-30 shrink-0 border-t border-slate-200/80 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}
@@ -482,7 +500,7 @@ export default function CardDetailModal({
         </div>
 
         {mobileSidebarOpen ? (
-          <div className="absolute inset-0 z-40 flex items-end xl:hidden">
+          <div className="absolute inset-0 z-40 flex items-end lg:hidden">
             <button
               type="button"
               aria-label="Tutup card tools"

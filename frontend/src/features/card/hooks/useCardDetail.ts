@@ -10,6 +10,7 @@ interface ReturnType {
   users: User[];
   loading: boolean;
   refreshing: boolean;
+  error: boolean;
   fetchDetail: (options?: { silent?: boolean }) => Promise<void>;
   setDetail: React.Dispatch<React.SetStateAction<Card | null>>;
 }
@@ -33,6 +34,7 @@ export function useCardDetail(
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
   const detailRequestRef = useRef(0);
   const usersRequestRef = useRef(0);
   const activeCardIdRef = useRef<string | null>(null);
@@ -64,10 +66,12 @@ export function useCardDetail(
         const cardRes = await api.get(`/cards/${card.id}`);
         if (requestId === detailRequestRef.current) {
           setDetail(cardRes.data.data);
+          setError(false);
         }
       } catch (error) {
         if (requestId === detailRequestRef.current) {
           console.error("FAILED FETCH CARD DETAIL", error);
+          setError(true);
         }
       } finally {
         if (requestId === detailRequestRef.current) {
@@ -104,6 +108,7 @@ export function useCardDetail(
     if (activeCardIdRef.current !== card.id) {
       activeCardIdRef.current = card.id;
       setDetail(null);
+      setError(false);
     }
     void fetchDetail();
     return () => {
@@ -119,7 +124,8 @@ export function useCardDetail(
     activeCardIdRef.current = null;
     setLoading(false);
     setRefreshing(false);
+    setError(false);
   }, [isOpen]);
 
-  return { detail, users, loading, refreshing, fetchDetail, setDetail };
+  return { detail, users, loading, refreshing, error, fetchDetail, setDetail };
 }

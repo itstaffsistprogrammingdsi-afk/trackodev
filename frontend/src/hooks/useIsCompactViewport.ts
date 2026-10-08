@@ -8,7 +8,11 @@ import { useEffect, useState } from "react";
  * yang sudah rapi tidak pernah aktif saat dibuka lewat Chrome/Safari HP.
  * Hook ini melengkapinya tanpa mengubah perilaku aplikasi native.
  */
-const COMPACT_QUERY = "(max-width: 767px), (pointer: coarse)";
+// Kompak hanya untuk layar kecil (HP) atau tablet sentuh (sampai 1023px).
+// Sebelumnya `(pointer: coarse)` tanpa batas lebar membuat laptop layar
+// sentuh & tablet besar ikut memakai layout mobile walau layarnya lebar,
+// sehingga tampilan berbeda antar-device dengan ukuran layar yang sama.
+const COMPACT_QUERY = "(max-width: 767px), (pointer: coarse) and (max-width: 1023px)";
 
 function currentMatch(): boolean {
   if (typeof window === "undefined" || !window.matchMedia) return false;
