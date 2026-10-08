@@ -50,10 +50,35 @@ final class ResourceAccess
             return true;
         }
 
-        if ($form->created_by === $user->id) {
+        if ((string) $form->created_by === (string) $user->id) {
             return true;
         }
 
+        // Admin/manager: otoritas penuh atas seluruh form di divisinya.
+        if ($user->managesDivision()) {
+            $form->loadMissing('workspace', 'creator.divisions');
+
+            if ($form->workspace) {
+                return $form->workspace->division_id !== null
+                    && $user->divisions()
+                        ->where('divisions.id', $form->workspace->division_id)
+                        ->exists();
+            }
+
+            // Form tanpa workspace (mis. dibuat dari Form Builder) mengikuti
+            // divisi pembuatnya, sehingga admin/manager satu divisi tetap dapat
+            // melihat & mengelolanya.
+            if (! $form->creator) {
+                return false;
+            }
+
+            return $form->creator->divisions()
+                ->whereIn('divisions.id', $user->divisions()->pluck('divisions.id'))
+                ->exists();
+        }
+
+        // Role lain (mis. user dengan form.view eksplisit): perilaku lama —
+        // hanya form miliknya sendiri atau workspace yang dapat diaksesnya.
         if ($form->workspace) {
             return $form->workspace->canBeAccessedBy($user);
         }
