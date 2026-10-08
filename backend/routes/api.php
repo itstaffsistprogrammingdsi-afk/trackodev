@@ -33,6 +33,16 @@ use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
+Route::prefix('ai')->middleware('auth:sanctum')->group(function () {
+    Route::get('/status', [\App\Http\Controllers\Api\AiAssistantController::class, 'status'])->middleware('throttle:60,1');
+    Route::get('/cards', [\App\Http\Controllers\Api\AiAssistantController::class, 'cards'])
+        ->middleware(['permission:card.view|task.view', 'throttle:30,1']);
+    Route::get('/boards', [\App\Http\Controllers\Api\AiAssistantController::class, 'boards'])->middleware('throttle:30,1');
+    Route::post('/messages', [\App\Http\Controllers\Api\AiAssistantController::class, 'message'])->middleware('throttle:10,1');
+    Route::post('/proposals/{proposal}/approve', [\App\Http\Controllers\Api\AiAssistantController::class, 'approveProposal'])->middleware('throttle:10,1');
+    Route::post('/proposals/{proposal}/reject', [\App\Http\Controllers\Api\AiAssistantController::class, 'rejectProposal'])->middleware('throttle:10,1');
+});
+
 // ============================================
 // PUBLIC FORMS
 // ============================================
