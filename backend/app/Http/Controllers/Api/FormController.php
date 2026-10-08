@@ -15,7 +15,7 @@ class FormController extends Controller
 {
     public function index(Request $request)
     {
-        $forms = Form::with('creator')
+        $forms = Form::with(['creator.divisions', 'workspace'])
             ->latest()
             ->get()
             ->filter(fn (Form $form) => ResourceAccess::form($request->user(), $form))
