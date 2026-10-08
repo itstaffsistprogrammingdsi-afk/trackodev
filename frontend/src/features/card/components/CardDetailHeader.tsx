@@ -318,7 +318,7 @@ export default function CardDetailHeader({
             type="button"
             onClick={onClose}
             className="
-              flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 md:h-8 md:w-8 md:rounded-lg xl:hidden
+              flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 md:h-8 md:w-8 md:rounded-lg lg:hidden
               transition-all duration-200 hover:bg-slate-100 hover:text-slate-600
               dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300
             "
