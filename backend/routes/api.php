@@ -326,7 +326,7 @@ Route::prefix('mcp/v1')
                 ->middleware(['mcp.ability:data:read', 'permission:my_work.export'])
                 ->name('mcp.my-work.export');
 
-            Route::middleware(['mcp.ability:data:write', 'mcp.idempotency'])->group(function () {
+            Route::middleware(['mcp.ability:data:write', 'mcp.idempotency', 'workspace.writable'])->group(function () {
                 // Divisi, workspace, campaign, dan board
                 Route::post('/divisions', [DivisionController::class, 'store'])
                     ->middleware('permission:division.create')->name('mcp.divisions.store');
@@ -578,6 +578,7 @@ Route::get(
 
 Route::middleware([
     'auth:sanctum',
+    'workspace.writable',
 ])->group(function () {
 
     // ========================================
@@ -742,6 +743,22 @@ Route::middleware([
     Route::delete(
         'workspaces/{workspace}/members/{user}',
         [WorkspaceController::class, 'removeMember']
+    )->middleware('permission:workspace.member.remove|workspace.update');
+
+    // Share workspace ke seluruh anggota sebuah divisi (snapshot).
+    Route::get(
+        'workspaces/{workspace}/division-candidates',
+        [WorkspaceController::class, 'divisionCandidates']
+    )->middleware('permission:workspace.member.view|workspace.update');
+
+    Route::post(
+        'workspaces/{workspace}/members/divisions',
+        [WorkspaceController::class, 'addDivisionMembers']
+    )->middleware('permission:workspace.member.add|workspace.update');
+
+    Route::delete(
+        'workspaces/{workspace}/members/divisions/{division}',
+        [WorkspaceController::class, 'removeDivisionMembers']
     )->middleware('permission:workspace.member.remove|workspace.update');
 
     // ========================================

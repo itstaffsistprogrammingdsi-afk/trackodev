@@ -193,18 +193,45 @@ public function store(Request $request, Division $division): JsonResponse
         $members = $workspace->members()
             ->with('divisions:id,name')
             ->orderBy('name')
-            ->get()
-            ->map(fn (User $member) => [
-                'id' => $member->id,
-                'name' => $member->name,
-                'email' => $member->email,
-                'avatar' => $member->avatar ? asset('storage/'.$member->avatar) : null,
-                'access' => $member->pivot->access ?? Workspace::ACCESS_JOIN_ONLY,
-                'source' => $member->pivot->source ?? Workspace::SOURCE_AUTO,
-                'division_names' => $member->divisions->pluck('name')->values(),
-            ]);
+            ->get();
 
-        return response()->json(['data' => $members]);
+        // Nama divisi asal untuk baris hasil share-divisi, di-resolve sekali
+        // agar tiap baris tidak memicu query tambahan.
+        $sharedDivisionNames = Division::query()
+            ->whereIn('id', $members->pluck('pivot.shared_division_id')->filter()->unique()->values())
+            ->pluck('name', 'id');
+
+        $payload = $members->map(fn (User $member) => [
+            'id' => $member->id,
+            'name' => $member->name,
+            'email' => $member->email,
+            'avatar' => $member->avatar ? asset('storage/'.$member->avatar) : null,
+            'access' => $member->pivot->access ?? Workspace::ACCESS_JOIN_ONLY,
+            'source' => $member->pivot->source ?? Workspace::SOURCE_AUTO,
+            'shared_division_id' => $member->pivot->shared_division_id,
+            'shared_division_name' => $member->pivot->shared_division_id
+                ? $sharedDivisionNames->get($member->pivot->shared_division_id)
+                : null,
+            'division_names' => $member->divisions->pluck('name')->values(),
+        ]);
+
+        return response()->json(['data' => $payload]);
+    }
+
+    /**
+     * Divisi yang bisa dibagikan ke workspace ini: semua divisi kecuali
+     * divisi pemilik workspace.
+     */
+    public function divisionCandidates(Request $request, Workspace $workspace): JsonResponse
+    {
+        $this->authorizeManageMembers($request, $workspace);
+
+        $divisions = Division::query()
+            ->where('divisions.id', '!=', $workspace->division_id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        return response()->json(['data' => $divisions]);
     }
 
     public function addMember(Request $request, Workspace $workspace): JsonResponse
@@ -263,6 +290,170 @@ public function store(Request $request, Division $division): JsonResponse
         }
 
         return response()->json(['message' => 'Anggota workspace berhasil ditambahkan.'], 201);
+    }
+
+    /**
+     * Bagikan workspace ke SELURUH anggota sebuah divisi sekaligus (snapshot).
+     *
+     * Anggota yang sudah ada saat share diberi akses; anggota yang bergabung
+     * setelahnya tidak otomatis ikut. Baris yang sudah punya akses lebih tinggi
+     * (mis. undangan manual) tidak diturunkan.
+     */
+    public function addDivisionMembers(Request $request, Workspace $workspace): JsonResponse
+    {
+        $this->authorizeManageMembers($request, $workspace);
+
+        $validated = $request->validate([
+            'division_id' => ['required', 'uuid', 'exists:divisions,id'],
+            'access' => ['required', 'in:'.implode(',', Workspace::ACCESS_LEVELS)],
+        ]);
+
+        $division = Division::findOrFail($validated['division_id']);
+
+        abort_if(
+            (string) $division->id === (string) $workspace->division_id,
+            422,
+            'Divisi ini adalah pemilik workspace; tidak perlu dibagikan.'
+        );
+
+        $access = $validated['access'];
+        $divisionUsers = $division->users()->get();
+
+        $added = 0;
+        $updated = 0;
+        $skipped = 0;
+
+        DB::transaction(function () use ($workspace, $division, $access, $divisionUsers, &$added, &$updated, &$skipped) {
+            foreach ($divisionUsers as $user) {
+                $existing = $workspace->members()->whereKey($user->id)->first();
+
+                if ($existing) {
+                    $isSameDivisionShare = $existing->pivot->source === Workspace::SOURCE_DIVISION
+                        && (string) $existing->pivot->shared_division_id === (string) $division->id;
+
+                    if (! $isSameDivisionShare) {
+                        // Sudah punya akses dari jalur lain (manual/auto) atau
+                        // share divisi berbeda: jangan turunkan/ubah.
+                        $skipped++;
+                        continue;
+                    }
+
+                    $workspace->members()->updateExistingPivot($user->id, [
+                        'access' => $access,
+                        'source' => Workspace::SOURCE_DIVISION,
+                        'shared_division_id' => $division->id,
+                    ]);
+
+                    if ($access === Workspace::ACCESS_FULL) {
+                        $this->syncFullAccessToContent($workspace, $user);
+                    }
+
+                    $updated++;
+                    continue;
+                }
+
+                $workspace->members()->attach($user->id, [
+                    'access' => $access,
+                    'source' => Workspace::SOURCE_DIVISION,
+                    'shared_division_id' => $division->id,
+                ]);
+
+                if ($access === Workspace::ACCESS_FULL) {
+                    $this->syncFullAccessToContent($workspace, $user);
+                }
+
+                $added++;
+            }
+        });
+
+        $this->logWorkspaceShare($request, $workspace, $division, $access, $added + $updated, $skipped);
+
+        return response()->json([
+            'message' => "Workspace dibagikan ke divisi '{$division->name}'.",
+            'data' => [
+                'added' => $added,
+                'updated' => $updated,
+                'skipped' => $skipped,
+                'access' => $access,
+            ],
+        ], 201);
+    }
+
+    /**
+     * Cabut share divisi: hanya menghapus baris yang berasal dari share-divisi
+     * untuk divisi tersebut. Undangan individual (source != division) tetap.
+     */
+    public function removeDivisionMembers(
+        Request $request,
+        Workspace $workspace,
+        Division $division
+    ): JsonResponse {
+        $this->authorizeManageMembers($request, $workspace);
+
+        $rows = $workspace->members()
+            ->wherePivot('source', Workspace::SOURCE_DIVISION)
+            ->wherePivot('shared_division_id', $division->id)
+            ->get();
+
+        DB::transaction(function () use ($workspace, $rows) {
+            foreach ($rows as $user) {
+                $wasFull = $user->pivot->access === Workspace::ACCESS_FULL;
+
+                $workspace->members()->detach($user->id);
+
+                // Hanya share level "full" yang pernah menambah keanggotaan
+                // campaign/chat; view_all tidak, jadi jangan cabut yang bukan
+                // hasil share ini.
+                if ($wasFull) {
+                    $this->revokeContentMembership($workspace, $user);
+                }
+            }
+        });
+
+        ActivityLogService::log(
+            $request->user(),
+            'workspace',
+            (string) $workspace->id,
+            'division_share_removed',
+            "Mencabut share workspace '{$workspace->name}' dari divisi '{$division->name}' ({$rows->count()} anggota)",
+            ['division_id' => (string) $division->id, 'removed' => $rows->count()]
+        );
+
+        return response()->json([
+            'message' => "Share divisi '{$division->name}' dicabut.",
+            'data' => ['removed' => $rows->count()],
+        ]);
+    }
+
+    private function logWorkspaceShare(
+        Request $request,
+        Workspace $workspace,
+        Division $division,
+        string $access,
+        int $affected,
+        int $skipped
+    ): void {
+        try {
+            ActivityLogService::log(
+                $request->user(),
+                'workspace',
+                (string) $workspace->id,
+                'division_shared',
+                "Membagikan workspace '{$workspace->name}' ke divisi '{$division->name}' ({$affected} anggota, akses: {$access})",
+                [
+                    'division_id' => (string) $division->id,
+                    'access' => $access,
+                    'affected' => $affected,
+                    'skipped' => $skipped,
+                ]
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('WORKSPACE DIVISION SHARE LOG ERROR', [
+                'workspace_id' => $workspace->id,
+                'division_id' => $division->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function updateMember(Request $request, Workspace $workspace, User $user): JsonResponse

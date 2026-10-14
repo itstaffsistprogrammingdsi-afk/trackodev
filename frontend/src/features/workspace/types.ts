@@ -8,7 +8,7 @@ export type Workspace = {
 
 export type WorkspaceAccessLevel = "join_only" | "view_all" | "full";
 
-export type WorkspaceMemberSource = "manual" | "auto";
+export type WorkspaceMemberSource = "manual" | "auto" | "division";
 
 export type WorkspaceMember = {
   id: string
@@ -17,7 +17,15 @@ export type WorkspaceMember = {
   avatar?: string | null
   access: WorkspaceAccessLevel
   source?: WorkspaceMemberSource
+  shared_division_id?: string | null
+  shared_division_name?: string | null
   division_names?: string[]
+}
+
+export type DivisionOption = {
+  id: string
+  name: string
+  code?: string | null
 }
 
 export type MentionableUser = {

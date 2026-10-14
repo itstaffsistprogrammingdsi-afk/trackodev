@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, ChevronDown, Search, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Loader2, ChevronDown, Search, Trash2, UserPlus, Users, X, Building2 } from "lucide-react";
 
 import { toast } from "@/lib/feedback";
 import { AxiosError } from "axios";
@@ -16,6 +16,9 @@ import {
   useRemoveWorkspaceMember,
   useUpdateWorkspaceMemberAccess,
   useWorkspaceMembers,
+  useDivisionCandidates,
+  useShareWorkspaceToDivision,
+  useRemoveWorkspaceDivisionShare,
 } from "../hooks/useWorkspaceMembers";
 
 interface Props {
@@ -63,6 +66,11 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
   const updateAccess = useUpdateWorkspaceMemberAccess(workspace.id);
   const removeMember = useRemoveWorkspaceMember(workspace.id);
 
+  const shareToDivision = useShareWorkspaceToDivision(workspace.id);
+  const removeDivisionShare = useRemoveWorkspaceDivisionShare(workspace.id);
+  const { data: divisionCandidates = [], isLoading: loadingDivisions } =
+    useDivisionCandidates(workspace.id, open);
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<MentionableUser[]>([]);
   const [searching, setSearching] = useState(false);
@@ -71,21 +79,51 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
   >([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showAuto, setShowAuto] = useState(false);
+  const [selectedDivision, setSelectedDivision] = useState("");
+  const [divisionAccess, setDivisionAccess] =
+    useState<WorkspaceAccessLevel>("view_all");
+  const [busyDivision, setBusyDivision] = useState<string | null>(null);
 
   const requestIdRef = useRef(0);
 
   const existingIds = useMemo(() => new Set(members.map((m) => m.id)), [members]);
 
-  // Keanggotaan otomatis (lewat campaign/task) disembunyikan dari daftar
-  // utama, tetapi aksesnya tetap berlaku dan tetap bisa dikelola.
+  // Keanggotaan otomatis (lewat campaign/task) dan hasil share-divisi
+  // disembunyikan dari daftar utama, tetapi aksesnya tetap berlaku.
   const manualMembers = useMemo(
-    () => members.filter((member) => member.source !== "auto"),
+    () => members.filter((member) => member.source !== "auto" && member.source !== "division"),
     [members],
   );
   const autoMembers = useMemo(
     () => members.filter((member) => member.source === "auto"),
     [members],
   );
+
+  // Ringkasan share per divisi: satu baris per shared_division_id.
+  const divisionShares = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; access: WorkspaceAccessLevel; count: number }
+    >();
+
+    for (const member of members) {
+      if (member.source !== "division" || !member.shared_division_id) continue;
+
+      const existing = map.get(member.shared_division_id);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(member.shared_division_id, {
+          id: member.shared_division_id,
+          name: member.shared_division_name || "Divisi",
+          access: member.access,
+          count: 1,
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [members]);
 
   const renderMemberRow = (member: WorkspaceMember, auto: boolean) => (
     <div
@@ -148,6 +186,8 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
       setQuery("");
       setResults([]);
       setSelected([]);
+      setSelectedDivision("");
+      setDivisionAccess("view_all");
     }
   }, [open]);
 
@@ -255,6 +295,39 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
       toast.error(errorMessage(err, "Gagal mencabut akses."));
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const handleShareDivision = async () => {
+    if (!selectedDivision) return;
+
+    try {
+      const result = await shareToDivision.mutateAsync({
+        divisionId: selectedDivision,
+        access: divisionAccess,
+      });
+
+      const skipped = result?.skipped ?? 0;
+      toast.success(
+        skipped > 0
+          ? `Divisi dibagikan. ${skipped} anggota dilewati karena sudah punya akses.`
+          : "Akses divisi berhasil diberikan.",
+      );
+      setSelectedDivision("");
+    } catch (err) {
+      toast.error(errorMessage(err, "Gagal membagikan ke divisi."));
+    }
+  };
+
+  const handleRemoveDivision = async (divisionId: string, name: string) => {
+    setBusyDivision(divisionId);
+    try {
+      await removeDivisionShare.mutateAsync(divisionId);
+      toast.success(`Share divisi ${name} dicabut.`);
+    } catch (err) {
+      toast.error(errorMessage(err, "Gagal mencabut share divisi."));
+    } finally {
+      setBusyDivision(null);
     }
   };
 
@@ -408,6 +481,104 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
               >
                 {addMember.isPending ? "Menyimpan..." : "Beri akses"}
               </button>
+            </div>
+          ) : null}
+        </div>
+
+        {/* BAGIKAN KE DIVISI */}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+          <div className="mb-2 flex items-center gap-2">
+            <Building2 size={15} className="text-blue-600 dark:text-blue-400" />
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Bagikan ke Divisi
+            </p>
+          </div>
+
+          <p className="mb-3 text-[11px] leading-4 text-slate-400">
+            Beri akses ke seluruh anggota divisi yang terdaftar saat ini. Anggota
+            yang baru bergabung setelahnya tidak otomatis ikut.
+          </p>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select
+              value={selectedDivision}
+              onChange={(event) => setSelectedDivision(event.target.value)}
+              disabled={loadingDivisions}
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:flex-1"
+            >
+              <option value="">
+                {loadingDivisions ? "Memuat divisi..." : "Pilih divisi..."}
+              </option>
+              {divisionCandidates.map((division) => (
+                <option key={division.id} value={division.id}>
+                  {division.name}
+                  {division.code ? ` (${division.code})` : ""}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={divisionAccess}
+              onChange={(event) =>
+                setDivisionAccess(event.target.value as WorkspaceAccessLevel)
+              }
+              className="h-10 rounded-xl border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-auto"
+            >
+              {ACCESS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => void handleShareDivision()}
+              disabled={!selectedDivision || shareToDivision.isPending}
+              className="h-10 shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {shareToDivision.isPending ? "Membagikan..." : "Bagi akses"}
+            </button>
+          </div>
+
+          {!loadingDivisions && divisionCandidates.length === 0 ? (
+            <p className="mt-2 text-xs text-slate-400">
+              Tidak ada divisi lain yang tersedia untuk dibagikan.
+            </p>
+          ) : null}
+
+          {divisionShares.length > 0 ? (
+            <div className="mt-3 space-y-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Divisi dengan akses ({divisionShares.length})
+              </p>
+              {divisionShares.map((share) => (
+                <div
+                  key={share.id}
+                  className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                      <Building2 size={14} className="shrink-0 text-slate-400" />
+                      {share.name}
+                    </p>
+                    <p className="truncate text-[11px] text-slate-400">
+                      {share.count} anggota · {accessLabel(share.access)}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={busyDivision === share.id}
+                    onClick={() => void handleRemoveDivision(share.id, share.name)}
+                    aria-label={`Cabut akses divisi ${share.name}`}
+                    title={`Cabut akses divisi (${share.count} anggota)`}
+                    className="self-start rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-950/40 sm:self-auto"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
             </div>
           ) : null}
         </div>

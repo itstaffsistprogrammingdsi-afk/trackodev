@@ -172,6 +172,13 @@ class ReportScopeService
             return true;
         }
 
+        // Penerima share-divisi (view_all/full) melihat seluruh isi workspace,
+        // termasuk copy lintas divisi di dalamnya.
+        $workspace = ($card->board?->campaign ?: $card->campaign)?->workspace;
+        if ($workspace && $workspace->grantsFullContentAccessTo($user)) {
+            return true;
+        }
+
         $campaign = $card->board?->campaign ?: $card->campaign;
         $divisionId = $campaign?->workspace?->division_id;
 
