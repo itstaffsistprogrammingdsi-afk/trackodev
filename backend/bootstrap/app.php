@@ -4,7 +4,6 @@ use App\Http\Middleware\AuditMcpRequest;
 use App\Http\Middleware\AuthenticateMcpClient;
 use App\Http\Middleware\EnsureMcpAbility;
 use App\Http\Middleware\EnsureMcpIdempotency;
-use App\Http\Middleware\EnsureWorkspaceWritable;
 use App\Http\Middleware\ResolveMcpActor;
 use App\Providers\AuthServiceProvider;
 use Illuminate\Foundation\Application;
@@ -74,8 +73,6 @@ return Application::configure(
             'mcp.audit' => AuditMcpRequest::class,
 
             'mcp.idempotency' => EnsureMcpIdempotency::class,
-
-            'workspace.writable' => EnsureWorkspaceWritable::class,
         ]);
 
         // ========================================
