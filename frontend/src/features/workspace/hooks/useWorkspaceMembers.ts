@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 
 import * as api from '../api/workspace.api'
-import { WorkspaceAccessLevel, WorkspaceMember } from '../types'
+import { DivisionOption, WorkspaceAccessLevel, WorkspaceMember } from '../types'
 
 type ApiErrorResponse = {
   message?: string
@@ -61,6 +61,45 @@ export const useRemoveWorkspaceMember = (workspaceId: string) => {
 
   return useMutation<void, WorkspaceMemberMutationError, string>({
     mutationFn: (userId) => api.removeWorkspaceMember(workspaceId, userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: membersKey(workspaceId) })
+      qc.invalidateQueries({ queryKey: ['campaigns'] })
+    },
+  })
+}
+
+export const useDivisionCandidates = (workspaceId: string, enabled = true) => {
+  return useQuery<DivisionOption[]>({
+    queryKey: ['workspace-division-candidates', workspaceId],
+    queryFn: () => api.getDivisionCandidates(workspaceId),
+    enabled: enabled && !!workspaceId,
+    staleTime: 60_000,
+  })
+}
+
+export const useShareWorkspaceToDivision = (workspaceId: string) => {
+  const qc = useQueryClient()
+
+  return useMutation<
+    { added: number; updated: number; skipped: number },
+    WorkspaceMemberMutationError,
+    { divisionId: string; access: WorkspaceAccessLevel }
+  >({
+    mutationFn: ({ divisionId, access }) =>
+      api.shareWorkspaceToDivision(workspaceId, divisionId, access),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: membersKey(workspaceId) })
+      qc.invalidateQueries({ queryKey: ['campaigns'] })
+    },
+  })
+}
+
+export const useRemoveWorkspaceDivisionShare = (workspaceId: string) => {
+  const qc = useQueryClient()
+
+  return useMutation<void, WorkspaceMemberMutationError, string>({
+    mutationFn: (divisionId) =>
+      api.removeWorkspaceDivisionShare(workspaceId, divisionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: membersKey(workspaceId) })
       qc.invalidateQueries({ queryKey: ['campaigns'] })

@@ -27,6 +27,12 @@ class Workspace extends Model
     public const SOURCE_MANUAL = 'manual';
     public const SOURCE_AUTO = 'auto';
 
+    /**
+     * Keanggotaan hasil aksi "bagikan workspace ke divisi" (snapshot anggota
+     * divisi pada saat share). Hanya lihat isi workspace, bukan pengelola.
+     */
+    public const SOURCE_DIVISION = 'division';
+
     protected $fillable = [
         'division_id',
         'name',
@@ -68,7 +74,7 @@ class Workspace extends Model
             'workspace_user',
             'workspace_id',
             'user_id'
-        )->withPivot('access', 'source')->withTimestamps();
+        )->withPivot('access', 'source', 'shared_division_id')->withTimestamps();
     }
 
     /*
@@ -180,6 +186,39 @@ class Workspace extends Model
     public function grantsFullAccessTo(User $user): bool
     {
         return $this->accessLevelFor($user) === self::ACCESS_FULL;
+    }
+
+    /**
+     * Mode lihat-saja untuk penerima share-divisi.
+     *
+     * Sebuah workspace dianggap read-only bagi user bila satu-satunya alasan
+     * ia punya akses adalah keanggotaan hasil "bagikan ke divisi" (kolom
+     * source = division) dan levelnya bukan full. Anggota divisi pemilik,
+     * super admin, dan kolaborator manual/tanpa share-divisi tidak terpengaruh.
+     *
+     * Karena pivot workspace_user ber-primary-key (workspace_id, user_id),
+     * tiap user hanya punya SATU baris per workspace, sehingga pengecekan
+     * baris tunggal ini sudah pasti benar.
+     */
+    public function isReadOnlyFor(User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return false;
+        }
+
+        // Anggota divisi pemilik selalu punya hak penuh (admin maupun member).
+        if ($user->divisions()->where('divisions.id', $this->division_id)->exists()) {
+            return false;
+        }
+
+        $member = $this->members()->where('users.id', $user->id)->first();
+
+        if (! $member) {
+            return false;
+        }
+
+        return $member->pivot->source === self::SOURCE_DIVISION
+            && $member->pivot->access !== self::ACCESS_FULL;
     }
 
     /** Member yang boleh mengedit isi konten (level full). */

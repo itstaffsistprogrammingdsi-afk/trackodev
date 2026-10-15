@@ -6,6 +6,7 @@ import {
   WorkspaceMember,
   WorkspaceAccessLevel,
   MentionableUser,
+  DivisionOption,
 } from '../types'
 
 export const getWorkspaces = async (divisionId: string): Promise<Workspace[]> => {
@@ -69,6 +70,36 @@ export const removeWorkspaceMember = async (
   userId: string
 ): Promise<void> => {
   await api.delete(`/workspaces/${workspaceId}/members/${userId}`)
+}
+
+// =====================================================
+// SHARE KE DIVISI
+// =====================================================
+
+export const getDivisionCandidates = async (
+  workspaceId: string
+): Promise<DivisionOption[]> => {
+  const res = await api.get(`/workspaces/${workspaceId}/division-candidates`)
+  return res.data.data as DivisionOption[]
+}
+
+export const shareWorkspaceToDivision = async (
+  workspaceId: string,
+  divisionId: string,
+  access: WorkspaceAccessLevel
+): Promise<{ added: number; updated: number; skipped: number }> => {
+  const res = await api.post(`/workspaces/${workspaceId}/members/divisions`, {
+    division_id: divisionId,
+    access,
+  })
+  return res.data.data
+}
+
+export const removeWorkspaceDivisionShare = async (
+  workspaceId: string,
+  divisionId: string
+): Promise<void> => {
+  await api.delete(`/workspaces/${workspaceId}/members/divisions/${divisionId}`)
 }
 
 export const searchMentionableUsers = async (
