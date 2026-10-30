@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Card;
+use App\Services\PersonalWorkScope;
 use Illuminate\Http\Request;
 
 class DailyTodoController extends Controller
@@ -15,25 +16,12 @@ class DailyTodoController extends Controller
         $startDate = $request->input('start_date');
         $endDate   = $request->input('end_date');
 
-$query = Card::query()
-    ->with(['board', 'attachments'])
-    ->where(function ($q) use ($user) {
+        $query = Card::query()->with(['board', 'attachments']);
 
-        $q->whereHas('board.campaign', function ($c) use ($user) {
-            $c->where('created_by', $user->id)
-              ->orWhereHas('members', function ($m) use ($user) {
-                  $m->where('users.id', $user->id);
-              });
-        })
-
-        ->orWhereHas('assignees', function ($a) use ($user) {
-            $a->where('users.id', $user->id);
-        });
-    });
-
-// Copy lintas divisi privat: hanya 5 pihak yang boleh melihat.
-app(\App\Services\CrossDivisionMirrorService::class)
-    ->applyCopyVisibility($query, $user);
+        // Definisi yang sama dengan board Tugas Saya: assignee langsung atau
+        // card tanpa pemilik di campaign user. Card milik rekan satu campaign
+        // yang sudah di-assign ke orang lain tidak ikut.
+        app(PersonalWorkScope::class)->apply($query, $user);
 
         // =========================
         // FILTER RANGE (CUSTOM)
@@ -42,7 +30,10 @@ app(\App\Services\CrossDivisionMirrorService::class)
             $query->whereBetween('created_at', [$startDate, $endDate]);
         }
 
-        $cards = $query->get();
+        // Card asli + copy lintas divisi = satu tugas.
+        $cards = $query->get()
+            ->unique(fn (Card $card) => $card->parent_card_id ?? $card->id)
+            ->values();
 
         // =========================
         // GROUPING STATUS

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -96,6 +97,53 @@ public function canBeAccessedBy(
     }
 
     return false;
+}
+
+/**
+ * Versi query dari canBeAccessedBy(), supaya agregasi dashboard memakai
+ * aturan akses yang sama dengan halaman campaign dan tidak menghitung card
+ * dari campaign yang tidak boleh dibuka user.
+ */
+public function scopeAccessibleBy(Builder $query, User $user): Builder
+{
+    if ($user->isSuperAdmin()) {
+        return $query;
+    }
+
+    return $query->where(function (Builder $accessible) use ($user) {
+        $accessible
+            ->where('campaigns.created_by', $user->id)
+            ->orWhereHas(
+                'members',
+                fn (Builder $member) => $member->where('users.id', $user->id)
+            )
+            ->orWhereHas('workspace', function (Builder $workspace) use ($user) {
+                $workspace->whereHas(
+                    'members',
+                    fn (Builder $member) => $member
+                        ->where('users.id', $user->id)
+                        ->whereIn('workspace_user.access', [
+                            Workspace::ACCESS_VIEW_ALL,
+                            Workspace::ACCESS_FULL,
+                        ])
+                );
+            });
+
+        if (! $user->managesDivision()) {
+            return;
+        }
+
+        $divisionIds = $user->divisions()->pluck('divisions.id')->all();
+
+        if ($divisionIds === []) {
+            return;
+        }
+
+        $accessible->orWhereHas(
+            'workspace',
+            fn (Builder $workspace) => $workspace->whereIn('division_id', $divisionIds)
+        );
+    });
 }
 
 public function cards(): HasMany
