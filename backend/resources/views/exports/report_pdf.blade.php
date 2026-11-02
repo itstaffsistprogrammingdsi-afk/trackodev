@@ -279,8 +279,8 @@
                 @php
                     $cards = $user->cards ?? collect();
                     $cardCount = $cards->count();
-                    $globalIndex = (int) ($userOffset ?? 0) + (int) $index;
-                    $rowClass = $globalIndex % 2 == 0 ? 'row-even' : 'row-odd';
+                    $globalIndex = (int) ($user->report_number ?? ((int) ($userOffset ?? 0) + (int) $index + 1));
+                    $rowClass = ($globalIndex - 1) % 2 == 0 ? 'row-even' : 'row-odd';
                 @endphp
 
                 @if ($cardCount > 0)
@@ -290,7 +290,7 @@
                                  pertama tiap user. Sengaja TANPA rowspan agar
                                  dompdf tidak kehilangan kolom saat page-break. --}}
                             @if ($cardIndex === 0)
-                                <td class="col-no text-center">{{ $globalIndex + 1 }}</td>
+                                <td class="col-no text-center">{{ $globalIndex }}</td>
                                 <td class="col-user">
                                     <span class="user-name">{{ $user->name ?? '-' }}</span>
                                 </td>
@@ -462,7 +462,7 @@
                 @else
                     {{-- User tanpa card --}}
                     <tr class="{{ $rowClass }}">
-                        <td class="col-no text-center">{{ $globalIndex + 1 }}</td>
+                        <td class="col-no text-center">{{ $globalIndex }}</td>
                         <td class="col-user"><span class="user-name">{{ $user->name ?? '-' }}</span></td>
                         <td class="col-divisi">
                             @if ($user->divisions && $user->divisions->count() > 0)
