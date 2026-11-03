@@ -42,7 +42,7 @@ class EncryptedExportService
         $password = $this->normalizePassword($password);
 
         if ($password === null) {
-            if (! str_starts_with($contents, "PK")) {
+            if (! str_starts_with($contents, 'PK')) {
                 throw new RuntimeException('Dokumen Excel sumber tidak valid.');
             }
 

@@ -34,6 +34,48 @@ class ReportPdfServiceTest extends TestCase
         }
     }
 
+    public function test_merged_pdf_keeps_external_attachment_links_clickable(): void
+    {
+        $attachment = (object) [
+            'file_name' => null,
+            'link_url' => 'https://drive.google.com/file/d/audit-link/view',
+            'result_description' => null,
+            'attachment_type' => 'link',
+            'file_url' => null,
+            'file_type' => null,
+            'qc_quantity' => null,
+            'quantity' => 1,
+            'qcBy' => null,
+            'qc_at' => null,
+            'qc_note' => null,
+        ];
+
+        $card = (object) [
+            'title' => 'Card dengan tautan audit',
+            'description' => null,
+            'created_at' => now(),
+            'due_date' => null,
+            'campaign' => null,
+            'workspace' => null,
+            'board' => null,
+            'labels' => collect(),
+            'brands' => collect(),
+            'attachments' => collect([$attachment]),
+        ];
+
+        $users = collect([
+            (object) [
+                'name' => 'User Tautan Audit',
+                'divisions' => collect(),
+                'cards' => collect([$card]),
+            ],
+        ]);
+
+        $contents = app(ReportPdfService::class)->render($users);
+
+        $this->assertStringContainsString('https://drive.google.com/file/d/audit-link/view', $contents);
+    }
+
     public function test_chunk_offset_keeps_global_user_numbering(): void
     {
         $html = view('exports.report_pdf', [

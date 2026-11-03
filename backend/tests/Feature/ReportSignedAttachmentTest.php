@@ -4,11 +4,10 @@ namespace Tests\Feature;
 
 use App\Exports\ReportExportArray;
 use App\Exports\ReportWorkbookExport;
-use App\Models\ActivityLog;
 use App\Models\Board;
 use App\Models\Campaign;
-use App\Models\CardAttachment;
 use App\Models\Card;
+use App\Models\CardAttachment;
 use App\Models\Division;
 use App\Models\User;
 use App\Models\Workspace;
@@ -217,6 +216,37 @@ class ReportSignedAttachmentTest extends TestCase
         $this->assertStringContainsString('signature=', $exportHtml);
         $this->assertStringNotContainsString('/storage/', $exportHtml);
         $this->assertStringContainsString('href="#attachment-preview"', $previewHtml);
+    }
+
+    public function test_pdf_export_view_makes_external_link_attachments_clickable(): void
+    {
+        $attachment = $this->createAttachment([
+            'file_name' => null,
+            'file_path' => null,
+            'link_url' => 'https://drive.google.com/file/d/audit-link/view',
+            'attachment_type' => 'link',
+        ]);
+        $card = $attachment->card()->with([
+            'board.campaign.workspace',
+            'labels',
+            'brands',
+            'attachments.qcBy',
+        ])->firstOrFail();
+        $user = (object) [
+            'name' => 'PDF Link User',
+            'divisions' => collect(),
+            'cards' => collect([$card]),
+        ];
+
+        $exportHtml = view('exports.report_pdf', [
+            'users' => collect([$user]),
+            'signedLinks' => true,
+        ])->render();
+
+        $this->assertStringContainsString(
+            'href="https://drive.google.com/file/d/audit-link/view"',
+            $exportHtml
+        );
     }
 
     private function createAttachment(array $overrides = []): CardAttachment

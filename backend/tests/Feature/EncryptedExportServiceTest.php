@@ -51,9 +51,31 @@ class EncryptedExportServiceTest extends TestCase
         $this->assertMatchesRegularExpression('/\/R\s+5\b/', $encrypted);
     }
 
+    public function test_pdf_encryption_preserves_link_annotations(): void
+    {
+        $withoutLink = app(EncryptedExportService::class)->downloadPdf(
+            Pdf::loadHTML('<h1>No link</h1>')->setPaper('a4')->output(),
+            'report.pdf',
+            'StrongPassword!2026'
+        )->getContent();
+
+        $withLink = app(EncryptedExportService::class)->downloadPdf(
+            Pdf::loadHTML('<h1>Audit</h1><a href="https://example.com/audit/file.pdf">Buka lampiran</a>')
+                ->setPaper('a4')
+                ->output(),
+            'report.pdf',
+            'StrongPassword!2026'
+        )->getContent();
+
+        $this->assertGreaterThan(
+            substr_count($withoutLink, '/Subtype /Link'),
+            substr_count($withLink, '/Subtype /Link')
+        );
+    }
+
     public function test_excel_is_downloaded_directly_with_agile_aes_256_encryption(): void
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $spreadsheet->getActiveSheet()->setCellValue('A1', 'Confidential report');
         $temporaryPath = tempnam(sys_get_temp_dir(), 'trackodev-test-xlsx-');
         $this->assertNotFalse($temporaryPath);
@@ -84,7 +106,7 @@ class EncryptedExportServiceTest extends TestCase
 
     public function test_excel_can_be_downloaded_without_password(): void
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $spreadsheet->getActiveSheet()->setCellValue('A1', 'Open report');
         $temporaryPath = tempnam(sys_get_temp_dir(), 'trackodev-test-xlsx-');
         $this->assertNotFalse($temporaryPath);
