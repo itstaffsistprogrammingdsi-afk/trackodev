@@ -61,7 +61,7 @@ class AiMcpActionExecutor
         $payload = $proposal->payload;
         $mcp = $payload['_mcp'] ?? null;
         abort_unless(is_array($mcp)
-            && in_array($mcp['method'] ?? null, ['POST', 'PUT', 'PATCH'], true)
+            && in_array($mcp['method'] ?? null, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
             && is_string($mcp['path'] ?? null)
             && str_starts_with($mcp['path'], '/api/mcp/v1/'), 422, 'Operasi MCP proposal tidak valid.');
 
