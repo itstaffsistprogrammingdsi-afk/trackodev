@@ -20,6 +20,8 @@ React -> POST /api/ai/messages -> Laravel -> 9router /v1/chat/completions -> pro
 
 Panel “Asisten AI” tersedia di layout setelah login. Tombol “Tanya AI” di detail card memilih konteks langsung. Panel juga menyediakan pencarian judul card yang dapat diakses. Mengganti konteks memulai percakapan baru. Respons ditampilkan sebagai teks, tanpa menjalankan HTML dari model. Jawaban merupakan saran yang dapat disalin secara manual; tidak membuat/mengedit task atau mengirim pesan.
 
+System prompt membatasi asisten pada topik dan tindakan di dalam Tracko. Permintaan di luar sistem ditolak dengan pola jawaban tetap: “Maaf, saya hanya dapat membantu hal-hal terkait Tracko dan pekerjaan di sistem ini.” Pembatasan ini adalah guardrail prompt, bukan klasifikasi intent di backend.
+
 Endpoint:
 - GET /api/ai/status: status konfigurasi lokal, bukan jaminan kesehatan provider.
 - GET /api/ai/cards?query=...: maksimal 20 card terbaru; izin card.view/task.view dan visibilitas campaign/copy diterapkan.
