@@ -571,9 +571,9 @@ class ReportController extends Controller
             gc_collect_cycles();
 
             $pdfContent = $reportPdf->renderChunks(
-                $this->reportDataLoader->chunks(
+                $this->reportDataLoader->pdfChunks(
                     $request,
-                    (int) config('report.pdf_chunk_size', 10),
+                    (int) config('report.pdf_cards_per_chunk', 30),
                 ),
                 $totalUsers,
             );
@@ -592,7 +592,7 @@ class ReportController extends Controller
             Log::error('Error preview PDF: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal generate preview: ' . $e->getMessage()
+                'message' => 'Gagal membuat preview laporan. Silakan coba lagi.'
             ], 500);
         }
     }
@@ -631,9 +631,9 @@ class ReportController extends Controller
 
             $download = $encryptedExport->downloadPdf(
                 $reportPdf->renderChunks(
-                    $this->reportDataLoader->chunks(
+                    $this->reportDataLoader->pdfChunks(
                         $request,
-                        (int) config('report.pdf_chunk_size', 10),
+                        (int) config('report.pdf_cards_per_chunk', 30),
                     ),
                     $totalUsers,
                 ),
@@ -657,7 +657,7 @@ class ReportController extends Controller
             return $download;
         } catch (\Exception $e) {
             Log::error('Export PDF error: ' . $e->getMessage());
-            return response()->json(['message' => 'Gagal export PDF: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Gagal membuat file PDF. Silakan coba lagi.'], 500);
         }
     }
 
@@ -729,7 +729,7 @@ class ReportController extends Controller
                 Storage::disk('local')->delete($temporaryName);
             }
             Log::error('Export Excel error: ' . $e->getMessage());
-            return response()->json(['message' => 'Gagal export Excel: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Gagal membuat file Excel. Silakan coba lagi.'], 500);
         }
     }
 

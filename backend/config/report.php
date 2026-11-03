@@ -14,12 +14,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Ukuran chunk PDF
+    | Jumlah baris card per potongan PDF
     |--------------------------------------------------------------------------
-    | DomPDF cukup boros memory. Nilai kecil menjaga preview/export PDF tetap
-    | dapat berjalan pada PHP-FPM dengan memory_limit 128 MB. Excel tetap
-    | menggunakan ukuran batch loader default.
+    | DomPDF cukup boros memory. Satu user bisa memiliki ratusan card, jadi
+    | PDF dipecah per baris card agar tetap berjalan pada PHP-FPM dengan
+    | memory_limit 128 MB. Nilai 30 terukur aman; jangan naikkan tanpa
+    | menguji ulang dengan memory_limit produksi. Excel tetap menggunakan
+    | batch per user pada ReportDataLoader::chunks().
     */
-    'pdf_chunk_size' => max(10, min(100, (int) env('REPORT_PDF_CHUNK_SIZE', 10))),
+    'pdf_cards_per_chunk' => max(10, min(50, (int) env('REPORT_PDF_CARDS_PER_CHUNK', 30))),
 
 ];
