@@ -14,6 +14,7 @@ use App\Models\CardComment;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
+use App\Services\PersonalWorkScope;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,33 +53,17 @@ class MyActivityController extends Controller
     |--------------------------------------------------------------------------
     | CARD RELEVANT TO USER
     |--------------------------------------------------------------------------
-    | Dulu completedTasksQuery cuma mengecek relasi 'assignees', jadi task
-    | yang dikerjakan user tapi tidak formal di-assign lewat endpoint
-    | assign() (mis. user adalah creator campaign, atau anggota campaign
-    | yang ikut mengerjakan card tanpa pernah di-assign satu per satu) tidak
-    | pernah terhitung sebagai "Task Selesai" — walau completed_at-nya
-    | sudah benar. Ini dibuat konsisten dengan DailyTodoController::index(),
-    | yang mendefinisikan "card milik user" sebagai: user adalah pembuat
-    | ATAU anggota campaign card tersebut, ATAU assignee langsung di card.
-    | Kalau relasi/kolom di DailyTodoController berubah, ubah juga di sini.
+    | Definisi "pekerjaan saya" harus sama dengan board Tugas Saya: card yang
+    | di-assign langsung ke user, atau card tanpa assignee di campaign yang
+    | ia buat/ikuti (supaya tetap bisa diambil). Card yang sudah di-assign ke
+    | orang lain tidak lagi ikut hanya karena user anggota campaign yang sama.
+    | Perubahan ini memperbaiki ringkasan My Work yang dulu menghitung task
+    | milik rekan satu campaign.
     */
 
     private function scopeCardsForUser(Builder $query, $user): void
     {
-        $query->where(function (Builder $q) use ($user) {
-            $q->whereHas('board.campaign', function (Builder $c) use ($user) {
-                $c->where('created_by', $user->id)
-                    ->orWhereHas('members', function (Builder $m) use ($user) {
-                        $m->where('users.id', $user->id);
-                    });
-            })->orWhereHas('assignees', function (Builder $a) use ($user) {
-                $a->where('users.id', $user->id);
-            });
-        });
-
-        // Copy lintas divisi privat: hanya 5 pihak yang boleh melihat.
-        app(\App\Services\CrossDivisionMirrorService::class)
-            ->applyCopyVisibility($query, $user);
+        app(PersonalWorkScope::class)->apply($query, $user);
     }
 
     public function index(Request $request)
@@ -104,8 +89,10 @@ class MyActivityController extends Controller
 
         $ongoingCardsQuery = Card::query();
         $this->scopeCardsForUser($ongoingCardsQuery, $user);
-        $ongoingCardIds = $ongoingCardsQuery->where('status', '!=', 'completed')
-            ->pluck('cards.id');
+        $ongoingCardsQuery->where('status', '!=', 'completed');
+        $ongoingFamilyCount = app(PersonalWorkScope::class)
+            ->countDistinctFamilies($ongoingCardsQuery);
+        $ongoingCardIds = (clone $ongoingCardsQuery)->pluck('cards.id');
 
         /*
         |--------------------------------------------------------------------------
@@ -285,7 +272,8 @@ class MyActivityController extends Controller
             'completed_at'
         );
 
-        $completedTasksCount = $completedTasksQuery->count();
+        $completedTasksCount = app(PersonalWorkScope::class)
+            ->countDistinctFamilies($completedTasksQuery);
 
         /*
         |--------------------------------------------------------------------------
@@ -294,10 +282,12 @@ class MyActivityController extends Controller
         | Pekerjaan yang belum selesai selalu dibawa ke periode Today/Week/Month.
         | Card yang sudah selesai hanya dihitung bila completed_at masuk periode.
         | Dengan begitu summary mengikuti feed dan pekerjaan aktif tidak menghilang.
+        | Hitungan memakai family (card asli + copy lintas divisi = satu tugas)
+        | agar angkanya sama dengan grup di board Tugas Saya.
         */
 
         $periodCompletedTasks = $completedTasksCount;
-        $periodTotalTasks = $ongoingCardIds->count() + $periodCompletedTasks;
+        $periodTotalTasks = $ongoingFamilyCount + $periodCompletedTasks;
         $periodCompletionRate = $periodTotalTasks > 0
             ? round(($periodCompletedTasks / $periodTotalTasks) * 100, 2)
             : 0;
@@ -754,9 +744,9 @@ class MyActivityController extends Controller
         |----------------------------------------------------------------
         | Task yang selesai dalam periode
         |----------------------------------------------------------------
-        | Card milik user ini lewat scopeCardsForUser() — creator/anggota
-        | campaign ATAU assignee langsung, sama seperti DailyTodoController
-        | dan index() di atas.
+        | Card milik user ini lewat scopeCardsForUser() — assignee langsung
+        | atau card tanpa assignee di campaign yang ia buat/ikuti, sama
+        | seperti board Tugas Saya.
         */
 
         $completedTasksQuery = Card::query();
@@ -771,13 +761,15 @@ class MyActivityController extends Controller
             // nampilin total QC & catatannya.
             ->with(['board.campaign.workspace', 'attachments.qcBy'])
             ->latest('completed_at')
-            ->get();
+            ->get()
+            ->unique(fn (Card $card) => $card->parent_card_id ?? $card->id)
+            ->values();
 
         $ongoingTasksQuery = Card::query();
         $this->scopeCardsForUser($ongoingTasksQuery, $user);
-        $ongoingTasksCount = $ongoingTasksQuery
-            ->where('status', '!=', 'completed')
-            ->count();
+        $ongoingTasksQuery->where('status', '!=', 'completed');
+        $ongoingTasksCount = app(PersonalWorkScope::class)
+            ->countDistinctFamilies($ongoingTasksQuery);
 
         /*
         |----------------------------------------------------------------

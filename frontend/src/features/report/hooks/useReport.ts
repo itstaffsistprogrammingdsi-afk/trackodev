@@ -6,6 +6,46 @@ import api from '@/lib/axios';
 import { getDownloadFileName } from '@/lib/exportSecurity';
 import { useRealtimeRevision } from '@/hooks/useRealtimeRevision';
 import { toast, confirmDialog } from '@/lib/feedback';
+
+const readExportErrorMessage = async (error: unknown): Promise<string> => {
+  const response = (error as {
+    response?: { data?: unknown; status?: number };
+  }).response;
+  const data = response?.data;
+
+  if (data instanceof Blob) {
+    try {
+      const text = (await data.text()).trim();
+
+      if (text) {
+        try {
+          const parsed = JSON.parse(text) as { message?: unknown };
+
+          if (typeof parsed.message === 'string' && parsed.message.trim()) {
+            return parsed.message;
+          }
+        } catch {
+          // Fatal error / HTML page from the server, use the friendly fallback.
+        }
+      }
+    } catch {
+      // Body could not be read; use the friendly fallback.
+    }
+  } else if (data && typeof data === 'object') {
+    const message = (data as { message?: unknown }).message;
+
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+
+  if (response?.status === 404) {
+    return 'Tidak ada data yang cocok dengan filter untuk diexport.';
+  }
+
+  return 'Gagal mengunduh file laporan. Silakan coba lagi.';
+};
+
 export const useReport = () => {
   const realtimeRevision = useRealtimeRevision([
     'ActivityLog', 'Assignment', 'Brand', 'Card', 'CardAttachment',
@@ -230,8 +270,7 @@ export const useReport = () => {
       return true;
     } catch (error: unknown) {
       console.error('Gagal export data:', error);
-      const message = (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (error as { message?: string }).message || 'Gagal mengunduh file laporan';
-      toast.error(message);
+      toast.error(await readExportErrorMessage(error));
       return false;
     } finally {
       setExporting(false);

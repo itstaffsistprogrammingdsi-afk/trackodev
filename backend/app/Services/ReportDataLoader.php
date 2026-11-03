@@ -43,9 +43,10 @@ class ReportDataLoader
 
     public function chunks(Request $request, int $chunkSize = 75): LazyCollection
     {
-        // PDF/DomPDF needs smaller chunks on servers with a 128 MB PHP
-        // memory limit. Callers that do not need PDF rendering keep the
-        // higher default of 75 users per batch.
+        // Excel still benefits from whole-user batches because it renders
+        // rows with a spreadsheet writer instead of DomPDF. PDF callers use
+        // pdfChunks() so a single user with hundreds of cards cannot blow up
+        // one DomPDF document.
         $chunkSize = max(10, min(100, $chunkSize));
         $query = $this->userQuery($request)
             ->select('users.*')
@@ -66,6 +67,73 @@ class ReportDataLoader
 
             if ($buffer->isNotEmpty()) {
                 yield $this->hydrateChunk($buffer, $request);
+            }
+        });
+    }
+
+    /**
+     * PDF chunks are bounded by cards, not users. A user with hundreds of
+     * cards used to be rendered as one DomPDF document and exhausted the
+     * 128 MB PHP-FPM limit. Every part keeps the same report number so the
+     * "No" column stays correct when one user spans multiple chunks.
+     */
+    public function pdfChunks(Request $request, int $cardsPerChunk = 30): LazyCollection
+    {
+        $cardsPerChunk = max(10, min(50, $cardsPerChunk));
+        $query = $this->userQuery($request)
+            ->select('users.*')
+            ->orderBy('users.name')
+            ->orderBy('users.id');
+
+        return LazyCollection::make(function () use ($query, $request, $cardsPerChunk): \Generator {
+            $chunk = collect();
+            $chunkRows = 0;
+            $userNumber = 0;
+            $hasCardFilters = $this->scope->hasCardFilters($request);
+            $viewer = $request->user();
+            $viewerCampaignIds = $viewer?->managesDivision()
+                ? $viewer->accessibleCampaigns()->pluck('campaigns.id')->map(fn ($id) => (string) $id)->all()
+                : null;
+
+            foreach ($query->cursor() as $user) {
+                $userNumber++;
+                $user->loadMissing('divisions');
+                $hasPart = false;
+
+                foreach ($this->cardPartsForUser($user, $request, $cardsPerChunk, $viewer, $viewerCampaignIds) as $cards) {
+                    $hasPart = true;
+                    $part = clone $user;
+                    $part->setRelation('cards', $cards);
+                    $part->report_number = $userNumber;
+
+                    if ($chunkRows > 0 && $chunkRows + $cards->count() > $cardsPerChunk) {
+                        yield $chunk->values();
+                        $chunk = collect();
+                        $chunkRows = 0;
+                    }
+
+                    $chunk->push($part);
+                    $chunkRows += $cards->count();
+                }
+
+                if (! $hasPart && ! $hasCardFilters) {
+                    $part = clone $user;
+                    $part->setRelation('cards', collect());
+                    $part->report_number = $userNumber;
+
+                    if ($chunkRows > 0 && $chunkRows + 1 > $cardsPerChunk) {
+                        yield $chunk->values();
+                        $chunk = collect();
+                        $chunkRows = 0;
+                    }
+
+                    $chunk->push($part);
+                    $chunkRows++;
+                }
+            }
+
+            if ($chunk->isNotEmpty()) {
+                yield $chunk->values();
             }
         });
     }
@@ -134,6 +202,69 @@ class ReportDataLoader
         }
 
         $targetIds = $users->pluck('id')->map(fn ($id) => (string) $id)->values();
+        $cards = $this->cardQueryForTargets($targetIds, $request)->get();
+        $viewer = $request->user();
+        $viewerCampaignIds = $viewer?->managesDivision()
+            ? $viewer->accessibleCampaigns()->pluck('campaigns.id')->map(fn ($id) => (string) $id)->all()
+            : null;
+
+        foreach ($users as $user) {
+            $userCards = $cards->filter(function (Card $card) use ($user, $viewer, $viewerCampaignIds): bool {
+                return $this->cardIsVisibleForReport($card, $user, $viewer, $viewerCampaignIds);
+            })->values();
+
+            $user->setRelation('cards', $userCards);
+        }
+
+        if ($this->scope->hasCardFilters($request)) {
+            return $users->filter(fn (User $user) => $user->cards->isNotEmpty())->values();
+        }
+
+        return $users;
+    }
+
+    /**
+     * Yield a user's visible cards in bounded parts. Keeping the query paged
+     * means an account with thousands of cards never loads them all at once.
+     *
+     * @return \Generator<int, Collection>
+     */
+    private function cardPartsForUser(
+        User $user,
+        Request $request,
+        int $maxCards,
+        ?User $viewer,
+        ?array $viewerCampaignIds,
+    ): \Generator {
+        $page = 1;
+        $buffer = collect();
+
+        do {
+            $rawCards = $this->cardQueryForTargets(collect([(string) $user->id]), $request)
+                ->forPage($page, $maxCards)
+                ->get();
+
+            foreach ($rawCards as $card) {
+                if ($this->cardIsVisibleForReport($card, $user, $viewer, $viewerCampaignIds)) {
+                    $buffer->push($card);
+                }
+            }
+
+            while ($buffer->count() >= $maxCards) {
+                yield $buffer->take($maxCards)->values();
+                $buffer = $buffer->slice($maxCards)->values();
+            }
+
+            $page++;
+        } while ($rawCards->isNotEmpty());
+
+        if ($buffer->isNotEmpty()) {
+            yield $buffer->values();
+        }
+    }
+
+    private function cardQueryForTargets(Collection $targetIds, Request $request): Builder
+    {
         $cards = Card::with([
             'campaign.members:id',
             'campaign.workspace:id,division_id,name',
@@ -160,36 +291,30 @@ class ReportDataLoader
             });
 
         $this->scope->applyCardFilters($cards, $request);
-        $cards = $cards->orderByRaw('COALESCE(completed_at, created_at) DESC')->get();
-        $viewer = $request->user();
-        $viewerCampaignIds = $viewer?->managesDivision()
-            ? $viewer->accessibleCampaigns()->pluck('campaigns.id')->map(fn ($id) => (string) $id)->all()
-            : null;
 
-        foreach ($users as $user) {
-            $userCards = $cards->filter(function (Card $card) use ($user, $viewer, $viewerCampaignIds): bool {
-                if (! $this->scope->cardBelongsToUser($card, $user) || ! $this->scope->cardIsVisibleToUser($card, $user)) {
-                    return false;
-                }
+        return $cards
+            ->orderByRaw('COALESCE(cards.completed_at, cards.created_at) DESC')
+            ->orderByDesc('cards.id');
+    }
 
-                if ($viewer && ! $viewer->is($user) && $viewerCampaignIds !== null) {
-                    $campaign = $card->board?->campaign ?: $card->campaign;
-
-                    if (! $campaign || ! in_array((string) $campaign->id, $viewerCampaignIds, true)) {
-                        return false;
-                    }
-                }
-
-                return true;
-            })->values();
-
-            $user->setRelation('cards', $userCards);
+    private function cardIsVisibleForReport(
+        Card $card,
+        User $user,
+        ?User $viewer,
+        ?array $viewerCampaignIds,
+    ): bool {
+        if (! $this->scope->cardBelongsToUser($card, $user) || ! $this->scope->cardIsVisibleToUser($card, $user)) {
+            return false;
         }
 
-        if ($this->scope->hasCardFilters($request)) {
-            return $users->filter(fn (User $user) => $user->cards->isNotEmpty())->values();
+        if ($viewer && ! $viewer->is($user) && $viewerCampaignIds !== null) {
+            $campaign = $card->board?->campaign ?: $card->campaign;
+
+            if (! $campaign || ! in_array((string) $campaign->id, $viewerCampaignIds, true)) {
+                return false;
+            }
         }
 
-        return $users;
+        return true;
     }
 }

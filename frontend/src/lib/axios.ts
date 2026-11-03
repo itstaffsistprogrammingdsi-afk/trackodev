@@ -2,6 +2,12 @@ import axios from "axios";
 import { getApiBaseUrl } from "./mobileConfig";
 import { emitToast } from "../context/ToastContext";
 
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    skipErrorToast?: boolean;
+  }
+}
+
 let sessionRedirectScheduled = false;
 
 const api = axios.create({
@@ -29,8 +35,12 @@ api.interceptors.response.use(
     const status = err.response?.status;
     const requestUrl = String(err.config?.url ?? "");
     const isLoginRequest = /(?:^|\/)auth\/login(?:\?|$)/.test(requestUrl);
+    const skipToast = err.config?.skipErrorToast === true;
 
-    if (status === 403 && !isLoginRequest) {
+    if (skipToast) {
+      // Blob/export callers read the error body themselves so the user gets
+      // one specific message instead of a generic toast plus a second one.
+    } else if (status === 403 && !isLoginRequest) {
       emitToast({
         variant: "error",
         title: "Akses ditolak",

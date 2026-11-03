@@ -10,6 +10,8 @@ use App\Models\CardAttachment;
 use App\Models\Division;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\CrossDivisionMirrorService;
+use App\Services\PersonalWorkScope;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -43,7 +45,12 @@ class DashboardController extends Controller
                 'can_view' => $canViewSystemInsights,
             ],
             'insights' => $canViewSystemInsights
-                ? $this->systemInsights($user, $filter, $insightScope['division_ids'])
+                ? $this->systemInsights(
+                    $user,
+                    $scope,
+                    $filter,
+                    $insightScope['division_ids']
+                )
                 : [],
         ]);
     }
@@ -52,17 +59,29 @@ class DashboardController extends Controller
      * Insight lintas modul yang dapat langsung ditindaklanjuti.
      * Semua agregasi mengikuti scope dan periode dashboard agar angka konsisten.
      */
-    private function systemInsights($user, array $filter, ?array $divisionIds): array
-    {
+    private function systemInsights(
+        $user,
+        string $scope,
+        array $filter,
+        ?array $divisionIds
+    ): array {
         $overdueQuery = Card::query()
             ->where('status', '!=', 'completed')
             ->whereNotNull('due_date')
             ->where('due_date', '<', now());
-        $this->applyDivisionScope(
-            $overdueQuery,
-            $divisionIds,
-            'board.campaign.workspace'
-        );
+
+        if ($scope === 'me') {
+            app(PersonalWorkScope::class)->apply($overdueQuery, $user);
+        } else {
+            $this->applyCampaignAccess($overdueQuery, $user, 'board.campaign');
+            $this->applyDivisionScope(
+                $overdueQuery,
+                $divisionIds,
+                'board.campaign.workspace'
+            );
+            app(CrossDivisionMirrorService::class)->applyCopyVisibility($overdueQuery, $user);
+        }
+
         $this->applyPeriod($overdueQuery, $filter, 'cards.created_at');
         $overdueCards = $overdueQuery
             ->with('board.campaign.workspace')
@@ -86,11 +105,27 @@ class DashboardController extends Controller
             ->whereNull('archived_at')
             ->whereNotNull('quantity')
             ->whereNull('qc_at');
-        $this->applyDivisionScope(
-            $qcQuery,
-            $divisionIds,
-            'card.board.campaign.workspace'
-        );
+
+        if ($scope === 'me') {
+            $qcQuery->whereHas(
+                'card',
+                fn ($cardQuery) => app(PersonalWorkScope::class)
+                    ->apply($cardQuery, $user)
+            );
+        } else {
+            $this->applyCampaignAccess($qcQuery, $user, 'card.board.campaign');
+            $this->applyDivisionScope(
+                $qcQuery,
+                $divisionIds,
+                'card.board.campaign.workspace'
+            );
+            $qcQuery->whereHas(
+                'card',
+                fn ($cardQuery) => app(CrossDivisionMirrorService::class)
+                    ->applyCopyVisibility($cardQuery, $user)
+            );
+        }
+
         $this->applyPeriod($qcQuery, $filter, 'card_attachments.created_at');
         $pendingQcAttachments = $qcQuery
             ->with('card.board.campaign.workspace')
@@ -235,6 +270,22 @@ class DashboardController extends Controller
             $workspaceRelation,
             fn ($workspaceQuery) => $workspaceQuery
                 ->whereIn('division_id', $divisionIds)
+        );
+    }
+
+    /**
+     * Batasi agregasi ke campaign yang memang boleh dibuka user, memakai
+     * aturan yang sama dengan halaman campaign (creator/member/share/admin).
+     */
+    private function applyCampaignAccess($query, $user, string $campaignRelation): void
+    {
+        if ($user->isSuperAdmin()) {
+            return;
+        }
+
+        $query->whereHas(
+            $campaignRelation,
+            fn ($campaignQuery) => $campaignQuery->accessibleBy($user)
         );
     }
 
@@ -401,25 +452,37 @@ class DashboardController extends Controller
                     'workspaces.created_at'
                 ),
                 'campaigns' => $this->countWithinPeriod(
-                    Campaign::query()->whereHas(
-                        'workspace',
-                        fn ($query) => $query->whereIn('division_id', $divisionIds)
-                    ),
+                    Campaign::query()
+                        ->accessibleBy($user)
+                        ->whereHas(
+                            'workspace',
+                            fn ($query) => $query->whereIn('division_id', $divisionIds)
+                        ),
                     $filter,
                     'campaigns.created_at'
                 ),
                 'boards' => $this->countWithinPeriod(
                     Board::query()->whereHas(
-                        'campaign.workspace',
-                        fn ($query) => $query->whereIn('division_id', $divisionIds)
+                        'campaign',
+                        fn ($campaignQuery) => $campaignQuery
+                            ->accessibleBy($user)
+                            ->whereHas(
+                                'workspace',
+                                fn ($query) => $query->whereIn('division_id', $divisionIds)
+                            )
                     ),
                     $filter,
                     'boards.created_at'
                 ),
                 'cards' => $this->countWithinPeriod(
                     Card::query()->whereHas(
-                        'board.campaign.workspace',
-                        fn ($query) => $query->whereIn('division_id', $divisionIds)
+                        'board.campaign',
+                        fn ($campaignQuery) => $campaignQuery
+                            ->accessibleBy($user)
+                            ->whereHas(
+                                'workspace',
+                                fn ($query) => $query->whereIn('division_id', $divisionIds)
+                            )
                     ),
                     $filter,
                     'cards.created_at'
@@ -477,19 +540,15 @@ class DashboardController extends Controller
         $scopedCards = Card::query();
 
         if ($scope === 'global') {
+            $this->applyCampaignAccess($scopedCards, $user, 'board.campaign');
             $this->applyDivisionScope(
                 $scopedCards,
                 $divisionIds,
                 'board.campaign.workspace'
             );
+            app(CrossDivisionMirrorService::class)->applyCopyVisibility($scopedCards, $user);
         } else {
-            $scopedCards->where(function ($cardQuery) use ($user) {
-                $cardQuery
-                    ->where('created_by', $user->id)
-                    ->orWhereHas('assignees', function ($assigneeQuery) use ($user) {
-                        $assigneeQuery->where('users.id', $user->id);
-                    });
-            });
+            app(PersonalWorkScope::class)->apply($scopedCards, $user);
         }
 
         $query = clone $scopedCards;
@@ -503,6 +562,7 @@ class DashboardController extends Controller
 
         $boards = Board::query();
         if ($scope === 'global') {
+            $this->applyCampaignAccess($boards, $user, 'campaign');
             $this->applyDivisionScope(
                 $boards,
                 $divisionIds,

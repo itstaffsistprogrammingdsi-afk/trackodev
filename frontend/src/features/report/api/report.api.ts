@@ -32,6 +32,7 @@ export const reportApi = {
   downloadAttachment: async (attachmentId: string): Promise<Blob> => {
     const response = await api.get(`/attachments/${attachmentId}/download`, {
       responseType: 'blob',
+      skipErrorToast: true,
     });
     return response.data as Blob;
   },
@@ -50,6 +51,7 @@ export const reportApi = {
     const response = await api.get('/reports/export/pdf', {
       params: queryParams,
       responseType: 'blob',
+      skipErrorToast: true,
       headers: export_password
         ? { 'X-Export-Password': export_password }
         : undefined,
@@ -63,6 +65,7 @@ export const reportApi = {
     const response = await api.get('/reports/export/excel', {
       params: queryParams,
       responseType: 'blob',
+      skipErrorToast: true,
       headers: export_password
         ? { 'X-Export-Password': export_password }
         : undefined,
