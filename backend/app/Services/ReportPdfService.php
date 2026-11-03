@@ -57,7 +57,7 @@ class ReportPdfService
                 $pageCount = $merged->setSourceFile($sourcePath);
 
                 for ($pageNumber = 1; $pageNumber <= $pageCount; $pageNumber++) {
-                    $template = $merged->importPage($pageNumber);
+                    $template = $merged->importPage($pageNumber, importExternalLinks: true);
                     $size = $merged->getTemplateSize($template);
                     $merged->AddPage($size['orientation'], [$size['width'], $size['height']]);
                     $merged->useTemplate($template, 0, 0, $size['width'], $size['height'], true);

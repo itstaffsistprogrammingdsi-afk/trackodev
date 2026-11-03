@@ -119,7 +119,7 @@ function readStoredScope(): DashboardScope {
 export default function Home() {
   const realtimeRevision = useRealtimeRevision();
   const { can, hasRole } = useAuth();
-  const isSuperAdmin = hasRole("super_admin");
+  const canViewAllDivisions = hasRole("super_admin") || can("division.view_all");
   const [data, setData] = useState<DashboardResponse>({
     filter: initialFilterPayload,
     stats: {
@@ -221,12 +221,12 @@ export default function Home() {
         <div className="space-y-1">
           <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-indigo-800 to-slate-900 tracking-tight">
             {scope === "global"
-              ? (isSuperAdmin ? "Global Dashboard" : "Division Dashboard")
+              ? (canViewAllDivisions ? "Global Dashboard" : "Division Dashboard")
               : "My Dashboard"}
           </h1>
           <p className="text-sm text-slate-500 font-medium">
             Pantau dan kelola statistik dari {scope === "global"
-              ? (isSuperAdmin ? "seluruh sistem" : data.insight_scope.label)
+              ? (canViewAllDivisions ? "seluruh sistem" : data.insight_scope.label)
               : "ruang kerja Anda"}.
           </p>
         </div>
@@ -236,7 +236,7 @@ export default function Home() {
           <ScopeToggle
             value={scope}
             onChange={handleScopeChange}
-            isSuperAdmin={isSuperAdmin}
+            isSuperAdmin={canViewAllDivisions}
           />
 
           <button

@@ -365,7 +365,8 @@ const handleBypassUser = async (userId: string | number) => {
     if (
       role === "super_admin" ||
       role === "admin" ||
-      role === "manager"
+      role === "manager" ||
+      role === "hrd"
     ) {
       window.location.replace("/dashboard");
     } else {
@@ -495,7 +496,8 @@ const handleLeaveImpersonation = async () => {
       if (
         role === "super_admin" ||
         role === "admin" ||
-        role === "manager"
+        role === "manager" ||
+        role === "hrd"
       ) {
         window.location.assign("/dashboard");
       } else {

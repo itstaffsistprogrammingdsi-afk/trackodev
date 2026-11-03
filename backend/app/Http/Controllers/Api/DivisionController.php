@@ -20,7 +20,7 @@ class DivisionController extends Controller
         $user = auth()->user();
         $query = Division::query();
 
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             $divisions = $query->with('users')->get();
         } else {
             $divisions = $query
@@ -185,7 +185,7 @@ class DivisionController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             return 'full';
         }
 
@@ -217,6 +217,14 @@ class DivisionController extends Controller
     public function myDivisions(): JsonResponse
     {
         $user = auth()->user();
+
+        if ($user->canViewAllDivisions()) {
+            return response()->json([
+                'data' => DivisionResource::collection(
+                    Division::query()->with('users')->get()
+                ),
+            ]);
+        }
 
         $divisions = Division::query()
             ->where(function ($query) use ($user) {

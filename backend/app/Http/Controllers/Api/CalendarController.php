@@ -32,7 +32,7 @@ class CalendarController extends Controller
                 'campaign.workspace.division:id,name',
             ]);
 
-        if (! $user->isSuperAdmin()) {
+        if (! $user->canViewAllDivisions()) {
             $divisionIds = $user->divisions()->pluck('divisions.id');
 
             $this->applyBoardAccess($query, $user, $divisionIds, 'campaign');
@@ -212,7 +212,7 @@ class CalendarController extends Controller
      */
     private function applyPermission(Builder $query, User $user): void
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             return;
         }
 

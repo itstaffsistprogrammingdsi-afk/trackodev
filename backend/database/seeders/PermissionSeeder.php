@@ -37,6 +37,10 @@ class PermissionSeeder extends Seeder
             'name' => 'manager',
             'guard_name' => 'web',
         ]);
+        $hrd = Role::firstOrCreate([
+            'name' => 'hrd',
+            'guard_name' => 'web',
+        ]);
         $user = Role::firstOrCreate([
             'name' => 'user',
             'guard_name' => 'web',
@@ -46,6 +50,7 @@ class PermissionSeeder extends Seeder
         $superAdmin->syncPermissions(Permission::where('guard_name', 'web')->get());
         $admin->syncPermissions(PermissionCatalog::adminPermissions());
         $manager->syncPermissions(PermissionCatalog::managerPermissions());
+        $hrd->syncPermissions(PermissionCatalog::hrdPermissions());
         $user->syncPermissions(PermissionCatalog::userPermissions());
 
         $registrar->forgetCachedPermissions();

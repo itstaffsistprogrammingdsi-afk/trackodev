@@ -42,6 +42,7 @@ const moduleLabels: Record<string, string> = {
 
 const actionLabels: Record<string, string> = {
   view: 'Lihat menu/data',
+  view_all: 'Lihat semua divisi (lintas divisi)',
   create: 'Buat data',
   update: 'Ubah data',
   delete: 'Hapus data',

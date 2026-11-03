@@ -365,7 +365,7 @@ class ActivityLogController extends Controller
 
     private function resolveDivisionAccess(Division $division, User $user): string
     {
-        if ($user->isSuperAdmin()) return 'full';
+        if ($user->canViewAllDivisions()) return 'full';
 
         if ($division->users()->where('users.id', $user->id)->exists()) {
             return 'full';

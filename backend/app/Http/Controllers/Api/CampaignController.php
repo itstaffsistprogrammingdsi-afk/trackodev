@@ -52,7 +52,7 @@ class CampaignController extends Controller
         // SUPER ADMIN
         // ========================================
 
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
 
             $campaigns = $query
                 ->latest()

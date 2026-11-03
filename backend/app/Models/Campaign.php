@@ -71,7 +71,7 @@ public function canBeAccessedBy(
     User $user
 ): bool {
 
-    if ($user->isSuperAdmin()) {
+    if ($user->canViewAllDivisions()) {
         return true;
     }
 
@@ -106,7 +106,7 @@ public function canBeAccessedBy(
  */
 public function scopeAccessibleBy(Builder $query, User $user): Builder
 {
-    if ($user->isSuperAdmin()) {
+    if ($user->canViewAllDivisions()) {
         return $query;
     }
 

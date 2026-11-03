@@ -46,7 +46,7 @@ class ReportScopeService
 
     public function restrictCardQueryToViewerDivisions(Builder $query, User $viewer): void
     {
-        if ($viewer->isSuperAdmin() || ! $viewer->managesDivision()) {
+        if ($viewer->canViewAllDivisions() || ! $viewer->managesDivision()) {
             return;
         }
 
@@ -160,7 +160,7 @@ class ReportScopeService
      */
     public function cardIsVisibleToUser(Card $card, User $user): bool
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             return true;
         }
 
@@ -169,13 +169,6 @@ class ReportScopeService
         }
 
         if ($card->assignees->contains('id', $user->id) || (string) $card->mirrored_by === (string) $user->id) {
-            return true;
-        }
-
-        // Penerima share-divisi (view_all/full) melihat seluruh isi workspace,
-        // termasuk copy lintas divisi di dalamnya.
-        $workspace = ($card->board?->campaign ?: $card->campaign)?->workspace;
-        if ($workspace && $workspace->grantsFullContentAccessTo($user)) {
             return true;
         }
 

@@ -34,6 +34,8 @@ class User extends Authenticatable
 
     public const ROLE_MANAGER = 'manager';
 
+    public const ROLE_HRD = 'hrd';
+
     public const ROLE_USER = 'user';
 
     // ============================================
@@ -128,11 +130,29 @@ class User extends Authenticatable
             ->exists();
     }
 
+    public function isHrd(): bool
+    {
+        return $this->hasRole(
+            self::ROLE_HRD
+        );
+    }
+
     public function isUser(): bool
     {
         return $this->hasRole(
             self::ROLE_USER
         );
+    }
+
+    /**
+     * Super Admin dan pemegang permission `division.view_all` boleh membaca
+     * data dari seluruh divisi. Ini hanya membuka cakupan BACA; aksi tulis
+     * tetap mengikuti permission dan policy masing-masing.
+     */
+    public function canViewAllDivisions(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->can('division.view_all');
     }
 
     // ============================================
@@ -302,7 +322,7 @@ public function accessibleCampaigns()
             'cards.assignees',
         ]);
 
-    if ($this->isSuperAdmin()) {
+    if ($this->canViewAllDivisions()) {
         return $query;
     }
 

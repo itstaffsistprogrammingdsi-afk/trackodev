@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 export default function MyWorkPage() {
   const { can, hasRole, managesDivision } = useAuth();
   const canViewRanking =
-    (hasRole("super_admin") || managesDivision())
+    (hasRole("super_admin") || managesDivision() || can("division.view_all"))
     && can("my_work.ranking.view");
   const {
     loading,

@@ -117,7 +117,7 @@ class CrossDivisionMirrorService
             return true;
         }
 
-        if ($viewer->isSuperAdmin()) {
+        if ($viewer->canViewAllDivisions()) {
             return true;
         }
 
@@ -126,14 +126,6 @@ class CrossDivisionMirrorService
         }
 
         if ($copy->mirrored_by && (string) $copy->mirrored_by === (string) $viewer->id) {
-            return true;
-        }
-
-        // Penerima share "bagikan workspace ke divisi" (akses view_all/full)
-        // berhak melihat SELURUH isi workspace, termasuk copy lintas divisi
-        // yang berada di dalamnya.
-        $workspace = $copy->board?->campaign?->workspace;
-        if ($workspace && $workspace->grantsFullContentAccessTo($viewer)) {
             return true;
         }
 
@@ -162,7 +154,7 @@ class CrossDivisionMirrorService
      */
     public function applyCopyVisibility($query, User $viewer): void
     {
-        if ($viewer->isSuperAdmin()) {
+        if ($viewer->canViewAllDivisions()) {
             return;
         }
 
@@ -200,20 +192,6 @@ class CrossDivisionMirrorService
                             ->whereIn('division_id', $ownDivisionIds));
                 });
             }
-
-            // Copy: penerima share-divisi (view_all/full) ke workspace pemilik
-            // copy boleh melihat seluruh isi workspace tsb, termasuk copy.
-            $visibilityQuery->orWhere(function ($sharedQuery) use ($viewerId) {
-                $sharedQuery->where('cards.is_cross_division_copy', true)
-                    ->whereHas('board.campaign.workspace.members', function ($memberQuery) use ($viewerId) {
-                        $memberQuery
-                            ->where('users.id', $viewerId)
-                            ->whereIn('workspace_user.access', [
-                                Workspace::ACCESS_VIEW_ALL,
-                                Workspace::ACCESS_FULL,
-                            ]);
-                    });
-            });
         });
     }
 
