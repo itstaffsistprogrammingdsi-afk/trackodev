@@ -161,10 +161,14 @@ const AppHeader: React.FC = () => {
   const auth = useAuth();
   const { toggleMobileSidebar } = useSidebar();
 
-  const isSuperAdmin = useMemo(() => {
+  const canViewAllDivisions = useMemo(() => {
     try {
-      return typeof auth?.hasRole === "function"
-        ? !!auth.hasRole("super_admin")
+      if (typeof auth?.hasRole === "function" && auth.hasRole("super_admin")) {
+        return true;
+      }
+
+      return typeof auth?.can === "function"
+        ? !!auth.can("division.view_all")
         : false;
     } catch {
       return false;
@@ -184,12 +188,12 @@ const AppHeader: React.FC = () => {
 
   const breadcrumbs = useMemo(() => {
     const raw = buildBreadcrumbs(location.pathname);
-    if (isSuperAdmin) return raw;
+    if (canViewAllDivisions) return raw;
 
     return raw.map((crumb) =>
       crumb.href === "/divisions" ? { ...crumb, href: undefined } : crumb,
     );
-  }, [location.pathname, isSuperAdmin]);
+  }, [location.pathname, canViewAllDivisions]);
 
   const handleBackToAdmin = (): void => {
     const adminToken = localStorage.getItem("admin_token");

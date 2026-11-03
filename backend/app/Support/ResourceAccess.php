@@ -46,7 +46,7 @@ final class ResourceAccess
 
     public static function form(User $user, Form $form): bool
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             return true;
         }
 

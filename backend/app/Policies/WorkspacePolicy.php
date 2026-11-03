@@ -27,9 +27,10 @@ class WorkspacePolicy
         User $user,
         Workspace $workspace
     ): bool {
-        return $user->inDivision(
-            $workspace->division_id
-        );
+        return $user->canViewAllDivisions()
+            || $user->inDivision(
+                $workspace->division_id
+            );
     }
 
     /**

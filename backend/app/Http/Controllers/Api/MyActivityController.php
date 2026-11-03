@@ -11,6 +11,7 @@ use App\Models\Card;
 use App\Models\CardAttachment;
 use App\Models\CardBriefAttachment;
 use App\Models\CardComment;
+use App\Models\Division;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
@@ -412,9 +413,9 @@ class MyActivityController extends Controller
         $viewer = $request->user();
 
         abort_unless(
-            $viewer?->managesDivision() || $viewer?->isSuperAdmin(),
+            $viewer?->canViewAllDivisions() || $viewer?->managesDivision(),
             403,
-            'Ranking hanya tersedia untuk super admin dan admin.'
+            'Ranking hanya tersedia untuk admin dan pemegang akses semua divisi.'
         );
 
         $validated = $request->validate([
@@ -430,7 +431,9 @@ class MyActivityController extends Controller
             default => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
         };
 
-        $divisionIds = $viewer->divisions()->pluck('divisions.id');
+        $divisionIds = $viewer->canViewAllDivisions()
+            ? Division::query()->pluck('id')
+            : $viewer->divisions()->pluck('divisions.id');
 
         if ($divisionIds->isEmpty()) {
             return response()->json([

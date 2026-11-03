@@ -47,6 +47,7 @@ type RoleType =
   | "super_admin"
   | "admin"
   | "manager"
+  | "hrd"
   | "user";
 
 type User = {
@@ -120,6 +121,9 @@ const roleStyle: Record<
   manager:
     "bg-teal-100 text-teal-700 border border-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20",
 
+  hrd:
+    "bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:border-fuchsia-500/20",
+
   user:
     "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-500/10 dark:text-gray-300 dark:border-gray-700",
 
@@ -147,6 +151,7 @@ const getUserRole = (
       "super_admin",
       "admin",
       "manager",
+      "hrd",
       "user",
     ].includes(user.role)
   ) {
@@ -166,6 +171,7 @@ const getUserRole = (
         "super_admin",
         "admin",
         "manager",
+        "hrd",
         "user",
       ].includes(firstRole)
     ) {
@@ -807,6 +813,10 @@ export default function UserProfiles() {
                 Manager
               </option>
 
+              <option value="hrd">
+                HRD
+              </option>
+
               <option value="user">
                 User
               </option>
@@ -815,6 +825,7 @@ export default function UserProfiles() {
             <p className="text-[11px] leading-5 text-gray-500 dark:text-gray-400">
               <strong>Manager</strong>: akses penuh 1 divisi termasuk Report.{" "}
               <strong>Admin</strong>: akses penuh divisi, tanpa Report.{" "}
+              <strong>HRD</strong>: akses baca seluruh divisi tanpa hak mengubah data.{" "}
               <strong>User</strong>: terbatas pada campaign/task yang dibuat atau diikuti.{" "}
               <strong>Super Admin</strong>: seluruh sistem.
             </p>

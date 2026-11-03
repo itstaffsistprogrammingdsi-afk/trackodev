@@ -51,6 +51,7 @@ const LandingPage = lazy(() => import("@/features/landing/pages/LandingPage"));
 const EditAccountPage = lazy(() => import("@/features/account/pages/EditAccountPage"));
 const IntegrationSettingsPage = lazy(() => import("@/features/integration/pages/IntegrationSettingsPage"));
 const AssistantPreview = lazy(() => import("@/features/ai/AssistantPreview"));
+const VirtualOfficePage = lazy(() => import("@/features/virtual-office/VirtualOfficePage"));
 
 function isSuperAdminUser(auth: ReturnType<typeof useAuth>) {
   try {
@@ -156,6 +157,10 @@ export default function App() {
           <Route
             path="/my-work"
             element={<PermissionRoute permission="my_work.view"><MyWorkRoute /></PermissionRoute>}
+          />
+          <Route
+            path="/virtual-office"
+            element={<PermissionRoute permissions={["dashboard.view", "my_work.view"]}><VirtualOfficePage /></PermissionRoute>}
           />
 
           {/* Task Management */}

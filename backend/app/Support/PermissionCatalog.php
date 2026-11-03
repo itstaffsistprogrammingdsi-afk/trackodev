@@ -20,6 +20,7 @@ final class PermissionCatalog
             ]),
             'division' => self::module('Division', 'Kelola division dan keanggotaannya.', [
                 'division.view' => 'Lihat division',
+                'division.view_all' => 'Lihat seluruh divisi (lintas divisi)',
                 'division.create' => 'Buat division',
                 'division.update' => 'Ubah division',
                 'division.delete' => 'Hapus division',
@@ -213,7 +214,7 @@ final class PermissionCatalog
     {
         $allowed = collect($permissions)->flip();
 
-        return collect(self::modules())
+        $modules = collect(self::modules())
             ->map(function (array $module, string $key) use ($allowed) {
                 $items = collect($module['permissions'])
                     ->filter(fn (string $label, string $name) => $allowed->has($name))
@@ -230,8 +231,30 @@ final class PermissionCatalog
                 ];
             })
             ->filter(fn (array $module) => $module['permissions'] !== [])
-            ->values()
-            ->all();
+            ->values();
+
+        // Permission yang ada di database tetapi belum terdaftar di katalog
+        // tetap harus muncul di UI, kalau tidak Super Admin tidak bisa
+        // memberikannya lewat menu "Atur akses".
+        $catalogNames = collect(self::names())->flip();
+        $unknown = $allowed->keys()
+            ->reject(fn (string $name) => $catalogNames->has($name))
+            ->map(fn (string $name) => [
+                'name' => $name,
+                'label' => $name,
+            ])
+            ->values();
+
+        if ($unknown->isNotEmpty()) {
+            $modules->push([
+                'key' => 'others',
+                'label' => 'Akses Lainnya',
+                'description' => 'Permission tambahan yang belum memiliki label katalog.',
+                'permissions' => $unknown->all(),
+            ]);
+        }
+
+        return $modules->all();
     }
 
     public static function dependenciesFor(string $permission): array
@@ -310,6 +333,48 @@ final class PermissionCatalog
             'division.member.remove',
             'profile.view',
             'dashboard.division_ranking.view',
+            'division.view_all',
+        ]));
+    }
+
+    /**
+     * HRD = akun lintas divisi dengan akses baca menyeluruh.
+     *
+     * Role ini tidak mengelola divisi maupun konten: seluruh aksi tulis
+     * (create/update/delete/assign/QC/upload) tetap harus diberikan eksplisit
+     * lewat "Atur akses" bila benar-benar dibutuhkan.
+     */
+    public static function hrdPermissions(): array
+    {
+        $readOnly = collect(self::names())
+            ->filter(fn (string $permission) => str_ends_with($permission, '.view'))
+            ->reject(fn (string $permission) => in_array($permission, [
+                'user.view',
+                'user.stats.view',
+                'user.permissions.view',
+                'profile.view',
+            ], true))
+            ->all();
+
+        return array_values(array_unique([
+            ...$readOnly,
+            'user.mention',
+            'report.preview',
+            'report.preview.pdf',
+            'report.export',
+            'report.export.pdf',
+            'report.export.excel',
+            'report.activity.view',
+            'attachment.download',
+            'brief_attachment.download',
+            'my_work.export',
+            'account.update',
+            'account.password.update',
+            'account.avatar.update',
+            'chat.read',
+            'notification.read',
+            'notification.read_all',
+            'division.view_all',
         ]));
     }
 

@@ -331,7 +331,7 @@ class ReportController extends Controller
     {
         $viewer = $request->user();
 
-        if ($viewer->isSuperAdmin() || $viewer->is($target)) {
+        if ($viewer->canViewAllDivisions() || $viewer->is($target)) {
             return $logs;
         }
 
@@ -445,7 +445,7 @@ class ReportController extends Controller
     {
         $viewer = $request->user();
 
-        if ($viewer->isSuperAdmin() || $viewer->is($target)) {
+        if ($viewer->canViewAllDivisions() || $viewer->is($target)) {
             return;
         }
 
@@ -768,7 +768,7 @@ class ReportController extends Controller
 
         $viewer = $request->user();
 
-        if (! $viewer || $viewer->isSuperAdmin()) {
+        if (! $viewer || $viewer->canViewAllDivisions()) {
             return;
         }
 
@@ -811,8 +811,8 @@ private function restrictDivisionVisibility($query, Request $request): void
 {
     $currentUser = $request->user();
 
-    // Super Admin bebas melihat semua divisi.
-    if ($currentUser->isSuperAdmin()) {
+    // Super Admin dan pemegang akses semua divisi bebas melihat semua divisi.
+    if ($currentUser->canViewAllDivisions()) {
         return;
     }
 

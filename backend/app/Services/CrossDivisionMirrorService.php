@@ -117,7 +117,7 @@ class CrossDivisionMirrorService
             return true;
         }
 
-        if ($viewer->isSuperAdmin()) {
+        if ($viewer->canViewAllDivisions()) {
             return true;
         }
 
@@ -154,7 +154,7 @@ class CrossDivisionMirrorService
      */
     public function applyCopyVisibility($query, User $viewer): void
     {
-        if ($viewer->isSuperAdmin()) {
+        if ($viewer->canViewAllDivisions()) {
             return;
         }
 

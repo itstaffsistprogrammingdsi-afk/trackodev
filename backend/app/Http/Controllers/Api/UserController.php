@@ -274,6 +274,7 @@ class UserController extends Controller
                     User::ROLE_SUPER_ADMIN,
                     User::ROLE_ADMIN,
                     User::ROLE_MANAGER,
+                    User::ROLE_HRD,
                     User::ROLE_USER,
                 ]),
                 'exists:roles,name',
@@ -488,6 +489,7 @@ class UserController extends Controller
                     User::ROLE_SUPER_ADMIN,
                     User::ROLE_ADMIN,
                     User::ROLE_MANAGER,
+                    User::ROLE_HRD,
                     User::ROLE_USER,
                 ]),
                 'exists:roles,name',
@@ -704,6 +706,7 @@ class UserController extends Controller
                 'total_users' => User::count(),
                 'total_super_admin' => User::query()->whereHas('roles', fn ($query) => $query->where('roles.name', User::ROLE_SUPER_ADMIN))->count(),
                 'total_admin' => User::query()->whereHas('roles', fn ($query) => $query->where('roles.name', User::ROLE_ADMIN))->count(),
+                'total_hrd' => User::query()->whereHas('roles', fn ($query) => $query->where('roles.name', User::ROLE_HRD))->count(),
                 'total_user' => User::query()->whereHas('roles', fn ($query) => $query->where('roles.name', User::ROLE_USER))->count(),
             ],
         ]);

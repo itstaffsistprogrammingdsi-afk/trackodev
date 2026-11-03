@@ -27,7 +27,7 @@ public function index(
     // SUPER ADMIN
     // ========================================
 
-    if ($user->isSuperAdmin()) {
+    if ($user->canViewAllDivisions()) {
         return response()->json([
             'data' => WorkspaceResource::collection(
                 $division->workspaces()->get()

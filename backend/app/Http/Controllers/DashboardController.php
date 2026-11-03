@@ -229,7 +229,7 @@ class DashboardController extends Controller
 
     private function systemInsightScope($user): array
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             return [
                 'division_ids' => null,
                 'payload' => [
@@ -279,7 +279,7 @@ class DashboardController extends Controller
      */
     private function applyCampaignAccess($query, $user, string $campaignRelation): void
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             return;
         }
 
@@ -297,12 +297,12 @@ class DashboardController extends Controller
      */
     public function divisionRankings(Request $request)
     {
-        $superAdmin = $request->user();
+        $viewer = $request->user();
 
         abort_unless(
-            $superAdmin?->isSuperAdmin(),
+            $viewer?->canViewAllDivisions(),
             403,
-            'Ranking per divisi hanya tersedia untuk Super Admin.'
+            'Ranking per divisi hanya tersedia untuk pemegang akses semua divisi.'
         );
 
         $filter = $this->resolvePeriod($request);
@@ -406,7 +406,7 @@ class DashboardController extends Controller
         array $filter,
         ?array $divisionIds
     ): array {
-        if ($scope === 'global' && $user->isSuperAdmin()) {
+        if ($scope === 'global' && $user->canViewAllDivisions()) {
             return [
                 'users' => $this->countWithinPeriod(
                     User::query(), $filter, 'users.created_at'

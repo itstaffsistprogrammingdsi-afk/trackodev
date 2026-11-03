@@ -146,7 +146,7 @@ class EncryptedExportService
 
             $pageCount = $pdf->setSourceFile($sourcePath);
             for ($pageNumber = 1; $pageNumber <= $pageCount; $pageNumber++) {
-                $template = $pdf->importPage($pageNumber);
+                $template = $pdf->importPage($pageNumber, importExternalLinks: true);
                 $size = $pdf->getTemplateSize($template);
                 $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                 $pdf->useTemplate($template, 0, 0, $size['width'], $size['height'], true);

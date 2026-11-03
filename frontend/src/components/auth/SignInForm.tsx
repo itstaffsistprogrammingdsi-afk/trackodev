@@ -28,7 +28,10 @@ export default function SignInForm() {
       await loadUser();
       const roles = Array.isArray(user.roles) ? user.roles : [];
       const isDashboardFirst =
-        roles.includes("super_admin") || roles.includes("admin") || roles.includes("manager");
+        roles.includes("super_admin")
+        || roles.includes("admin")
+        || roles.includes("manager")
+        || roles.includes("hrd");
       navigate(isDashboardFirst ? "/dashboard" : "/my-work", { replace: true });
     } catch (error: unknown) {
       const status = axios.isAxiosError(error)

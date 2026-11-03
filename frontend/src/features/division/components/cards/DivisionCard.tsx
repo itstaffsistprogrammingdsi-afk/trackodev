@@ -15,6 +15,7 @@ import EditDivisionModal from "../modals/EditDivisionModal";
 
 import { useDeleteDivision } from "../../hooks/useDivisions";
 import { confirmDialog } from "@/lib/feedback";
+import { useAuth } from "@/context/AuthContext";
 
 import type { Division } from "../../types";
 import type { User } from "../../../user/types";
@@ -31,6 +32,8 @@ export default function DivisionCard({
   onManageMembers,
 }: Props) {
   const navigate = useNavigate();
+  const { hasRole, managesDivision } = useAuth();
+  const canManageDivision = hasRole("super_admin") || managesDivision();
 
   const deleteMutation =
     useDeleteDivision();
@@ -283,51 +286,55 @@ export default function DivisionCard({
               gap-2
             "
           >
-            <button
-              type="button"
-              onClick={handleManageTeam}
-              className="
-                inline-flex
-                items-center
-                gap-2
-                px-3
-                py-2
-                text-sm
-                font-medium
-                rounded-lg
-                border
-                border-emerald-200
-                text-emerald-700
-                hover:bg-emerald-50
-                transition
-              "
-            >
-              <UserCog className="h-4 w-4" />
-              Manage Team
-            </button>
+            {canManageDivision && (
+              <button
+                type="button"
+                onClick={handleManageTeam}
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  px-3
+                  py-2
+                  text-sm
+                  font-medium
+                  rounded-lg
+                  border
+                  border-emerald-200
+                  text-emerald-700
+                  hover:bg-emerald-50
+                  transition
+                "
+              >
+                <UserCog className="h-4 w-4" />
+                Manage Team
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="
-                inline-flex
-                items-center
-                gap-2
-                px-3
-                py-2
-                text-sm
-                font-medium
-                rounded-lg
-                border
-                border-blue-200
-                text-blue-700
-                hover:bg-blue-50
-                transition
-              "
-            >
-              <Pencil className="h-4 w-4" />
-              Edit
-            </button>
+            {canManageDivision && (
+              <button
+                type="button"
+                onClick={handleEdit}
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  px-3
+                  py-2
+                  text-sm
+                  font-medium
+                  rounded-lg
+                  border
+                  border-blue-200
+                  text-blue-700
+                  hover:bg-blue-50
+                  transition
+                "
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
+            )}
 
             <button
               type="button"
@@ -352,35 +359,37 @@ export default function DivisionCard({
               Division Detail
             </button>
 
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={
-                deleteMutation.isPending
-              }
-              className="
-                inline-flex
-                items-center
-                gap-2
-                px-3
-                py-2
-                text-sm
-                font-medium
-                rounded-lg
-                border
-                border-red-200
-                text-red-600
-                hover:bg-red-50
-                transition
-                disabled:opacity-50
-              "
-            >
-              <Trash2 className="h-4 w-4" />
+            {canManageDivision && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={
+                  deleteMutation.isPending
+                }
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  px-3
+                  py-2
+                  text-sm
+                  font-medium
+                  rounded-lg
+                  border
+                  border-red-200
+                  text-red-600
+                  hover:bg-red-50
+                  transition
+                  disabled:opacity-50
+                "
+              >
+                <Trash2 className="h-4 w-4" />
 
-              {deleteMutation.isPending
-                ? "Deleting..."
-                : "Delete"}
-            </button>
+                {deleteMutation.isPending
+                  ? "Deleting..."
+                  : "Delete"}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -378,9 +378,21 @@ const AppSidebar: React.FC = () => {
     }
   }, [auth]);
 
-  const { data: accessibleDivisions } = useDivisions(true, !isSuperAdmin);
+  const canViewAllDivisions = useMemo(() => {
+    try {
+      return typeof auth?.hasRole === "function" && auth.hasRole("super_admin")
+        ? true
+        : typeof auth?.can === "function"
+          ? !!auth.can("division.view_all")
+          : false;
+    } catch {
+      return false;
+    }
+  }, [auth]);
+
+  const { data: accessibleDivisions } = useDivisions(true, !canViewAllDivisions);
   const { divisionId, workspaceId, campaignId } =
-    usePersistedRouteParams(isSuperAdmin, accessibleDivisions);
+    usePersistedRouteParams(canViewAllDivisions, accessibleDivisions);
 
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
 
@@ -419,6 +431,13 @@ const AppSidebar: React.FC = () => {
               path: can("dashboard.view") ? "/dashboard" : "/my-work",
             }]
           : []),
+        ...(can("dashboard.view") || can("my_work.view")
+          ? [{
+              icon: <BoxCubeIcon />,
+              name: "Virtual Office",
+              path: "/virtual-office",
+            }]
+          : []),
         {
           name: "Task Management",
           icon: <BoxCubeIcon />,
@@ -427,7 +446,7 @@ const AppSidebar: React.FC = () => {
               name: "Task Manager",
               path: "/divisions",
               children: [
-                ...(isSuperAdmin
+                ...(canViewAllDivisions
                   ? [
                       {
                         name: "Divisions",
@@ -444,7 +463,7 @@ const AppSidebar: React.FC = () => {
                   name: "Workspace",
                   path: divisionId
                     ? `/divisions/${divisionId}`
-                    : isSuperAdmin
+                    : canViewAllDivisions
                       ? "/divisions"
                       : "/my-work",
                   isFallback: !divisionId,
@@ -453,7 +472,7 @@ const AppSidebar: React.FC = () => {
                   name: "Campaigns",
                   path: workspaceId
                     ? `/workspaces/${workspaceId}/campaigns`
-                    : isSuperAdmin
+                    : canViewAllDivisions
                       ? "/divisions"
                       : "/my-work",
                   isFallback: !workspaceId,
@@ -544,11 +563,11 @@ const AppSidebar: React.FC = () => {
         {
           icon: <GridIcon />,
           name: "Dashboard",
-          path: isSuperAdmin ? "/dashboard" : "/my-work",
+          path: can("dashboard.view") ? "/dashboard" : "/my-work",
         },
       ];
     }
-  }, [divisionId, workspaceId, campaignId, can, isSuperAdmin]);
+  }, [divisionId, workspaceId, campaignId, can, canViewAllDivisions]);
 
   /* ---------------------------------------------------------------------- */
   /*                             ACTIVE MATCHER                             */

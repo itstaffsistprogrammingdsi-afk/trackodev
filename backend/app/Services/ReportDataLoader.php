@@ -91,7 +91,7 @@ class ReportDataLoader
             $userNumber = 0;
             $hasCardFilters = $this->scope->hasCardFilters($request);
             $viewer = $request->user();
-            $viewerCampaignIds = $viewer?->managesDivision()
+            $viewerCampaignIds = $viewer?->managesDivision() && ! $viewer->canViewAllDivisions()
                 ? $viewer->accessibleCampaigns()->pluck('campaigns.id')->map(fn ($id) => (string) $id)->all()
                 : null;
 
@@ -146,7 +146,9 @@ class ReportDataLoader
         if (! $viewer?->isSuperAdmin()) {
             $query->whereDoesntHave('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'super_admin'));
 
-            if ($viewer?->isUser()) {
+            if ($viewer?->canViewAllDivisions()) {
+                // Global reader: seluruh user non-Super Admin terlihat.
+            } elseif ($viewer?->isUser()) {
                 $query->whereKey($viewer->id);
             } elseif ($viewer?->managesDivision()) {
                 $divisionIds = $viewer->divisions()->pluck('divisions.id');

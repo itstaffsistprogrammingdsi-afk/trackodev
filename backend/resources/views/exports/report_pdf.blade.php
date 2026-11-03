@@ -386,9 +386,21 @@
                                                     }
                                                 @endphp
 
-                                                @if (isset($signedLinks) && $signedLinks && $attachment->attachment_type === 'file' && ! empty($attachment->file_path))
+                                                @php
+                                                    $isExport = isset($signedLinks) && $signedLinks;
+                                                @endphp
+
+                                                @if ($isExport && $attachment->attachment_type === 'file' && ! empty($attachment->file_path))
                                                     <a
                                                         href="{{ app(\App\Services\AttachmentSignedUrlService::class)->for($attachment) }}"
+                                                        style="color:#1a237e;text-decoration:underline;word-break:break-all;"
+                                                    >{{ $displayName }}</a>
+                                                    @if ($attachment->attachment_type)
+                                                        <span class="attachment-type">{{ $attachment->attachment_type }}</span>
+                                                    @endif
+                                                @elseif ($isExport && $hasUrl && $url)
+                                                    <a
+                                                        href="{{ $url }}"
                                                         style="color:#1a237e;text-decoration:underline;word-break:break-all;"
                                                     >{{ $displayName }}</a>
                                                     @if ($attachment->attachment_type)

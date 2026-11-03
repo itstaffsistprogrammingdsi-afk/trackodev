@@ -104,7 +104,7 @@ class Workspace extends Model
 
     public function canBeAccessedBy(User $user): bool
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             return true;
         }
 

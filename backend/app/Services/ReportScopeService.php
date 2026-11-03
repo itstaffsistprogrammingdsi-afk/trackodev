@@ -46,7 +46,7 @@ class ReportScopeService
 
     public function restrictCardQueryToViewerDivisions(Builder $query, User $viewer): void
     {
-        if ($viewer->isSuperAdmin() || ! $viewer->managesDivision()) {
+        if ($viewer->canViewAllDivisions() || ! $viewer->managesDivision()) {
             return;
         }
 
@@ -160,7 +160,7 @@ class ReportScopeService
      */
     public function cardIsVisibleToUser(Card $card, User $user): bool
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->canViewAllDivisions()) {
             return true;
         }
 
