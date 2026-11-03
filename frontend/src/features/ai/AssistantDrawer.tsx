@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { ArrowUp, ArrowUpRight, Check, FileText, ListChecks, RotateCcw, ShieldCheck, Sparkles, X } from "lucide-react";
 import JellyMascot from "./JellyMascot";
 import type { MascotState } from "./JellyMascot";
+import { normalizeAssistantText } from "./assistant";
 
 export type AssistantProposal = {
   id: string;
@@ -126,7 +127,7 @@ export default function AssistantDrawer({ open, onClose, state, serviceState, me
           </div>}
           <div role="log" aria-live="polite" aria-label={demo ? "Contoh percakapan" : "Percakapan dengan asisten"} className="space-y-5">{messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-8" : "mr-3"}>
             <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${message.role === "user" ? "text-right text-slate-400" : "text-indigo-500 dark:text-indigo-300"}`}>{message.role === "user" ? "Anda" : "Asisten Tracko"}</p>
-            <div className={`whitespace-pre-wrap break-words rounded-2xl p-4 text-sm leading-relaxed ${message.role === "user" ? "rounded-tr-md bg-indigo-600 text-white" : "rounded-tl-md border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"}`}>{message.content}</div>
+            <div className={`whitespace-pre-wrap break-words rounded-2xl p-4 text-sm leading-relaxed ${message.role === "user" ? "rounded-tr-md bg-indigo-600 text-white" : "rounded-tl-md border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"}`}>{message.role === "assistant" ? normalizeAssistantText(message.content) : message.content}</div>
             {message.proposal && <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 dark:border-indigo-900 dark:bg-indigo-950/40">
               <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">Proposal perubahan</p><p className="mt-1 text-xs font-semibold">{message.proposal.target.title ?? "Target Tracko"}</p></div><span className="rounded-full bg-white/80 px-2 py-1 text-[9px] font-semibold uppercase text-indigo-600 dark:bg-slate-900 dark:text-indigo-300">{message.proposal.status === "pending" ? "Menunggu persetujuan" : message.proposal.status === "approved" ? "Disetujui · dijalankan" : message.proposal.status === "rejected" ? "Ditolak" : message.proposal.status === "stale" ? "Data berubah" : message.proposal.status === "expired" ? "Kedaluwarsa" : message.proposal.status === "failed" ? "Gagal" : "Diproses"}</span></div>
               <div className="mt-3 space-y-2">{message.proposal.changes.map((change, changeIndex) => <div key={`${change.field}-${changeIndex}`} className="rounded-xl border border-indigo-100/80 bg-white/80 px-3 py-2 dark:border-indigo-900/70 dark:bg-slate-950/60"><p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{change.field}</p><p className="mt-1 break-words text-xs text-slate-700 dark:text-slate-200">{change.before == null ? <span className="text-slate-400">—</span> : String(change.before)}<span className="mx-2 text-indigo-400">→</span><span className="font-semibold">{change.after == null ? "(kosong)" : String(change.after)}</span></p></div>)}</div>
