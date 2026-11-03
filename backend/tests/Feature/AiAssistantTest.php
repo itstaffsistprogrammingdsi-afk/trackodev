@@ -54,6 +54,20 @@ class AiAssistantTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_system_prompt_restricts_scope_to_the_tracko_system(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+        $this->postJson('/api/ai/messages', ['message' => 'Halo'])->assertOk();
+        Http::assertSent(function ($request) {
+            $system = $request['messages'][0]['content'] ?? '';
+
+            return $request['messages'][0]['role'] === 'system'
+                && str_contains($system, 'Ruang lingkup Anda hanya sistem Tracko')
+                && str_contains($system, 'Maaf, saya hanya dapat membantu hal-hal terkait Tracko')
+                && str_contains($system, 'tidak memiliki akses ke sistem atau data lain');
+        });
+    }
+
     public function test_history_is_server_owned_and_isolated_between_users(): void
     {
         $owner = User::factory()->create();
