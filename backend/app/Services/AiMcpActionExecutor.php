@@ -37,7 +37,17 @@ class AiMcpActionExecutor
         // Dispatch through Laravel's registered MCP API router, preserving its
         // permission, resource policy, audit and idempotency middleware.
         $request->attributes->set('ai_mcp_client', $client->id);
-        $response = Route::dispatch($request);
+        // Controllers resolve Request from the container. Bind the dispatched
+        // request so validation and input read the MCP payload, not the outer
+        // AI request that triggered the approval.
+        $previousRequest = app('request');
+        app()->instance('request', $request);
+
+        try {
+            $response = Route::dispatch($request);
+        } finally {
+            app()->instance('request', $previousRequest);
+        }
         $responseBody = json_decode($response->getContent(), true);
         if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
             throw new HttpException($response->getStatusCode(), $responseBody['message'] ?? 'MCP menolak tindakan yang disetujui.');

@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Card;
-use App\Models\Board;
 use App\Models\AiActionProposal;
+use App\Models\Board;
+use App\Models\Campaign;
+use App\Models\Card;
+use App\Models\Division;
+use App\Models\User;
+use App\Models\Workspace;
 use App\Services\AiAssistantService;
 use App\Services\AiActionProposalService;
 use App\Services\AiMcpActionExecutor;
@@ -78,22 +82,15 @@ class AiAssistantController extends Controller
             'message' => ['required', 'string', 'max:4000', 'regex:/\S/u'],
             'card_id' => ['nullable', 'uuid'],
             'board_id' => ['nullable', 'uuid'],
+            'campaign_id' => ['nullable', 'uuid'],
+            'workspace_id' => ['nullable', 'uuid'],
+            'division_id' => ['nullable', 'uuid'],
             'conversation_id' => ['nullable', 'uuid'],
         ]);
         $user = $request->user();
-        $card = null;
-        $board = null;
-        if (! empty($input['card_id'])) {
-            abort_unless($user->can('card.view') || $user->can('task.view'), 403);
-            $card = Card::findOrFail($input['card_id']);
-            abort_unless(ResourceAccess::card($user, $card), 403);
-            $board = $card->board;
-            abort_if(! empty($input['board_id']) && (string) $input['board_id'] !== (string) $board?->id, 422, 'Board harus mengikuti card yang dipilih.');
-        } elseif (! empty($input['board_id'])) {
-            abort_unless($user->can('card.create') || $user->can('task.create'), 403);
-            $board = Board::query()->with('campaign')->findOrFail($input['board_id']);
-            abort_unless($board->canBeAccessedBy($user), 403);
-        }
+        $scope = $this->resolveScope($user, $input);
+        $card = $scope['card'];
+        $board = $scope['board'];
         if (! $assistant->configured()) {
             return response()->json(['message' => 'Asisten AI belum diaktifkan. Hubungi administrator untuk konfigurasi 9router.'], 503);
         }
@@ -101,30 +98,21 @@ class AiAssistantController extends Controller
         $conversationId = $input['conversation_id'] ?? (string) Str::uuid();
         $key = 'ai:conversation:'.$user->id.':'.$conversationId;
         $session = Cache::get($key);
+        $scopeKey = $this->scopeKey($scope);
         if (! empty($input['conversation_id'])) {
             abort_if($session === null, 404, 'Percakapan telah berakhir. Mulai percakapan baru.');
-            abort_if(($session['card_id'] ?? null) !== $card?->id, 422, 'Mulai percakapan baru saat mengganti card.');
+            abort_if(($session['scope_key'] ?? null) !== $scopeKey, 422, 'Mulai percakapan baru saat mengganti konteks.');
         }
 
         $history = $session['history'] ?? [];
         // Retain at most three prior turns to bound context and provider cost.
         $history = array_slice($history, -6);
         $history[] = ['role' => 'user', 'content' => trim($input['message'])];
-        $context = $card ? $this->cardContext($request, $card) : null;
+        $context = $this->assistantContext($request, $scope);
+        $operations = $proposals->availableOperations($user, $scope);
 
         try {
-            $visibleTasks = $card && ($user->can('checklist.view') || $user->can('task.view'));
-            $operations = $proposals->availableOperations($user, $card, $board, (bool) $visibleTasks);
             $completion = $assistant->respond($history, $context, $operations);
-            $reply = $completion['reply'];
-            $proposal = null;
-            if ($completion['action'] !== null) {
-                $stored = $proposals->create($user, $completion['action'], $operations, $card, $board);
-                $proposal = $proposals->publicView($stored);
-                if ($reply === '') {
-                    $reply = 'Saya menyiapkan satu proposal perubahan untuk Anda tinjau terlebih dahulu.';
-                }
-            }
         } catch (Throwable $failure) {
             Log::warning('AI assistant gateway request failed', ['user_id' => $user->id]);
 
@@ -135,9 +123,19 @@ class AiAssistantController extends Controller
             return response()->json(['message' => $message], 502);
         }
 
+        $reply = $completion['reply'];
+        $proposal = null;
+        if ($completion['action'] !== null) {
+            $stored = $proposals->create($user, $completion['action'], $operations, $scope);
+            $proposal = $proposals->publicView($stored);
+            if ($reply === '') {
+                $reply = 'Saya menyiapkan satu proposal perubahan untuk Anda tinjau terlebih dahulu.';
+            }
+        }
+
         $history[] = ['role' => 'assistant', 'content' => $reply];
-        Cache::put($key, ['card_id' => $card?->id, 'history' => $history], now()->addMinutes(config('ai.session_minutes')));
-        Log::info('AI assistant response completed', ['user_id' => $user->id, 'card_id' => $card?->id]);
+        Cache::put($key, ['scope_key' => $scopeKey, 'history' => $history], now()->addMinutes(config('ai.session_minutes')));
+        Log::info('AI assistant response completed', ['user_id' => $user->id, 'card_id' => $card?->id, 'scope' => $scopeKey]);
 
         return response()->json(['data' => [
             'reply' => $reply,
@@ -188,6 +186,103 @@ class AiAssistantController extends Controller
         $action->update(['status' => 'rejected']);
 
         return response()->json(['data' => $proposals->publicView($action->fresh())]);
+    }
+
+    private function resolveScope(User $user, array $input): array
+    {
+        $scope = ['division' => null, 'workspace' => null, 'campaign' => null, 'board' => null, 'card' => null];
+
+        if (! empty($input['card_id'])) {
+            abort_unless($user->can('card.view') || $user->can('task.view'), 403);
+            $card = Card::query()->with('board.campaign.workspace.division')->findOrFail($input['card_id']);
+            abort_unless(ResourceAccess::card($user, $card), 403);
+            $scope['card'] = $card;
+            $scope['board'] = $card->board;
+            $scope['campaign'] = $card->board?->campaign;
+            $scope['workspace'] = $card->board?->campaign?->workspace;
+            $scope['division'] = $card->board?->campaign?->workspace?->division;
+        } elseif (! empty($input['board_id'])) {
+            abort_unless($user->can('card.create') || $user->can('task.create'), 403);
+            $board = Board::query()->with('campaign.workspace.division')->findOrFail($input['board_id']);
+            abort_unless($board->canBeAccessedBy($user), 403);
+            $scope['board'] = $board;
+            $scope['campaign'] = $board->campaign;
+            $scope['workspace'] = $board->campaign?->workspace;
+            $scope['division'] = $board->campaign?->workspace?->division;
+        } elseif (! empty($input['campaign_id'])) {
+            abort_unless($user->can('campaign.view') || $user->can('board.view'), 403);
+            $campaign = Campaign::query()->with('workspace.division')->findOrFail($input['campaign_id']);
+            abort_unless($campaign->canBeAccessedBy($user), 403);
+            $scope['campaign'] = $campaign;
+            $scope['workspace'] = $campaign->workspace;
+            $scope['division'] = $campaign->workspace?->division;
+        } elseif (! empty($input['workspace_id'])) {
+            abort_unless($user->can('workspace.view') || $user->can('campaign.view'), 403);
+            $workspace = Workspace::query()->with('division')->findOrFail($input['workspace_id']);
+            abort_unless($workspace->canBeAccessedBy($user), 403);
+            $scope['workspace'] = $workspace;
+            $scope['division'] = $workspace->division;
+        } elseif (! empty($input['division_id'])) {
+            abort_unless($user->can('workspace.view'), 403);
+            $division = Division::query()->findOrFail($input['division_id']);
+            abort_unless($this->canAccessDivision($user, $division), 403);
+            $scope['division'] = $division;
+        }
+
+        $pairs = [
+            'division_id' => 'division',
+            'workspace_id' => 'workspace',
+            'campaign_id' => 'campaign',
+            'board_id' => 'board',
+        ];
+        foreach ($pairs as $inputKey => $scopeKey) {
+            if (empty($input[$inputKey]) || empty($scope[$scopeKey])) {
+                continue;
+            }
+            abort_if(
+                (string) $input[$inputKey] !== (string) $scope[$scopeKey]->id,
+                422,
+                'Konteks yang dipilih tidak cocok dengan halaman atau card saat ini.'
+            );
+        }
+
+        return $scope;
+    }
+
+    private function canAccessDivision(User $user, Division $division): bool
+    {
+        if ($user->canViewAllDivisions() || $user->divisions()->where('divisions.id', $division->id)->exists()) {
+            return true;
+        }
+
+        return $division->workspaces()->get()
+            ->contains(fn (Workspace $workspace) => $workspace->canBeAccessedBy($user));
+    }
+
+    private function scopeKey(array $scope): string
+    {
+        $parts = [];
+        foreach (['division', 'workspace', 'campaign', 'board', 'card'] as $key) {
+            $parts[] = $key.':'.($scope[$key]?->id ?? '-');
+        }
+
+        return implode('|', $parts);
+    }
+
+    private function assistantContext(Request $request, array $scope): ?array
+    {
+        $context = $scope['card'] ? $this->cardContext($request, $scope['card']) : [];
+        $scopeContext = [];
+        foreach (['division', 'workspace', 'campaign', 'board'] as $key) {
+            if (! empty($scope[$key])) {
+                $scopeContext[$key] = ['name' => $scope[$key]->name];
+            }
+        }
+        if ($scopeContext !== []) {
+            $context['scope'] = $scopeContext;
+        }
+
+        return $context === [] ? null : $context;
     }
 
     private function cardContext(Request $request, Card $card): array

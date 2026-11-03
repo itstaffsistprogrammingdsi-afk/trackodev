@@ -4,18 +4,37 @@ namespace App\Services;
 
 use App\Models\AiActionProposal;
 use App\Models\Board;
+use App\Models\Campaign;
 use App\Models\Card;
+use App\Models\Division;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Support\ResourceAccess;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AiActionProposalService
 {
-    public function availableOperations(User $user, ?Card $card, ?Board $board, bool $hasVisibleTasks): array
+    public function availableOperations(User $user, array $scope): array
     {
+        $card = $scope['card'] ?? null;
+        $board = $scope['board'] ?? null;
+        $campaign = $scope['campaign'] ?? null;
+        $workspace = $scope['workspace'] ?? null;
+        $division = $scope['division'] ?? null;
+        $hasVisibleTasks = $card && ($user->can('checklist.view') || $user->can('task.view'));
         $operations = [];
+
+        if ($division && $user->can('workspace.create') && $this->canManageDivision($user, $division)) {
+            $operations[] = 'create_workspace';
+        }
+        if ($workspace && $user->can('campaign.create') && $this->canCreateCampaign($user, $workspace)) {
+            $operations[] = 'create_campaign';
+        }
+        if ($campaign && ($user->can('board.create') || $user->can('campaign.create')) && $campaign->canBeAccessedBy($user)) {
+            $operations[] = 'create_board';
+        }
         if ($board && ($user->can('card.create') || $user->can('task.create'))) {
             $operations[] = 'create_card';
         }
@@ -25,24 +44,24 @@ class AiActionProposalService
         if ($card && ($user->can('checklist.create') || $user->can('task.create'))) {
             $operations[] = 'add_checklist_item';
         }
-        if ($card && $hasVisibleTasks && ($user->can('checklist.update') || $user->can('task.update'))) {
+        if ($hasVisibleTasks && ($user->can('checklist.update') || $user->can('task.update'))) {
             $operations[] = 'update_checklist_item';
         }
-        if ($card && $hasVisibleTasks && ($user->can('checklist.complete') || $user->can('task.update'))) {
+        if ($hasVisibleTasks && ($user->can('checklist.complete') || $user->can('task.update'))) {
             $operations[] = 'set_checklist_status';
         }
 
         return $operations;
     }
 
-    public function create(User $user, array $action, array $availableOperations, ?Card $card, ?Board $board): AiActionProposal
+    public function create(User $user, array $action, array $availableOperations, array $scope): AiActionProposal
     {
         $operation = $action['operation'] ?? null;
         if (! is_string($operation) || ! in_array($operation, $availableOperations, true)) {
             throw ValidationException::withMessages(['action' => 'Usulan tindakan tidak diizinkan untuk konteks atau akses pengguna ini.']);
         }
 
-        $payload = $this->payloadFor($user, $operation, $action, $card, $board);
+        $payload = $this->payloadFor($user, $operation, $action, $scope);
         $mcp = $payload['_mcp'];
         $fingerprint = app(McpWebActorAssertion::class)->fingerprint($mcp['method'], $mcp['path'], $mcp['body']);
         $snapshot = $payload['_display'];
@@ -66,6 +85,30 @@ class AiActionProposalService
         $target = $proposal->snapshot['target'] ?? [];
         $before = $proposal->snapshot['before'] ?? null;
         $operation = $proposal->operation;
+
+        if ($operation === 'create_workspace') {
+            abort_unless($user->can('workspace.create'), 403);
+            $division = Division::query()->findOrFail($target['id'] ?? null);
+            abort_unless($this->canManageDivision($user, $division), 403);
+
+            return;
+        }
+
+        if ($operation === 'create_campaign') {
+            abort_unless($user->can('campaign.create'), 403);
+            $workspace = Workspace::query()->findOrFail($target['id'] ?? null);
+            abort_unless($this->canCreateCampaign($user, $workspace), 403);
+
+            return;
+        }
+
+        if ($operation === 'create_board') {
+            abort_unless($user->can('board.create') || $user->can('campaign.create'), 403);
+            $campaign = Campaign::query()->findOrFail($target['id'] ?? null);
+            abort_unless($campaign->canBeAccessedBy($user), 403);
+
+            return;
+        }
 
         if ($operation === 'create_card') {
             abort_unless($user->can('card.create') || $user->can('task.create'), 403);
@@ -115,8 +158,13 @@ class AiActionProposalService
         ];
     }
 
-    private function payloadFor(User $user, string $operation, array $action, ?Card $card, ?Board $board): array
+    private function payloadFor(User $user, string $operation, array $action, array $scope): array
     {
+        $card = $scope['card'] ?? null;
+        $board = $scope['board'] ?? null;
+        $campaign = $scope['campaign'] ?? null;
+        $workspace = $scope['workspace'] ?? null;
+        $division = $scope['division'] ?? null;
         $payload = [];
         $target = [];
         $before = null;
@@ -125,7 +173,76 @@ class AiActionProposalService
         $tool = '';
         $changes = [];
 
-        if ($operation === 'create_card') {
+        if ($operation === 'create_workspace') {
+            if (! $division || ! $this->canManageDivision($user, $division)) {
+                throw ValidationException::withMessages(['division_id' => 'Pilih division yang dapat Anda kelola untuk membuat workspace.']);
+            }
+            $data = validator($action, [
+                'operation' => ['required', 'string'],
+                'title' => ['required', 'string', 'max:255'],
+                'description' => ['sometimes', 'nullable', 'string', 'max:50000'],
+            ])->validated();
+            $payload = ['name' => $data['title']];
+            if (array_key_exists('description', $data)) {
+                $payload['description'] = $data['description'];
+            }
+            $path = '/api/mcp/v1/divisions/'.$division->id.'/workspaces';
+            $tool = 'buat_workspace';
+            $target = ['type' => 'division', 'id' => $division->id, 'title' => $division->name];
+            $changes[] = ['field' => 'Nama workspace', 'before' => null, 'after' => $payload['name']];
+            if (array_key_exists('description', $payload)) {
+                $changes[] = ['field' => 'Deskripsi', 'before' => null, 'after' => $payload['description']];
+            }
+        } elseif ($operation === 'create_campaign') {
+            if (! $workspace || ! $this->canCreateCampaign($user, $workspace)) {
+                throw ValidationException::withMessages(['workspace_id' => 'Pilih workspace yang dapat Anda akses untuk membuat campaign.']);
+            }
+            $data = validator($action, [
+                'operation' => ['required', 'string'],
+                'title' => ['required', 'string', 'max:255'],
+                'description' => ['sometimes', 'nullable', 'string', 'max:50000'],
+                'type' => ['sometimes', 'in:personal,group'],
+                'due_date' => ['sometimes', 'nullable', 'date'],
+            ])->validated();
+            $payload = ['name' => $data['title'], 'type' => $data['type'] ?? 'group'];
+            if (array_key_exists('description', $data)) {
+                $payload['description'] = $data['description'];
+            }
+            if (array_key_exists('due_date', $data)) {
+                $payload['due_date'] = $data['due_date'];
+            }
+            $path = '/api/mcp/v1/workspaces/'.$workspace->id.'/campaigns';
+            $tool = 'buat_campaign';
+            $target = ['type' => 'workspace', 'id' => $workspace->id, 'title' => $workspace->name];
+            $changes[] = ['field' => 'Nama campaign', 'before' => null, 'after' => $payload['name']];
+            if (array_key_exists('description', $payload)) {
+                $changes[] = ['field' => 'Deskripsi', 'before' => null, 'after' => $payload['description']];
+            }
+            $changes[] = ['field' => 'Tipe', 'before' => null, 'after' => $payload['type']];
+            if (array_key_exists('due_date', $payload)) {
+                $changes[] = ['field' => 'Tenggat', 'before' => null, 'after' => $payload['due_date']];
+            }
+        } elseif ($operation === 'create_board') {
+            if (! $campaign || ! $campaign->canBeAccessedBy($user)) {
+                throw ValidationException::withMessages(['campaign_id' => 'Pilih campaign yang dapat Anda akses untuk membuat board.']);
+            }
+            $data = validator($action, [
+                'operation' => ['required', 'string'],
+                'title' => ['required', 'string', 'max:255'],
+                'color' => ['sometimes', 'nullable', 'string', 'max:20'],
+            ])->validated();
+            $payload = ['name' => $data['title']];
+            if (array_key_exists('color', $data) && $data['color'] !== null) {
+                $payload['color'] = $data['color'];
+            }
+            $path = '/api/mcp/v1/campaigns/'.$campaign->id.'/boards';
+            $tool = 'buat_board';
+            $target = ['type' => 'campaign', 'id' => $campaign->id, 'title' => $campaign->name];
+            $changes[] = ['field' => 'Nama board', 'before' => null, 'after' => $payload['name']];
+            if (array_key_exists('color', $payload)) {
+                $changes[] = ['field' => 'Warna', 'before' => null, 'after' => $payload['color']];
+            }
+        } elseif ($operation === 'create_card') {
             if (! $board || ! $board->canBeAccessedBy($user)) {
                 throw ValidationException::withMessages(['board_id' => 'Pilih board yang dapat Anda akses untuk membuat card.']);
             }
@@ -199,6 +316,19 @@ class AiActionProposalService
             '_mcp' => ['method' => $method, 'path' => $path, 'body' => $payload, 'tool' => $tool],
             '_display' => ['target' => $target, 'before' => $before, 'changes' => $changes],
         ] + $payload;
+    }
+
+    private function canManageDivision(User $user, Division $division): bool
+    {
+        return $user->isSuperAdmin()
+            || ($user->managesDivision() && $user->divisions()->where('divisions.id', $division->id)->exists());
+    }
+
+    private function canCreateCampaign(User $user, Workspace $workspace): bool
+    {
+        return $user->isSuperAdmin()
+            || $user->divisions()->where('divisions.id', $workspace->division_id)->exists()
+            || $workspace->grantsFullAccessTo($user);
     }
 
     private function cardSnapshot(Card $card): array

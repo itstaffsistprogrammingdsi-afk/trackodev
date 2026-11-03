@@ -68,6 +68,124 @@ class AiAssistantTest extends TestCase
         });
     }
 
+    public function test_workspace_proposal_is_approved_and_executed_through_mcp(): void
+    {
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $admin = User::factory()->create();
+        $admin->assignRole(User::ROLE_ADMIN);
+        $division = Division::create(['name' => 'Operasional', 'slug' => 'operasional-'.str()->random(8)]);
+        $division->users()->attach($admin->id, ['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $this->gatewayBody = ['choices' => [['message' => [
+            'content' => 'Saya siapkan proposal workspace.',
+            'tool_calls' => [[
+                'type' => 'function',
+                'function' => [
+                    'name' => 'propose_tracko_action',
+                    'arguments' => json_encode([
+                        'operation' => 'create_workspace',
+                        'title' => 'Operasional IT',
+                        'description' => 'Workspace untuk tim IT',
+                    ]),
+                ],
+            ]],
+        ]]]];
+
+        $response = $this->postJson('/api/ai/messages', [
+            'message' => 'buatkan workspace baru : operasional IT',
+            'division_id' => $division->id,
+        ])->assertOk()->assertJsonPath('data.proposal.operation', 'create_workspace')
+            ->assertJsonPath('data.proposal.target.id', $division->id);
+
+        $this->assertDatabaseMissing('workspaces', ['name' => 'Operasional IT']);
+
+        $this->postJson('/api/ai/proposals/'.$response->json('data.proposal.id').'/approve')
+            ->assertOk()->assertJsonPath('data.status', 'approved');
+
+        $this->assertDatabaseHas('workspaces', ['name' => 'Operasional IT', 'division_id' => $division->id]);
+    }
+
+    public function test_campaign_and_board_proposals_execute_through_mcp(): void
+    {
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $admin = User::factory()->create();
+        $admin->assignRole(User::ROLE_ADMIN);
+        $division = Division::create(['name' => 'Operasional', 'slug' => 'operasional-'.str()->random(8)]);
+        $division->users()->attach($admin->id, ['role' => 'admin']);
+        $workspace = $division->workspaces()->create(['name' => 'Workspace IT']);
+        Sanctum::actingAs($admin);
+
+        $this->gatewayBody = ['choices' => [['message' => [
+            'content' => 'Saya siapkan proposal campaign.',
+            'tool_calls' => [[
+                'type' => 'function',
+                'function' => [
+                    'name' => 'propose_tracko_action',
+                    'arguments' => json_encode([
+                        'operation' => 'create_campaign',
+                        'title' => 'Campaign Operasional',
+                        'type' => 'group',
+                    ]),
+                ],
+            ]],
+        ]]]];
+
+        $campaignProposal = $this->postJson('/api/ai/messages', [
+            'message' => 'buatkan campaign Operasional',
+            'workspace_id' => $workspace->id,
+        ])->assertOk()->assertJsonPath('data.proposal.operation', 'create_campaign')->json('data.proposal');
+
+        $this->postJson('/api/ai/proposals/'.$campaignProposal['id'].'/approve')->assertOk();
+        $campaign = Campaign::query()->where('name', 'Campaign Operasional')->firstOrFail();
+
+        $this->gatewayBody = ['choices' => [['message' => [
+            'content' => 'Saya siapkan proposal board.',
+            'tool_calls' => [[
+                'type' => 'function',
+                'function' => [
+                    'name' => 'propose_tracko_action',
+                    'arguments' => json_encode([
+                        'operation' => 'create_board',
+                        'title' => 'Incident',
+                        'color' => '#ef4444',
+                    ]),
+                ],
+            ]],
+        ]]]];
+
+        $boardProposal = $this->postJson('/api/ai/messages', [
+            'message' => 'buatkan board Incident',
+            'campaign_id' => $campaign->id,
+        ])->assertOk()->assertJsonPath('data.proposal.operation', 'create_board')->json('data.proposal');
+
+        $this->postJson('/api/ai/proposals/'.$boardProposal['id'].'/approve')->assertOk();
+
+        $this->assertDatabaseHas('boards', ['name' => 'Incident', 'campaign_id' => $campaign->id]);
+    }
+
+    public function test_operation_outside_available_context_is_rejected(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+        $this->gatewayBody = ['choices' => [['message' => [
+            'content' => '',
+            'tool_calls' => [[
+                'type' => 'function',
+                'function' => [
+                    'name' => 'propose_tracko_action',
+                    'arguments' => json_encode([
+                        'operation' => 'create_workspace',
+                        'title' => 'Tanpa Konteks',
+                    ]),
+                ],
+            ]],
+        ]]]];
+
+        $this->postJson('/api/ai/messages', ['message' => 'buatkan workspace'])->assertUnprocessable();
+
+        $this->assertDatabaseCount('ai_action_proposals', 0);
+    }
+
     public function test_history_is_server_owned_and_isolated_between_users(): void
     {
         $owner = User::factory()->create();
