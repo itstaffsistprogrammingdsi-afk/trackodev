@@ -13,6 +13,7 @@ use App\Models\Workspace;
 use App\Services\AiAssistantService;
 use App\Services\AiActionProposalService;
 use App\Services\AiMcpActionExecutor;
+use App\Services\AiReadDataService;
 use App\Services\CrossDivisionMirrorService;
 use App\Support\ResourceAccess;
 use Illuminate\Http\JsonResponse;
@@ -76,7 +77,7 @@ class AiAssistantController extends Controller
         return response()->json(['data' => $boards]);
     }
 
-    public function message(Request $request, AiAssistantService $assistant, AiActionProposalService $proposals): JsonResponse
+    public function message(Request $request, AiAssistantService $assistant, AiActionProposalService $proposals, AiReadDataService $reader): JsonResponse
     {
         $input = $request->validate([
             'message' => ['required', 'string', 'max:4000', 'regex:/\S/u'],
@@ -110,9 +111,20 @@ class AiAssistantController extends Controller
         $history[] = ['role' => 'user', 'content' => trim($input['message'])];
         $context = $this->assistantContext($request, $scope);
         $operations = $proposals->availableOperations($user, $scope);
+        $readTool = function (array $arguments) use ($reader, $user): array {
+            try {
+                return $reader->run($user, $arguments);
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
+                return ['error' => 'Akses data ditolak untuk permintaan ini.'];
+            } catch (Throwable $failure) {
+                report($failure);
+
+                return ['error' => 'Data tidak dapat dibaca saat ini.'];
+            }
+        };
 
         try {
-            $completion = $assistant->respond($history, $context, $operations);
+            $completion = $assistant->respond($history, $context, $operations, $readTool);
         } catch (Throwable $failure) {
             Log::warning('AI assistant gateway request failed', ['user_id' => $user->id]);
 

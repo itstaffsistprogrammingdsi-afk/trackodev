@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\Board;
 use App\Models\Campaign;
 use App\Models\Card;
@@ -9,6 +10,7 @@ use App\Models\Division;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\AiReadDataService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -23,12 +25,21 @@ class AiAssistantTest extends TestCase
 
     private int $gatewayStatus = 200;
 
+    private ?\Closure $gatewayCallback = null;
+
     protected function setUp(): void
     {
         parent::setUp();
         config(['ai.enabled' => true, 'ai.model' => 'test/model', 'ai.base_url' => 'http://localhost:20128/v1', 'ai.api_key' => 'test-secret']);
+        $this->gatewayCallback = null;
         Http::preventStrayRequests();
-        Http::fake(['localhost:20128/*' => fn () => Http::response($this->gatewayBody, $this->gatewayStatus)]);
+        Http::fake(['localhost:20128/*' => function () {
+            if ($this->gatewayCallback !== null) {
+                return ($this->gatewayCallback)();
+            }
+
+            return Http::response($this->gatewayBody, $this->gatewayStatus);
+        }]);
     }
 
     public function test_authentication_and_disabled_status(): void
@@ -184,6 +195,128 @@ class AiAssistantTest extends TestCase
         $this->postJson('/api/ai/messages', ['message' => 'buatkan workspace'])->assertUnprocessable();
 
         $this->assertDatabaseCount('ai_action_proposals', 0);
+    }
+
+    public function test_assistant_reads_last_month_completion_ranking(): void
+    {
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $viewer = User::factory()->create();
+        $viewer->assignRole(User::ROLE_SUPER_ADMIN);
+        $division = Division::create(['name' => 'Operasional', 'slug' => 'operasional-'.str()->random(8)]);
+        $alice = User::factory()->create(['name' => 'Alice']);
+        $bob = User::factory()->create(['name' => 'Bob']);
+        $division->users()->attach($alice->id, ['role' => 'member']);
+        $division->users()->attach($bob->id, ['role' => 'member']);
+        $workspace = $division->workspaces()->create(['name' => 'Workspace IT']);
+        $campaign = $workspace->campaigns()->create(['name' => 'Campaign IT', 'type' => 'group', 'created_by' => $viewer->id]);
+        $board = $campaign->boards()->create(['name' => 'Done', 'type' => 'completed', 'order' => 1]);
+
+        $makeCompletedCard = function (string $title, User $user, $completedAt) use ($board) {
+            $card = Card::create([
+                'board_id' => $board->id,
+                'created_by' => $user->id,
+                'title' => $title,
+                'status' => 'completed',
+                'completed_at' => $completedAt,
+                'order' => 1,
+            ]);
+            ActivityLog::create([
+                'user_id' => $user->id,
+                'entity_type' => 'card',
+                'entity_id' => $card->id,
+                'action' => 'moved',
+                'description' => 'memindahkan card ke selesai',
+                'meta' => [],
+            ]);
+        };
+
+        $lastMonth = now()->subMonthNoOverflow()->startOfMonth()->addDays(3)->setTime(10, 0);
+        $makeCompletedCard('Alice satu', $alice, $lastMonth);
+        $makeCompletedCard('Alice dua', $alice, $lastMonth->copy()->addDay());
+        $makeCompletedCard('Bob satu', $bob, $lastMonth->copy()->addDay());
+        $makeCompletedCard('Bob bulan ini', $bob, now()->startOfMonth()->addHour());
+
+        Sanctum::actingAs($viewer);
+        $calls = 0;
+        $this->gatewayCallback = function () use (&$calls) {
+            $calls++;
+
+            if ($calls === 1) {
+                return Http::response(['choices' => [['message' => [
+                    'content' => '',
+                    'tool_calls' => [[
+                        'id' => 'call_ranking',
+                        'type' => 'function',
+                        'function' => [
+                            'name' => 'baca_tracko',
+                            'arguments' => json_encode(['operation' => 'ranking_penyelesai', 'period' => 'bulan_lalu']),
+                        ],
+                    ]],
+                ]]]]);
+            }
+
+            return Http::response(['choices' => [['message' => ['content' => 'Selesai.']]]]);
+        };
+
+        $this->postJson('/api/ai/messages', ['message' => 'Siapa yang paling banyak menyelesaikan task bulan lalu?'])
+            ->assertOk()->assertJsonPath('data.reply', 'Selesai.');
+
+        $toolPayload = null;
+        Http::assertSent(function ($request) use (&$toolPayload) {
+            foreach ($request['messages'] as $message) {
+                if (($message['role'] ?? null) === 'tool') {
+                    $toolPayload = json_decode($message['content'], true);
+
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        $this->assertSame(2, $toolPayload['ranking'][0]['completed_tasks']);
+        $this->assertSame('Alice', $toolPayload['ranking'][0]['user']['name']);
+        $this->assertSame(1, $toolPayload['ranking'][1]['completed_tasks']);
+        $this->assertSame('Bob', $toolPayload['ranking'][1]['user']['name']);
+        $this->assertDatabaseCount('ai_action_proposals', 0);
+    }
+
+    public function test_read_tool_reports_permission_errors(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+        $calls = 0;
+        $this->gatewayCallback = function () use (&$calls) {
+            $calls++;
+
+            if ($calls === 1) {
+                return Http::response(['choices' => [['message' => [
+                    'content' => '',
+                    'tool_calls' => [[
+                        'id' => 'call_ranking',
+                        'type' => 'function',
+                        'function' => [
+                            'name' => 'baca_tracko',
+                            'arguments' => json_encode(['operation' => 'ranking_penyelesai']),
+                        ],
+                    ]],
+                ]]]]);
+            }
+
+            return Http::response(['choices' => [['message' => ['content' => 'Tidak berwenang.']]]]);
+        };
+
+        $this->postJson('/api/ai/messages', ['message' => 'Siapa penyelesai task terbanyak?'])
+            ->assertOk()->assertJsonPath('data.reply', 'Tidak berwenang.');
+
+        Http::assertSent(function ($request) {
+            foreach ($request['messages'] as $message) {
+                if (($message['role'] ?? null) === 'tool') {
+                    return str_contains($message['content'], 'izin');
+                }
+            }
+
+            return false;
+        });
     }
 
     public function test_history_is_server_owned_and_isolated_between_users(): void
