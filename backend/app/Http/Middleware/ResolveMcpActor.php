@@ -81,12 +81,19 @@ class ResolveMcpActor
         $request->attributes->set('mcp_identity', $identity);
         $request->attributes->set('mcp_actor', $identity->user);
         $request->setUserResolver(fn () => $identity->user);
+        $previousUser = Auth::user();
         Auth::setUser($identity->user);
 
         try {
             return $next($request);
         } finally {
-            Auth::forgetUser();
+            // The internal AI executor dispatches MCP inside the authenticated
+            // web request. Restore that session instead of logging it out.
+            if ($previousUser) {
+                Auth::setUser($previousUser);
+            } else {
+                Auth::forgetUser();
+            }
         }
     }
 }

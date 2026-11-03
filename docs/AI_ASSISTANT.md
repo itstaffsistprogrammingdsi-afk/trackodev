@@ -18,14 +18,19 @@ Tracko menggunakan Laravel 12, Sanctum, Spatie Permission, React 19, dan memilik
 
 React -> POST /api/ai/messages -> Laravel -> 9router /v1/chat/completions -> provider model.
 
-Panel “Asisten AI” tersedia di layout setelah login. Tombol “Tanya AI” di detail card memilih konteks langsung. Panel juga menyediakan pencarian judul card yang dapat diakses. Mengganti konteks memulai percakapan baru. Respons ditampilkan sebagai teks, tanpa menjalankan HTML dari model. Jawaban merupakan saran yang dapat disalin secara manual; tidak membuat/mengedit task atau mengirim pesan.
+Panel “Asisten AI” tersedia di layout setelah login. Tombol “Tanya AI” di detail card memilih konteks langsung. Panel membaca konteks halaman (`/divisions/:id`, `/workspaces/:id/campaigns`, `/workspaces/:id/campaigns/:id`) dan konteks card. Mengganti konteks memulai percakapan baru. Respons ditampilkan sebagai teks, tanpa menjalankan HTML dari model.
+
+Asisten dapat mengusulkan tindakan melalui MCP internal: membuat workspace, campaign, board, card, checklist, serta memperbarui card/checklist. Setiap proposal menampilkan target dan perubahan; eksekusi baru berjalan setelah pengguna menekan “Setujui & jalankan”. Tidak ada perubahan otomatis.
 
 System prompt membatasi asisten pada topik dan tindakan di dalam Tracko. Permintaan di luar sistem ditolak dengan pola jawaban tetap: “Maaf, saya hanya dapat membantu hal-hal terkait Tracko dan pekerjaan di sistem ini.” Pembatasan ini adalah guardrail prompt, bukan klasifikasi intent di backend.
 
 Endpoint:
 - GET /api/ai/status: status konfigurasi lokal, bukan jaminan kesehatan provider.
 - GET /api/ai/cards?query=...: maksimal 20 card terbaru; izin card.view/task.view dan visibilitas campaign/copy diterapkan.
-- POST /api/ai/messages: message (maksimal 4.000 karakter), card_id opsional, conversation_id opsional. Tidak menerima history, system prompt, URL, model, atau key dari browser.
+- POST /api/ai/messages: message (maksimal 4.000 karakter), card_id/board_id/campaign_id/workspace_id/division_id opsional, conversation_id opsional. Backend memvalidasi hierarki dan akses setiap konteks. Tidak menerima history, system prompt, URL, model, atau key dari browser.
+- POST /api/ai/proposals/{id}/approve dan /reject: hanya pemilik proposal; eksekusi memakai MCP internal dengan aktor pengguna, permission, policy resource, audit, dan idempotency yang sama seperti MCP eksternal.
+
+Operasi proposal yang didukung: `create_workspace`, `create_campaign`, `create_board`, `create_card`, `update_card`, `add_checklist_item`, `update_checklist_item`, `set_checklist_status`. Operasi hanya ditawarkan bila konteks halaman dan permission pengguna mencukupi.
 
 ## Konfigurasi
 
@@ -54,8 +59,8 @@ Dokumentasi resmi juga menjelaskan Sign in with ChatGPT dengan penggunaan plan u
 
 - Sanctum wajib untuk seluruh endpoint. Pesan dibatasi 10 request/menit melalui throttle Laravel.
 - Konteks card dikirim hanya setelah izin card.view/task.view dan ResourceAccess::card lolos pada setiap permintaan. Copy lintas divisi memakai aturan CrossDivisionMirrorService.
-- Data yang dikirim: judul, deskripsi teks (maks. 6.000 karakter), status, prioritas, deadline, tanggal selesai, nama board/campaign; maksimal 30 checklist jika checklist.view/task.view diizinkan. Batas item/teks berarti jawaban bukan analisis seluruh proyek.
-- Tidak mengambil chat, lampiran, email, atau seluruh database. Tanpa pilihan card, model hanya menerima pesan dan riwayat percakapan tersebut.
+- Data yang dikirim: judul, deskripsi teks (maks. 6.000 karakter), status, prioritas, deadline, tanggal selesai, nama board/campaign; maksimal 30 checklist jika checklist.view/task.view diizinkan. Nama division/workspace/campaign/board dari konteks halaman juga dikirim. Batas item/teks berarti jawaban bukan analisis seluruh proyek.
+- Tidak mengambil chat, lampiran, email, atau seluruh database. Tanpa pilihan card, model hanya menerima pesan, riwayat, dan nama konteks halaman yang sedang dibuka (jika ada).
 - Riwayat disimpan sementara pada cache backend selama 30 menit setelah respons sukses, dipisahkan per user/UUID/card; maksimal tiga pasangan pesan terdahulu dikirim kembali. “Percakapan baru” berhenti memakai sesi lama; cache lama dihapus otomatis lewat TTL.
 - Cache berisi teks percakapan; perlakukan cache sebagai data internal sensitif dan batasi aksesnya. Provider/gateway menerima pesan dan konteks terpilih; retensi mereka mengikuti konfigurasi serta kebijakan masing-masing.
 - Log aplikasi hanya metadata sukses/gagal (user ID, card ID); key, prompt, respons, dan isi error gateway tidak dicatat oleh fitur ini.
@@ -64,8 +69,8 @@ Dokumentasi resmi juga menjelaskan Sign in with ChatGPT dengan penggunaan plan u
 
 ## Verifikasi
 
-`php artisan test --filter=AiAssistantTest` menggunakan gateway palsu untuk menguji autentikasi, disable, pemisahan riwayat, izin/konteks, copy privat, respons error, dan validasi. `npm run build:web` memeriksa TypeScript dan build frontend. Uji nyata gateway dilakukan dengan prompt sintetis tanpa data bisnis.
+`php artisan test --filter=AiAssistantTest` menggunakan gateway palsu untuk menguji autentikasi, disable, pemisahan riwayat, izin/konteks, copy privat, respons error, validasi, serta proposal workspace/campaign/board sampai eksekusi MCP. `npm run build:web` memeriksa TypeScript dan build frontend. Uji nyata gateway dilakukan dengan prompt sintetis tanpa data bisnis.
 
-Jalankan `php scripts/ai-smoke.php` dari backend untuk memeriksa inference nyata. Pada verifikasi awal gateway menjawab HTTP 401 karena AI_API_KEY belum diisi; /models tetap dapat diakses. Isi key gateway lalu ulangi perintah ini. Konfigurasi lokal telah diaktifkan dengan URL pengguna dan model cx/gpt-6-luna. Tidak ada migrasi database tambahan untuk fitur ini.
+Jalankan `php scripts/ai-smoke.php` dari backend untuk memeriksa inference nyata. Jika gateway mewajibkan autentikasi, isi `AI_API_KEY`; `/v1/models` dapat berhasil meski inference belum tentu. Konfigurasi aktif memakai gateway 9router HTTPS dan model yang dipilih administrator. Tidak ada migrasi database tambahan untuk fitur ini.
 
-Tahap selanjutnya yang paling bernilai: ringkasan campaign dari agregasi data berizin, narasi laporan dari angka yang dihitung backend, lalu draft tindakan dengan preview dan konfirmasi pengguna sebelum mutasi melalui controller/policy yang ada.
+Tahap selanjutnya: perluas operasi ke update/arsip workspace, campaign, dan board; assign anggota; komentar; ringkasan campaign dari agregasi data berizin; serta narasi laporan dari angka yang dihitung backend.
