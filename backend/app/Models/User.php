@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -78,7 +79,46 @@ class User extends Authenticatable
             'password' => 'hashed',
             'hris_id' => 'integer',
             'hris_updated_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
+    }
+
+    // ============================================
+    // PRESENCE
+    // ============================================
+
+    /**
+     * Tandai user sedang aktif tanpa mengubah updated_at profilnya.
+     */
+    public function markPresence(?CarbonInterface $seenAt = null): void
+    {
+        $timestamps = $this->timestamps;
+        $this->timestamps = false;
+
+        try {
+            $this->forceFill([
+                'last_seen_at' => $seenAt ?? now(),
+            ])->saveQuietly();
+        } finally {
+            $this->timestamps = $timestamps;
+        }
+    }
+
+    /**
+     * Hapus status online saat user logout.
+     */
+    public function clearPresence(): void
+    {
+        $timestamps = $this->timestamps;
+        $this->timestamps = false;
+
+        try {
+            $this->forceFill([
+                'last_seen_at' => null,
+            ])->saveQuietly();
+        } finally {
+            $this->timestamps = $timestamps;
+        }
     }
 
     // ============================================
