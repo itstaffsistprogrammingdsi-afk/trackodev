@@ -5,6 +5,7 @@ import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
 import Backdrop from "./Backdrop";
 import RealtimeSync from "../components/realtime/RealtimeSync";
+import PresenceHeartbeat from "../components/presence/PresenceHeartbeat";
 import AiAssistant from "../features/ai/AiAssistant";
 import { useAuth } from "../context/AuthContext";
 
@@ -61,6 +62,7 @@ const AppLayout: React.FC = () => {
   return (
     <SidebarProvider>
       <RealtimeSync />
+      <PresenceHeartbeat />
       <LayoutContent />
       {pathname !== "/assistant/preview" && <AiAssistant key={user?.id} />}
     </SidebarProvider>

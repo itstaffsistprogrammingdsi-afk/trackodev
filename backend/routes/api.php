@@ -21,14 +21,17 @@ use App\Http\Controllers\Api\McpIntegrationController;
 use App\Http\Controllers\Api\MyActivityController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PublicFormController;
+use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ResultDescriptionTemplateController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\VirtualOfficeController;
 // use App\Mail\CardAssignedMail;
 // use App\Models\Card;
 // use App\Models\User;
 use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Middleware\TrackUserPresence;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -578,7 +581,22 @@ Route::get(
 
 Route::middleware([
     'auth:sanctum',
+    TrackUserPresence::class,
 ])->group(function () {
+
+    // ========================================
+    // PRESENCE / VIRTUAL OFFICE
+    // ========================================
+
+    Route::get(
+        'virtual-office',
+        [VirtualOfficeController::class, 'index']
+    )->middleware(['permission:dashboard.view|my_work.view', 'throttle:120,1']);
+
+    Route::post(
+        'presence/heartbeat',
+        [PresenceController::class, 'heartbeat']
+    )->middleware('throttle:120,1');
 
     // ========================================
     // SEARCH / MENTION
