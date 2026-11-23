@@ -21,10 +21,10 @@ export default function MyWorkPeriodFilter({
   disabled = false,
 }: Props) {
   return (
-    <div className="w-full rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm sm:w-auto">
+    <div className="w-full rounded-control border border-line bg-surface p-1 sm:w-auto">
       <div className="flex items-center gap-1 overflow-x-auto">
-        <div className="hidden shrink-0 items-center gap-2 px-2 text-xs font-medium text-gray-500 md:flex">
-          <CalendarRange size={15} aria-hidden="true" />
+        <div className="hidden shrink-0 items-center gap-1.5 px-2 text-[11px] font-medium text-fg-muted md:flex">
+          <CalendarRange size={14} aria-hidden="true" />
           Periode
         </div>
 
@@ -34,10 +34,11 @@ export default function MyWorkPeriodFilter({
             type="button"
             disabled={disabled}
             onClick={() => onChange(option.value)}
-            className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-all disabled:cursor-wait disabled:opacity-60 sm:px-4 ${
+            aria-pressed={value === option.value}
+            className={`shrink-0 rounded-[7px] px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-60 sm:px-3.5 ${
               value === option.value
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                ? "bg-surface-muted text-fg"
+                : "text-fg-muted hover:text-fg"
             }`}
           >
             {option.label}

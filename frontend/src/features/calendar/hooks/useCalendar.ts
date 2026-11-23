@@ -49,6 +49,13 @@ export function useCalendar() {
     );
   };
 
+  const goToToday = () => {
+    const now = new Date();
+    setCurrentMonth(
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+    );
+  };
+
   const generateGridDays = (): GridDayCell[] => {
     const [year, monthNum] = currentMonth.split("-").map(Number);
     const firstDayOfMonth = new Date(year, monthNum - 1, 1);
@@ -101,6 +108,7 @@ export function useCalendar() {
     loading,
     nextMonth,
     prevMonth,
+    goToToday,
     gridDays: generateGridDays(),
     refresh: () => fetchCalendarData(currentMonth), // Expose fungsi ini ke komponen
   };

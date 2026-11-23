@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { reportApi } from '../api/report.api';
 import { User, Card, FilterParams, MasterFilterOptions } from '../types';
 import api from '@/lib/axios';
@@ -81,6 +81,14 @@ export const useReport = () => {
   const [loadingCards, setLoadingCards] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
+  const usersRequestId = useRef(0);
+  const cardsRequestId = useRef(0);
+  const dateRangeInvalid = Boolean(
+    filters.start_date &&
+      filters.end_date &&
+      filters.start_date > filters.end_date,
+  );
   const [previewData, setPreviewData] = useState<{
     html: string;
     pdf_base64: string;
@@ -89,27 +97,65 @@ export const useReport = () => {
   } | null>(null);
 
   // 1. Fetch Master Data
+  const fetchFilterOptions = useCallback(async () => {
+    setFilterOptionsError(null);
+    try {
+      const response = await reportApi.getFilterOptions();
+      setMasterData(response.data);
+    } catch (error) {
+      console.error('Gagal memuat opsi filter database', error);
+      setFilterOptionsError('Opsi filter gagal dimuat.');
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchOptions = async () => {
-      try {
-        const response = await reportApi.getFilterOptions();
-        setMasterData(response.data);
-      } catch (error) {
-        console.error('Gagal memuat opsi filter database', error);
-      }
-    };
-    fetchOptions();
-  }, [realtimeRevision]);
+    void fetchFilterOptions();
+  }, [fetchFilterOptions, realtimeRevision]);
+
+  const cardFilters = useMemo<FilterParams>(() => ({
+    start_date: filters.start_date,
+    end_date: filters.end_date,
+    campaign_id: filters.campaign_id,
+    workspace_id: filters.workspace_id,
+    label_id: filters.label_id,
+    brand_id: filters.brand_id,
+    search_card: filters.search_card,
+  }), [
+    filters.start_date,
+    filters.end_date,
+    filters.campaign_id,
+    filters.workspace_id,
+    filters.label_id,
+    filters.brand_id,
+    filters.search_card,
+  ]);
 
   // 2. Fetch Users
   const fetchUsers = useCallback(async () => {
+    if (dateRangeInvalid) {
+      setLoadingUsers(false);
+      setUsers([]);
+      setPagination({ current_page: 1, last_page: 1, total: 0 });
+      return;
+    }
+
+    const requestId = ++usersRequestId.current;
     setLoadingUsers(true);
     try {
       const response = await reportApi.getUsers(filters);
+      if (requestId !== usersRequestId.current) return;
       setUsers(response.data);
       setPagination(response.meta);
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
+      if (requestId !== usersRequestId.current) return;
+      const err = error as { response?: { data?: { message?: string }; status?: number } };
+      if (err.response?.status === 403 && filters.division_id) {
+        toast.error(
+          'Divisi ini tidak dapat difilter dengan akun Anda. Filter divisi direset.',
+        );
+        setFilters((prev) => ({ ...prev, division_id: '', page: 1 }));
+        return;
+      }
       const message =
         err.response?.data?.message ??
         'Gagal memuat data user. Silakan coba lagi.';
@@ -118,26 +164,31 @@ export const useReport = () => {
       setPagination({ current_page: 1, last_page: 1, total: 0 });
       toast.error(message);
     } finally {
-      setLoadingUsers(false);
+      if (requestId === usersRequestId.current) {
+        setLoadingUsers(false);
+      }
     }
-  }, [filters]);
+  }, [filters, dateRangeInvalid]);
 
   // 3. Fetch Cards
   const fetchUserCards = useCallback(
     async (userId: string ) => {
+      if (dateRangeInvalid) {
+        setLoadingCards(false);
+        setCards([]);
+        return;
+      }
+
+      const requestId = ++cardsRequestId.current;
       setLoadingCards(true);
       try {
-        // Endpoint card hanya mengenali filter card-level. Parameter user
-        // (search, division_id, page) sengaja tidak dikirim agar tidak
-        // membingungkan dan tidak memicu validasi yang tak relevan.
-        const cardParams: FilterParams = { ...filters };
-        delete cardParams.search;
-        delete cardParams.division_id;
-        delete cardParams.page;
-
-        const response = await reportApi.getUserCards(userId, cardParams);
+        // Endpoint card hanya mengenali filter card-level. Perubahan pada
+        // pencarian user/pagination tidak boleh memicu request kartu baru.
+        const response = await reportApi.getUserCards(userId, cardFilters);
+        if (requestId !== cardsRequestId.current) return;
         setCards(response.data);
       } catch (error) {
+        if (requestId !== cardsRequestId.current) return;
         const err = error as { response?: { data?: { message?: string } } };
         console.error('Failed to fetch user cards', error);
         setCards([]);
@@ -145,10 +196,12 @@ export const useReport = () => {
           err.response?.data?.message ?? 'Gagal memuat detail card user.'
         );
       } finally {
-        setLoadingCards(false);
+        if (requestId === cardsRequestId.current) {
+          setLoadingCards(false);
+        }
       }
     },
-    [filters]
+    [cardFilters, dateRangeInvalid]
   );
 
   useEffect(() => {
@@ -522,6 +575,8 @@ const handleLeaveImpersonation = async () => {
     cards,
     filters,
     masterData,
+    filterOptionsError,
+    reloadFilterOptions: fetchFilterOptions,
     loadingUsers,
     loadingCards,
     loadingPreview,

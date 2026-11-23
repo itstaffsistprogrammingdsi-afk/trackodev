@@ -80,39 +80,40 @@ export default function CompletionRanking() {
 
   return (
     <section
-      className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+      className="overflow-hidden rounded-panel border border-line bg-surface"
       aria-labelledby="completion-ranking-title"
       aria-busy={loading}
     >
-      <div className="flex flex-col gap-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-            <Trophy size={20} aria-hidden="true" />
+      <div className="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-control bg-surface-muted text-fg-subtle">
+            <Trophy size={16} aria-hidden="true" />
           </div>
           <div>
             <h2
               id="completion-ranking-title"
-              className="text-lg font-bold text-gray-900"
+              className="text-sm font-semibold text-fg"
             >
-              Top Task Finisher
+              Top task finisher
             </h2>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-fg-muted">
               3 anggota dengan task selesai terbanyak
             </p>
           </div>
         </div>
 
-        <div className="flex w-full items-center rounded-xl border border-gray-200 bg-white p-1 shadow-sm sm:w-auto">
+        <div className="flex w-full items-center rounded-control border border-line bg-surface-muted p-1 sm:w-auto">
           {PERIODS.map((option) => (
             <button
               key={option.value}
               type="button"
               disabled={loading}
               onClick={() => setPeriod(option.value)}
-              className={`flex-1 rounded-lg px-4 py-2 text-xs font-semibold transition-colors disabled:cursor-wait sm:flex-none ${
+              aria-pressed={period === option.value}
+              className={`flex-1 rounded-[7px] px-3.5 py-1.5 text-xs font-medium transition-colors disabled:cursor-wait sm:flex-none ${
                 period === option.value
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-surface text-fg shadow-e1"
+                  : "text-fg-muted hover:text-fg"
               }`}
             >
               {option.label}
@@ -122,18 +123,18 @@ export default function CompletionRanking() {
       </div>
 
       <div className="p-5 sm:p-6">
-        <div className="mb-5 flex items-center gap-2 text-xs font-medium text-gray-500">
-          <CalendarDays size={15} aria-hidden="true" />
+        <div className="mb-5 flex items-center gap-2 text-xs font-medium text-fg-muted">
+          <CalendarDays size={14} aria-hidden="true" />
           Periode {periodLabel(data?.filter ?? null)}
         </div>
 
         {error ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-red-200 bg-red-50 px-4 py-8 text-center">
-            <p className="text-sm font-medium text-red-700">{error}</p>
+          <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-danger/30 bg-danger-soft px-4 py-8 text-center">
+            <p className="text-sm font-medium text-danger">{error}</p>
             <button
               type="button"
               onClick={() => void loadRanking(period)}
-              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-red-700 shadow-sm ring-1 ring-red-200 hover:bg-red-50"
+              className="mt-3 inline-flex items-center gap-2 rounded-control border border-danger/25 bg-surface px-3 py-1.5 text-xs font-medium text-danger transition-colors hover:bg-danger-soft"
             >
               <RefreshCw size={14} aria-hidden="true" />
               Coba lagi
@@ -152,16 +153,16 @@ export default function CompletionRanking() {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
+          <div className="rounded-card border border-dashed border-line bg-surface-muted/40 px-4 py-10 text-center">
             <Trophy
-              size={28}
-              className="mx-auto text-gray-300"
+              size={26}
+              className="mx-auto text-fg-subtle/60"
               aria-hidden="true"
             />
-            <p className="mt-3 text-sm font-semibold text-gray-700">
+            <p className="mt-3 text-sm font-medium text-fg">
               Belum ada task yang selesai
             </p>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-fg-muted">
               Ranking akan tampil setelah anggota menyelesaikan task pada periode ini.
             </p>
           </div>
@@ -182,38 +183,33 @@ function RankingCard({ item }: { item: CompletionRankingItem }) {
     .toUpperCase();
 
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <div
-        className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${style.accent}`}
-      />
+    <article className="relative overflow-hidden rounded-card border border-line bg-surface p-5">
       <div className="flex items-start justify-between">
         <div
-          className={`inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-full px-2 text-sm font-bold ring-1 ${style.badge}`}
+          className={`inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-full px-2 text-xs font-medium ring-1 ${style.badge}`}
         >
-          <RankIcon size={15} aria-hidden="true" />
+          <RankIcon size={14} aria-hidden="true" />
           {item.rank}
         </div>
         <span className="text-right">
-          <span className="block text-2xl font-bold text-gray-900">
+          <span className="block text-xl font-semibold tabular-nums text-fg">
             {item.completed_tasks}
           </span>
-          <span className="text-[11px] font-medium text-gray-400">
+          <span className="text-[10px] font-medium text-fg-subtle">
             task selesai
           </span>
         </span>
       </div>
 
       <div className="mt-5 flex min-w-0 items-center gap-3">
-        <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${style.accent} text-sm font-bold text-white shadow-sm`}
-        >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-muted text-xs font-semibold text-fg-muted">
           {initials || "?"}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-gray-900">
+          <p className="truncate text-[13px] font-medium text-fg">
             {item.user.name}
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-[11px] text-fg-muted">
             Peringkat {item.rank}
           </p>
         </div>
@@ -224,11 +220,11 @@ function RankingCard({ item }: { item: CompletionRankingItem }) {
 
 function RankingSkeleton() {
   return (
-    <div className="grid animate-pulse gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-3">
       {[1, 2, 3].map((rank) => (
         <div
           key={rank}
-          className="h-36 rounded-2xl border border-gray-100 bg-gray-50"
+          className="h-36 animate-pulse rounded-card border border-line bg-surface-muted motion-reduce:animate-none"
         />
       ))}
     </div>

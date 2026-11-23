@@ -49,6 +49,7 @@ export interface Form {
 
   // HEADER
   header_image?: string | null;
+  theme_color?: string | null;
 
   // NOTE
   show_note: boolean;

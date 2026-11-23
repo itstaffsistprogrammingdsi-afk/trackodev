@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "../../lib/axios";
 import DivisionRankingSection from "./DivisionRanking";
 import TaskStatusOverview from "./TaskStatusOverview";
@@ -10,17 +10,7 @@ import {
   type DashboardFilter,
   type DashboardFilterPayload,
 } from "./dashboard.types";
-import {
-  Users,
-  Layers,
-  FolderOpen,
-  Megaphone,
-  Layout,
-  CreditCard,
-  Zap,
-  RefreshCcw,
-  LucideIcon,
-} from "lucide-react";
+import { RefreshCcw } from "lucide-react";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { useAuth } from "@/context/AuthContext";
 
@@ -155,6 +145,8 @@ export default function Home() {
   const [scope, setScope] = useState<DashboardScope>(readStoredScope);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const dashboardRequestId = useRef(0);
 
   const handleScopeChange = useCallback((nextScope: DashboardScope) => {
     setScope(nextScope);
@@ -167,13 +159,16 @@ export default function Home() {
   }, []);
 
   const loadDashboard = useCallback(async (isManualRefresh = false) => {
+    const requestId = ++dashboardRequestId.current;
     setIsUpdating(true);
+    setDashboardError(null);
     if (isManualRefresh) setIsRefreshing(true);
 
     try {
       const res = await axios.get("/dashboard", {
         params: { scope, ...toDashboardParams(dashboardFilter) },
       });
+      if (requestId !== dashboardRequestId.current) return;
       setData({
         ...res.data,
         insight_scope: res.data?.insight_scope ?? {
@@ -185,11 +180,15 @@ export default function Home() {
         insights: Array.isArray(res.data?.insights) ? res.data.insights : [],
       });
     } catch (error) {
+      if (requestId !== dashboardRequestId.current) return;
       console.error("Gagal load dashboard", error);
+      setDashboardError("Data dashboard gagal dimuat. Angka yang tampil mungkin belum sesuai filter.");
     } finally {
-      setLoading(false);
-      setIsUpdating(false);
-      setIsRefreshing(false);
+      if (requestId === dashboardRequestId.current) {
+        setLoading(false);
+        setIsUpdating(false);
+        setIsRefreshing(false);
+      }
     }
   }, [scope, dashboardFilter]);
 
@@ -217,21 +216,21 @@ export default function Home() {
   return (
     <div className="space-y-6 font-sans sm:space-y-8">
       {/* HEADER + FILTER */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+      <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
         <div className="space-y-1">
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-indigo-800 to-slate-900 tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg sm:text-[28px]">
             {scope === "global"
               ? (canViewAllDivisions ? "Global Dashboard" : "Division Dashboard")
               : "My Dashboard"}
           </h1>
-          <p className="text-sm text-slate-500 font-medium">
+          <p className="text-sm text-fg-muted">
             Pantau dan kelola statistik dari {scope === "global"
               ? (canViewAllDivisions ? "seluruh sistem" : data.insight_scope.label)
               : "ruang kerja Anda"}.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* SCOPE TOGGLE */}
           <ScopeToggle
             value={scope}
@@ -240,13 +239,17 @@ export default function Home() {
           />
 
           <button
+            type="button"
             onClick={refreshAll}
-            className="flex items-center gap-2 bg-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-600 focus:ring-4 focus:ring-brand-500/30 transition-all shadow-md shadow-brand-500/20 active:scale-95"
+            aria-busy={isRefreshing || isUpdating}
+            className="inline-flex h-9 items-center gap-2 rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors duration-150 hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-wait disabled:opacity-60"
+            disabled={isRefreshing}
           >
             <RefreshCcw
-              className={`w-4 h-4 ${isRefreshing || isUpdating ? "animate-spin" : ""}`}
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
+              aria-hidden="true"
             />
-            Refresh
+            {isRefreshing ? "Memuat..." : "Refresh"}
           </button>
         </div>
       </div>
@@ -257,58 +260,50 @@ export default function Home() {
         loading={isRefreshing || isUpdating}
       />
 
+      {dashboardError ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-card border border-danger/20 bg-danger-soft px-4 py-3 text-xs text-danger sm:flex-row sm:items-center sm:justify-between"
+        >
+          <span>{dashboardError}</span>
+          <button
+            type="button"
+            onClick={() => void loadDashboard(true)}
+            className="h-8 shrink-0 rounded-control border border-danger/25 bg-surface px-3 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
+          >
+            Coba lagi
+          </button>
+        </div>
+      ) : null}
 
-      {/* KPI CARDS - GRID MODERN */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4 lg:gap-5">
+
+      {/* RINGKASAN SISTEM - satu permukaan, angka yang tenang */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <KpiCard
-          label={isAllTime ? "Total Users" : "User Terdaftar"}
+          label={isAllTime ? "Total pengguna" : "Pengguna terdaftar"}
           value={stats.users}
-          icon={Users}
-          color="text-blue-600"
-          bg="bg-blue-50"
         />
         <KpiCard
-          label={isAllTime ? "Total Divisions" : "Divisi Dibuat"}
+          label={isAllTime ? "Total divisi" : "Divisi dibuat"}
           value={stats.divisions}
-          icon={Layers}
-          color="text-indigo-600"
-          bg="bg-indigo-50"
         />
         <KpiCard
-          label={isAllTime ? "Total Workspaces" : "Workspace Dibuat"}
+          label={isAllTime ? "Total workspace" : "Workspace dibuat"}
           value={stats.workspaces}
-          icon={FolderOpen}
-          color="text-purple-600"
-          bg="bg-purple-50"
         />
         <KpiCard
-          label={isAllTime ? "Total Campaigns" : "Campaign Dibuat"}
+          label={isAllTime ? "Total campaign" : "Campaign dibuat"}
           value={stats.campaigns}
-          icon={Megaphone}
-          color="text-pink-600"
-          bg="bg-pink-50"
         />
         <KpiCard
-          label={isAllTime ? "Total Boards" : "Board Dibuat"}
+          label={isAllTime ? "Total board" : "Board dibuat"}
           value={stats.boards}
-          icon={Layout}
-          color="text-orange-600"
-          bg="bg-orange-50"
         />
         <KpiCard
-          label={isAllTime ? "Total Cards" : "Card Dibuat"}
+          label={isAllTime ? "Total card" : "Card dibuat"}
           value={stats.cards}
-          icon={CreditCard}
-          color="text-amber-600"
-          bg="bg-amber-50"
         />
-        <KpiCard
-          label="Task Overdue"
-          value={taskStatus.overdue}
-          icon={Zap}
-          color="text-rose-600"
-          bg="bg-rose-50"
-        />
+        <KpiCard label="Task terlambat" value={taskStatus.overdue} tone="danger" />
       </div>
 
       {/* LEADERBOARD KHUSUS PEMILIK PERMISSION */}
@@ -335,27 +330,22 @@ export default function Home() {
 type KpiCardProps = {
   label: string;
   value: number;
-  icon: LucideIcon;
-  color: string;
-  bg: string;
+  tone?: "default" | "danger";
 };
 
-function KpiCard({ label, value, icon: Icon, color, bg }: KpiCardProps) {
+function KpiCard({ label, value, tone = "default" }: KpiCardProps) {
   return (
-    <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 transition-all duration-300 group cursor-default">
-      <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-colors ${bg} ${color} group-hover:bg-indigo-600 group-hover:text-white`}
+    <div className="bg-surface px-4 py-4 sm:px-5">
+      <p
+        className={`text-[22px] font-semibold leading-none tracking-[-0.02em] tabular-nums ${
+          tone === "danger" && value > 0 ? "text-danger" : "text-fg"
+        }`}
       >
-        <Icon className="w-5 h-5" />
-      </div>
-      <div>
-        <p className="text-2xl font-black text-slate-900 tracking-tight">
-          {value.toLocaleString("id-ID")}
-        </p>
-        <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider truncate">
-          {label}
-        </p>
-      </div>
+        {value.toLocaleString("id-ID")}
+      </p>
+      <p className="mt-2 truncate text-[11px] font-medium text-fg-muted">
+        {label}
+      </p>
     </div>
   );
 }
@@ -363,18 +353,18 @@ function KpiCard({ label, value, icon: Icon, color, bg }: KpiCardProps) {
 function SkeletonLoader() {
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="h-10 w-64 bg-slate-200 rounded-lg animate-pulse" />
-      <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-7">
+      <div className="space-y-3">
+        <div className="h-8 w-56 animate-pulse rounded-md bg-surface-muted motion-reduce:animate-none" />
+        <div className="h-4 w-72 max-w-full animate-pulse rounded-md bg-surface-muted motion-reduce:animate-none" />
+      </div>
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         {Array.from({ length: 7 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-32 bg-white border border-slate-100 shadow-sm rounded-3xl animate-pulse"
-          />
+          <div key={i} className="h-24 animate-pulse bg-surface-muted motion-reduce:animate-none" />
         ))}
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 h-[400px] bg-white border border-slate-100 shadow-sm rounded-3xl animate-pulse" />
-        <div className="h-[400px] bg-white border border-slate-100 shadow-sm rounded-3xl animate-pulse" />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="h-[340px] animate-pulse rounded-panel border border-line bg-surface-muted motion-reduce:animate-none xl:col-span-2" />
+        <div className="h-[340px] animate-pulse rounded-panel border border-line bg-surface-muted motion-reduce:animate-none" />
       </div>
     </div>
   );

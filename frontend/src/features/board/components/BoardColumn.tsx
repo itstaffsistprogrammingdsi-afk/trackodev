@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { AxiosError } from "axios";
 import { useQuery } from "@tanstack/react-query";
+import { Inbox } from "lucide-react";
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -13,6 +14,7 @@ import { AssignTarget, Card, User } from "@/features/card/types";
 
 import CardItem from "@/features/card/components/CardItem";
 import MemberSection from "@/features/card/components/sections/MemberSection";
+import EmptyState from "@/components/ui/EmptyState";
 
 import { createCard, getBoardMemberCandidates } from "@/features/card/api/card.api";
 
@@ -270,31 +272,31 @@ export default function BoardColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`flex max-h-none w-full shrink-0 flex-col rounded-2xl border bg-slate-50/70 shadow-sm backdrop-blur-xs transition-all duration-200 ${
+      className={`flex max-h-none w-full shrink-0 flex-col rounded-panel border transition-colors duration-200 ${
         fullWidth ? "max-w-none" : "md:h-full md:w-80"
       } ${
         isOver
-          ? "border-blue-400 bg-blue-50/30 ring-4 ring-blue-100"
-          : "border-slate-200/80 hover:border-slate-300"
+          ? "border-accent/40 bg-accent-soft/40 ring-2 ring-accent/10"
+          : "border-line/80 bg-surface-muted/50 hover:border-line-strong"
       }`}
     >
       {/* HEADER COLUMN */}
-      <div className="flex items-center justify-between px-4 py-3 shrink-0">
+      <div className="flex shrink-0 items-center justify-between px-3.5 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           {dragHandle}
           {board.color && (
             <span
-              className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow-xs"
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: board.color }}
             />
           )}
-          <h3 className="truncate text-sm font-bold tracking-tight text-slate-800">
+          <h3 className="truncate text-[13px] font-semibold tracking-[-0.01em] text-fg">
             {board.name}
           </h3>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span className="rounded-full bg-slate-200/70 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-600">
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums text-fg-subtle">
             {board.cards.length}
           </span>
 
@@ -306,7 +308,7 @@ export default function BoardColumn({
                 aria-label="Column options"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-700 focus:outline-none md:h-auto md:w-auto md:rounded-lg md:p-1.5"
+                className="flex h-11 w-11 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 md:h-auto md:w-auto md:p-1.5"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="12" cy="5" r="1.75" />
@@ -318,7 +320,7 @@ export default function BoardColumn({
               {menuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-xl border border-slate-100 bg-white py-1 shadow-lg ring-1 ring-slate-900/5 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-e2 animate-in fade-in zoom-in-95 duration-100"
                 >
                   {onEdit && (
                     <button
@@ -328,10 +330,10 @@ export default function BoardColumn({
                         setMenuOpen(false);
                         onEdit();
                       }}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
                     >
                       <svg
-                        className="h-4 w-4 text-slate-400"
+                        className="h-4 w-4 text-fg-subtle"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -352,10 +354,10 @@ export default function BoardColumn({
                         setMenuOpen(false);
                         onDelete();
                       }}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-rose-600 transition hover:bg-rose-50"
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-danger transition-colors hover:bg-danger-soft"
                     >
                       <svg
-                        className="h-4 w-4 text-rose-500"
+                        className="h-4 w-4 text-danger"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -374,32 +376,33 @@ export default function BoardColumn({
       </div>
 
       {/* CREATE TASK AREA */}
-      <div className="px-3 pb-3 shrink-0">
+      <div className="shrink-0 px-3 pb-3">
         {!isAdding ? (
           <button
             type="button"
             onClick={() => setIsAdding(true)}
-            className="group flex min-h-12 w-full items-center gap-2 rounded-xl border border-dashed border-slate-300/80 bg-white/60 px-3 py-2 text-sm font-semibold text-slate-500 shadow-xs transition-all duration-150 hover:border-blue-400 hover:bg-white hover:text-blue-600 hover:shadow-md active:scale-[0.99] md:min-h-0 md:text-xs"
+            className="group flex min-h-11 w-full items-center gap-2 rounded-control px-2.5 py-2 text-[13px] font-medium text-fg-muted transition-colors duration-150 hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 md:min-h-9"
           >
-            <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-slate-100 transition-colors group-hover:bg-blue-50 group-hover:text-blue-600">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-surface text-fg-subtle shadow-e1 transition-colors group-hover:text-accent">
               <svg
-                className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110"
+                className="h-3.5 w-3.5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2.5}
+                strokeWidth={2}
+                aria-hidden="true"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-            </div>
-            <span>Tambah Task Baru</span>
+            </span>
+            <span>Tambah task</span>
           </button>
         ) : (
-          <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-lg ring-1 ring-slate-900/5 transition-all">
+          <div className="flex flex-col rounded-card border border-line bg-surface shadow-e2">
             {/* TOP FORM HEADER */}
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-3 py-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Task Baru
+            <div className="flex items-center justify-between border-b border-line px-3 py-2">
+              <span className="text-[11px] font-medium text-fg-subtle">
+                Task baru
               </span>
 
               <div className="flex items-center gap-1.5">
@@ -409,7 +412,7 @@ export default function BoardColumn({
                     resetForm();
                     setIsAdding(false);
                   }}
-                  className="min-h-10 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200/60 hover:text-slate-700 md:min-h-0"
+                  className="min-h-9 rounded-control px-2.5 py-1 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg md:min-h-0"
                 >
                   Batal
                 </button>
@@ -418,15 +421,15 @@ export default function BoardColumn({
                   type="button"
                   onClick={handleCreate}
                   disabled={loading || !title.trim()}
-                  className="flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-xs transition-all hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none md:min-h-0"
+                  className="flex min-h-9 items-center gap-1.5 rounded-control bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-fg-subtle md:min-h-0"
                 >
                   {loading && (
-                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <svg className="h-3 w-3 animate-spin motion-reduce:animate-none" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                     </svg>
                   )}
-                  {loading ? "Menyimpan..." : "Buat Task"}
+                  {loading ? "Menyimpan..." : "Buat task"}
                 </button>
               </div>
             </div>
@@ -443,7 +446,7 @@ export default function BoardColumn({
                 placeholder="Apa yang ingin dikerjakan?"
                 rows={2}
                 autoFocus
-                className="w-full resize-none border-0 bg-transparent p-0 text-sm font-medium text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                className="w-full resize-none border-0 bg-transparent p-0 text-sm font-medium text-fg placeholder:font-normal placeholder:text-fg-subtle focus:outline-none focus:ring-0"
               />
             </div>
 
@@ -452,10 +455,10 @@ export default function BoardColumn({
               {/* DATE PICKER */}
               <div
                 onClick={handleOpenDatePicker}
-                className="relative flex h-11 flex-1 cursor-pointer items-center rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 transition-colors hover:border-slate-300 hover:bg-slate-100 md:h-8 md:flex-none md:rounded-lg"
+                className="relative flex h-11 flex-1 cursor-pointer items-center rounded-control border border-line bg-surface-muted/60 px-2.5 transition-colors hover:border-line-strong hover:bg-surface-muted md:h-8 md:flex-none"
               >
                 <svg
-                  className="mr-1.5 h-3.5 w-3.5 shrink-0 text-slate-400"
+                  className="mr-1.5 h-3.5 w-3.5 shrink-0 text-fg-subtle"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -472,7 +475,7 @@ export default function BoardColumn({
                   type="datetime-local"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full cursor-pointer bg-transparent text-xs font-medium text-slate-700 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+                  className="w-full cursor-pointer bg-transparent text-xs font-medium text-fg outline-none [&::-webkit-calendar-picker-indicator]:hidden"
                 />
               </div>
 
@@ -481,14 +484,14 @@ export default function BoardColumn({
                 <button
                   type="button"
                   onClick={() => setOpenPriority((v) => !v)}
-                  className="flex h-11 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-100 md:h-8 md:rounded-lg"
+                  className="flex h-11 items-center justify-between gap-2 rounded-control border border-line bg-surface-muted/60 px-2.5 text-xs font-medium text-fg transition-colors hover:border-line-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/25 md:h-8"
                 >
                   <div className="flex items-center gap-1.5">
                     <span className={`h-2 w-2 rounded-full ${PRIORITY_CONFIG[priority].dot}`} />
                     <span className="capitalize">{PRIORITY_CONFIG[priority].label}</span>
                   </div>
                   <svg
-                    className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                    className={`h-3.5 w-3.5 text-fg-subtle transition-transform duration-200 ${
                       openPriority ? "rotate-180" : ""
                     }`}
                     fill="none"
@@ -501,7 +504,7 @@ export default function BoardColumn({
                 </button>
 
                 {openPriority && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-slate-900/5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute left-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-card border border-line bg-surface p-1 shadow-e2 animate-in fade-in zoom-in-95 duration-150">
                     {priorities.map((item) => (
                       <button
                         key={item.value}
@@ -510,10 +513,10 @@ export default function BoardColumn({
                           setPriority(item.value as Priority);
                           setOpenPriority(false);
                         }}
-                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
+                        className={`flex w-full items-center justify-between rounded-control px-2.5 py-1.5 text-left text-xs transition-colors ${
                           priority === item.value
-                            ? "bg-blue-50 font-semibold text-blue-600"
-                            : "font-medium text-slate-700 hover:bg-slate-50"
+                            ? "bg-accent-soft font-medium text-accent"
+                            : "font-medium text-fg-muted hover:bg-surface-muted"
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -523,7 +526,7 @@ export default function BoardColumn({
 
                         {priority === item.value && (
                           <svg
-                            className="h-3.5 w-3.5 text-blue-600"
+                            className="h-3.5 w-3.5 text-accent"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -542,10 +545,10 @@ export default function BoardColumn({
               <button
                 type="button"
                 onClick={() => setShowMembers((v) => !v)}
-                className={`flex h-11 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-medium transition-colors md:h-8 md:rounded-lg ${
+                className={`flex h-11 items-center gap-1.5 rounded-control border px-2.5 text-xs font-medium transition-colors md:h-8 ${
                   showMembers || selectedUsers.length > 0
-                    ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    : "border-slate-200 bg-slate-50/80 text-slate-600 hover:border-slate-300 hover:bg-slate-100"
+                    ? "border-accent/25 bg-accent-soft text-accent hover:bg-accent-soft/70"
+                    : "border-line bg-surface-muted/60 text-fg-muted hover:border-line-strong hover:bg-surface-muted"
                 }`}
               >
                 <svg
@@ -563,7 +566,7 @@ export default function BoardColumn({
                 </svg>
                 <span>Anggota</span>
                 {selectedUsers.length > 0 && (
-                  <span className="ml-0.5 rounded-full bg-blue-200/80 px-1.5 py-0.2 text-[10px] font-bold text-blue-800">
+                  <span className="ml-0.5 rounded-full bg-accent/15 px-1.5 py-0.2 text-[10px] font-semibold text-accent">
                     {selectedUsers.length}
                   </span>
                 )}
@@ -572,14 +575,14 @@ export default function BoardColumn({
 
             {/* SARAN PEMILIK CAMPAIGN */}
             {suggestedAssignee && assignees.length === 0 ? (
-              <div className="border-t border-amber-100 bg-amber-50/70 px-3 py-2 dark:border-amber-900/60 dark:bg-amber-950/20">
+              <div className="border-t border-warning/15 bg-warning-soft/60 px-3 py-2">
                 <button
                   type="button"
                   onClick={() => handleAssign(suggestedAssignee.id)}
-                  className="w-full rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-left text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-200"
+                  className="w-full rounded-control border border-warning/25 bg-warning-soft px-2.5 py-1.5 text-left text-[11px] font-medium text-warning transition-colors hover:bg-warning-soft/70"
                 >
                   Tugaskan ke {suggestedAssignee.name}?
-                  <span className="ml-1 font-normal text-amber-700 dark:text-amber-300">
+                  <span className="ml-1 font-normal text-warning/80">
                     (pemilik campaign)
                   </span>
                 </button>
@@ -588,19 +591,19 @@ export default function BoardColumn({
 
             {/* PREVIEW ASSIGNED AVATARS */}
             {selectedUsers.length > 0 && (
-              <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/40 px-3 py-2">
+              <div className="flex items-center gap-2 border-t border-line bg-surface-muted/40 px-3 py-2">
                 <div className="flex -space-x-2 overflow-hidden">
                   {selectedUsers.map((user) => (
                     <div
                       key={user.id}
-                      className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gradient-to-tr from-blue-600 to-indigo-500 text-[10px] font-bold text-white shadow-xs"
+                      className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-accent-soft text-[10px] font-semibold text-accent shadow-e1"
                       title={user.name}
                     >
                       {user.name.charAt(0).toUpperCase()}
                     </div>
                   ))}
                 </div>
-                <span className="text-[11px] font-medium text-slate-500">
+                <span className="text-[11px] font-medium text-fg-muted">
                   {selectedUsers.length} ditugaskan
                 </span>
               </div>
@@ -608,14 +611,17 @@ export default function BoardColumn({
 
             {/* ERROR MESSAGE */}
             {error && (
-              <div className="border-t border-rose-100 bg-rose-50 px-3 py-1.5 text-[11px] font-medium text-rose-600">
+              <div
+                role="alert"
+                className="border-t border-danger/15 bg-danger-soft px-3 py-1.5 text-[11px] font-medium text-danger"
+              >
                 {error}
               </div>
             )}
 
             {/* EXPANDABLE MEMBER SELECTION */}
             {showMembers && (
-              <div className="max-h-52 overflow-y-auto border-t border-slate-100 bg-slate-50/50 p-3">
+              <div className="max-h-52 overflow-y-auto border-t border-line bg-surface-muted/40 p-3">
                 <MemberSection
                   boardId={board.id}
                   users={users}
@@ -634,16 +640,19 @@ export default function BoardColumn({
       </div>
 
       {/* CARDS CONTAINER (SCROLLABLE) */}
-      <div className="flex-none overflow-visible px-3 pb-3 md:min-h-0 md:flex-1 md:overflow-y-auto custom-scrollbar">
+      <div className="custom-scrollbar flex-none overflow-visible px-3 pb-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
         <SortableContext
           items={board.cards.map((c) => c.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="min-h-[80px] space-y-2.5">
+          <div className="min-h-[80px] space-y-2">
             {board.cards.length === 0 && !isAdding && (
-              <div className="flex min-h-[140px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200/80 bg-white/40 px-3 py-6 text-center text-xs text-slate-400">
-                <span>{emptyMessage}</span>
-              </div>
+              <EmptyState
+                compact
+                icon={Inbox}
+                title={emptyMessage}
+                description="Tarik kartu ke sini atau buat task baru."
+              />
             )}
 
             {board.cards.map((card) => (

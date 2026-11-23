@@ -33,6 +33,7 @@ import BoardFormModal from "../components/BoardFormModal";
 import DeleteBoardDialog from "../components/DeleteBoardDialog";
 
 import CardDetailModal from "@/features/card/components/CardDetailModal";
+import EmptyState from "@/components/ui/EmptyState";
 
 import { moveCard, reorderCards } from "@/features/card/api/card.api";
 import { alertIfMirrorConflict } from "@/features/card/utils/mirrorConflict";
@@ -51,7 +52,7 @@ import {
   isBoardOrderLocked,
 } from "../utils/boardOrder";
 
-import { Kanban, List, Plus, FolderKanban, Loader2, Search, X } from "lucide-react";
+import { Kanban, List, Plus, FolderKanban, Search, SearchX, X } from "lucide-react";
 
 type ViewMode = "kanban" | "list";
 
@@ -136,6 +137,14 @@ const { campaignId } = useParams<{ campaignId: string }>();
   const compactViewport = useIsCompactViewport();
   // Layout kompak dipakai baik di aplikasi native maupun di browser HP/tablet.
   const compactLayout = mobileApp || compactViewport;
+
+  // State pencarian/view tidak boleh terbawa saat pindah campaign.
+  useEffect(() => {
+    setCardSearch("");
+    setViewMode("kanban");
+    setMobileBoardId("");
+    setSelectedCard(null);
+  }, [id]);
   const deferredCardSearch = useDeferredValue(cardSearch);
   const normalizedCardSearch = deferredCardSearch.trim().toLocaleLowerCase();
   const isSearchActive = cardSearch.trim().length > 0;
@@ -552,11 +561,11 @@ const { campaignId } = useParams<{ campaignId: string }>();
   // =========================================
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
-        <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 px-4 py-3.5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="min-h-screen bg-canvas transition-colors">
+        <div className="border-b border-line bg-canvas/85 px-4 py-3.5 backdrop-blur-md">
           <div className="flex gap-2">
-            <div className="h-9 w-32 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
-            <div className="h-9 w-24 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+            <div className="h-9 w-32 animate-pulse rounded-control bg-surface-muted motion-reduce:animate-none" />
+            <div className="h-9 w-24 animate-pulse rounded-control bg-surface-muted motion-reduce:animate-none" />
           </div>
         </div>
 
@@ -564,15 +573,15 @@ const { campaignId } = useParams<{ campaignId: string }>();
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="w-[300px] shrink-0 rounded-2xl border border-slate-200/80 bg-white/70 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
+              className="w-[300px] shrink-0 rounded-panel border border-line bg-surface-muted/40 p-4"
             >
               <div className="mb-4 flex items-center justify-between">
-                <div className="h-4 w-24 animate-pulse rounded-md bg-slate-200 dark:bg-slate-800" />
-                <div className="h-6 w-6 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                <div className="h-4 w-24 animate-pulse rounded-md bg-surface-muted motion-reduce:animate-none" />
+                <div className="h-6 w-6 animate-pulse rounded-full bg-surface-muted motion-reduce:animate-none" />
               </div>
               <div className="space-y-3">
-                <div className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" />
-                <div className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/50" />
+                <div className="h-20 animate-pulse rounded-card bg-surface motion-reduce:animate-none" />
+                <div className="h-20 animate-pulse rounded-card bg-surface motion-reduce:animate-none" />
               </div>
             </div>
           ))}
@@ -583,13 +592,13 @@ const { campaignId } = useParams<{ campaignId: string }>();
 
   if (!campaignId) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+      <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
         <div className="text-center">
-          <FolderKanban className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-700 mb-3" />
-          <h3 className="text-base font-semibold text-slate-700 dark:text-slate-200">
-            Campaign Tidak Ditemukan
+          <FolderKanban className="mx-auto mb-3 h-10 w-10 text-fg-subtle/60" aria-hidden="true" />
+          <h3 className="text-base font-semibold text-fg">
+            Campaign tidak ditemukan
           </h3>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-fg-muted">
             Silakan pilih campaign yang valid untuk melihat board task.
           </p>
         </div>
@@ -618,21 +627,21 @@ const { campaignId } = useParams<{ campaignId: string }>();
   {/* TOP NAV BAR (SAAS MODERN & CLEAN) */}
   {/* ===================================== */}
   {/* DIUBAH: Mengganti "sticky top-0" menjadi "relative" agar ikut naik saat di-scroll */}
-  <div className="relative z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80">
+  <div className="relative z-30 border-b border-line bg-canvas/85 backdrop-blur-md">
     <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       {/* LEFT SIDE: CONTROLS & SWITCHER */}
       <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto">
         <div className="flex min-w-0 items-center gap-2">
           <FolderKanban
             aria-hidden="true"
-            className="h-4 w-4 shrink-0 text-blue-500"
+            className="h-4 w-4 shrink-0 text-fg-subtle"
           />
           <div className="min-w-0">
-            <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-              Campaign / Project
+            <span className="block text-[10px] font-medium text-fg-subtle">
+              Campaign
             </span>
             <h1
-              className="truncate text-sm font-bold text-slate-900 dark:text-slate-100 sm:max-w-[28rem]"
+              className="truncate text-sm font-semibold text-fg sm:max-w-[28rem]"
               title={campaign?.name}
               aria-busy={isCampaignLoading}
             >
@@ -641,17 +650,17 @@ const { campaignId } = useParams<{ campaignId: string }>();
           </div>
         </div>
 
-        <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-1 sm:pb-0">
+        <div className="custom-scrollbar flex items-center gap-3 overflow-x-auto pb-1 sm:pb-0">
           {/* VIEW MODE SWITCHER */}
-          <div className="flex shrink-0 items-center rounded-xl border border-slate-200/80 bg-slate-100/80 p-1 dark:border-slate-800 dark:bg-slate-800/50">
+          <div className="flex shrink-0 items-center rounded-control border border-line bg-surface-muted p-1">
           <button
             type="button"
             onClick={() => setViewMode("kanban")}
             aria-pressed={viewMode === "kanban"}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+            className={`flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${
               viewMode === "kanban"
-                ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-100"
-                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                ? "bg-surface text-fg shadow-e1"
+                : "text-fg-muted hover:text-fg"
             }`}
           >
             <Kanban size={14} />
@@ -662,10 +671,10 @@ const { campaignId } = useParams<{ campaignId: string }>();
             type="button"
             onClick={() => setViewMode("list")}
             aria-pressed={viewMode === "list"}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+            className={`flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${
               viewMode === "list"
-                ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-100"
-                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                ? "bg-surface text-fg shadow-e1"
+                : "text-fg-muted hover:text-fg"
             }`}
           >
             <List size={14} />
@@ -677,13 +686,10 @@ const { campaignId } = useParams<{ campaignId: string }>();
           <button
             type="button"
             onClick={() => setIsCreateOpen(true)}
-            className="
-            flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold 
-            text-white transition-all duration-200 hover:bg-blue-500 active:scale-[0.98] shadow-sm
-          "
+            className="flex shrink-0 items-center gap-1.5 rounded-control bg-accent px-3.5 py-2 text-xs font-medium text-accent-fg transition-colors duration-150 hover:bg-accent-strong"
           >
             <Plus size={15} />
-            <span>Column</span>
+            <span>Kolom</span>
           </button>
         </div>
       </div>
@@ -694,7 +700,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
         <div className="relative">
           <Search
             aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
           />
           <input
             type="search"
@@ -703,24 +709,24 @@ const { campaignId } = useParams<{ campaignId: string }>();
             onKeyDown={(event) => {
               if (event.key === "Escape") setCardSearch("");
             }}
-            placeholder="Cari nama card..."
+            placeholder="Cari nama card"
             autoComplete="off"
-            className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-10 pr-10 text-sm font-medium text-slate-800 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="h-10 w-full appearance-none rounded-control border border-line bg-surface pl-9 pr-9 text-sm font-normal text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
           />
           {cardSearch ? (
             <button
               type="button"
               onClick={() => setCardSearch("")}
               aria-label="Hapus pencarian card"
-              className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
             >
-              <X aria-hidden="true" size={16} />
+              <X aria-hidden="true" size={15} />
             </button>
           ) : null}
         </div>
         {isSearchActive ? (
           <span
-            className="mt-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400"
+            className="mt-1 block text-[11px] text-fg-muted"
             aria-live="polite"
           >
             {filteredCardCount} dari {totalCardCount} card ditemukan
@@ -730,13 +736,13 @@ const { campaignId } = useParams<{ campaignId: string }>();
 
       {compactLayout && viewMode === "kanban" && boards.length > 0 ? (
         <label className="block w-full sm:w-auto">
-          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+          <span className="mb-1.5 block text-[11px] font-medium text-fg-subtle">
             Status yang ditampilkan
           </span>
           <select
             value={mobileBoardId}
             onChange={(event) => setMobileBoardId(event.target.value)}
-            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="h-11 w-full rounded-control border border-line bg-surface px-3 text-sm font-medium text-fg outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
           >
             {filteredBoards.map((board) => (
               <option key={board.id} value={board.id}>
@@ -744,20 +750,20 @@ const { campaignId } = useParams<{ campaignId: string }>();
               </option>
             ))}
           </select>
-          <span className="mt-1.5 block text-[11px] text-slate-500 dark:text-slate-400">
+          <span className="mt-1.5 block text-[11px] text-fg-muted">
             Pindahkan task melalui pilihan status di setiap card.
           </span>
         </label>
       ) : null}
 
-      {/* RIGHT SIDE: TASK STATS BADGE (MODERN) */}
-      <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-slate-50 px-2.5 py-1.5 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50">
-          <FolderKanban size={14} className="text-slate-400 dark:text-slate-500" />
-          <span>
+      {/* RIGHT SIDE: TASK STATS BADGE */}
+      <div className="hidden items-center gap-2 text-xs font-medium text-fg-muted sm:flex">
+        <div className="flex items-center gap-1.5 rounded-control border border-line bg-surface-muted/60 px-2.5 py-1.5">
+          <FolderKanban size={14} className="text-fg-subtle" />
+          <span className="tabular-nums">
             {isSearchActive
-              ? `${filteredCardCount} dari ${totalCardCount} Tasks ditemukan`
-              : `${totalCardCount} Tasks in ${boards.length} Columns`}
+              ? `${filteredCardCount} dari ${totalCardCount} task`
+              : `${totalCardCount} task · ${boards.length} kolom`}
           </span>
         </div>
       </div>
@@ -769,28 +775,23 @@ const { campaignId } = useParams<{ campaignId: string }>();
   {/* ===================================== */}
   <div className="w-full px-3 py-4 sm:px-6">
     {boards.length === 0 ? (
-      /* EMPTY STATE */
-      <div className="flex flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/50 dark:bg-slate-900/40 py-16 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
-          <FolderKanban size={26} />
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-            Belum ada column
-          </h3>
-          <p className="max-w-xs text-xs text-slate-400 dark:text-slate-500">
-            Buat column pertama seperti &ldquo;To Do&rdquo;, &ldquo;In Progress&rdquo;, atau &ldquo;Done&rdquo; untuk mulai mengatur alur kerja.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          className="mt-2 flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-blue-500 active:scale-[0.98]"
-        >
-          <Plus size={15} />
-          <span>Tambah Column</span>
-        </button>
-      </div>
+      <EmptyState
+        icon={FolderKanban}
+        title="Belum ada kolom"
+        description="Buat kolom pertama seperti To do, In progress, atau Done untuk mulai mengatur alur kerja."
+        action={{
+          label: "Tambah kolom",
+          onClick: () => setIsCreateOpen(true),
+        }}
+        className="py-16"
+      />
+    ) : isSearchActive && filteredCardCount === 0 ? (
+      <EmptyState
+        icon={SearchX}
+        title="Tidak ada task yang cocok"
+        description={`Tidak ada hasil untuk “${cardSearch.trim()}”. Coba kata kunci lain atau hapus pencarian.`}
+        action={{ label: "Hapus pencarian", onClick: () => setCardSearch("") }}
+      />
     ) : viewMode === "kanban" ? (
       /* KANBAN BOARD VIEW */
       <SortableContext
@@ -814,13 +815,13 @@ const { campaignId } = useParams<{ campaignId: string }>();
               onOpenCard={setSelectedCard}
               onEdit={() => setEditingBoard(board)}
               onDelete={() => setDeletingBoard(board)}
-              emptyMessage={isSearchActive ? "Tidak ada card yang cocok" : undefined}
               moveTargets={boards
                 .filter((target) => target.id !== board.id)
                 .map((target) => ({ id: target.id, name: target.name }))}
               onMoveCard={handleSelectMove}
               disableDrag={compactLayout}
               fullWidth={compactLayout}
+              emptyMessage={isSearchActive ? "Tidak ada task yang cocok" : undefined}
               suggestedAssignee={
                 campaign?.created_by && campaign.created_by.id !== user?.id
                   ? { id: campaign.created_by.id, name: campaign.created_by.name }
@@ -908,28 +909,27 @@ const { campaignId } = useParams<{ campaignId: string }>();
       {/* ===================================== */}
       <DragOverlay
         dropAnimation={{
-          duration: 240,
-          easing: "cubic-bezier(0.18, 0.67, 0.6, 1.12)",
+          duration: 200,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         {activeBoard ? (
-          <div className="w-[300px] rounded-2xl border border-blue-500/30 bg-white p-4 shadow-2xl ring-2 ring-blue-500/20 dark:bg-slate-900">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
-              <FolderKanban className="h-4 w-4 text-blue-500" />
+          <div className="w-[300px] rounded-card border border-accent/30 bg-surface p-4 shadow-e3 ring-2 ring-accent/15">
+            <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+              <FolderKanban className="h-4 w-4 text-accent" aria-hidden="true" />
               <span>{activeBoard.name}</span>
             </div>
-            <div className="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400">
-              Moving column...
+            <div className="mt-1 text-xs font-medium text-accent">
+              Memindahkan kolom
             </div>
           </div>
         ) : activeCard ? (
-          <div className="w-[300px] rotate-2 scale-105 rounded-2xl border border-blue-500/30 bg-white dark:bg-slate-900 p-4 shadow-2xl ring-2 ring-blue-500/20 transition-all cursor-grabbing">
-            <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+          <div className="w-[300px] cursor-grabbing rounded-card border border-accent/30 bg-surface p-4 shadow-e3 ring-2 ring-accent/15">
+            <div className="text-sm font-medium text-fg">
               {activeCard.title}
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Moving task...</span>
+            <div className="mt-1 text-xs font-medium text-accent">
+              Memindahkan task
             </div>
           </div>
         ) : null}

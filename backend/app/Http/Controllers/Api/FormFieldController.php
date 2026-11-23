@@ -20,6 +20,7 @@ class FormFieldController extends Controller
         $validated = $request->validate([
             'label' => 'required|string|max:255',
             'type' => ['required', Rule::in($this->allowedTypes())],
+            'description' => 'nullable|string|max:2000',
             'is_required' => 'nullable|boolean',
             'options' => 'nullable|array|max:100',
             'options.*' => 'string|max:255|distinct',
@@ -39,6 +40,7 @@ class FormFieldController extends Controller
             'label' => $validated['label'],
             'name' => $this->uniqueName($form, $validated['label']),
             'type' => $validated['type'],
+            'description' => $validated['description'] ?? null,
             'is_required' => $request->boolean('is_required'),
             'options' => $validated['options'] ?? null,
             'allow_other' => $request->boolean('allow_other'),
@@ -72,6 +74,7 @@ class FormFieldController extends Controller
         $validated = $request->validate([
             'label' => 'sometimes|required|string|max:255',
             'type' => ['sometimes', Rule::in($this->allowedTypes())],
+            'description' => 'sometimes|nullable|string|max:2000',
             'is_required' => 'sometimes|boolean',
             'options' => 'sometimes|nullable|array|max:100',
             'options.*' => 'string|max:255|distinct',

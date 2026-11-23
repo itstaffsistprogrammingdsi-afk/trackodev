@@ -1,6 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router";
-import { Pencil, Trash2, X } from "lucide-react";
+import { Link, useParams } from "react-router";
+import {
+  AlignLeft,
+  ArrowLeft,
+  Calendar,
+  CheckSquare,
+  CircleDot,
+  Copy,
+  ExternalLink,
+  Hash,
+  Heading,
+  List,
+  ListChecks,
+  Pencil,
+  Trash2,
+  Type,
+  Upload,
+  X,
+} from "lucide-react";
 import {
   getForm,
   createField,
@@ -11,6 +28,25 @@ import type { Form, FormField } from "../types";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { toast, confirmDialog } from "@/lib/feedback";
+import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
+import RequiredToggle from "../components/RequiredToggle";
+
+const FIELD_TYPES: Array<{
+  value: FormField["type"];
+  label: string;
+  icon: typeof Type;
+}> = [
+  { value: "text", label: "Teks singkat", icon: Type },
+  { value: "textarea", label: "Paragraf", icon: AlignLeft },
+  { value: "number", label: "Angka", icon: Hash },
+  { value: "date", label: "Tanggal", icon: Calendar },
+  { value: "file", label: "Upload file", icon: Upload },
+  { value: "select", label: "Dropdown", icon: List },
+  { value: "checkbox", label: "Checkbox", icon: CheckSquare },
+  { value: "radio", label: "Pilihan ganda", icon: CircleDot },
+  { value: "section", label: "Section", icon: Heading },
+];
 
 export default function FormBuilderPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +61,7 @@ export default function FormBuilderPage() {
 
   const [label, setLabel] = useState("");
   const [type, setType] = useState<FormField["type"]>("text");
+  const [fieldDescription, setFieldDescription] = useState("");
   const [required, setRequired] = useState(false);
 
   const [options, setOptions] = useState<string[]>([""]);
@@ -63,6 +100,7 @@ export default function FormBuilderPage() {
     setEditingFieldId(null);
     setLabel("");
     setType("text");
+    setFieldDescription("");
     setRequired(false);
     setOptions([""]);
     setAllowOther(false);
@@ -73,6 +111,7 @@ export default function FormBuilderPage() {
     setEditingFieldId(field.id);
     setLabel(field.label);
     setType(field.type);
+    setFieldDescription(field.description || "");
     setRequired(Boolean(field.is_required));
     setOptions(field.options?.length ? [...field.options] : [""]);
     setAllowOther(Boolean(field.allow_other));
@@ -82,15 +121,9 @@ export default function FormBuilderPage() {
   useEffect(() => {
     if (!editingFieldId) return;
 
-    // Wait until the editor has switched to edit mode and is present in the
-    // DOM, then scroll the nearest overflow container and place the cursor in
-    // the first editable control. preventScroll avoids interrupting the
-    // smooth scroll animation when focus is applied.
+    // Editor edit tampil sebagai modal; cukup fokuskan input pertama tanpa
+    // menggeser halaman di belakang overlay.
     const frame = window.requestAnimationFrame(() => {
-      fieldEditorRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
       labelInputRef.current?.focus({ preventScroll: true });
     });
 
@@ -103,6 +136,8 @@ export default function FormBuilderPage() {
       return;
     }
 
+    const wasEditing = Boolean(editingFieldId);
+
     try {
       setSavingField(true);
       const cleanOptions = options
@@ -112,6 +147,7 @@ export default function FormBuilderPage() {
       const payload: Partial<FormField> = {
         label,
         type,
+        description: fieldDescription.trim() || null,
         is_required: required,
         options:
           type === "select" || type === "checkbox" || type === "radio"
@@ -132,6 +168,7 @@ export default function FormBuilderPage() {
       }
 
       resetFieldEditor();
+      toast.success(wasEditing ? "Field diperbarui." : "Field ditambahkan.");
 
       await fetchForm();
     } catch (error) {
@@ -153,9 +190,34 @@ export default function FormBuilderPage() {
       await deleteField(fieldId);
       if (editingFieldId === fieldId) resetFieldEditor();
       await fetchForm();
+      toast.success("Field dihapus.");
     } catch (error) {
       console.error(error);
       toast.error("Gagal hapus field");
+    }
+  };
+
+  const handleDuplicateField = async (field: FormField) => {
+    try {
+      setSavingField(true);
+      await createField(field.form_id, {
+        label: `${field.label} (copy)`,
+        type: field.type,
+        description: field.description ?? null,
+        is_required: field.is_required,
+        options: field.options ?? [],
+        allow_other: field.allow_other ?? false,
+        other_label: field.other_label ?? null,
+        order: form?.fields?.length ?? 0,
+      } as Partial<FormField>);
+
+      await fetchForm();
+      toast.success("Field diduplikasi.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Gagal menduplikasi field.");
+    } finally {
+      setSavingField(false);
     }
   };
 
@@ -163,99 +225,198 @@ export default function FormBuilderPage() {
     fetchForm();
   }, [fetchForm, id, realtimeRevision]);
 
-  if (loading) return <div className="p-6">Loading builder...</div>;
-  if (!form) return <div className="p-6 text-red-500">Form not found</div>;
+  if (loading) {
+    return (
+      <div className="space-y-6" role="status" aria-busy="true">
+        <span className="sr-only">Memuat builder form</span>
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-8 w-64 max-w-full" />
+          <Skeleton className="h-3 w-40" />
+        </div>
+        <Skeleton className="h-52 w-full rounded-panel" />
+        <Skeleton className="h-64 w-full rounded-panel" />
+      </div>
+    );
+  }
+
+  if (!form) {
+    return (
+      <EmptyState
+        icon={ListChecks}
+        title="Form tidak ditemukan"
+        description="Form mungkin sudah dihapus atau Anda tidak memiliki akses."
+        action={{ label: "Kembali ke daftar form", onClick: () => window.location.assign("/forms") }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
 
       {/* HEADER */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          {form.name}
-        </h1>
-        <p className="text-sm text-gray-500">Form Builder</p>
+      <div className="flex flex-col justify-between gap-4 border-b border-line pb-4 sm:flex-row sm:items-end">
+        <div className="min-w-0">
+          <Link
+            to="/forms"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            Semua form
+          </Link>
+          <h1 className="mt-2 truncate text-2xl font-semibold tracking-[-0.02em] text-fg">
+            {form.name}
+          </h1>
+          <p className="mt-1 text-sm text-fg-muted">
+            Form builder · {form.fields?.length ?? 0} field
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/public/forms/${form.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            Buka form
+          </a>
+          {can("form.update") ? (
+            <Link
+              to={`/forms/${form.id}/edit`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong"
+            >
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              Edit info form
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       {/* CREATE / EDIT FIELD */}
       {(canCreateField || editingFieldId) && (
       <div
+        className={
+          editingFieldId
+            ? "fixed inset-0 z-[100] flex items-center justify-center bg-overlay p-4"
+            : ""
+        }
+        onClick={editingFieldId ? resetFieldEditor : undefined}
+        onKeyDown={
+          editingFieldId
+            ? (event) => {
+                if (event.key === "Escape") resetFieldEditor();
+              }
+            : undefined
+        }
+      >
+      <div
         ref={fieldEditorRef}
         id="field-editor"
-        role="region"
+        role={editingFieldId ? "dialog" : "region"}
+        aria-modal={editingFieldId ? "true" : undefined}
         aria-labelledby="field-editor-title"
-        className={`mb-6 scroll-mt-6 rounded-xl border bg-white p-5 shadow-sm transition-all duration-300 dark:bg-gray-900 ${
+        onClick={(event) => event.stopPropagation()}
+        className={
           editingFieldId
-            ? "border-blue-300 ring-4 ring-blue-100/80 dark:border-blue-700 dark:ring-blue-900/30"
-            : "border-gray-200 dark:border-gray-800"
-        }`}
+            ? "max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-modal border border-line bg-surface p-5 shadow-e3"
+            : "mb-6 scroll-mt-6 rounded-panel border border-line bg-surface p-5"
+        }
       >
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 id="field-editor-title" className="text-lg font-semibold text-gray-800 dark:text-white">
-                {editingFieldId ? "Edit Field" : "Add Field"}
-              </h2>
-              {editingFieldId && (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                  Editing
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <h2 id="field-editor-title" className="text-sm font-semibold text-fg">
+              {editingFieldId ? "Edit pertanyaan" : "Tambah pertanyaan"}
+            </h2>
+            <p className="mt-1 text-xs text-fg-muted">
               {editingFieldId
-                ? "Anda sedang mengedit field ini. Perbarui isinya lalu simpan perubahan."
-                : "Tambahkan field baru ke form ini."}
+                ? "Perbarui pertanyaan ini, lalu simpan perubahan."
+                : "Tambahkan pertanyaan baru ke form ini."}
             </p>
           </div>
 
-          {editingFieldId && (
-            <p className="text-xs font-medium text-blue-600 dark:text-blue-300" aria-live="polite">
-              Perubahan belum disimpan
-            </p>
-          )}
+          {editingFieldId ? (
+            <div className="flex shrink-0 items-center gap-2">
+              <p className="hidden text-[10px] font-medium text-accent sm:block" aria-live="polite">
+                Belum disimpan
+              </p>
+              <button
+                type="button"
+                onClick={resetFieldEditor}
+                aria-label="Tutup editor pertanyaan"
+                className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <input
-            ref={labelInputRef}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            aria-label="Field label"
-            placeholder="Field label"
-            className="rounded-lg border border-gray-300 px-3 py-2 transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-900/30"
-          />
-
-          <select
-            value={type}
-            onChange={(e) => {
-              setType(e.target.value as FormField["type"]);
-              setOptions([""]);
-              setAllowOther(false);
-              setOtherLabel("");
-            }}
-            aria-label="Field type"
-            className="rounded-lg border border-gray-300 px-3 py-2 transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-900/30"
-          >
-            <option value="text">Text</option>
-            <option value="textarea">Textarea</option>
-            <option value="number">Number</option>
-            <option value="date">Date</option>
-            <option value="file">File</option>
-            <option value="select">Select</option>
-            <option value="checkbox">Checkbox</option>
-            <option value="radio">Radio</option>
-            <option value="section">Section</option>
-          </select>
-
-          <label className="flex items-center gap-2">
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="builder-field-label" className="mb-1.5 block text-xs font-medium text-fg-muted">
+              Label pertanyaan
+            </label>
             <input
-              type="checkbox"
-              checked={required}
-              onChange={(e) => setRequired(e.target.checked)}
+              id="builder-field-label"
+              ref={labelInputRef}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Contoh: Nama lengkap"
+              className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
             />
-            Required
-          </label>
+          </div>
+
+          <div>
+            <label htmlFor="builder-field-description" className="mb-1.5 block text-xs font-medium text-fg-muted">
+              Deskripsi pertanyaan (opsional)
+            </label>
+            <textarea
+              id="builder-field-description"
+              rows={2}
+              value={fieldDescription}
+              onChange={(event) => setFieldDescription(event.target.value)}
+              placeholder="Panduan singkat di bawah pertanyaan"
+              className="w-full resize-none rounded-control border border-line bg-surface px-3 py-2 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
+            />
+          </div>
+
+          <div>
+            <span className="mb-1.5 block text-xs font-medium text-fg-muted">
+              Tipe pertanyaan
+            </span>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              {FIELD_TYPES.map((fieldType) => {
+                const Icon = fieldType.icon;
+                const active = type === fieldType.value;
+
+                return (
+                  <button
+                    key={fieldType.value}
+                    type="button"
+                    onClick={() => {
+                      setType(fieldType.value);
+                      setOptions([""]);
+                      setAllowOther(false);
+                      setOtherLabel("");
+                    }}
+                    aria-pressed={active}
+                    className={`flex items-center gap-1.5 rounded-control border px-2 py-2 text-left text-[11px] font-medium transition-colors ${
+                      active
+                        ? "border-accent/40 bg-accent-soft text-accent"
+                        : "border-line bg-surface text-fg-muted hover:bg-surface-muted hover:text-fg"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{fieldType.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <RequiredToggle checked={required} onChange={setRequired} />
         </div>
 
         {/* OPTIONS */}
@@ -296,7 +457,7 @@ export default function FormBuilderPage() {
               onClick={() => setOptions([...options, ""])}
               className="mt-3 text-sm text-blue-600 hover:underline"
             >
-              + Add Option
+              + Tambah opsi
             </button>
 
             {/* OTHER */}
@@ -306,14 +467,14 @@ export default function FormBuilderPage() {
                 checked={allowOther}
                 onChange={(e) => setAllowOther(e.target.checked)}
               />
-              <span className="text-sm">Allow "Other"</span>
+              <span className="text-sm">Izinkan opsi "Other"</span>
             </div>
 
             {allowOther && (
               <input
                 value={otherLabel}
                 onChange={(e) => setOtherLabel(e.target.value)}
-                placeholder="Label Other (default: Other)"
+                placeholder="Label opsi Other (default: Other)"
                 className="mt-2 w-full rounded-lg border px-3 py-2"
               />
             )}
@@ -325,94 +486,142 @@ export default function FormBuilderPage() {
             <button
               type="button"
               onClick={resetFieldEditor}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
             >
               <X size={16} />
-              Cancel
+              Batal
             </button>
           )}
           <button
             type="button"
             onClick={handleSaveField}
             disabled={savingField}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
           >
             {savingField
-              ? "Saving..."
+              ? "Menyimpan..."
               : editingFieldId
-                ? "Update Field"
-                : "Add Field"}
+                ? "Simpan perubahan"
+                : "Tambah field"}
           </button>
         </div>
+      </div>
       </div>
       )}
 
       {/* FIELD LIST */}
-      <div className="rounded-xl border bg-white p-5">
-        <h2 className="mb-4 font-semibold">Fields</h2>
+      <div className="overflow-hidden rounded-panel border border-line bg-surface">
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <div>
+            <h2 className="text-sm font-semibold text-fg">Field form</h2>
+            <p className="mt-0.5 text-xs text-fg-muted">
+              Urutan field mengikuti urutan saat form publik dibuka.
+            </p>
+          </div>
+          <span className="rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-medium tabular-nums text-fg-muted">
+            {form.fields?.length ?? 0} field
+          </span>
+        </div>
 
-        {form.fields?.length ? (
-          <div className="space-y-3">
-            {form.fields.map((field: FormField) => (
-              <div key={field.id} className="rounded border p-4">
-                <div className="flex justify-between">
-                  <div>
-                    <div className="font-medium">{field.label}</div>
-                    <div className="text-xs text-gray-500">
-                      {field.type}
+        <div className="p-3 sm:p-4">
+          {form.fields?.length ? (
+            <div className="space-y-2">
+              {form.fields.map((field: FormField) => (
+                <div
+                  key={field.id}
+                  className="flex flex-col gap-3 rounded-card border border-line p-3.5 transition-colors hover:border-line-strong sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium text-fg">
+                        {field.label}
+                      </span>
+                      <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium capitalize text-fg-muted">
+                        {field.type}
+                      </span>
+                      {field.is_required ? (
+                        <span className="text-[10px] font-medium text-danger">
+                          Wajib
+                        </span>
+                      ) : null}
                     </div>
 
+                    {field.description ? (
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-fg-muted">
+                        {field.description}
+                      </p>
+                    ) : null}
+
                     {field.options?.length ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {field.options.map((o, i) => (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {field.options.map((option, index) => (
                           <span
-                            key={i}
-                            className="rounded bg-gray-100 px-2 py-1 text-xs"
+                            key={`${field.id}-${index}`}
+                            className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] text-fg-muted"
                           >
-                            {o}
+                            {option}
                           </span>
                         ))}
                       </div>
                     ) : null}
 
-                    {/* OPTIONAL: SHOW OTHER INDICATOR */}
-                    {(field as FormField).allow_other && (
-                      <div className="text-xs text-blue-500 mt-1">
-                        + Other option enabled
-                      </div>
-                    )}
+                    {field.allow_other ? (
+                      <p className="mt-1.5 text-[10px] text-accent">
+                        Opsi “Other” aktif
+                      </p>
+                    ) : null}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {canUpdateField && (
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {canCreateField ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleDuplicateField(field)}
+                        disabled={savingField}
+                        className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg disabled:cursor-wait disabled:opacity-50"
+                        aria-label={`Duplikasi field ${field.label}`}
+                        title="Duplikasi field"
+                      >
+                        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                    {canUpdateField ? (
                       <button
                         type="button"
                         onClick={() => handleStartEditField(field)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-1.5 text-sm text-blue-600 transition hover:bg-blue-50"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
                       >
-                        <Pencil size={14} />
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         Edit
                       </button>
-                    )}
-                    {canDeleteField && (
+                    ) : null}
+                    {canDeleteField ? (
                       <button
                         type="button"
-                        onClick={() => handleDeleteField(field.id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50"
+                        onClick={() => void handleDeleteField(field.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger"
+                        aria-label={`Hapus field ${field.label}`}
+                        title="Hapus field"
                       >
-                        <Trash2 size={14} />
-                        Delete
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-gray-500">No fields yet</div>
-        )}
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              compact
+              icon={ListChecks}
+              title="Belum ada field"
+              description="Tambahkan field pertama di editor di atas. Mulai dari teks singkat atau pilihan status."
+            />
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+

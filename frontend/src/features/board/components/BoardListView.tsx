@@ -1,3 +1,5 @@
+import { Inbox } from "lucide-react";
+
 import { Board } from "../types";
 import { Card } from "@/features/card/types";
 import {
@@ -5,6 +7,7 @@ import {
   getDueDateStatus,
   isCardCompleted,
 } from "@/features/card/utils/dueDate";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface Props {
   boards: Board[];
@@ -12,21 +15,11 @@ interface Props {
   emptyMessage?: string;
 }
 
-const statusColors: Record<string, string> = {
-  "to do": "bg-yellow-100 text-yellow-700 border-yellow-200",
-  todo: "bg-blue-100 text-blue-700 border-blue-200",
-  "in progress": "bg-purple-100 text-purple-700 border-purple-200",
-  review: "bg-orange-100 text-orange-700 border-orange-200",
-  qc: "bg-pink-100 text-pink-700 border-pink-200",
-  "qc done": "bg-emerald-100 text-emerald-700 border-emerald-200",
-  done: "bg-green-100 text-green-700 border-green-200",
-};
-
-const priorityColors: Record<string, string> = {
-  low: "bg-green-50 text-green-600",
-  medium: "bg-yellow-50 text-yellow-600",
-  high: "bg-orange-50 text-orange-600",
-  urgent: "bg-red-50 text-red-600",
+const priorityDot: Record<string, string> = {
+  low: "bg-success",
+  medium: "bg-amber-500",
+  high: "bg-orange-500",
+  urgent: "bg-danger",
 };
 
 const formatDate = (value?: string | null): string =>
@@ -51,16 +44,47 @@ function DueDateBadge({
   const status = getDueDateStatus(value, { completed, completedAt });
 
   if (status === "none") {
-    return <span className="text-gray-400">-</span>;
+    return <span className="text-fg-subtle">-</span>;
   }
 
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${dueDateBadgeClasses[status]}`}
+      className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${dueDateBadgeClasses[status]}`}
     >
       {status === "overdue"
-        ? `Overdue · ${formatDate(value)}`
-        : `Due ${formatDate(value)}`}
+        ? `Terlambat · ${formatDate(value)}`
+        : formatDate(value)}
+    </span>
+  );
+}
+
+function PriorityLabel({ priority }: { priority?: string }) {
+  if (!priority) return <span className="text-fg-subtle">-</span>;
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium capitalize text-fg-muted">
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 rounded-full ${
+          priorityDot[priority.toLowerCase()] ?? "bg-fg-subtle"
+        }`}
+      />
+      {priority}
+    </span>
+  );
+}
+
+function StatusLabel({ board }: { board: Board }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-fg-muted">
+      {board.color ? (
+        <span
+          aria-hidden="true"
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: board.color }}
+        />
+      ) : null}
+      {board.name}
     </span>
   );
 }
@@ -76,146 +100,102 @@ export default function BoardListView({
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-1 py-16 text-center">
-        <div className="text-sm font-medium text-gray-700">
-          {emptyMessage}
-        </div>
-        <p className="text-xs text-gray-400">
-          Task yang dibuat di semua column akan muncul di sini.
-        </p>
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title={emptyMessage}
+        description="Task yang dibuat di semua kolom akan muncul di sini."
+      />
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-      {/* ===================================== */}
+    <div className="overflow-hidden rounded-panel border border-line bg-surface">
       {/* MOBILE: card list */}
-      {/* ===================================== */}
-      <div className="divide-y divide-gray-100 sm:hidden">
-        {rows.map(({ board, card }) => {
-          const statusKey = board.name.toLowerCase();
+      <div className="divide-y divide-line sm:hidden">
+        {rows.map(({ board, card }) => (
+          <button
+            key={card.id}
+            onClick={() => onOpenCard?.(card)}
+            className="block w-full px-4 py-3 text-left transition-colors hover:bg-surface-muted"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="line-clamp-2 text-sm font-medium text-fg">
+                {card.title}
+              </span>
+              <PriorityLabel priority={card.priority} />
+            </div>
 
-          return (
-            <button
-              key={card.id}
-              onClick={() => onOpenCard?.(card)}
-              className="block w-full px-4 py-3 text-left transition-colors hover:bg-gray-50"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="line-clamp-2 text-sm font-medium text-gray-800">
-                  {card.title}
-                </span>
-
-                <span
-                  className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none ${
-                    priorityColors[card.priority?.toLowerCase() ?? ""] ||
-                    "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {card.priority ?? "-"}
-                </span>
-              </div>
-
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold capitalize ${
-                    statusColors[statusKey] ||
-                    "border-gray-200 bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {board.name}
-                </span>
-
-                <DueDateBadge value={card.due_date} completed={isCardCompleted(card)} completedAt={card.completed_at} />
-              </div>
-            </button>
-          );
-        })}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <StatusLabel board={board} />
+              <DueDateBadge
+                value={card.due_date}
+                completed={isCardCompleted(card)}
+                completedAt={card.completed_at}
+              />
+            </div>
+          </button>
+        ))}
       </div>
 
-      {/* ===================================== */}
       {/* DESKTOP: table */}
-      {/* ===================================== */}
       <div className="hidden overflow-x-auto sm:block">
-        {/* Tambahkan table-fixed agar lebar kolom konsisten mengikuti persentase */}
         <table className="w-full min-w-[900px] table-fixed">
-          <thead className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50">
+          <thead className="sticky top-0 z-10 border-b border-line bg-surface-muted/50">
             <tr>
-              {/* Proporsi: Task mendapat porsi terbesar (40%), sisanya dibagi rata (15%) */}
-              <th className="w-[40%] px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <th className="w-[40%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
                 Task
               </th>
-              <th className="w-[15%] px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Priority
+              <th className="w-[15%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
+                Prioritas
               </th>
-              <th className="w-[15%] px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <th className="w-[15%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
                 Status
               </th>
-              <th className="w-[15%] px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Due Date
+              <th className="w-[15%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
+                Tenggat
               </th>
-              <th className="w-[15%] px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Created
+              <th className="w-[15%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
+                Dibuat
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-100">
-            {rows.map(({ board, card }) => {
-              const statusKey = board.name.toLowerCase();
+          <tbody className="divide-y divide-line">
+            {rows.map(({ board, card }) => (
+              <tr
+                key={card.id}
+                className="transition-colors duration-150 hover:bg-surface-muted/50"
+              >
+                <td className="px-5 py-3.5">
+                  <button
+                    onClick={() => onOpenCard?.(card)}
+                    className="line-clamp-2 text-left text-[13px] font-medium text-fg transition-colors hover:text-accent"
+                  >
+                    {card.title}
+                  </button>
+                </td>
 
-              return (
-                <tr
-                  key={card.id}
-                  className="transition-colors duration-200 hover:bg-gray-50"
-                >
-                  {/* Task Column */}
-                  <td className="px-5 py-4">
-                    <button
-                      onClick={() => onOpenCard?.(card)}
-                      className="line-clamp-2 text-left text-sm font-medium text-gray-800 transition-colors hover:text-black"
-                    >
-                      {card.title}
-                    </button>
-                  </td>
+                <td className="whitespace-nowrap px-5 py-3.5">
+                  <PriorityLabel priority={card.priority} />
+                </td>
 
-                  {/* Priority Column - whitespace-nowrap agar badge tidak patah */}
-                  <td className="px-5 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none ${
-                        priorityColors[card.priority?.toLowerCase() ?? ""] ||
-                        "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {card.priority ?? "-"}
-                    </span>
-                  </td>
+                <td className="whitespace-nowrap px-5 py-3.5">
+                  <StatusLabel board={board} />
+                </td>
 
-                  {/* Status Column - whitespace-nowrap agar badge tidak patah */}
-                  <td className="px-5 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
-                        statusColors[statusKey] ||
-                        "border-gray-200 bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {board.name}
-                    </span>
-                  </td>
+                <td className="whitespace-nowrap px-5 py-3.5">
+                  <DueDateBadge
+                    value={card.due_date}
+                    completed={isCardCompleted(card)}
+                    completedAt={card.completed_at}
+                  />
+                </td>
 
-                  {/* Due Date Column - whitespace-nowrap agar tanggal tidak patah ke baris dua */}
-                  <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
-                    <DueDateBadge value={card.due_date} completed={isCardCompleted(card)} completedAt={card.completed_at} />
-                  </td>
-
-                  {/* Created Column - whitespace-nowrap */}
-                  <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">
-                    {formatDate(card.created_at)}
-                  </td>
-                </tr>
-              );
-            })}
+                <td className="whitespace-nowrap px-5 py-3.5 text-xs text-fg-muted">
+                  {formatDate(card.created_at)}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

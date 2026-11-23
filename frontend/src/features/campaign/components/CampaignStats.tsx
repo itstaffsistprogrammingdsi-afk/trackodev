@@ -1,27 +1,17 @@
 import { useEffect, useState } from "react";
-import {
-  Clock3,
-  CheckCircle2,
-  AlertTriangle,
-  Activity,
-} from "lucide-react";
 
 import { getCampaignStats } from "../api/campaign.api";
 import type { CampaignStatsData } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Props = {
   campaignId: string;
 };
 
-export default function CampaignStats({
-  campaignId,
-}: Props) {
-  const [data, setData] =
-    useState<CampaignStatsData | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
+export default function CampaignStats({ campaignId }: Props) {
+  const [data, setData] = useState<CampaignStatsData | null>(null);
+  const [loading, setLoading] = useState(true);
   const realtimeRevision = useRealtimeRevision([
     "Board", "Card", "Subtask", "Task",
   ]);
@@ -29,16 +19,10 @@ export default function CampaignStats({
   useEffect(() => {
     const fetch = async () => {
       try {
-        const res =
-          await getCampaignStats(campaignId);
-
+        const res = await getCampaignStats(campaignId);
         setData(res);
       } catch (err) {
-        console.error(
-          "CAMPAIGN STATS ERROR:",
-          err
-        );
-
+        console.error("CAMPAIGN STATS ERROR:", err);
         setData(null);
       } finally {
         setLoading(false);
@@ -52,15 +36,11 @@ export default function CampaignStats({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-white border rounded-xl p-4 animate-pulse"
-          >
-            <div className="w-8 h-8 bg-gray-200 rounded" />
-            <div className="mt-4 h-8 bg-gray-200 rounded" />
-            <div className="mt-2 h-4 bg-gray-100 rounded" />
+          <div key={i} className="space-y-3 bg-surface p-4">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-7 w-12" />
           </div>
         ))}
       </div>
@@ -69,72 +49,46 @@ export default function CampaignStats({
 
   if (!data) {
     return (
-      <div className="bg-white border rounded-xl p-4 text-gray-500">
-        No stats available
+      <div className="rounded-panel border border-line bg-surface p-4 text-sm text-fg-muted">
+        Statistik campaign belum tersedia.
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
-      <StatCard
-        title="Total Tasks"
-        value={data.total_tasks ?? 0}
-        color="text-slate-500"
-        icon={<Clock3 size={18} />}
-      />
-
-      <StatCard
-        title="Completed"
-        value={data.completed ?? 0}
-        color="text-green-500"
-        icon={<CheckCircle2 size={18} />}
-      />
-
-      <StatCard
-        title="In Progress"
-        value={data.in_progress ?? 0}
-        color="text-blue-500"
-        icon={<Activity size={18} />}
-      />
-
-      <StatCard
-        title="Overdue"
-        value={data.overdue ?? 0}
-        color="text-red-500"
-        icon={<AlertTriangle size={18} />}
-      />
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line lg:grid-cols-4">
+      <StatCard title="Total task" value={data.total_tasks ?? 0} />
+      <StatCard title="Selesai" value={data.completed ?? 0} tone="success" />
+      <StatCard title="Berjalan" value={data.in_progress ?? 0} tone="accent" />
+      <StatCard title="Terlambat" value={data.overdue ?? 0} tone="danger" />
     </div>
   );
 }
 
-type StatCardProps = {
-  title: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-};
-
 function StatCard({
   title,
   value,
-  icon,
-  color,
-}: StatCardProps) {
+  tone = "default",
+}: {
+  title: string;
+  value: number;
+  tone?: "default" | "success" | "accent" | "danger";
+}) {
+  const toneClass =
+    tone === "danger" && value > 0
+      ? "text-danger"
+      : tone === "success" && value > 0
+        ? "text-success"
+        : tone === "accent" && value > 0
+          ? "text-accent"
+          : "text-fg";
+
   return (
-    <div className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition">
-      <div className={color}>
-        {icon}
-      </div>
-
-      <div className="mt-4 text-2xl font-bold">
-        {value}
-      </div>
-
-      <div className="text-sm text-gray-500">
-        {title}
-      </div>
+    <div className="bg-surface p-4 sm:p-5">
+      <p className={`text-[22px] font-semibold leading-none tabular-nums tracking-[-0.02em] ${toneClass}`}>
+        {value.toLocaleString("id-ID")}
+      </p>
+      <p className="mt-2 text-[11px] font-medium text-fg-muted">{title}</p>
     </div>
   );
 }

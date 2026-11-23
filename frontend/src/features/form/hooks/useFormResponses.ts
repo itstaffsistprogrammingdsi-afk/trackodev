@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -45,6 +46,9 @@ export function useFormResponses(
   ] =
     useState(true);
 
+  const [error, setError] =
+    useState<string | null>(null);
+
   const {
     expandedRows,
     toggleExpanded,
@@ -77,52 +81,33 @@ export function useFormResponses(
   |--------------------------------------------------------------------------
   */
 
+  const fetchData = useCallback(async () => {
+    if (!id) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [formData, submissionData] = await Promise.all([
+        getForm(id),
+        getSubmissions(id),
+      ]);
+
+      setForm(formData);
+      setSubmissions(submissionData);
+    } catch (err) {
+      console.error(err);
+      setError("Gagal memuat form dan responses. Silakan coba lagi.");
+      setForm(null);
+      setSubmissions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
-
-    if (!id)
-      return;
-
-    const fetchData =
-      async () => {
-
-      setLoading(
-        true
-      );
-
-      try {
-
-        const [
-          formData,
-          submissionData,
-        ] =
-          await Promise.all([
-            getForm(id),
-            getSubmissions(
-              id
-            ),
-          ]);
-
-        setForm(
-          formData
-        );
-
-        setSubmissions(
-          submissionData
-        );
-
-      } finally {
-
-        setLoading(
-          false
-        );
-
-      }
-
-    };
-
-    fetchData();
-
-  }, [id, realtimeRevision]);
+    void fetchData();
+  }, [fetchData, realtimeRevision]);
 
   /*
   |--------------------------------------------------------------------------
@@ -187,6 +172,8 @@ export function useFormResponses(
     form,
     submissions,
     loading,
+    error,
+    reload: fetchData,
 
     expandedRows,
     toggleExpanded,

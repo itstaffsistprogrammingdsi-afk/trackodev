@@ -22,6 +22,7 @@ class Form extends Model
         'slug',
         'description',
         'header_image',
+        'theme_color',
         'show_note',
         'note_content',
         'created_by',

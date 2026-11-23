@@ -1,6 +1,7 @@
-import { useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { searchUsers } from "../api/campaign.api"
 import { User } from "../types"
+import { Skeleton } from "@/components/ui/Skeleton"
 
 type Props = {
   onSelect: (user: User) => void
@@ -21,18 +22,32 @@ export default function MemberMentionInput({
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
   const requestIdRef = useRef(0)
+  const debounceRef = useRef<number | null>(null)
   const listboxId = useId()
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current !== null) {
+        window.clearTimeout(debounceRef.current)
+      }
+    }
+  }, [])
 
   // ============================================
   // SEARCH USER
   // ============================================
 
-  const handleChange = async (
+  const handleChange = (
     val: string
   ) => {
 
     setQuery(val)
     const requestId = ++requestIdRef.current
+
+    if (debounceRef.current !== null) {
+      window.clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
 
     // 🔥 hilangkan @ jika ada
     const keyword = val
@@ -49,34 +64,31 @@ export default function MemberMentionInput({
       return
     }
 
-    try {
+    setLoading(true)
+    setShow(true)
 
-      setLoading(true)
-      setShow(true)
+    debounceRef.current = window.setTimeout(async () => {
+      try {
+        const data =
+          await searchUsers(keyword, collaboratorOnly, workspaceId)
 
-      const data =
-        await searchUsers(keyword, collaboratorOnly, workspaceId)
+        if (requestId === requestIdRef.current) {
+          setUsers(data)
+          setShow(true)
+        }
+      } catch (err) {
+        console.error(err)
 
-      if (requestId === requestIdRef.current) {
-        setUsers(data)
-        setShow(true)
+        if (requestId === requestIdRef.current) {
+          setUsers([])
+          setShow(false)
+        }
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false)
+        }
       }
-
-    } catch (err) {
-
-      console.error(err)
-
-      if (requestId === requestIdRef.current) {
-        setUsers([])
-        setShow(false)
-      }
-
-    } finally {
-
-      if (requestId === requestIdRef.current) {
-        setLoading(false)
-      }
-    }
+    }, 300)
   }
 
   // ============================================
@@ -89,9 +101,15 @@ export default function MemberMentionInput({
 
     onSelect(user)
 
+    if (debounceRef.current !== null) {
+      window.clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+
     setQuery("")
     setUsers([])
     setShow(false)
+    setLoading(false)
   }
 
   // ============================================
@@ -146,17 +164,17 @@ export default function MemberMentionInput({
 
           {/* LOADING */}
           {loading && (
-
-            <div className="p-3 text-sm text-gray-500">
-              Loading...
+            <div className="space-y-2 p-3" role="status" aria-busy="true">
+              <span className="sr-only">Mencari user</span>
+              <Skeleton className="h-8 w-full rounded-control" />
+              <Skeleton className="h-8 w-4/5 rounded-control" />
             </div>
           )}
 
           {/* EMPTY */}
           {!loading && users.length === 0 && (
-
-            <div className="p-3 text-sm text-gray-500">
-              User tidak ditemukan
+            <div className="p-3 text-sm text-fg-muted">
+              User tidak ditemukan.
             </div>
           )}
 

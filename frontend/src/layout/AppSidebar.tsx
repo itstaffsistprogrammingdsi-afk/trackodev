@@ -7,9 +7,11 @@ import UserDropdown from "../components/header/UserDropdown";
 import {
   BoxCubeIcon,
   ChevronDownIcon,
+  FileIcon,
   GridIcon,
   HorizontaLDots,
   ListIcon,
+  TaskIcon,
   UserCircleIcon,
 } from "../icons";
 
@@ -33,6 +35,8 @@ type SubItem = {
   name: string;
   path: string;
   children?: ChildItem[];
+  /** Cocokkan path persis, bukan prefix (mis. Divisi vs Workspace). */
+  exact?: boolean;
 };
 
 type NavItem = {
@@ -40,6 +44,8 @@ type NavItem = {
   icon: React.ReactNode;
   path?: string;
   subItems?: SubItem[];
+  /** Prefix route yang membuat menu parent tetap aktif (mis. /forms/*). */
+  activePrefixes?: string[];
 };
 
 /* -------------------------------------------------------------------------- */
@@ -53,12 +59,13 @@ const DotIcon = memo(() => (
 DotIcon.displayName = "DotIcon";
 
 const menuItemBase =
-  "flex items-center gap-3 rounded-xl transition-all duration-200";
+  "flex items-center gap-3 rounded-control transition-colors duration-150";
 
 const menuItemInactive =
   "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5";
 
-const menuItemActive = "bg-indigo-500 text-white shadow-sm";
+const menuItemActive =
+  "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300";
 
 function normalizePath(path: string) {
   if (!path || path === "/") return "/";
@@ -208,9 +215,10 @@ const TreeLeaf = memo(function TreeLeaf({
       <Link
         to={path}
         onClick={onNavigate}
-        className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-all ${
+        aria-current={active ? "page" : undefined}
+        className={`flex items-center gap-2 rounded-control px-3 py-1.5 text-xs transition-colors duration-150 ${
           active
-            ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400"
+            ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
             : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
         }`}
       >
@@ -238,7 +246,11 @@ const TreeBranch = memo(function TreeBranch({
   const location = useLocation();
 
   const active = useMemo(() => {
-    if (startsWithRoute(location.pathname, subItem.path)) {
+    const pathMatches = subItem.exact
+      ? location.pathname === subItem.path
+      : startsWithRoute(location.pathname, subItem.path);
+
+    if (pathMatches) {
       return true;
     }
 
@@ -301,9 +313,9 @@ const TreeBranch = memo(function TreeBranch({
           <button
             type="button"
             onClick={() => setOpen((prev) => !prev)}
-            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+            className={`flex w-full items-center gap-2 rounded-control px-3 py-2 text-xs font-medium transition-colors duration-150 ${
               active
-                ? "text-indigo-600 dark:text-indigo-400"
+                ? "text-brand-700 dark:text-brand-300"
                 : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
             }`}
           >
@@ -337,9 +349,10 @@ const TreeBranch = memo(function TreeBranch({
         <Link
           to={subItem.path}
           onClick={onNavigate}
-          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+          aria-current={active ? "page" : undefined}
+          className={`flex items-center gap-2 rounded-control px-3 py-2 text-xs font-medium transition-colors duration-150 ${
             active
-              ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400"
+              ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
               : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
           }`}
         >
@@ -440,57 +453,45 @@ const AppSidebar: React.FC = () => {
           : []),
         {
           name: "Task Management",
-          icon: <BoxCubeIcon />,
+          icon: <TaskIcon />,
           subItems: [
             {
-              name: "Task Manager",
+              name: canViewAllDivisions ? "Divisi" : "Divisi saya",
               path: "/divisions",
-              children: [
-                ...(canViewAllDivisions
-                  ? [
-                      {
-                        name: "Divisions",
-                        path: "/divisions",
-                      },
-                    ]
-                  : [
-                      {
-                        name: "My Divisions",
-                        path: "/divisions",
-                      },
-                    ]),
-                {
-                  name: "Workspace",
-                  path: divisionId
-                    ? `/divisions/${divisionId}`
-                    : canViewAllDivisions
-                      ? "/divisions"
-                      : "/my-work",
-                  isFallback: !divisionId,
-                },
-                {
-                  name: "Campaigns",
-                  path: workspaceId
-                    ? `/workspaces/${workspaceId}/campaigns`
-                    : canViewAllDivisions
-                      ? "/divisions"
-                      : "/my-work",
-                  isFallback: !workspaceId,
-                },
-                ...(workspaceId && campaignId
-                  ? [
-                      {
-                        name: "Campaign Detail",
-                        path: `/workspaces/${workspaceId}/campaigns/${campaignId}`,
-                      },
-                      {
-                        name: "Board",
-                        path: `/workspaces/${workspaceId}/campaigns/${campaignId}/boards`,
-                      },
-                    ]
-                  : []),
-              ],
+              exact: true,
             },
+            ...(divisionId
+              ? [
+                  {
+                    name: "Workspace",
+                    path: `/divisions/${divisionId}`,
+                    exact: true,
+                  },
+                ]
+              : []),
+            ...(workspaceId
+              ? [
+                  {
+                    name: "Campaign",
+                    path: `/workspaces/${workspaceId}/campaigns`,
+                    exact: true,
+                  },
+                ]
+              : []),
+            ...(workspaceId && campaignId
+              ? [
+                  {
+                    name: "Detail campaign",
+                    path: `/workspaces/${workspaceId}/campaigns/${campaignId}`,
+                    exact: true,
+                  },
+                  {
+                    name: "Board",
+                    path: `/workspaces/${workspaceId}/campaigns/${campaignId}/boards`,
+                    exact: true,
+                  },
+                ]
+              : []),
           ],
         },
         ...(can("calendar.view")
@@ -503,22 +504,25 @@ const AppSidebar: React.FC = () => {
         ...(can("form.view")
           ? [
               {
-                name: "Forms",
-                icon: <ListIcon />,
+                name: "Form",
+                icon: <FileIcon />,
+                activePrefixes: ["/forms"],
                 subItems: [
                   ...(can("form.view")
                     ? [
                         {
-                          name: "All Forms",
+                          name: "Semua form",
                           path: "/forms",
+                          exact: true,
                         },
                       ]
                     : []),
                   ...(can("form.create")
                     ? [
                         {
-                          name: "Create Form",
+                          name: "Buat form",
                           path: "/forms/create",
+                          exact: true,
                         },
                       ]
                     : []),
@@ -577,8 +581,18 @@ const AppSidebar: React.FC = () => {
     return navItems.findIndex((item) => {
       if (!item.subItems) return false;
 
+      if (
+        item.activePrefixes?.some((prefix) =>
+          startsWithRoute(location.pathname, prefix),
+        )
+      ) {
+        return true;
+      }
+
       return item.subItems.some((sub) => {
-        if (startsWithRoute(location.pathname, sub.path)) return true;
+        if (sub.exact ? location.pathname === sub.path : startsWithRoute(location.pathname, sub.path)) {
+          return true;
+        }
 
         return (
           sub.children?.some(
@@ -616,7 +630,7 @@ const AppSidebar: React.FC = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 sm:bottom-4 sm:left-4 sm:top-4 flex flex-col overflow-hidden rounded-r-[28px] sm:rounded-[32px] border border-gray-200/70 bg-white/95 shadow-2xl backdrop-blur-xl transition-all duration-300 dark:border-gray-800 dark:bg-gray-950/95 ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden rounded-r-panel border border-line bg-surface/95 shadow-e2 backdrop-blur-md transition-transform duration-200 ease-soft sm:bottom-4 sm:left-4 sm:top-4 sm:rounded-panel ${
           slim ? "w-[76px]" : "w-[min(88vw,300px)] sm:w-[270px]"
         } ${
           isMobileOpen
@@ -627,7 +641,7 @@ const AppSidebar: React.FC = () => {
         onMouseLeave={handleMouseLeave}
       >
         {/* HEADER */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-5 dark:border-gray-800">
+        <div className="flex items-center justify-between border-b border-line px-4 py-5">
           <Link to="/" onClick={handleNavClick} className="flex shrink-0 items-center">
             {slim ? (
               <img
@@ -660,12 +674,12 @@ const AppSidebar: React.FC = () => {
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 space-y-4">
           <UserDropdown compact={slim} />
 
-          <div className="border-t border-gray-100 dark:border-gray-800" />
+          <div className="border-t border-line" />
 
           {/* MENU */}
           <nav className="space-y-1">
             {!slim ? (
-              <p className="mb-2 px-2 text-[10px] uppercase tracking-widest text-gray-400">
+              <p className="mb-2 px-2 text-[11px] font-medium text-gray-400">
                 Menu
               </p>
             ) : (
@@ -683,6 +697,7 @@ const AppSidebar: React.FC = () => {
                     <li key={item.name}>
                       <button
                         type="button"
+                        aria-expanded={isOpen}
                         onClick={() =>
                           setOpenSubmenu((prev) =>
                             prev === index ? null : index,
@@ -740,6 +755,11 @@ const AppSidebar: React.FC = () => {
                     <Link
                       to={item.path}
                       onClick={handleNavClick}
+                      aria-current={
+                        startsWithRoute(location.pathname, item.path)
+                          ? "page"
+                          : undefined
+                      }
                       className={`${menuItemBase} px-3 py-2.5 ${
                         startsWithRoute(location.pathname, item.path)
                           ? menuItemActive

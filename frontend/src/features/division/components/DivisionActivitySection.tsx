@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Clock3,
   History,
   MessageSquareText,
   Pencil,
@@ -11,6 +10,8 @@ import {
 
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import DatePickerField from "@/features/my-work/components/DatePickerField";
+import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   getDivisionActivities,
   type DivisionActivity,
@@ -152,6 +153,7 @@ export default function DivisionActivitySection({ divisionId }: Props) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const realtimeRevision = useRealtimeRevision(REALTIME_RESOURCES);
   const dateRangeInvalid = Boolean(dateFrom && dateTo && dateFrom > dateTo);
 
@@ -162,6 +164,7 @@ export default function DivisionActivitySection({ divisionId }: Props) {
         return;
       }
       setLoading(true);
+      setError(null);
       try {
         const response = await getDivisionActivities(
           divisionId,
@@ -181,6 +184,14 @@ export default function DivisionActivitySection({ divisionId }: Props) {
         setPage(response.current_page);
         setHasMore(response.has_more);
         setTotal(response.total_logs);
+      } catch (err) {
+        console.error("Gagal memuat aktivitas division", err);
+        setError("Gagal memuat aktivitas. Silakan coba lagi.");
+        if (!append) {
+          setActivities([]);
+          setTotal(0);
+          setHasMore(false);
+        }
       } finally {
         setLoading(false);
       }
@@ -195,6 +206,7 @@ export default function DivisionActivitySection({ divisionId }: Props) {
       setTotal(0);
       setHasMore(false);
       setLoading(false);
+      setError(null);
       return;
     }
     void fetchActivities(1, false);
@@ -298,19 +310,41 @@ export default function DivisionActivitySection({ divisionId }: Props) {
         </div>
       </div>
 
-      {loading && activities.length === 0 ? (
-        <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-400">
-          <Clock3 size={16} className="animate-pulse" /> Memuat aktivitas...
+      {error ? (
+        <div
+          role="alert"
+          className="mt-5 flex flex-col gap-2 rounded-card border border-danger/20 bg-danger-soft px-4 py-3 text-xs text-danger sm:flex-row sm:items-center sm:justify-between"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => void fetchActivities(1, false)}
+            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-control border border-danger/25 bg-surface px-3 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
+          >
+            <RefreshCw size={13} aria-hidden="true" />
+            Coba lagi
+          </button>
+        </div>
+      ) : loading && activities.length === 0 ? (
+        <div className="mt-6 space-y-3" role="status" aria-busy="true">
+          <span className="sr-only">Memuat aktivitas division</span>
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="flex gap-3 rounded-card border border-line p-4">
+              <Skeleton className="h-9 w-9 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-2/3" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : activities.length === 0 ? (
-        <div className="py-12 text-center">
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Belum ada aktivitas untuk filter ini.
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            Aktivitas baru akan muncul otomatis saat ada perubahan di division.
-          </p>
-        </div>
+        <EmptyState
+          icon={History}
+          title="Belum ada aktivitas untuk filter ini"
+          description="Aktivitas baru akan muncul otomatis saat ada perubahan di division."
+          className="mt-5"
+        />
       ) : (
         <>
           <div className="mt-6 divide-y divide-slate-100 dark:divide-slate-800">

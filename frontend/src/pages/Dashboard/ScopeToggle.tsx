@@ -42,12 +42,12 @@ export default function ScopeToggle({ value, onChange, isSuperAdmin }: Props) {
     <div
       role="radiogroup"
       aria-label="Cakupan dashboard"
-      className="relative grid w-full grid-cols-2 rounded-2xl border border-gray-200 bg-gray-100 p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:w-auto"
+      className="relative grid w-full grid-cols-2 rounded-control border border-line bg-surface-muted p-1 sm:w-auto"
     >
       {/* Indicator meluncur */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-xl bg-white shadow-theme-sm transition-transform duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)] dark:bg-gray-900"
+        className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-[7px] bg-surface shadow-e1 transition-transform duration-200 ease-soft"
         style={{ transform: `translateX(${activeIndex * 100}%)` }}
       />
 
@@ -61,19 +61,19 @@ export default function ScopeToggle({ value, onChange, isSuperAdmin }: Props) {
             role="radio"
             aria-checked={active}
             onClick={() => onChange(optionValue)}
-            className={`relative z-10 flex items-center justify-center gap-2.5 rounded-xl px-4 py-2 text-left transition-colors duration-200 ${
+            className={`relative z-10 flex items-center justify-center gap-2 rounded-[7px] px-3.5 py-1.5 text-left transition-colors duration-150 ${
               active
-                ? "text-brand-600 dark:text-brand-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                ? "text-fg"
+                : "text-fg-muted hover:text-fg"
             }`}
           >
-            <Icon size={18} className="shrink-0" aria-hidden="true" />
+            <Icon size={16} className="shrink-0" aria-hidden="true" />
 
             <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold leading-4">
+              <span className="block truncate text-xs font-medium leading-4">
                 {label}
               </span>
-              <span className="block truncate text-[11px] leading-4 opacity-70">
+              <span className="block truncate text-[10px] leading-4 text-fg-subtle">
                 {description}
               </span>
             </span>

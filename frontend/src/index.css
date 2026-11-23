@@ -6,7 +6,7 @@ layer(base);
 @custom-variant dark (&:is(.dark *));
 
 html {
-  background: #f8fafc;
+  background: var(--tracko-canvas);
 }
 
 body {
@@ -197,6 +197,104 @@ body {
   Hapus blok ini untuk kembali ke palet default.
   ==========================================================================
 */
+/*
+  ==========================================================================
+  TRACKO SEMANTIC TOKENS
+  ==========================================================================
+  Lapisan ini menambahkan token semantik di atas palet TailAdmin yang sudah
+  ada. Komponen baru memakai nama peran (surface, line, fg, accent), bukan
+  nama warna mentah, sehingga light/dark mode cukup diganti di satu tempat.
+
+  Netral dibuat sedikit hangat (paper) agar tidak terasa seperti dashboard
+  template. Aksen tetap brand blue yang sudah dipakai produk.
+  ==========================================================================
+*/
+:root {
+  --tracko-canvas: #f7f7f4;
+  --tracko-surface: #ffffff;
+  --tracko-surface-muted: #f2f1ec;
+  --tracko-surface-hover: #f6f5f1;
+  --tracko-line: #e7e5de;
+  --tracko-line-strong: #d6d3ca;
+  --tracko-fg: #1f1f1c;
+  --tracko-fg-muted: #5f5e57;
+  --tracko-fg-subtle: #6e6d65;
+  --tracko-accent: #3f51f5;
+  --tracko-accent-strong: #3641f5;
+  --tracko-accent-soft: #eef0ff;
+  --tracko-accent-fg: #ffffff;
+  --tracko-success: #0f7a55;
+  --tracko-success-soft: #e9f6f0;
+  --tracko-warning: #a4570a;
+  --tracko-warning-soft: #fdf3e2;
+  --tracko-danger: #b93832;
+  --tracko-danger-soft: #fceceb;
+  --tracko-info: #0b6a94;
+  --tracko-info-soft: #e8f3f8;
+  --tracko-overlay: rgb(31 31 28 / 0.44);
+}
+
+html.dark {
+  --tracko-canvas: #0f100e;
+  --tracko-surface: #171815;
+  --tracko-surface-muted: #1e1f1b;
+  --tracko-surface-hover: #22231f;
+  --tracko-line: #2b2c27;
+  --tracko-line-strong: #3a3b35;
+  --tracko-fg: #f2f1ec;
+  --tracko-fg-muted: #b3b2a9;
+  --tracko-fg-subtle: #8d8c84;
+  --tracko-accent: #8a9bff;
+  --tracko-accent-strong: #a5b2ff;
+  --tracko-accent-soft: rgb(70 95 255 / 0.16);
+  --tracko-accent-fg: #0d1020;
+  --tracko-success: #5fd0a3;
+  --tracko-success-soft: rgb(18 183 106 / 0.14);
+  --tracko-warning: #f0b45c;
+  --tracko-warning-soft: rgb(247 144 9 / 0.14);
+  --tracko-danger: #ff8c84;
+  --tracko-danger-soft: rgb(240 68 56 / 0.15);
+  --tracko-info: #74c8e8;
+  --tracko-info-soft: rgb(11 165 236 / 0.14);
+  --tracko-overlay: rgb(0 0 0 / 0.6);
+}
+
+@theme inline {
+  --color-canvas: var(--tracko-canvas);
+  --color-surface: var(--tracko-surface);
+  --color-surface-muted: var(--tracko-surface-muted);
+  --color-surface-hover: var(--tracko-surface-hover);
+  --color-line: var(--tracko-line);
+  --color-line-strong: var(--tracko-line-strong);
+  --color-fg: var(--tracko-fg);
+  --color-fg-muted: var(--tracko-fg-muted);
+  --color-fg-subtle: var(--tracko-fg-subtle);
+  --color-accent: var(--tracko-accent);
+  --color-accent-strong: var(--tracko-accent-strong);
+  --color-accent-soft: var(--tracko-accent-soft);
+  --color-accent-fg: var(--tracko-accent-fg);
+  --color-success: var(--tracko-success);
+  --color-success-soft: var(--tracko-success-soft);
+  --color-warning: var(--tracko-warning);
+  --color-warning-soft: var(--tracko-warning-soft);
+  --color-danger: var(--tracko-danger);
+  --color-danger-soft: var(--tracko-danger-soft);
+  --color-info: var(--tracko-info);
+  --color-info-soft: var(--tracko-info-soft);
+  --color-overlay: var(--tracko-overlay);
+
+  --radius-control: 0.625rem;
+  --radius-card: 0.75rem;
+  --radius-panel: 1rem;
+  --radius-modal: 1.25rem;
+
+  --shadow-e1: 0 1px 2px rgb(31 31 28 / 0.04), 0 1px 3px rgb(31 31 28 / 0.04);
+  --shadow-e2: 0 4px 10px -4px rgb(31 31 28 / 0.1), 0 2px 4px -2px rgb(31 31 28 / 0.05);
+  --shadow-e3: 0 24px 48px -16px rgb(31 31 28 / 0.22), 0 8px 16px -8px rgb(31 31 28 / 0.1);
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @theme {
   /* Neutral: slate -> gray */
   --color-slate-50: #f9fafb;
@@ -260,7 +358,7 @@ body {
   }
   html {
     min-width: 320px;
-    background: var(--color-gray-50);
+    background: var(--tracko-canvas);
     color-scheme: light;
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
@@ -269,8 +367,15 @@ body {
   html.dark { color-scheme: dark; }
   html, body, #root { min-height: 100%; width: 100%; }
   body {
-    @apply relative z-1 overflow-x-hidden bg-gray-50 font-outfit font-normal antialiased text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+    @apply relative z-1 overflow-x-hidden bg-canvas font-outfit font-normal antialiased text-fg;
     text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--tracko-accent-soft);
+    color: var(--tracko-accent-strong);
+  }
+  .dark ::selection {
+    color: var(--tracko-accent);
   }
   img, svg, video, canvas { max-width: 100%; }
   :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }

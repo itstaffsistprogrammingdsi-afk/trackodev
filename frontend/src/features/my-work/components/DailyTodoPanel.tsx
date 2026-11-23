@@ -8,59 +8,30 @@ export default function DailyTodoPanel({ data }: Props) {
   const summary = data.summary;
 
   return (
-    <div className="rounded-3xl border border-gray-200 bg-white shadow-sm">
-
-      <div className="border-b border-gray-100 p-6">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Daily Productivity
+    <div className="rounded-panel border border-line bg-surface">
+      <div className="border-b border-line p-5 sm:p-6">
+        <h2 className="text-sm font-semibold text-fg">
+          Daily productivity
         </h2>
-
-        <p className="mt-1 text-sm text-gray-500">
-          Task completion summary
+        <p className="mt-1 text-xs text-fg-muted">
+          Ringkasan penyelesaian task hari ini
         </p>
       </div>
 
-      <div className="grid gap-4 p-6 md:grid-cols-3">
-
-        <Card
-          label="Total Tasks"
-          value={summary.total_cards}
-        />
-
-        <Card
-          label="Completed"
-          value={summary.completed}
-        />
-
-        <Card
-          label="Completion Rate"
-          value={`${summary.completion_rate}%`}
-        />
-
+      <div className="grid gap-px bg-line md:grid-cols-3">
+        <Card label="Total task" value={summary.total_cards} />
+        <Card label="Selesai" value={summary.completed} />
+        <Card label="Completion rate" value={`${summary.completion_rate}%`} />
       </div>
-
     </div>
   );
 }
 
-function Card({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function Card({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-all">
-
-      <p className="text-sm text-gray-500">
-        {label}
-      </p>
-
-      <p className="mt-2 text-2xl font-bold text-gray-900">
-        {value}
-      </p>
-
+    <div className="bg-surface p-5">
+      <p className="text-[11px] font-medium text-fg-muted">{label}</p>
+      <p className="mt-2 text-xl font-semibold tabular-nums text-fg">{value}</p>
     </div>
   );
 }

@@ -28,32 +28,33 @@ export default function DashboardPeriodFilter({ value, onChange, loading }: Prop
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <section className="rounded-panel border border-line bg-surface p-3 sm:p-4">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
-            <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-surface-muted text-fg-muted">
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-black text-slate-900">Filter seluruh dashboard</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <h2 className="text-sm font-medium text-fg">Filter seluruh dashboard</h2>
+            <p className="mt-0.5 text-xs text-fg-muted">
               KPI, status task, dan ranking divisi menggunakan periode yang sama.
             </p>
           </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="grid grid-cols-5 rounded-xl bg-slate-100 p-1">
+          <div className="grid grid-cols-5 rounded-control bg-surface-muted p-1">
             {PERIOD_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 disabled={loading}
-                onClick={() => update("period", option.value)}
-                className={`rounded-lg px-2 py-2 text-[11px] font-bold transition-all disabled:cursor-wait sm:px-3 sm:text-xs ${
+                onClick={() => onChange({ ...value, period: option.value, all_year: null })}
+                aria-pressed={value.period === option.value}
+                className={`rounded-[7px] px-2 py-1.5 text-[11px] font-medium transition-colors duration-150 disabled:cursor-wait sm:px-3 sm:text-xs ${
                   value.period === option.value
-                    ? "bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200"
-                    : "text-slate-500 hover:text-slate-900"
+                    ? "bg-surface text-fg shadow-e1"
+                    : "text-fg-muted hover:text-fg"
                 }`}
               >
                 {option.label}
@@ -67,6 +68,7 @@ export default function DashboardPeriodFilter({ value, onChange, loading }: Prop
               years={years}
               loading={loading}
               update={update}
+              onChange={onChange}
             />
           </div>
         </div>
@@ -80,6 +82,7 @@ function ContextualPeriodInput({
   years,
   loading,
   update,
+  onChange,
 }: {
   value: DashboardFilter;
   years: number[];
@@ -88,9 +91,18 @@ function ContextualPeriodInput({
     key: Key,
     value: DashboardFilter[Key],
   ) => void;
+  onChange: (filter: DashboardFilter) => void;
 }) {
+  const now = new Date();
+  const todayDate = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+  const currentMonthValue = todayDate.slice(0, 7);
+
   const inputClass =
-    "h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:cursor-wait disabled:bg-slate-50";
+    "h-9 w-full rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg outline-none transition-colors focus:border-accent/50 focus:ring-2 focus:ring-accent/15 disabled:cursor-wait disabled:bg-surface-muted";
 
   if (value.period === "day" || value.period === "week") {
     return (
@@ -98,12 +110,20 @@ function ContextualPeriodInput({
         <span className="sr-only">
           {value.period === "day" ? "Pilih tanggal" : "Tanggal acuan minggu"}
         </span>
-        <CalendarDays className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+        <CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-subtle" />
         <input
           type="date"
           value={value.date}
           disabled={loading}
-          onChange={(event) => update("date", event.target.value)}
+          onChange={(event) => {
+            const nextDate = event.target.value || todayDate;
+            onChange({
+              ...value,
+              date: nextDate,
+              month: nextDate.slice(0, 7),
+              year: Number(nextDate.slice(0, 4)) || value.year,
+            });
+          }}
           className={`${inputClass} pl-9`}
         />
       </label>
@@ -114,12 +134,19 @@ function ContextualPeriodInput({
     return (
       <label className="relative block">
         <span className="sr-only">Pilih bulan</span>
-        <CalendarRange className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+        <CalendarRange className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-subtle" />
         <input
           type="month"
           value={value.month}
           disabled={loading}
-          onChange={(event) => update("month", event.target.value)}
+          onChange={(event) => {
+            const nextMonth = event.target.value || currentMonthValue;
+            onChange({
+              ...value,
+              month: nextMonth,
+              year: Number(nextMonth.slice(0, 4)) || value.year,
+            });
+          }}
           className={`${inputClass} pl-9`}
         />
       </label>

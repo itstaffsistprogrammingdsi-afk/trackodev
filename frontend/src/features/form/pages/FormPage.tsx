@@ -1,40 +1,75 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import {
+  CheckCircle2,
+  CircleSlash,
+  Copy,
+  ExternalLink,
+  FileText,
+  Inbox,
+  ListChecks,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+} from "lucide-react";
+
 import { getForms, deleteForm } from "../api/form.api";
 import type { Form } from "../types";
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from "@/context/AuthContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { toast, confirmDialog } from "@/lib/feedback";
+import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
+
+type StatusFilter = "all" | "active" | "inactive";
+
+const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "Semua" },
+  { value: "active", label: "Aktif" },
+  { value: "inactive", label: "Nonaktif" },
+];
 
 export default function FormPage() {
   const navigate = useNavigate();
   const { can } = useAuth();
-
-  const [forms, setForms] = useState<Form[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const realtimeRevision = useRealtimeRevision([
     "Form", "FormField", "FormSubmission",
   ]);
 
-  const fetchForms = useCallback(async () => {
+  const [forms, setForms] = useState<Form[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const deferredSearch = useDeferredValue(search);
+
+  const fetchForms = useCallback(async (manual = false) => {
     try {
-      setLoading(true);
+      if (manual) setRefreshing(true);
+      else setLoading(true);
       setError("");
 
       const data = await getForms();
       setForms(data);
     } catch (err) {
       console.error(err);
-      setError("Failed to load forms");
+      setError("Gagal memuat daftar form. Silakan coba lagi.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
+  useEffect(() => {
+    void fetchForms();
+  }, [fetchForms, realtimeRevision]);
+
   const handleDelete = async (id: string) => {
     const confirmed = await confirmDialog({
-      message: "Hapus form ini?",
+      message: "Hapus form ini? Tindakan ini tidak dapat dibatalkan.",
       variant: "danger",
     });
 
@@ -42,171 +77,364 @@ export default function FormPage() {
 
     try {
       await deleteForm(id);
+      toast.success("Form berhasil dihapus.");
       await fetchForms();
     } catch (err) {
       console.error(err);
-      toast.error("Gagal menghapus form");
+      toast.error("Gagal menghapus form.");
     }
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleString("id-ID", {
-      dateStyle: "medium",
-      timeStyle: "short",
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "-";
+    return parsed.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     });
   };
 
-  const handleCopyLink = async (slug: string) => {
+  const copyPublicLink = async (slug: string) => {
     const publicLink = `${window.location.origin}/public/forms/${slug}`;
 
     try {
       await navigator.clipboard.writeText(publicLink);
-      toast.success("Link form berhasil disalin");
+      toast.success("Link form disalin.");
     } catch (error) {
       console.error(error);
-      toast.error("Gagal menyalin link");
+      toast.error("Gagal menyalin link.");
     }
   };
 
-  useEffect(() => {
-    fetchForms();
-  }, [fetchForms, realtimeRevision]);
+  const activeCount = useMemo(
+    () => forms.filter((form) => form.is_active).length,
+    [forms],
+  );
+  const fieldCount = useMemo(
+    () => forms.reduce((total, form) => total + (form.fields?.length ?? 0), 0),
+    [forms],
+  );
+
+  const filteredForms = useMemo(() => {
+    const query = deferredSearch.trim().toLowerCase();
+
+    return forms.filter((form) => {
+      const matchesStatus =
+        status === "all" ||
+        (status === "active" ? form.is_active : !form.is_active);
+      const matchesSearch =
+        !query ||
+        form.name.toLowerCase().includes(query) ||
+        (form.description ?? "").toLowerCase().includes(query);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [forms, status, deferredSearch]);
+
+  const canCreate = can("form.create");
 
   return (
     <div className="space-y-6">
       {/* HEADER */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Form Management</h1>
-          <p className="text-sm text-gray-500">
-            Kelola dynamic form di sistem TRACO
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">
+            Form
+          </h1>
+          <p className="mt-1 text-sm text-fg-muted">
+            Buat form, bagikan link publik, dan kelola jawaban tim di satu tempat.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:flex">
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={fetchForms}
-            className="rounded-lg border bg-white px-4 py-2 text-sm hover:bg-gray-100"
+            type="button"
+            onClick={() => void fetchForms(true)}
+            disabled={refreshing}
+            aria-label="Muat ulang daftar form"
+            className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:cursor-wait disabled:opacity-60"
           >
-            Refresh
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
+              aria-hidden="true"
+            />
+            {refreshing ? "Memuat..." : "Muat ulang"}
           </button>
 
-          {can('form.create') && (
+          {canCreate ? (
             <button
-              onClick={() => navigate('/forms/create')}
-              className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700'
+              type="button"
+              onClick={() => navigate("/forms/create")}
+              className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong"
             >
-              + Create Form
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Buat form
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* ERROR */}
-      {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+      {error ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-card border border-danger/20 bg-danger-soft px-4 py-3 text-xs text-danger sm:flex-row sm:items-center sm:justify-between"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => void fetchForms(true)}
+            className="h-8 shrink-0 rounded-control border border-danger/25 bg-surface px-3 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
+          >
+            Coba lagi
+          </button>
         </div>
-      )}
+      ) : null}
 
-      {/* LOADING */}
       {loading ? (
-        <div className="rounded-xl bg-white p-10 text-center shadow-sm">
-          <div className="text-gray-500">Loading forms...</div>
-        </div>
-      ) : forms.length === 0 ? (
-        /* EMPTY */
-        <div className="rounded-xl border border-dashed bg-white p-10 text-center shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-700">
-            Belum ada form
-          </h2>
-          <p className="mt-2 text-sm text-gray-500">
-            Buat form pertama untuk mulai menggunakan modul ini.
-          </p>
-
-          {can('form.create') && (
-            <button onClick={() => navigate('/forms/create')} className='mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700'>
-              Buat Form
-            </button>
-          )}
+        <div className="space-y-4" role="status" aria-busy="true">
+          <span className="sr-only">Memuat daftar form</span>
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-panel border border-line bg-line">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="space-y-2 bg-surface p-4">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-7 w-12" />
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {[0, 1, 2, 3].map((item) => (
+              <div key={item} className="space-y-4 rounded-panel border border-line bg-surface p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+                <div className="flex gap-2 border-t border-line pt-4">
+                  <Skeleton className="h-8 w-28 rounded-control" />
+                  <Skeleton className="h-8 w-20 rounded-control" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
-        /* LIST */
-        <div className="grid gap-4">
-          {forms.map((form) => (
-            <div
-              key={form.id}
-              className="rounded-xl border bg-white p-5 shadow-sm transition hover:shadow-md"
-            >
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    {form.name}
-                  </h2>
+        <>
+          {/* RINGKASAN */}
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-panel border border-line bg-line">
+            <SummaryCell label="Total form" value={forms.length} />
+            <SummaryCell label="Form aktif" value={activeCount} tone="success" />
+            <SummaryCell label="Total field" value={fieldCount} />
+          </div>
 
-                  <p className="mt-1 text-sm text-gray-500">
-                    {form.description || "Tidak ada deskripsi"}
-                  </p>
+          {forms.length > 0 ? (
+            <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-2.5 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Cari nama atau deskripsi form"
+                  aria-label="Cari form"
+                  className="h-9 w-full rounded-control border border-transparent bg-surface-muted pl-9 pr-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:bg-surface focus:ring-2 focus:ring-accent/15"
+                />
+              </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex items-center gap-1 rounded-control bg-surface-muted p-1">
+                {STATUS_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setStatus(option.value)}
+                    aria-pressed={status === option.value}
+                    className={`h-7 rounded-[6px] px-3 text-[11px] font-medium transition-colors ${
+                      status === option.value
+                        ? "bg-surface text-fg shadow-e1"
+                        : "text-fg-muted hover:text-fg"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              <span className="shrink-0 px-1 text-[11px] font-medium tabular-nums text-fg-muted">
+                {filteredForms.length} form
+              </span>
+            </div>
+          ) : null}
+
+          {forms.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title="Belum ada form"
+              description="Buat form pertama untuk mengumpulkan request, brief, atau data tim."
+              action={
+                canCreate
+                  ? { label: "Buat form", onClick: () => navigate("/forms/create") }
+                  : undefined
+              }
+            />
+          ) : filteredForms.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="Form tidak ditemukan"
+              description="Tidak ada form yang cocok dengan pencarian atau filter status saat ini."
+              action={{
+                label: "Hapus filter",
+                onClick: () => {
+                  setSearch("");
+                  setStatus("all");
+                },
+              }}
+            />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {filteredForms.map((form) => (
+                <article
+                  key={form.id}
+                  className="group flex flex-col rounded-panel border border-line bg-surface p-5 transition-colors hover:border-line-strong"
+                  style={{ borderTop: `3px solid ${form.theme_color || "#3f51f5"}` }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-semibold text-fg" title={form.name}>
+                        {form.name}
+                      </h2>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-fg-muted">
+                        {form.description || "Belum ada deskripsi."}
+                      </p>
+                    </div>
+
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                         form.is_active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-600"
+                          ? "bg-success-soft text-success"
+                          : "bg-surface-muted text-fg-muted"
                       }`}
                     >
-                      {form.is_active ? "Active" : "Inactive"}
-                    </span>
-
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                      {form.fields?.length || 0} Fields
+                      {form.is_active ? (
+                        <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                      ) : (
+                        <CircleSlash className="h-3 w-3" aria-hidden="true" />
+                      )}
+                      {form.is_active ? "Aktif" : "Nonaktif"}
                     </span>
                   </div>
 
-                  <p className="mt-3 text-xs text-gray-400">
-                    Dibuat: {formatDate(form.created_at)}
-                  </p>
-                </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-subtle">
+                    <span className="inline-flex items-center gap-1">
+                      <ListChecks className="h-3 w-3" aria-hidden="true" />
+                      {form.fields?.length ?? 0} field
+                    </span>
+                    <span>Dibuat {formatDate(form.created_at)}</span>
+                  </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleCopyLink(form.slug)}
-                    className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-                  >
-                    Copy Link
-                  </button>
+                  <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
+                    {can("form.responses.view") ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/forms/${form.id}/responses`)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-control bg-accent-soft px-3 text-xs font-medium text-accent transition-colors hover:bg-accent-soft/70"
+                      >
+                        <Inbox className="h-3.5 w-3.5" aria-hidden="true" />
+                        Responses
+                      </button>
+                    ) : null}
 
+                    {can("form.field.create") ||
+                    can("form.field.update") ||
+                    can("form.field.delete") ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/forms/${form.id}/builder`)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
+                      >
+                        <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
+                        Fields
+                      </button>
+                    ) : null}
 
-                  {can('form.responses.view') && (
-                    <button onClick={() => navigate(`/forms/${form.id}/responses`)} className='rounded-lg border px-3 py-2 text-sm hover:bg-gray-50'>
-                      Responses
-                    </button>
-                  )}
+                    {can("form.update") ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/forms/${form.id}/edit`)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        Edit
+                      </button>
+                    ) : null}
 
-                  {(can('form.field.create') || can('form.field.update') || can('form.field.delete')) && (
-                    <button onClick={() => navigate(`/forms/${form.id}/builder`)} className='rounded-lg border px-3 py-2 text-sm hover:bg-gray-50'>
-                      Fields
-                    </button>
-                  )}
+                    <div className="ml-auto flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => void copyPublicLink(form.slug)}
+                        className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+                        aria-label={`Salin link publik ${form.name}`}
+                        title="Salin link publik"
+                      >
+                        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
 
-                  {can('form.update') && (
-                    <button onClick={() => navigate(`/forms/${form.id}/edit`)} className='rounded-lg border px-3 py-2 text-sm hover:bg-gray-50'>
-                      Edit
-                    </button>
-                  )}
+                      <a
+                        href={`/public/forms/${form.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+                        aria-label={`Buka form publik ${form.name}`}
+                        title="Buka form publik"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                      </a>
 
-                  {can('form.delete') && (
-                    <button onClick={() => handleDelete(form.id)} className='rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50'>
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </div>
+                      {can("form.delete") ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(form.id)}
+                          className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger"
+                          aria-label={`Hapus form ${form.name}`}
+                          title="Hapus form"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+function SummaryCell({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "success";
+}) {
+  return (
+    <div className="bg-surface p-4 sm:p-5">
+      <p
+        className={`text-[22px] font-semibold leading-none tabular-nums ${
+          tone === "success" && value > 0 ? "text-success" : "text-fg"
+        }`}
+      >
+        {value.toLocaleString("id-ID")}
+      </p>
+      <p className="mt-2 text-[11px] font-medium text-fg-muted">{label}</p>
     </div>
   );
 }

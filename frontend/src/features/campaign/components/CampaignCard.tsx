@@ -266,100 +266,96 @@ export default function CampaignCard({
 
   // ================= UI =================
   return (
-    <article className="p-4 rounded-2xl border bg-white dark:bg-gray-900 hover:shadow-lg transition flex flex-col gap-3">
+    <article className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4 transition-colors hover:border-line-strong">
       {/* HEADER */}
       <header className="space-y-1">
-        <Link to={`/workspaces/${workspaceId}/campaigns/${campaign.id}/boards`}>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <Link
+          to={`/workspaces/${workspaceId}/campaigns/${campaign.id}/boards`}
+          className="group/link inline-flex items-center gap-1"
+        >
+          <h3 className="text-sm font-semibold text-fg transition-colors group-hover/link:text-accent">
             {name}
           </h3>
         </Link>
 
-        <p className="text-sm text-gray-500 line-clamp-2">
-          {description || "No description"}
+        <p className="line-clamp-2 text-xs leading-5 text-fg-muted">
+          {description || "Belum ada deskripsi."}
         </p>
       </header>
 
       {/* META */}
       <section className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-gray-400">{members.length} members</span>
+        <span className="text-[11px] text-fg-subtle">{members.length} anggota</span>
 
         {dueStatus && (
           <span
-            className={`text-xs px-2 py-1 rounded-full ${
+            className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
               dueStatus.isExpired
-                ? "bg-red-50 text-red-600"
-                : "bg-green-50 text-green-600"
+                ? "border-danger/25 bg-danger-soft text-danger"
+                : "border-line bg-surface-muted text-fg-muted"
             }`}
           >
-            Due {dueStatus.date}
+            {dueStatus.isExpired ? "Terlambat" : "Deadline"}{" "}
+            {new Date(campaign.due_date ?? "").toLocaleDateString("id-ID", {
+              day: "2-digit",
+              month: "short",
+            })}
           </span>
         )}
       </section>
 
       {/* ACTIONS */}
-<footer className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
-    {campaign.type}
-  </span>
+      <footer className="flex items-center gap-1 border-t border-line pt-3">
+        {campaign.type ? (
+          <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-fg-muted">
+            {campaign.type}
+          </span>
+        ) : null}
 
-  {/* DETAIL */}
-  {/* <Link
-    to={`/workspaces/${workspaceId}/campaigns/${campaign.id}`}
-    className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600"
-    title="Detail Campaign"
-  >
-    <Eye size={16} />
-  </Link> */}
+        <button
+          onClick={() => setShowMembers(true)}
+          className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+          title="Kelola anggota"
+          aria-label={`Kelola anggota ${name}`}
+        >
+          <Users size={15} />
+        </button>
 
-  {/* MEMBERS */}
-  <button
-    onClick={() => setShowMembers(true)}
-    className="p-2 rounded-lg hover:bg-blue-50"
-    title="Manage Members"
-  >
-    <Users size={16} />
-  </button>
+        <button
+          onClick={() => setShowEdit(true)}
+          className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+          title="Edit campaign"
+          aria-label={`Edit ${name}`}
+        >
+          <Pencil size={15} />
+        </button>
 
-  {/* EDIT */}
-  <button
-    onClick={() => setShowEdit(true)}
-    className="p-2 rounded-lg hover:bg-yellow-50"
-    title="Edit Campaign"
-  >
-    <Pencil size={16} />
-  </button>
+        <button
+          onClick={() => setShowMove(true)}
+          className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+          title="Pindah workspace"
+          aria-label={`Pindahkan ${name} ke workspace lain`}
+        >
+          <ArrowRightLeft size={15} />
+        </button>
 
-  {/* MOVE WORKSPACE */}
-  <button
-    onClick={() => setShowMove(true)}
-    className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600"
-    title="Pindah Workspace"
-  >
-    <ArrowRightLeft size={16} />
-  </button>
+        <button
+          onClick={handleDeleteCampaign}
+          disabled={loading}
+          className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-50"
+          title="Hapus campaign"
+          aria-label={`Hapus ${name}`}
+        >
+          <Trash2 size={15} />
+        </button>
 
-  {/* DELETE */}
-  <button
-    onClick={handleDeleteCampaign}
-    disabled={loading}
-    className="p-2 rounded-lg hover:bg-red-50 text-red-600 disabled:opacity-50"
-    title="Delete Campaign"
-  >
-    <Trash2 size={16} />
-  </button>
-
-  <Link
-  to={`/workspaces/${workspaceId}/campaigns/${campaign.id}`}
-  className="ml-auto text-sm font-small text-gray-500 hover:text-gray-700"
->
-  View Details →
-</Link>
-
-{/* <Link to={`/workspaces/${workspaceId}/campaigns/${campaign.id}/boards`}>
-  View Boards →
-</Link> */}
-</footer>
+        <Link
+          to={`/workspaces/${workspaceId}/campaigns/${campaign.id}`}
+          className="ml-auto text-xs font-medium text-accent transition-colors hover:text-accent-strong"
+        >
+          Detail
+        </Link>
+      </footer>
 
       {/* MODALS (tidak diubah karena sudah clean) */}
       {showMembers && (

@@ -106,53 +106,62 @@ export default function BoardFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       {/* overlay */}
       <div
-        className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-overlay"
         onClick={handleClose}
       />
 
       {/* modal */}
-      <div className="relative w-full max-w-md rounded-2xl border border-gray-100 bg-white shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="board-form-title"
+        className="relative w-full max-w-md rounded-modal border border-line bg-surface shadow-e3"
+      >
         {/* header */}
-        <div className="border-b border-gray-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">
-            {isEdit ? "Edit Column" : "Create Column"}
+        <div className="border-b border-line px-5 py-4">
+          <h2 id="board-form-title" className="text-sm font-semibold text-fg">
+            {isEdit ? "Edit kolom" : "Buat kolom"}
           </h2>
-          <p className="text-xs text-gray-400">
+          <p className="mt-0.5 text-xs text-fg-muted">
             {isEdit
-              ? "Update nama atau warna column ini"
-              : "Add a new board column to this campaign"}
+              ? "Perbarui nama atau warna kolom ini."
+              : "Tambahkan kolom baru ke board campaign ini."}
           </p>
         </div>
 
         {/* body */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-5 py-4">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">
-              Column name
+          <div className="space-y-1.5">
+            <label htmlFor="board-name" className="text-xs font-medium text-fg-muted">
+              Nama kolom
             </label>
 
             <input
+              id="board-name"
               {...register("name", {
-                required: "Nama column wajib diisi.",
+                required: "Nama kolom wajib diisi.",
                 maxLength: {
                   value: 255,
-                  message: "Nama column maksimal 255 karakter.",
+                  message: "Nama kolom maksimal 255 karakter.",
                 },
               })}
-              placeholder="e.g. To Do, In Progress"
+              placeholder="Contoh: To do, In progress"
               autoFocus
-              className={`w-full rounded-xl border px-3 py-2 text-sm text-gray-800 outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-100 ${
-                errors.name ? "border-red-300" : "border-gray-200"
+              aria-invalid={errors.name ? "true" : "false"}
+              className={`h-10 w-full rounded-control border bg-surface px-3 text-sm text-fg outline-none transition-colors focus:ring-2 ${
+                errors.name
+                  ? "border-danger/40 focus:border-danger/50 focus:ring-danger/15"
+                  : "border-line focus:border-accent/40 focus:ring-accent/15"
               }`}
             />
 
             {errors.name && (
-              <p className="text-[11px] text-red-500">{errors.name.message}</p>
+              <p role="alert" className="text-[11px] font-medium text-danger">{errors.name.message}</p>
             )}
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">Color</label>
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium text-fg-muted">Warna</span>
 
             <Controller
               control={control}
@@ -165,11 +174,12 @@ export default function BoardFormModal({
                       type="button"
                       title={option.label}
                       onClick={() => field.onChange(option.value)}
+                      aria-label={option.label}
                       aria-pressed={field.value === option.value}
-                      className={`h-7 w-7 rounded-full transition ${
+                      className={`h-7 w-7 rounded-full transition-transform duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 ${
                         field.value === option.value
-                          ? "ring-2 ring-gray-900 ring-offset-2"
-                          : "hover:opacity-80"
+                          ? "ring-2 ring-fg ring-offset-2"
+                          : "hover:scale-105"
                       }`}
                       style={{ backgroundColor: option.value }}
                     />
@@ -180,10 +190,10 @@ export default function BoardFormModal({
           </div>
 
           {mutation.isError && (
-            <p className="text-[11px] text-red-500">
+            <p role="alert" className="text-[11px] font-medium text-danger">
               {isEdit
-                ? "Gagal mengupdate column. Coba lagi."
-                : "Gagal membuat column. Coba lagi."}
+                ? "Gagal memperbarui kolom. Coba lagi."
+                : "Gagal membuat kolom. Coba lagi."}
             </p>
           )}
 
@@ -192,23 +202,23 @@ export default function BoardFormModal({
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-xl px-4 py-2 text-sm text-gray-500 transition hover:bg-gray-100"
+              className="h-9 rounded-control px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
             >
-              Cancel
+              Batal
             </button>
 
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-9 rounded-control bg-accent px-4 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
             >
               {mutation.isPending
                 ? isEdit
-                  ? "Saving..."
-                  : "Creating..."
+                  ? "Menyimpan..."
+                  : "Membuat..."
                 : isEdit
-                  ? "Save Changes"
-                  : "Create"}
+                  ? "Simpan perubahan"
+                  : "Buat kolom"}
             </button>
           </div>
         </form>

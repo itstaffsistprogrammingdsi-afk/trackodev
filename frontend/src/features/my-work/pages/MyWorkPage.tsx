@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useMyWork } from "../hooks/useMyWork";
 
 import SummaryCards from "../components/SummaryCards";
@@ -25,18 +26,33 @@ export default function MyWorkPage() {
 
   if (loading || (!activities && activityLoading)) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-sm text-gray-500">
-          Loading My Work...
+      <div className="space-y-6 sm:space-y-8" role="status" aria-busy="true">
+        <span className="sr-only">Memuat My Work</span>
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-80 max-w-full" />
         </div>
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="space-y-3 bg-surface p-5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-16" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+          ))}
+        </div>
+        <div className="h-56 rounded-panel border border-line bg-surface-muted motion-safe:animate-pulse" />
       </div>
     );
   }
 
   if (error || !activities) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
-        {error ?? "Failed to load My Work"}
+      <div
+        role="alert"
+        className="rounded-card border border-danger/20 bg-danger-soft p-4 text-sm font-medium text-danger"
+      >
+        {error ?? "Gagal memuat My Work. Silakan coba lagi."}
       </div>
     );
   }
@@ -45,10 +61,10 @@ export default function MyWorkPage() {
     <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">
             My Work
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-fg-muted">
             Pantau progres pekerjaan dan siapkan laporan kinerja Anda.
           </p>
         </div>

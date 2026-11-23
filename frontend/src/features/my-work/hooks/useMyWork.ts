@@ -37,7 +37,7 @@ export const useMyWork = () => {
       );
       setActivities(activityRes);
     } catch {
-      setError("Failed to load My Work data");
+      setError("Gagal memuat data My Work. Silakan coba lagi.");
     } finally {
       setActivityLoading(false);
       setLoading(false);

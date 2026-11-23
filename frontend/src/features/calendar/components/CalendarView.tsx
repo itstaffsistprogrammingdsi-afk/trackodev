@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExternalLink, Plus } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, Plus, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import CardDetailModal from '@/features/card/components/CardDetailModal';
 import type { Card } from '@/features/card/types';
@@ -8,12 +8,14 @@ import { Task, User, DayData, GridDayCell } from '../types';
 import CalendarCardCreateModal from './CalendarCardCreateModal';
 import { isMobileApp } from '@/lib/mobileConfig';
 import { useIsCompactViewport } from '@/hooks/useIsCompactViewport';
+import EmptyState from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 // --- CONSTANTS ---
 const WEEK_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export const CalendarView: React.FC = () => {
-  const { currentMonth, data, loading, prevMonth, nextMonth, gridDays, refresh } = useCalendar();
+  const { currentMonth, data, loading, prevMonth, nextMonth, goToToday, gridDays, refresh } = useCalendar();
   const { can } = useAuth();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
@@ -71,6 +73,9 @@ export const CalendarView: React.FC = () => {
     : null;
   const totalTasks = data?.summary?.total_tasks ?? 0;
   const todayStr = getLocalDateString(new Date());
+  const todayMonth = todayStr.slice(0, 7);
+  const isInitialLoading = loading && !data;
+  const isCurrentMonth = currentMonth === todayMonth;
   const canCreateCard = can('card.create');
   const canOpenCard = can('card.view') || can('task.view');
 
@@ -90,89 +95,145 @@ export const CalendarView: React.FC = () => {
   };
 
   return (
-    <div className="w-full text-slate-800 font-sans select-none relative max-w-7xl mx-auto">
-      
+    <div className="relative mx-auto w-full max-w-7xl select-none font-sans text-fg">
+
       {/* --- HEADER NAVBAR --- */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+      <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">
             {formatHeaderMonth(currentMonth)}
-          </h2>
+          </h1>
           {loading ? (
-            <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-ping" />
-              <span className="text-xs font-medium text-slate-600">Sinkronisasi...</span>
+            <div
+              className="flex items-center gap-2 rounded-control bg-surface-muted px-2.5 py-1"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-fg-subtle" aria-hidden="true" />
+              <span className="text-[11px] font-medium text-fg-muted">Memuat…</span>
             </div>
           ) : (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200">
-              {totalTasks} Tasks
+            <span className="inline-flex items-center rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-medium tabular-nums text-fg-muted">
+              {totalTasks} task
             </span>
           )}
         </div>
-        
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          {!isCurrentMonth ? (
+            <button
+              type="button"
+              onClick={goToToday}
+              className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
+            >
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+              Hari ini
+            </button>
+          ) : null}
           {canCreateCard && (
             <button
               type="button"
               onClick={() => setCreateDate(selectedDate ?? todayStr)}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong"
             >
-              <Plus className="size-4" />
-              Buat Card
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Buat card
             </button>
           )}
-          <div className="flex items-center bg-white ring-1 ring-slate-200 rounded-md shadow-sm overflow-hidden">
-            <button 
-              onClick={prevMonth} 
-              className="p-2 hover:bg-slate-50 text-slate-600 transition-colors focus:outline-none"
-              title="Bulan Sebelumnya"
+          <div className="flex items-center overflow-hidden rounded-control border border-line bg-surface">
+            <button
+              onClick={prevMonth}
+              className="flex h-9 w-9 items-center justify-center text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+              title="Bulan sebelumnya"
+              aria-label="Bulan sebelumnya"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
-            <div className="w-px h-5 bg-slate-200" />
-            <button 
-              onClick={nextMonth} 
-              className="p-2 hover:bg-slate-50 text-slate-600 transition-colors focus:outline-none"
-              title="Bulan Berikutnya"
+            <div className="h-5 w-px bg-line" />
+            <button
+              onClick={nextMonth}
+              className="flex h-9 w-9 items-center justify-center text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+              title="Bulan berikutnya"
+              aria-label="Bulan berikutnya"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
       </div>
 
+      {!loading && data && totalTasks === 0 ? (
+        <div className="mb-4 flex flex-col gap-3 rounded-panel border border-dashed border-line bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-surface-muted text-fg-subtle">
+              <CalendarDays className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-xs font-medium text-fg">Belum ada task di bulan ini</p>
+              <p className="mt-0.5 text-[11px] text-fg-muted">Pilih tanggal untuk menjadwalkan pekerjaan baru.</p>
+            </div>
+          </div>
+          {canCreateCard ? (
+            <button
+              type="button"
+              onClick={() => setCreateDate(todayStr)}
+              className="inline-flex h-8 items-center gap-1.5 self-start rounded-control bg-accent px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong sm:self-auto"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              Buat card
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* --- CALENDAR GRID --- */}
-      <div className={`${compactLayout ? 'overflow-hidden' : 'overflow-x-auto'} rounded-2xl bg-white shadow-sm ring-1 ring-slate-200`}>
-        
+      <div
+        className={`${compactLayout ? 'overflow-hidden' : 'overflow-x-auto'} rounded-panel border border-line bg-surface`}
+        aria-busy={loading}
+      >
+
         {/* Header Hari */}
-        <div className={`grid grid-cols-7 border-b border-slate-200 bg-slate-50/80 ${compactLayout ? 'min-w-0' : 'min-w-[760px]'}`}>
+        <div className={`grid grid-cols-7 border-b border-line bg-surface-muted/50 ${compactLayout ? 'min-w-0' : 'min-w-[760px]'}`}>
           {WEEK_DAYS.map((day) => (
-            <div key={day} className={compactLayout ? 'py-2 text-center text-[9px] font-bold uppercase tracking-tight text-slate-500' : 'py-3 pr-4 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500'}>
+            <div key={day} className={compactLayout ? 'py-2 text-center text-[10px] font-medium text-fg-subtle' : 'py-2.5 pr-3 text-right text-[11px] font-medium text-fg-subtle'}>
               {compactLayout ? day.slice(0, 3) : day}
             </div>
           ))}
         </div>
 
         {/* Matriks Kotak */}
-        <div className={`grid grid-cols-7 gap-px bg-slate-50 ${compactLayout ? 'min-w-0 auto-rows-[96px]' : 'min-w-[760px] auto-rows-[160px]'}`}>
-          {gridDays.map((cell: GridDayCell, idx: number) => {
+        <div className={`grid grid-cols-7 gap-px bg-line ${compactLayout ? 'min-w-0 auto-rows-[96px]' : 'min-w-[760px] auto-rows-[160px]'}`}>
+          {isInitialLoading ? (
+            Array.from({ length: 35 }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className={`flex flex-col gap-2 bg-surface p-2.5 ${compactLayout ? 'h-24' : 'h-[160px]'}`}
+              >
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            ))
+          ) : gridDays.map((cell: GridDayCell, idx: number) => {
             const dayData = getDayData(cell.dateString);
             const tasks = dayData ? dayData.tasks : [];
             const totalTasksOnDay = dayData ? dayData.total : 0;
             const isToday = cell.dateString === todayStr;
+            const weekday = new Date(`${cell.dateString}T00:00:00`).getDay();
+            const isWeekend = weekday === 0 || weekday === 6;
 
             return (
-              <div 
-                key={`${cell.dateString}-${idx}`} 
+              <div
+                key={`${cell.dateString}-${idx}`}
                 onClick={() => setSelectedDate(cell.dateString)}
                 className={`relative flex cursor-pointer flex-col transition-colors ${compactLayout ? 'h-24 p-1.5' : 'h-[160px] p-2.5'} ${
-                  cell.isCurrentMonth 
-                    ? (isToday ? 'bg-indigo-50/30 hover:bg-indigo-50/60' : 'bg-white hover:bg-slate-50') 
-                    : 'bg-slate-50/50 text-slate-400 hover:bg-slate-100/50'
+                  cell.isCurrentMonth
+                    ? (isToday
+                        ? 'bg-accent-soft/40 hover:bg-accent-soft/60'
+                        : isWeekend
+                          ? 'bg-surface-muted/30 hover:bg-surface-hover'
+                          : 'bg-surface hover:bg-surface-hover')
+                    : 'bg-surface-muted/50 text-fg-subtle hover:bg-surface-muted'
                 } group`}
               >
                 {/* Tanggal */}
@@ -185,7 +246,7 @@ export const CalendarView: React.FC = () => {
                           event.stopPropagation();
                           setCreateDate(cell.dateString);
                         }}
-                        className={`${compactLayout ? 'hidden' : 'flex'} size-7 items-center justify-center rounded-lg text-slate-400 opacity-0 transition hover:bg-indigo-100 hover:text-indigo-700 group-hover:opacity-100 focus:opacity-100`}
+                        className={`${compactLayout ? 'hidden' : 'flex'} size-7 items-center justify-center rounded-control text-fg-subtle opacity-0 transition-colors hover:bg-accent-soft hover:text-accent group-hover:opacity-100 focus:opacity-100`}
                         title={`Buat card tanggal ${formatDateLabel(cell.dateString)}`}
                         aria-label={`Buat card tanggal ${formatDateLabel(cell.dateString)}`}
                       >
@@ -193,11 +254,23 @@ export const CalendarView: React.FC = () => {
                       </button>
                     )}
                   </span>
-                  <span className={`${compactLayout ? 'h-6 w-6 text-xs' : 'h-7 w-7 text-sm'} flex items-center justify-center rounded-full font-semibold transition-colors ${
-                    isToday ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-700 group-hover:bg-slate-200'
-                  } ${!cell.isCurrentMonth && !isToday && 'text-slate-400'}`}>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedDate(cell.dateString);
+                    }}
+                    aria-label={`Buka ${formatDateLabel(cell.dateString)}${
+                      totalTasksOnDay > 0
+                        ? `, ${totalTasksOnDay} task`
+                        : ", belum ada task"
+                    }`}
+                    className={`${compactLayout ? 'h-6 w-6 text-xs' : 'h-7 w-7 text-sm'} flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                      isToday ? 'bg-accent text-accent-fg' : 'text-fg group-hover:bg-surface-muted'
+                    } ${!cell.isCurrentMonth && !isToday && 'text-fg-subtle'}`}
+                  >
                     {cell.dayNumber}
-                  </span>
+                  </button>
                 </div>
 
                 {/* List Tasks (maksimal 3) */}
@@ -208,7 +281,7 @@ export const CalendarView: React.FC = () => {
                     const assigneeNames = task.assignees?.map((a) => a.name).join(', ') || 'Belum ada assignee';
 
                     return (
-                      <div 
+                      <div
                         key={task.id}
                         role={canOpenCard ? 'button' : undefined}
                         tabIndex={canOpenCard ? 0 : undefined}
@@ -223,10 +296,10 @@ export const CalendarView: React.FC = () => {
                             openTask(task);
                           }
                         }}
-                        className={`group/task flex items-center gap-2 px-2 py-1.5 rounded-md transition-all border ${
-                          isCompleted 
-                            ? 'border-transparent opacity-60 hover:opacity-100' 
-                            : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'
+                        className={`group/task flex items-center gap-2 rounded-[6px] border px-2 py-1.5 transition-colors ${
+                          isCompleted
+                            ? 'border-transparent opacity-60 hover:opacity-100'
+                            : 'border-line bg-surface hover:border-line-strong hover:bg-surface-hover'
                         } ${canOpenCard ? 'cursor-pointer' : ''}`}
                         title={`${task.title} — Dibuat: ${creatorName} — Assignee: ${assigneeNames}`}
                         onMouseEnter={(e) => {
@@ -236,18 +309,18 @@ export const CalendarView: React.FC = () => {
                         onMouseLeave={() => setHoveredTask(null)}
                       >
                         {/* Status Icon */}
-                        <div className={`flex-shrink-0 w-2.5 h-2.5 rounded-[3px] border ${
-                          isCompleted 
-                            ? 'bg-emerald-500 border-emerald-600' 
-                            : 'bg-amber-400 border-amber-500'
+                        <div className={`h-2.5 w-2.5 flex-shrink-0 rounded-[3px] border ${
+                          isCompleted
+                            ? 'border-success bg-success'
+                            : 'border-warning bg-warning'
                         }`} />
-                        
+
                         {/* Judul + Nama Assignee */}
                         <span className={`truncate text-xs ${
-                          isCompleted ? 'text-slate-500 line-through' : 'text-slate-700'
+                          isCompleted ? 'text-fg-subtle line-through' : 'text-fg'
                         }`}>
                           <span className="font-medium">{task.title}</span>
-                          <span className="font-normal text-slate-500"> · {assigneeNames}</span>
+                          <span className="font-normal text-fg-muted"> · {assigneeNames}</span>
                         </span>
                       </div>
                     );
@@ -255,14 +328,14 @@ export const CalendarView: React.FC = () => {
                 </div>
 
                 {compactLayout && totalTasksOnDay > 0 ? (
-                  <div className="mt-auto truncate rounded-md bg-indigo-50 px-1 py-1 text-center text-[9px] font-bold text-indigo-700">
+                  <div className="mt-auto truncate rounded-[6px] bg-accent-soft px-1 py-1 text-center text-[9px] font-medium text-accent">
                     {totalTasksOnDay} task
                   </div>
                 ) : null}
 
                 {/* Indikator Overflow */}
                 {!compactLayout && totalTasksOnDay > 3 && (
-                  <div className="mt-1 text-[10px] font-semibold text-slate-400 text-center pt-1 border-t border-slate-100">
+                  <div className="mt-1 border-t border-line pt-1 text-center text-[10px] font-medium text-fg-subtle">
                     +{totalTasksOnDay - 3} lainnya
                   </div>
                 )}
@@ -272,157 +345,161 @@ export const CalendarView: React.FC = () => {
         </div>
       </div>
 
-      {/* --- MODAL DIALOG (tetap) --- */}
-      {selectedDate && selectedDayData && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6 bg-slate-900/40 backdrop-blur-sm transition-opacity">
-          <div className="absolute inset-0" onClick={() => setSelectedDate(null)} />
-          
-          <div className="relative w-full max-w-2xl rounded-t-2xl bg-white sm:rounded-2xl shadow-2xl ring-1 ring-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
-            
-            <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between bg-white">
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">{formatDateLabel(selectedDate)}</h3>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="flex items-center justify-center bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-0.5 rounded">
-                    {selectedDayData.total}
-                  </span>
-                  <span className="text-sm font-medium text-slate-500">Tasks</span>
-                </div>
+      {/* --- MODAL DIALOG --- */}
+      {selectedDate && selectedDayData ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-overlay p-0 sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="calendar-day-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            aria-label="Tutup detail tanggal"
+            onClick={() => setSelectedDate(null)}
+          />
+
+          <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-modal border border-line bg-canvas shadow-e3 animate-in fade-in slide-in-from-bottom-2 duration-200 sm:rounded-modal">
+            <div className="flex items-start justify-between gap-3 border-b border-line bg-surface px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <h2 id="calendar-day-title" className="text-lg font-semibold text-fg">
+                  {formatDateLabel(selectedDate)}
+                </h2>
+                <p className="mt-1 text-xs text-fg-muted">
+                  {selectedDayData.total} task terjadwal
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                {canCreateCard && (
+              <div className="flex shrink-0 items-center gap-1.5">
+                {canCreateCard ? (
                   <button
                     type="button"
                     onClick={() => setCreateDate(selectedDate)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 text-xs font-semibold text-white hover:bg-indigo-700"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong"
                   >
-                    <Plus className="size-3.5" /> Buat Card
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Buat card
                   </button>
-                )}
+                ) : null}
                 <button
+                  type="button"
                   onClick={() => setSelectedDate(null)}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors focus:outline-none"
+                  aria-label="Tutup detail tanggal"
+                  className="flex h-9 w-9 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50 space-y-3">
-              {selectedDayData.tasks.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
-                  <p className="text-sm font-semibold text-slate-700">Belum ada card pada tanggal ini.</p>
-                  <p className="mt-1 text-xs text-slate-500">Pilih Buat Card untuk langsung menjadwalkan pekerjaan.</p>
-                </div>
-              )}
-              {selectedDayData.tasks.map((task: Task) => (
-                <div 
-                  key={task.id} 
-                  role={canOpenCard ? 'button' : undefined}
-                  tabIndex={canOpenCard ? 0 : undefined}
-                  onClick={() => openTask(task)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      openTask(task);
-                    }
-                  }}
-                  className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-xl ring-1 ring-slate-200 hover:ring-indigo-300 hover:shadow-md transition-all ${canOpenCard ? 'cursor-pointer' : ''}`}
-                >
-                  <div className="flex items-start gap-3 overflow-hidden">
-                    <div className="pt-1">
-                      <div className={`w-3.5 h-3.5 rounded-[4px] border-2 ${
-                        task.status === 'completed' || task.status === 'done'
-                          ? 'bg-emerald-500 border-emerald-600' 
-                          : 'bg-white border-slate-300'
-                      }`} />
-                    </div>
-                    <div className="flex flex-col gap-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-slate-900 truncate pr-4">
-                        {task.title}
-                      </h4>
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A9 9 0 1118.879 6.196 9 9 0 015.12 17.804zM15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className="truncate">Dibuat oleh {task.creator?.name || 'Tidak diketahui'}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-slate-600">
-                        <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        {task.assignees && task.assignees.length > 0 ? (
-                          <span className="truncate">{task.assignees.map((a) => a.name).join(', ')}</span>
-                        ) : (
-                          <span className="italic text-slate-400">Belum ada assignee</span>
-                        )}
-                      </div>
-                      {task.campaign?.name && (
-                        <div className="flex items-center">
-                          <span className="text-[10px] font-bold tracking-wide uppercase text-slate-500 flex items-center gap-1">
-                            <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
-                            {task.campaign.name}
-                          </span>
+            <div className="flex-1 space-y-2 overflow-y-auto bg-canvas p-4 sm:p-6">
+              {selectedDayData.tasks.length === 0 ? (
+                <EmptyState
+                  icon={CalendarDays}
+                  title="Belum ada card pada tanggal ini"
+                  description="Buat card untuk menjadwalkan pekerjaan pada tanggal ini."
+                  action={
+                    canCreateCard
+                      ? { label: "Buat card", onClick: () => setCreateDate(selectedDate) }
+                      : undefined
+                  }
+                />
+              ) : (
+                selectedDayData.tasks.map((task: Task) => {
+                  const isCompleted =
+                    task.status === "completed" || task.status === "done";
+
+                  return (
+                    <div
+                      key={task.id}
+                      role={canOpenCard ? "button" : undefined}
+                      tabIndex={canOpenCard ? 0 : undefined}
+                      onClick={() => openTask(task)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openTask(task);
+                        }
+                      }}
+                      className={`group flex flex-col gap-3 rounded-card border border-line bg-surface p-3.5 transition-colors hover:border-line-strong hover:bg-surface-hover sm:flex-row sm:items-center sm:justify-between ${
+                        canOpenCard ? "cursor-pointer" : ""
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span
+                          aria-hidden="true"
+                          className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                            isCompleted ? "bg-success" : "bg-warning"
+                          }`}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-fg">
+                            {task.title}
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-muted">
+                            <span>
+                              Dibuat oleh {task.creator?.name || "Tidak diketahui"}
+                            </span>
+                            {task.campaign?.name ? (
+                              <span className="rounded-full bg-surface-muted px-2 py-0.5">
+                                {task.campaign.name}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full pt-3 sm:pt-0 border-t sm:border-0 border-slate-100">
-                    
-                    <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                      {task.due_date ? (
-                        <>Jatuh tempo {new Date(task.due_date.replace(' ', 'T')).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}</>
-                      ) : (
-                        <>Dibuat {new Date(task.created_at.replace(' ', 'T')).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}</>
-                      )}
-                    </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-line pt-3 sm:justify-end sm:border-0 sm:pt-0">
+                        <span className="text-[11px] text-fg-subtle">
+                          {task.due_date
+                            ? `Tenggat ${formatShortDate(task.due_date)}`
+                            : `Dibuat ${formatShortDate(task.created_at)}`}
+                        </span>
 
-                    <div className="flex items-center">
-                      {task.assignees && task.assignees.length > 0 ? (
-                        <div className="flex -space-x-2">
-                          {task.assignees.slice(0, 3).map((user: User) => (
-                            <div 
-                              key={user.id} 
-                              className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 ring-2 ring-white flex items-center justify-center text-[10px] font-bold"
-                              title={user.name}
-                            >
-                              {user.name.substring(0, 2).toUpperCase()}
+                        <div className="flex items-center gap-3">
+                          {task.assignees && task.assignees.length > 0 ? (
+                            <div className="flex -space-x-1.5">
+                              {task.assignees.slice(0, 3).map((user: User) => (
+                                <span
+                                  key={user.id}
+                                  title={user.name}
+                                  className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold text-accent ring-2 ring-surface"
+                                >
+                                  {user.name.substring(0, 2).toUpperCase()}
+                                </span>
+                              ))}
+                              {task.assignees.length > 3 ? (
+                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-muted text-[9px] font-medium text-fg-muted ring-2 ring-surface">
+                                  +{task.assignees.length - 3}
+                                </span>
+                              ) : null}
                             </div>
-                          ))}
-                          {task.assignees.length > 3 && (
-                            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 ring-2 ring-white flex items-center justify-center text-[10px] font-bold">
-                              +{task.assignees.length - 3}
-                            </div>
+                          ) : (
+                            <span className="text-[11px] text-fg-subtle">
+                              Belum ada assignee
+                            </span>
                           )}
+                          {canOpenCard ? (
+                            <ExternalLink
+                              className="h-3.5 w-3.5 text-fg-subtle transition-colors group-hover:text-accent"
+                              aria-label="Buka detail card"
+                            />
+                          ) : null}
                         </div>
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-slate-50 ring-2 ring-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400" title="Unassigned">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        </div>
-                      )}
+                      </div>
                     </div>
-                    {canOpenCard && <ExternalLink className="size-4 text-indigo-500" aria-label="Buka detail card" />}
-                  </div>
-
-                </div>
-              ))}
+                  );
+                })
+              )}
             </div>
-
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* --- TOOLTIP --- */}
       {hoveredTask && (
         <div
-          className="fixed z-[100] hidden bg-slate-300 sm:block text-gray-700 text-xs rounded-lg shadow-xl p-3 max-w-xs pointer-events-none transition-opacity duration-150"
+          role="tooltip"
+          className="pointer-events-none fixed z-[100] hidden max-w-xs rounded-card bg-fg p-3 text-xs text-canvas shadow-e3 sm:block"
           style={{
             left: hoveredTask.rect.left + hoveredTask.rect.width / 2,
             top: hoveredTask.rect.top - 10,
@@ -430,34 +507,32 @@ export const CalendarView: React.FC = () => {
           }}
         >
           <div className="flex flex-col gap-1.5">
-            <div className="font-semibold text-gray-700 border-b border-slate-600 pb-1 mb-0.5">
+            <div className="mb-0.5 border-b border-canvas/20 pb-1 font-medium">
               {hoveredTask.task.title}
             </div>
             <div>
-              <span className="font-medium text-gray-700">Creator:</span>{' '}
+              <span className="font-medium">Dibuat oleh:</span>{' '}
               {hoveredTask.task.creator?.name || 'Tidak diketahui'}
             </div>
             <div>
-              <span className="font-medium text-gray-700">Members:</span>{' '}
+              <span className="font-medium">Anggota:</span>{' '}
               {hoveredTask.task.assignees && hoveredTask.task.assignees.length > 0
                 ? hoveredTask.task.assignees.map((a) => a.name).join(', ')
                 : 'Belum ada'}
             </div>
             <div>
-              <span className="font-medium text-gray-700">Campaign / Project:</span>{' '}
+              <span className="font-medium">Campaign:</span>{' '}
               {hoveredTask.task.campaign?.name || '-'}
             </div>
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-canvas/70">
               {formatShortDate(hoveredTask.task.created_at)}
               {hoveredTask.task.due_date && (
-                <> &middot; Tenggat {formatShortDate(hoveredTask.task.due_date)}</>
+                <> · Tenggat {formatShortDate(hoveredTask.task.due_date)}</>
               )}
             </div>
           </div>
           {/* Segitiga penunjuk */}
-          <div
-            className="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-full border-8 border-transparent border-t-slate-800"
-          />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full border-8 border-transparent border-t-fg" />
         </div>
       )}
 

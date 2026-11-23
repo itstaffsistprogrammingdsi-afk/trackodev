@@ -15,6 +15,8 @@ export const ReportPage: React.FC = () => {
     cards,
     filters,
     masterData,
+    filterOptionsError,
+    reloadFilterOptions,
     loadingUsers,
     loadingCards,
     loadingPreview,
@@ -78,6 +80,8 @@ export const ReportPage: React.FC = () => {
           pagination={pagination}
           loading={loadingUsers}
           masterData={masterData}
+          filterOptionsError={filterOptionsError}
+          onReloadFilterOptions={reloadFilterOptions}
           onExport={requestSecureExport}
           onPreview={handlePreviewClick}
           previewLoading={loadingPreview}
