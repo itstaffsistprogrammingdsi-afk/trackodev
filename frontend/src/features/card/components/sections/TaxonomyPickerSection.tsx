@@ -188,7 +188,7 @@ export default function TaxonomyPickerSection({
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <p className="text-[11px] font-medium text-fg-subtle">
             {attachedTitle}
           </p>
 
@@ -279,7 +279,7 @@ export default function TaxonomyPickerSection({
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <p className="text-[11px] font-medium text-fg-subtle">
             {listTitle}
           </p>
 
@@ -450,7 +450,7 @@ export default function TaxonomyPickerSection({
 
       {canCreate && (
         <div className="border-t border-slate-200/80 pt-3 dark:border-slate-700/80">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <p className="mb-2 text-[11px] font-medium text-fg-subtle">
             Buat baru
           </p>
 
@@ -480,7 +480,7 @@ export default function TaxonomyPickerSection({
               />
 
               {openPicker && (
-                <div className="absolute bottom-12 left-0 z-50 w-[240px] space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="absolute bottom-12 left-0 z-50 w-[240px] space-y-3 rounded-card border border-line bg-surface p-3 shadow-e2">
                   <HexColorPicker
                     color={color}
                     onChange={setColor}

@@ -63,7 +63,7 @@ export default function SortableBoardColumn({
             <span
               title="Posisi column ini dikunci"
               aria-label={`Column ${board.name} tidak dapat dipindahkan`}
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-300 dark:text-slate-600"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-fg-subtle"
             >
               <LockKeyhole size={14} />
             </span>
@@ -74,7 +74,7 @@ export default function SortableBoardColumn({
               {...listeners}
               aria-label={`Pindahkan column ${board.name}`}
               title="Geser untuk memindahkan column"
-              className="inline-flex h-7 w-7 shrink-0 touch-none cursor-grab items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700 active:cursor-grabbing dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              className="inline-flex h-7 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
             >
               <GripVertical size={16} />
             </button>

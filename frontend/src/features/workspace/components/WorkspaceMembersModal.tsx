@@ -156,6 +156,8 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
     if (!open) return;
 
     const keyword = query.trim();
+    const requestId = ++requestIdRef.current;
+
     if (keyword.length < 2) {
       setResults([]);
       setSearching(false);
@@ -163,7 +165,6 @@ export default function WorkspaceMembersModal({ open, onClose, workspace }: Prop
     }
 
     setSearching(true);
-    const requestId = ++requestIdRef.current;
 
     const timer = window.setTimeout(async () => {
       try {

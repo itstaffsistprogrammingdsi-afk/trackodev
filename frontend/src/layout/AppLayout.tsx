@@ -18,7 +18,7 @@ const LayoutContent: React.FC = () => {
 
   return (
     // Lock tinggi layar ke 100vh / h-screen dan matikan scroll window utama
-    <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-canvas text-fg transition-colors duration-200">
       {/* Sidebar Navigation & Mobile Backdrop */}
       <AppSidebar />
       <Backdrop />

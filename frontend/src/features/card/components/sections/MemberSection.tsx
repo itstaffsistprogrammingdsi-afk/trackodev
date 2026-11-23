@@ -334,7 +334,7 @@ const filteredUsers = users
         <div>
           {/* HEADER */}
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <p className="text-[11px] font-medium text-fg-subtle">
               Assigned Members
             </p>
 
@@ -391,7 +391,7 @@ const filteredUsers = users
       <div>
         {/* HEADER */}
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <p className="text-[11px] font-medium text-fg-subtle">
             Members (semua divisi)
           </p>
 

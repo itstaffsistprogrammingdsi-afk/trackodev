@@ -1,8 +1,4 @@
-import {
-  CheckCircle2,
-  ClipboardList,
-  TrendingUp,
-} from "lucide-react";
+import { CheckCircle2, ClipboardList, TrendingUp } from "lucide-react";
 
 type Props = {
   totalCards: number;
@@ -17,52 +13,33 @@ export default function SummaryCards({
   completionRate,
   loading = false,
 }: Props) {
-  const safeRate = Number.isFinite(completionRate)
-    ? completionRate
-    : 0;
+  const safeRate = Number.isFinite(completionRate) ? completionRate : 0;
 
   return (
-    <div className={`grid grid-cols-1 gap-4 transition-opacity sm:grid-cols-2 md:grid-cols-3 ${loading ? "opacity-60" : "opacity-100"}`} aria-busy={loading}>
-
+    <div
+      className={`grid grid-cols-1 gap-px overflow-hidden rounded-panel border border-line bg-line transition-opacity sm:grid-cols-3 ${
+        loading ? "opacity-60" : "opacity-100"
+      }`}
+      aria-busy={loading}
+    >
       <SummaryCard
-        title="Total Tasks"
+        title="Total task"
         value={totalCards ?? 0}
         description="Task pada periode terpilih"
-        icon={
-          <ClipboardList
-            size={20}
-            className="text-blue-600"
-          />
-        }
-        bg="bg-blue-50"
+        icon={<ClipboardList size={16} aria-hidden="true" />}
       />
-
       <SummaryCard
-        title="Completed"
+        title="Selesai"
         value={completedCards ?? 0}
         description="Task berstatus selesai"
-        icon={
-          <CheckCircle2
-            size={20}
-            className="text-green-600"
-          />
-        }
-        bg="bg-green-50"
+        icon={<CheckCircle2 size={16} aria-hidden="true" />}
       />
-
       <SummaryCard
-        title="Completion Rate"
+        title="Completion rate"
         value={`${safeRate.toFixed(1)}%`}
         description="Rasio penyelesaian task"
-        icon={
-          <TrendingUp
-            size={20}
-            className="text-purple-600"
-          />
-        }
-        bg="bg-purple-50"
+        icon={<TrendingUp size={16} aria-hidden="true" />}
       />
-
     </div>
   );
 }
@@ -72,52 +49,22 @@ type SummaryCardProps = {
   value: string | number;
   description: string;
   icon: React.ReactNode;
-  bg: string;
 };
 
-function SummaryCard({
-  title,
-  value,
-  description,
-  icon,
-  bg,
-}: SummaryCardProps) {
+function SummaryCard({ title, value, description, icon }: SummaryCardProps) {
   return (
-    <div
-      className="
-        rounded-2xl
-        border
-        border-gray-200
-        bg-white
-        p-5
-        shadow-sm
-        transition-all
-        hover:border-blue-100
-        hover:shadow-md
-      "
-    >
-      <div className="flex items-start justify-between">
-
-        <div>
-          <p className="text-sm text-gray-500">
-            {title}
-          </p>
-
-          <h3 className="mt-3 text-3xl font-bold text-gray-900">
+    <div className="bg-surface p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium text-fg-muted">{title}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums tracking-[-0.02em] text-fg">
             {value ?? 0}
-          </h3>
-
-          <p className="mt-1 text-xs text-gray-400">
-            {description}
           </p>
+          <p className="mt-1 truncate text-[11px] text-fg-subtle">{description}</p>
         </div>
-
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl ${bg}`}
-        >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-surface-muted text-fg-subtle">
           {icon}
-        </div>
-
+        </span>
       </div>
     </div>
   );

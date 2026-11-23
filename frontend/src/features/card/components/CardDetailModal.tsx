@@ -29,6 +29,8 @@ import {
   X,
 } from "lucide-react";
 
+import { Skeleton } from "@/components/ui/Skeleton";
+
 interface Props {
   card: Card | null;
   isOpen: boolean;
@@ -257,8 +259,8 @@ export default function CardDetailModal({
     <div
       onClick={closeModal}
       className="
-        fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70
-        p-0 backdrop-blur-md transition-all duration-300 animate-in fade-in sm:p-4 lg:p-6
+        fixed inset-0 z-[9999] flex items-center justify-center bg-overlay
+        p-0 transition-opacity duration-200 animate-in fade-in sm:p-4 lg:p-6
       "
     >
       <div
@@ -270,9 +272,9 @@ export default function CardDetailModal({
         aria-label={`Detail card ${detail?.title ?? card.title}`}
         className="
           relative flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden
-          border-slate-200/80 bg-slate-50 shadow-2xl transition-all duration-300
-          sm:h-[calc(100dvh-2rem)] sm:rounded-3xl sm:border
-          lg:h-[calc(100dvh-3rem)] dark:border-slate-800 dark:bg-slate-950
+          bg-canvas shadow-e3 transition-colors duration-200
+          sm:h-[calc(100dvh-2rem)] sm:rounded-modal sm:border sm:border-line
+          lg:h-[calc(100dvh-3rem)]
         "
       >
         {/* ========================================= */}
@@ -285,7 +287,7 @@ export default function CardDetailModal({
           {/* ========================================= */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-y-auto lg:overscroll-contain">
             {/* STICKY HEADER */}
-            <div className="z-20 shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90">
+            <div className="z-20 shrink-0 border-b border-line bg-surface/95 backdrop-blur-sm">
               <CardDetailHeader
                 cardId={detail?.id ?? card.id}
                 title={detail?.title ?? card.title}
@@ -318,16 +320,46 @@ export default function CardDetailModal({
             {/* INNER BODY CONTENT */}
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-6 sm:space-y-6 sm:p-6 sm:pb-6 lg:flex-none lg:space-y-8 lg:overflow-visible lg:overscroll-auto lg:p-8 lg:pb-8">
               {showInitialLoading ? (
-                <div className="h-[50vh] flex flex-col items-center justify-center text-slate-400">
-                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600 dark:text-blue-400" />
-                  <p className="text-sm font-medium">Loading card details...</p>
+                <div
+                  className="space-y-4"
+                  role="status"
+                  aria-live="polite"
+                  aria-busy="true"
+                >
+                  <span className="sr-only">Memuat detail task</span>
+                  <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
+                    <div className="mb-5 flex items-center gap-3">
+                      <Skeleton className="h-9 w-9 rounded-control" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="h-3 w-56 max-w-full" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-11/12" />
+                      <Skeleton className="h-3 w-3/4" />
+                    </div>
+                  </div>
+                  <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
+                    <Skeleton className="mb-4 h-4 w-28" />
+                    <div className="space-y-3">
+                      <Skeleton className="h-9 w-full" />
+                      <Skeleton className="h-9 w-full" />
+                      <Skeleton className="h-9 w-4/5" />
+                    </div>
+                  </div>
+                  <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
+                    <Skeleton className="mb-4 h-4 w-24" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
                 </div>
               ) : (
                 <>
                   {detailError && !detail ? (
                     <div
                       role="alert"
-                      className="flex flex-col gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 sm:flex-row sm:items-center sm:justify-between dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
+                      className="flex flex-col gap-2 rounded-card border border-danger/20 bg-danger-soft p-4 text-sm text-danger sm:flex-row sm:items-center sm:justify-between"
                     >
                       <span>
                         Detail card gagal dimuat. Deskripsi mungkin belum tampil.
@@ -335,7 +367,7 @@ export default function CardDetailModal({
                       <button
                         type="button"
                         onClick={() => void fetchDetail()}
-                        className="shrink-0 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
+                        className="shrink-0 rounded-control bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:opacity-90"
                       >
                         Coba lagi
                       </button>
@@ -343,37 +375,39 @@ export default function CardDetailModal({
                   ) : null}
 
                   {/* ========================================= */}
-                  {/* DESCRIPTION SECTION */}
+                  {/* CONTENT PANEL */}
                   {/* ========================================= */}
-                  <section className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm transition-all">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
-                        <AlignLeft size={18} />
+                  <div className="overflow-hidden rounded-panel border border-line bg-surface">
+                  {/* DESCRIPTION SECTION */}
+                  <section className="border-b border-line p-5 sm:p-6">
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-control bg-surface-muted text-fg-muted">
+                        <AlignLeft size={16} />
                       </div>
 
                       <div className="flex-1">
-                        <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
+                        <h2 className="text-sm font-semibold text-fg">
                           Description
                         </h2>
-                        <p className="text-xs sm:text-sm text-slate-400">
+                        <p className="text-xs text-fg-muted">
                           Describe this task clearly
                         </p>
                       </div>
 
                       {saving ? (
-                        <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full">
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                        <div className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+                          <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
                           <span>Saving...</span>
                         </div>
                       ) : refreshing ? (
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                        <div className="flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-fg-muted">
+                          <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
                           <span>Syncing...</span>
                         </div>
                       ) : null}
                     </div>
                     {saveError ? (
-                      <p role="alert" className="mb-3 text-xs font-medium text-rose-600 dark:text-rose-400">
+                      <p role="alert" className="mb-3 text-xs font-medium text-danger">
                         {saveError}
                       </p>
                     ) : null}
@@ -389,7 +423,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* TASK SECTION */}
                   {/* ========================================= */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                  <div className="border-b border-line p-5 sm:p-6">
                     <TaskSection
                       tasks={tasks}
                       progress={progress}
@@ -405,8 +439,8 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* BRIEF ATTACHMENTS */}
                   {/* ========================================= */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
-                    <h4 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">
+                  <div className="border-b border-line p-5 sm:p-6">
+                    <h4 className="mb-4 text-sm font-semibold text-fg">
                       Brief Attachments
                     </h4>
                     <AttachmentSection
@@ -422,8 +456,8 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* RESULT ATTACHMENTS */}
                   {/* ========================================= */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
-                    <h4 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">
+                  <div className="border-b border-line p-5 sm:p-6">
+                    <h4 className="mb-4 text-sm font-semibold text-fg">
                       Result Attachments
                     </h4>
                     <AttachmentSection
@@ -441,7 +475,7 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   {/* COMMENTS SECTION */}
                   {/* ========================================= */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
+                  <div className="border-b border-line p-5 sm:p-6">
                     <CommentSection
                       comments={comments}
                       comment={comment}
@@ -463,6 +497,7 @@ export default function CardDetailModal({
                     total={totalActivities}
                     insight={activityInsight}
                   />
+                  </div>
                 </>
               )}
             </div>
@@ -471,15 +506,15 @@ export default function CardDetailModal({
           {/* ========================================= */}
           {/* RIGHT SIDEBAR PANEL */}
           {/* ========================================= */}
-          <div className="hidden w-[340px] max-w-[340px] shrink-0 flex-col overflow-hidden border-l border-slate-200/80 bg-white/70 backdrop-blur-xl lg:flex dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="hidden w-[340px] max-w-[340px] shrink-0 flex-col overflow-hidden border-l border-line bg-surface lg:flex">
             <div className="flex shrink-0 justify-end px-6 pt-5">
               <button
                 type="button"
                 onClick={closeModal}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
                 aria-label="Close card detail"
               >
-                <X size={18} strokeWidth={2.2} />
+                <X size={18} strokeWidth={2} />
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pt-2">
@@ -488,11 +523,11 @@ export default function CardDetailModal({
           </div>
 
         </div>
-        <div className="relative z-30 shrink-0 border-t border-slate-200/80 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
+        <div className="relative z-30 shrink-0 border-t border-line bg-surface/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-sm lg:hidden">
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}
-            className="flex h-12 w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-blue-500/20"
+            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-control bg-accent px-5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             <SlidersHorizontal size={18} />
             Card tools
@@ -512,19 +547,19 @@ export default function CardDetailModal({
               role="dialog"
               aria-modal="true"
               aria-label="Card tools"
-              className="relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border-t border-slate-200 bg-slate-50 shadow-2xl animate-in slide-in-from-bottom duration-300 dark:border-slate-700 dark:bg-slate-950"
+              className="relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-modal border-t border-line bg-canvas shadow-e3 animate-in slide-in-from-bottom duration-200"
             >
-              <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
-              <div className="flex shrink-0 items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-800">
+              <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-line-strong" />
+              <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">
                 <div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white">Card tools</h2>
-                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Kelola member, label, deadline, dan lampiran</p>
+                  <h2 className="text-sm font-semibold text-fg">Card tools</h2>
+                  <p className="mt-0.5 text-xs text-fg-muted">Kelola member, label, deadline, dan lampiran</p>
                 </div>
                 <button
                   type="button"
                   onClick={closeMobileSidebar}
                   aria-label="Tutup card tools"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                  className="flex h-10 w-10 items-center justify-center rounded-control bg-surface-muted text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
                 >
                   <X size={18} />
                 </button>

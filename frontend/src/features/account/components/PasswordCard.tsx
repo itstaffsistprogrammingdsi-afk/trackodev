@@ -1,5 +1,10 @@
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
+
 import { useUpdatePassword } from "../hooks/useAccount";
+
+const inputClass =
+  "h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/50 focus:ring-2 focus:ring-accent/15";
 
 export default function PasswordCard() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -14,13 +19,13 @@ export default function PasswordCard() {
     setSuccessMsg(null);
     setLocalError(null);
 
-    if (password !== passwordConfirmation) {
-      setLocalError("Konfirmasi kata sandi tidak cocok.");
+    if (password.length < 8) {
+      setLocalError("Kata sandi baru minimal 8 karakter.");
       return;
     }
 
-    if (password.length < 8) {
-      setLocalError("Kata sandi baru minimal 8 karakter.");
+    if (password !== passwordConfirmation) {
+      setLocalError("Konfirmasi kata sandi tidak cocok.");
       return;
     }
 
@@ -37,78 +42,108 @@ export default function PasswordCard() {
           setPassword("");
           setPasswordConfirmation("");
         },
-      }
+      },
     );
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:p-6">
-      <h3 className="mb-4 text-base font-semibold text-gray-800 dark:text-white/90">
-        Ubah Kata Sandi
-      </h3>
+    <section className="rounded-panel border border-line bg-surface p-5 lg:p-6">
+      <div className="mb-5">
+        <h2 className="text-sm font-semibold text-fg">Kata sandi</h2>
+        <p className="mt-0.5 text-xs text-fg-muted">
+          Gunakan minimal 8 karakter dan jangan bagikan kata sandi Anda.
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Kata Sandi Saat Ini
+          <label
+            htmlFor="current-password"
+            className="mb-1.5 block text-xs font-medium text-fg-muted"
+          >
+            Kata sandi saat ini
           </label>
           <input
+            id="current-password"
             type="password"
+            autoComplete="current-password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             required
-            className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:text-white/90"
+            className={inputClass}
           />
         </div>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Kata Sandi Baru
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:text-white/90"
-          />
-        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="new-password"
+              className="mb-1.5 block text-xs font-medium text-fg-muted"
+            >
+              Kata sandi baru
+            </label>
+            <input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              aria-describedby="new-password-hint"
+              className={inputClass}
+            />
+            <p id="new-password-hint" className="mt-1.5 text-[11px] text-fg-subtle">
+              Minimal 8 karakter.
+            </p>
+          </div>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Konfirmasi Kata Sandi Baru
-          </label>
-          <input
-            type="password"
-            value={passwordConfirmation}
-            onChange={(e) => setPasswordConfirmation(e.target.value)}
-            required
-            minLength={8}
-            className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:text-white/90"
-          />
+          <div>
+            <label
+              htmlFor="confirm-password"
+              className="mb-1.5 block text-xs font-medium text-fg-muted"
+            >
+              Konfirmasi kata sandi baru
+            </label>
+            <input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={passwordConfirmation}
+              onChange={(e) => setPasswordConfirmation(e.target.value)}
+              required
+              minLength={8}
+              className={inputClass}
+            />
+          </div>
         </div>
 
         {(localError || error) && (
-          <p className="text-sm text-red-600">
+          <p role="alert" className="text-xs font-medium text-danger">
             {localError ||
               "Gagal mengubah kata sandi. Periksa kata sandi saat ini Anda."}
           </p>
         )}
         {successMsg && (
-          <p className="text-sm text-green-600">{successMsg}</p>
+          <p
+            role="status"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-success"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+            {successMsg}
+          </p>
         )}
 
-        <div className="flex justify-end">
+        <div className="flex justify-end border-t border-line pt-4">
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-9 rounded-control bg-accent px-4 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "Menyimpan..." : "Ubah Kata Sandi"}
+            {isPending ? "Menyimpan..." : "Ubah kata sandi"}
           </button>
         </div>
       </form>
-    </div>
+    </section>
   );
 }

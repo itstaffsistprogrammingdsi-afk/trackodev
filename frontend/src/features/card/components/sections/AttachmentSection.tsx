@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 
 import { Attachment } from "../../types";
+import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { StylesConfig } from "node_modules/react-select/dist/declarations/src/styles";
 
 const EMPTY_ATTACHMENTS: Attachment[] = [];
@@ -521,15 +523,7 @@ export default function AttachmentSection({
         {/* UPLOADER */}
         {showUploader && (
           <div
-            className="
-bg-white
-border
-border-slate-200
-rounded-3xl
-p-6
-shadow-sm
-space-y-6
-"
+            className="space-y-6 rounded-card border border-line bg-surface p-4 sm:p-5"
           >
             {" "}
             {/* HEADER */}
@@ -839,28 +833,20 @@ space-y-6
           )}
           {/* LOADING */}
           {loading && (
-            <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-6 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
-              <Loader2 size={18} className="animate-spin" />
-
-              <span>Loading attachments...</span>
+            <div className="space-y-2" role="status" aria-busy="true">
+              <span className="sr-only">Memuat lampiran</span>
+              <Skeleton className="h-20 w-full rounded-card" />
+              <Skeleton className="h-20 w-full rounded-card" />
             </div>
           )}
 
           {/* EMPTY */}
           {!loading && attachments.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-700">
-                <Paperclip size={24} />
-              </div>
-
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Belum ada hasil aktif
-              </h3>
-
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Upload hasil baru atau buka riwayat arsip
-              </p>
-            </div>
+            <EmptyState
+              icon={Paperclip}
+              title="Belum ada hasil aktif"
+              description="Upload hasil baru atau buka riwayat arsip untuk melihat versi lama."
+            />
           )}
 
           {/* LIST */}
@@ -918,7 +904,7 @@ space-y-6
                           <div className="flex h-full w-full flex-col items-center justify-center bg-red-50 text-red-600">
                             <FileText size={26} />
 
-                            <span className="mt-1 text-[11px] font-semibold uppercase tracking-wide">
+                            <span className="mt-1 text-[11px] font-medium text-fg-subtle">
                               PDF
                             </span>
                           </div>
@@ -948,7 +934,7 @@ space-y-6
                         >
                           <Link2 size={24} />
 
-                          <span className="mt-1 text-[11px] font-semibold uppercase tracking-wide">
+                          <span className="mt-1 text-[11px] font-medium text-fg-subtle">
                             Link
                           </span>
                         </a>

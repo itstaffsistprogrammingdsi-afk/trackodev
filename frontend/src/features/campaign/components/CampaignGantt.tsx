@@ -1,16 +1,44 @@
 import { useEffect, useMemo, useState } from "react";
+import { CalendarRange, ZoomIn, ZoomOut } from "lucide-react";
+
 import { getCampaignGantt } from "../api/campaign.api";
 import type { GanttTask } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Props = {
   campaignId: string;
+};
+
+const MIN_DAY_WIDTH = 14;
+const MAX_DAY_WIDTH = 40;
+const DEFAULT_DAY_WIDTH = 22;
+const TASK_COLUMN_WIDTH = 220;
+
+const statusStyles: Record<string, { bar: string; dot: string; label: string }> = {
+  completed: {
+    bar: "border-success/20 bg-success-soft text-success",
+    dot: "bg-success",
+    label: "Selesai",
+  },
+  in_progress: {
+    bar: "border-accent/20 bg-accent-soft text-accent",
+    dot: "bg-accent",
+    label: "Berjalan",
+  },
+  todo: {
+    bar: "border-line bg-surface-muted text-fg-muted",
+    dot: "bg-fg-subtle",
+    label: "Belum dimulai",
+  },
 };
 
 export default function CampaignGantt({ campaignId }: Props) {
   const [tasks, setTasks] = useState<GanttTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalDays, setTotalDays] = useState(30);
+  const [dayWidth, setDayWidth] = useState(DEFAULT_DAY_WIDTH);
   const realtimeRevision = useRealtimeRevision([
     "Board", "Card", "Subtask", "Task",
   ]);
@@ -23,9 +51,6 @@ export default function CampaignGantt({ campaignId }: Props) {
 
       try {
         const data = await getCampaignGantt(campaignId);
-
-        console.log("GANTT RESPONSE:", data);
-
         setTasks(data.tasks ?? []);
         setTotalDays(data.total_days ?? 30);
       } catch (error) {
@@ -40,162 +65,224 @@ export default function CampaignGantt({ campaignId }: Props) {
   }, [campaignId, realtimeRevision]);
 
   const days = useMemo(() => {
-    return Array.from(
-      { length: totalDays },
-      (_, i) => i + 1
-    );
+    return Array.from({ length: totalDays }, (_, i) => i + 1);
   }, [totalDays]);
+
+  const completedCount = useMemo(
+    () => tasks.filter((task) => task.status === "completed").length,
+    [tasks],
+  );
+  const completionRate = tasks.length
+    ? Math.round((completedCount / tasks.length) * 100)
+    : 0;
+
+  const decreaseZoom = () =>
+    setDayWidth((current) => Math.max(MIN_DAY_WIDTH, current - 4));
+  const increaseZoom = () =>
+    setDayWidth((current) => Math.min(MAX_DAY_WIDTH, current + 4));
 
   if (loading) {
     return (
-      <div className="p-5 text-gray-500">
-        Loading Gantt...
+      <div
+        className="rounded-panel border border-line bg-surface p-5"
+        role="status"
+        aria-busy="true"
+      >
+        <span className="sr-only">Memuat jadwal campaign</span>
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+          <Skeleton className="h-6 w-40" />
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="grid grid-cols-[180px_1fr] items-center gap-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-7 w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (!tasks.length) {
     return (
-      <div className="p-5 text-gray-500">
-        No Gantt data available
+      <div className="rounded-panel border border-line bg-surface p-5">
+        <EmptyState
+          icon={CalendarRange}
+          title="Belum ada jadwal"
+          description="Timeline muncul setelah card memiliki rentang tanggal pengerjaan."
+        />
       </div>
     );
   }
 
   return (
-    <div className="bg-white border rounded-xl p-5 shadow-sm overflow-x-auto">
+    <div className="overflow-hidden rounded-panel border border-line bg-surface">
+      <div className="border-b border-line p-5">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+          <div>
+            <h2 className="text-sm font-semibold text-fg">
+              Jadwal campaign
+            </h2>
+            <p className="mt-0.5 text-xs text-fg-muted">
+              {tasks.length} task · {totalDays} hari · {completedCount} selesai
+            </p>
 
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-4">
-
-        <div>
-          <h2 className="font-semibold">
-            Campaign Schedule
-          </h2>
-
-          <p className="text-xs text-gray-500">
-            {tasks.length} tasks • {totalDays} days
-          </p>
-        </div>
-
-        {/* LEGEND */}
-        <div className="flex items-center gap-4 text-xs">
-
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-slate-400" />
-            <span>Todo</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-blue-500" />
-            <span>In Progress</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-green-500" />
-            <span>Completed</span>
-          </div>
-
-        </div>
-      </div>
-
-      {/* GANTT */}
-      <div className="min-w-[900px]">
-
-        {/* HEADER DAYS */}
-        <div
-          className="grid border-b pb-2 text-xs text-gray-500"
-          style={{
-            gridTemplateColumns: `220px repeat(${totalDays}, minmax(20px, 1fr))`,
-          }}
-        >
-          <div className="font-semibold">
-            Task
-          </div>
-
-          {days.map((day) => (
-            <div
-              key={day}
-              className="text-center border-l"
-            >
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* TASK ROWS */}
-        <div className="space-y-2 mt-2">
-
-          {tasks.map((task) => {
-
-            // backend start dimulai dari 1
-            const left =
-              ((task.start - 1) / totalDays) * 100;
-
-            const width =
-              (task.length / totalDays) * 100;
-
-            const statusColor =
-              task.status === "completed"
-                ? "bg-green-500"
-                : task.status === "in_progress"
-                ? "bg-blue-500"
-                : "bg-slate-400";
-
-            return (
+            <div className="mt-3 flex items-center gap-2">
               <div
-                key={task.id}
-                className="grid items-center"
-                style={{
-                  gridTemplateColumns: "220px 1fr",
-                }}
+                className="h-1.5 w-40 overflow-hidden rounded-full bg-surface-muted"
+                role="progressbar"
+                aria-valuenow={completionRate}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Progress penyelesaian task campaign"
               >
-                {/* TASK NAME */}
-                <div className="text-sm text-gray-700 truncate pr-2">
-                  {task.name}
-                </div>
-
-                {/* TIMELINE */}
-                <div className="relative h-7 bg-gray-50 border rounded overflow-hidden">
-
-                  {/* GRID LINES */}
-                  <div
-                    className="absolute inset-0 grid"
-                    style={{
-                      gridTemplateColumns: `repeat(${totalDays}, minmax(20px, 1fr))`,
-                    }}
-                  >
-                    {days.map((day) => (
-                      <div
-                        key={day}
-                        className="border-l border-gray-200"
-                      />
-                    ))}
-                  </div>
-
-                  {/* BAR */}
-                  <div
-                    className={`absolute h-7 rounded flex items-center px-2 text-xs text-white ${statusColor}`}
-                    style={{
-                      left: `${Math.max(left, 0)}%`,
-                      width: `${Math.max(width, 3)}%`,
-                    }}
-                    title={`${task.name} (${task.status})`}
-                  >
-                    <span className="truncate">
-                      {task.name.length > 20
-                        ? task.name.slice(0, 20) + "..."
-                        : task.name}
-                    </span>
-                  </div>
-
-                </div>
+                <div
+                  className="h-full rounded-full bg-success transition-[width] duration-300 ease-soft"
+                  style={{ width: `${completionRate}%` }}
+                />
               </div>
-            );
-          })}
+              <span className="text-[11px] font-medium tabular-nums text-fg-muted">
+                {completionRate}%
+              </span>
+            </div>
+          </div>
 
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-fg-muted">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-[3px] border border-line bg-surface-muted" aria-hidden="true" />
+                Belum dimulai
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-[3px] bg-accent" aria-hidden="true" />
+                Berjalan
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-[3px] bg-success" aria-hidden="true" />
+                Selesai
+              </span>
+            </div>
+
+            <div className="flex items-center rounded-control border border-line bg-surface-muted p-1">
+              <button
+                type="button"
+                onClick={decreaseZoom}
+                disabled={dayWidth <= MIN_DAY_WIDTH}
+                className="flex h-7 w-7 items-center justify-center rounded-[6px] text-fg-muted transition-colors hover:bg-surface hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Perkecil timeline"
+                title="Perkecil timeline"
+              >
+                <ZoomOut className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <span className="min-w-8 text-center text-[10px] font-medium tabular-nums text-fg-subtle">
+                {Math.round((dayWidth / DEFAULT_DAY_WIDTH) * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={increaseZoom}
+                disabled={dayWidth >= MAX_DAY_WIDTH}
+                className="flex h-7 w-7 items-center justify-center rounded-[6px] text-fg-muted transition-colors hover:bg-surface hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Perbesar timeline"
+                title="Perbesar timeline"
+              >
+                <ZoomIn className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      <div className="overflow-x-auto">
+        <div
+          className="p-5"
+          style={{ minWidth: TASK_COLUMN_WIDTH + totalDays * dayWidth }}
+        >
+          <div
+            className="grid border-b border-line pb-2 text-[10px] font-medium text-fg-subtle"
+            style={{
+              gridTemplateColumns: `${TASK_COLUMN_WIDTH}px repeat(${totalDays}, ${dayWidth}px)`,
+            }}
+          >
+            <div className="sticky left-0 z-10 bg-surface pl-3 text-fg-muted">
+              Task
+            </div>
+
+            {days.map((day) => (
+              <div key={day} className="border-l border-line text-center tabular-nums">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-1">
+            {tasks.map((task) => {
+              // backend start dimulai dari 1
+              const left = ((task.start - 1) / totalDays) * 100;
+              const width = (task.length / totalDays) * 100;
+              const status = statusStyles[task.status] ?? statusStyles.todo;
+              const endDay = task.start + task.length - 1;
+
+              return (
+                <div
+                  key={task.id}
+                  className="group grid items-center rounded-control transition-colors hover:bg-surface-muted/50"
+                  style={{
+                    gridTemplateColumns: `${TASK_COLUMN_WIDTH}px ${totalDays * dayWidth}px`,
+                  }}
+                >
+                  <div
+                    className="sticky left-0 z-10 truncate border-r border-line bg-surface px-3 py-2 text-xs font-medium text-fg group-hover:bg-surface-muted/50"
+                    title={task.name}
+                  >
+                    {task.name}
+                  </div>
+
+                  <div className="relative m-1 h-7 overflow-hidden rounded-[6px] border border-line bg-surface-muted/40">
+                    <div
+                      className="absolute inset-0 grid"
+                      style={{
+                        gridTemplateColumns: `repeat(${totalDays}, ${dayWidth}px)`,
+                      }}
+                      aria-hidden="true"
+                    >
+                      {days.map((day) => (
+                        <div key={day} className="border-l border-line/70 first:border-l-0" />
+                      ))}
+                    </div>
+
+                    <div
+                      role="img"
+                      className={`absolute top-0 flex h-full items-center gap-1.5 rounded-[5px] border px-2 text-[10px] font-medium ${status.bar}`}
+                      style={{
+                        left: `${Math.max(left, 0)}%`,
+                        width: `${Math.max(width, 3)}%`,
+                      }}
+                      title={`${task.name} — ${status.label} · hari ${task.start}–${endDay}`}
+                      aria-label={`${task.name}, ${status.label}, hari ${task.start} sampai ${endDay}`}
+                    >
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} aria-hidden="true" />
+                      <span className="truncate">
+                        {task.name.length > 20
+                          ? `${task.name.slice(0, 20)}…`
+                          : task.name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <p className="border-t border-line px-5 py-2 text-[10px] text-fg-subtle lg:hidden">
+        Geser ke samping untuk melihat seluruh timeline.
+      </p>
     </div>
   );
 }

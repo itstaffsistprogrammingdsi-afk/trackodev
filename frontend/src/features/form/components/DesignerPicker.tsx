@@ -1,4 +1,6 @@
 import {
+  useEffect,
+  useRef,
   useState,
 } from "react"
 
@@ -36,15 +38,32 @@ export default function DesignerPicker({
   const [loading, setLoading] =
     useState(false)
 
+  const requestIdRef = useRef(0)
+  const debounceRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current !== null) {
+        window.clearTimeout(debounceRef.current)
+      }
+    }
+  }, [])
+
   // ============================================
   // SEARCH
   // ============================================
 
-  const handleChange = async (
+  const handleChange = (
     val: string
   ) => {
 
     setQuery(val)
+    const requestId = ++requestIdRef.current
+
+    if (debounceRef.current !== null) {
+      window.clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
 
     if (!divisionId) {
       return
@@ -57,34 +76,37 @@ export default function DesignerPicker({
 
       setUsers([])
       setShow(false)
-
+      setLoading(false)
       return
     }
 
-    try {
+    setLoading(true)
 
-      setLoading(true)
+    debounceRef.current = window.setTimeout(async () => {
+      try {
+        const data =
+          await searchDesigners(
+            keyword,
+            divisionId
+          )
 
-      const data =
-        await searchDesigners(
-          keyword,
-          divisionId
-        )
+        if (requestId === requestIdRef.current) {
+          setUsers(data)
+          setShow(true)
+        }
+      } catch (err) {
+        console.error(err)
 
-      setUsers(data)
-      setShow(true)
-
-    } catch (err) {
-
-      console.error(err)
-
-      setUsers([])
-      setShow(false)
-
-    } finally {
-
-      setLoading(false)
-    }
+        if (requestId === requestIdRef.current) {
+          setUsers([])
+          setShow(false)
+        }
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false)
+        }
+      }
+    }, 300)
   }
 
   // ============================================
@@ -97,9 +119,15 @@ export default function DesignerPicker({
 
     onSelect(user)
 
+    if (debounceRef.current !== null) {
+      window.clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+
     setQuery(user.name)
 
     setShow(false)
+    setLoading(false)
   }
 
   return (

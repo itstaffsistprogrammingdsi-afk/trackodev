@@ -53,7 +53,7 @@ export default function AvatarUploader({
 
   return (
     <div className="flex items-center gap-5">
-      <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border border-gray-200 dark:border-gray-800">
+      <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border border-line bg-surface-muted">
         <img
           src={displaySrc}
           alt={name || "Avatar"}
@@ -62,7 +62,7 @@ export default function AvatarUploader({
 
         {isPending && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent motion-reduce:animate-none" />
           </div>
         )}
       </div>
@@ -72,16 +72,20 @@ export default function AvatarUploader({
           type="button"
           onClick={handlePick}
           disabled={isPending}
-          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="h-9 rounded-control border border-line bg-surface px-3.5 text-xs font-medium text-fg transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? "Mengunggah..." : "Ganti Foto"}
+          {isPending ? "Mengunggah..." : "Ganti foto"}
         </button>
 
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-2 text-xs text-fg-muted">
           JPG, PNG, atau GIF. Maks {MAX_SIZE_MB}MB.
         </p>
 
-        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" aria-live="polite" className="mt-1 text-xs font-medium text-danger">
+            {error}
+          </p>
+        )}
 
         <input
           ref={inputRef}

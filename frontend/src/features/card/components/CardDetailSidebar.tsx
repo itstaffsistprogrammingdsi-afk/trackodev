@@ -159,16 +159,16 @@ export default function CardDetailSidebar({
       {/* NAVIGATION / ADD TO CARD */}
       {/* ========================================= */}
       <div>
-        <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Card tools
+        <h3 className="mb-2 px-2.5 text-[11px] font-medium text-fg-subtle">
+          Alat card
         </h3>
 
-        <div className="space-y-2.5">
+        <div className="space-y-1">
           {/* MEMBERS */}
           <div>
             <SidebarButton
-              icon={<Users size={16} />}
-              label="Members"
+              icon={<Users size={15} />}
+              label="Anggota"
               onClick={toggleMembers}
               expanded={showMembers}
             />
@@ -191,7 +191,7 @@ export default function CardDetailSidebar({
           {/* BRANDS */}
           {can('brand.view') && <div>
             <SidebarButton
-              icon={<Layers size={16} />}
+              icon={<Layers size={15} />}
               label="Brand"
               onClick={toggleBrands}
               expanded={showBrands}
@@ -215,8 +215,8 @@ export default function CardDetailSidebar({
           {/* LABELS */}
           {can('label.view') && <div>
             <SidebarButton
-              icon={<Tag size={16} />}
-              label="Labels"
+              icon={<Tag size={15} />}
+              label="Label"
               onClick={toggleLabels}
               expanded={showLabels}
               badge={
@@ -237,44 +237,38 @@ export default function CardDetailSidebar({
           {/* DUE DATE */}
           <div>
             <SidebarButton
-              icon={<Clock3 size={16} />}
-              label="Due Date"
+              icon={<Clock3 size={15} />}
+              label="Tenggat waktu"
               onClick={toggleDueDate}
               expanded={showDueDate}
               badge={
                 dueStatus !== "none" ? (
                   <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 font-semibold ${dueDateBadgeClasses[dueStatus]}`}
+                    className={`inline-flex rounded-full border px-2 py-0.5 font-medium ${dueDateBadgeClasses[dueStatus]}`}
                   >
                     {dueStatus === "overdue"
-                      ? "Overdue"
+                      ? "Terlambat"
                       : dueStatus === "warning"
-                        ? "Due soon"
-                        : "On track"}
+                        ? "Segera"
+                        : "Aman"}
                   </span>
                 ) : undefined
               }
             />
             {showDueDate && (
-              <div className="mt-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-800/40 animate-in fade-in duration-200">
-                <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Select Due Date
+              <div className="mt-2 rounded-card border border-line bg-surface-muted/50 p-3.5 animate-in fade-in duration-150">
+                <label className="mb-1.5 block text-[11px] font-medium text-fg-subtle">
+                  Pilih tenggat waktu
                 </label>
                 <input
                   type="datetime-local"
                   value={dueDate}
                   disabled={!canEditDueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="
-                    h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium 
-                    text-slate-800 outline-none transition-all duration-200 
-                    focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 
-                    disabled:cursor-not-allowed disabled:opacity-70
-                    dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400
-                  "
+                  className="h-9 w-full rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg outline-none transition-colors focus:border-accent/40 focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-70"
                 />
                 {!canEditDueDate ? (
-                  <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                  <p className="mt-2 text-[11px] leading-4 text-fg-muted">
                     {dueDatePermissionMessage}
                   </p>
                 ) : null}
@@ -285,10 +279,10 @@ export default function CardDetailSidebar({
           {/* BRIEF ATTACHMENTS */}
           <div>
             <SidebarButton
-              icon={<Paperclip size={16} />}
-              label="Brief Attachment"
+              icon={<Paperclip size={15} />}
+              label="Lampiran brief"
               onClick={toggleBrief}
-              badge={`${briefSummary.files} Files • ${briefSummary.links} Links`}
+              badge={`${briefSummary.files} file · ${briefSummary.links} tautan`}
               expanded={showBrief}
             />
             {showBrief && (
@@ -312,10 +306,10 @@ export default function CardDetailSidebar({
           {/* RESULT ATTACHMENTS */}
           <div>
             <SidebarButton
-              icon={<Paperclip size={16} />}
-              label="Result Attachment"
+              icon={<Paperclip size={15} />}
+              label="Lampiran hasil"
               onClick={toggleResult}
-              badge={`${resultSummary.files} Files • ${resultSummary.links} Links`}
+              badge={`${resultSummary.files} file · ${resultSummary.links} tautan`}
               expanded={showResult}
             />
             {showResult && (
@@ -344,9 +338,9 @@ export default function CardDetailSidebar({
       {/* ========================================= */}
       {/* ACTIONS */}
       {/* ========================================= */}
-      <div className="border-t border-slate-200/80 pt-4 dark:border-slate-800">
-        <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Actions
+      <div className="border-t border-line pt-4">
+        <h3 className="mb-2 px-2.5 text-[11px] font-medium text-fg-subtle">
+          Tindakan
         </h3>
 
         <div className="space-y-2">
@@ -356,24 +350,14 @@ export default function CardDetailSidebar({
             disabled={deleteDisabled}
             title={
               deleteDisabled
-                ? "Card overdue tidak dapat dihapus"
+                ? "Card yang sudah melewati deadline tidak dapat dihapus"
                 : "Hapus card"
             }
-            className="
-              flex h-10 w-full items-center justify-center gap-2 rounded-xl 
-              border border-rose-200/80 bg-rose-50/80 px-4 text-xs font-semibold 
-              text-rose-600 transition-all duration-200 hover:bg-rose-100 
-              hover:text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 
-              dark:text-rose-400 dark:hover:bg-rose-900/50 dark:hover:text-rose-300
-              disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100
-              disabled:text-slate-400 disabled:hover:bg-slate-100
-              dark:disabled:border-slate-700 dark:disabled:bg-slate-800
-              dark:disabled:text-slate-500 dark:disabled:hover:bg-slate-800
-            "
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-control border border-danger/20 bg-danger-soft px-4 text-xs font-medium text-danger transition-colors hover:bg-danger-soft/70 disabled:cursor-not-allowed disabled:border-line disabled:bg-surface-muted disabled:text-fg-subtle"
           >
             <Trash2 size={15} />
             <span>
-              {deleteDisabled ? "Cannot Delete Overdue Card" : "Delete Card"}
+              {deleteDisabled ? "Tidak dapat dihapus" : "Hapus card"}
             </span>
           </button>
         </div>

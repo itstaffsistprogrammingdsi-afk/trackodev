@@ -14,6 +14,7 @@ import CampaignGantt from "../components/CampaignGantt";
 import OverdueTasks from "../components/OverdueTasks";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function CampaignDetailPage() {
   const { can } = useAuth();
@@ -41,7 +42,24 @@ export default function CampaignDetailPage() {
   }, [campaignId, navigate, realtimeRevision]);
 
   if (!campaign) {
-    return <div className="p-6">Loading...</div>;
+    return (
+      <div className="mx-auto w-full max-w-[1600px] space-y-6" role="status" aria-busy="true">
+        <span className="sr-only">Memuat detail campaign</span>
+        <div className="space-y-3 rounded-panel border border-line bg-surface p-5 sm:p-6 lg:p-8">
+          <Skeleton className="h-8 w-72 max-w-full" />
+          <Skeleton className="h-4 w-full max-w-2xl" />
+          <Skeleton className="h-4 w-2/3 max-w-xl" />
+          <div className="pt-4">
+            <Skeleton className="h-10 w-64 max-w-full" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((item) => (
+            <Skeleton key={item} className="h-24 rounded-panel" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   /* =========================================
@@ -75,40 +93,40 @@ export default function CampaignDetailPage() {
           HERO
       ========================================= */}
 
-      <div className="bg-white border rounded-3xl p-5 sm:p-6 lg:p-8 shadow-sm">
-        <div className="flex flex-col xl:flex-row gap-6 xl:items-start xl:justify-between">
+      <div className="rounded-panel border border-line bg-surface p-5 sm:p-6 lg:p-8">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           {/* LEFT */}
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold break-words">
+            <h1 className="break-words text-2xl font-semibold tracking-[-0.02em] text-fg sm:text-[28px]">
               {campaign.name}
             </h1>
 
-            <p className="mt-3 text-sm sm:text-base text-gray-500 max-w-4xl">
-              {campaign.description || "No description"}
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-fg-muted">
+              {campaign.description || "Belum ada deskripsi campaign."}
             </p>
 
             {/* PERIOD */}
-            <div className="flex items-start gap-3 mt-6">
-              <div className="p-2 rounded-xl bg-blue-50 shrink-0">
-                <Calendar size={18} className="text-blue-600" />
+            <div className="mt-5 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-surface-muted text-fg-muted">
+                <Calendar size={16} aria-hidden="true" />
               </div>
 
               <div>
-                <div className="text-xs uppercase tracking-wider text-gray-400">
-                  Periode Campaign
+                <div className="text-[11px] font-medium text-fg-subtle">
+                  Periode campaign
                 </div>
 
-                <div className="font-semibold text-gray-900 mt-1">
+                <div className="mt-0.5 text-sm font-medium text-fg">
                   {formatDate(startDate)}
 
-                  {endDate && <> - {formatDate(endDate)}</>}
+                  {endDate && <> – {formatDate(endDate)}</>}
                 </div>
 
                 {durationDays && (
-                  <div className="text-sm text-gray-500 mt-1">
-                    Durasi:
-                    <span className="font-medium text-gray-700 ml-1">
-                      {durationDays} Hari
+                  <div className="mt-0.5 text-xs text-fg-muted">
+                    Durasi
+                    <span className="ml-1 font-medium text-fg">
+                      {durationDays} hari
                     </span>
                   </div>
                 )}

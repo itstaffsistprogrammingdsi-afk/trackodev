@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { Link, useParams } from "react-router";
 
 import api from "@/lib/axios";
@@ -29,6 +30,7 @@ import type {
   OtherValues,
   FileValues,
 } from "../types";
+import { getFormThemeColor, readableTextColor } from "../utils/theme";
 
 function PublicFormTopBar() {
   return (
@@ -39,7 +41,7 @@ function PublicFormTopBar() {
       <div className="mx-auto flex w-full max-w-3xl px-3 sm:px-4">
         <Link
           to="/landing"
-          className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-[#673ab7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#673ab7] focus-visible:ring-offset-2"
+          className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-[var(--form-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--form-accent)] focus-visible:ring-offset-2"
         >
           <ArrowLeft aria-hidden="true" className="h-5 w-5 shrink-0" />
           <span>Kembali ke landing page</span>
@@ -613,7 +615,7 @@ export default function PublicFormPage() {
           autoComplete={field.type === "email" ? "email" : "off"}
           value={String(values[field.name] || "")}
           onChange={(e) => handleChange(field.name, e.target.value)}
-          className={`h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none transition focus:border-[#673ab7] focus:ring-0 ${highlightClass}`}
+          className={`h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0 ${highlightClass}`}
           placeholder="Jawaban Anda"
         />
       );
@@ -627,7 +629,7 @@ export default function PublicFormPage() {
           rows={isNoteField(field) ? 3 : 4}
           value={String(values[field.name] || "")}
           onChange={(e) => handleChange(field.name, e.target.value)}
-          className={`w-full resize-none border-0 border-b border-[#dadce0] bg-transparent px-0 py-2 text-sm outline-none transition focus:border-[#673ab7] focus:ring-0 ${highlightClass}`}
+          className={`w-full resize-none border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 py-2 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0 ${highlightClass}`}
           placeholder={isNoteField(field) ? "Tulis saran atau catatan di sini..." : "Jawaban Anda"}
         />
       );
@@ -656,7 +658,7 @@ export default function PublicFormPage() {
 
             handleChange(field.name, rawValue === "" ? "" : Number(rawValue));
           }}
-          className={`h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none transition focus:border-[#673ab7] focus:ring-0 ${highlightClass}`}
+          className={`h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0 ${highlightClass}`}
           placeholder="Jawaban Anda"
         />
       );
@@ -690,7 +692,7 @@ export default function PublicFormPage() {
             wrapperClassName="w-full"
             popperPlacement="bottom-start"
             showPopperArrow={false}
-            className="h-11 w-full border-0 border-b border-[#dadce0] bg-transparent pl-7 text-sm outline-none transition focus:border-[#673ab7] focus:ring-0"
+            className="h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent pl-7 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0"
           />
         </div>
       );
@@ -700,7 +702,7 @@ export default function PublicFormPage() {
     if (field.type === "file") {
       return (
         <div className={`space-y-3 ${highlightClass}`}>
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#dadce0] bg-slate-50 px-4 py-8 text-center transition hover:bg-slate-100">
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--tracko-line)] bg-slate-50 px-4 py-8 text-center transition hover:bg-slate-100">
             <Upload className="mb-2 h-6 w-6 text-slate-500" />
 
             <span className="text-sm font-medium text-slate-700">Upload file</span>
@@ -775,7 +777,7 @@ export default function PublicFormPage() {
                 onChange={(e) =>
                   setOtherValues((prev) => ({ ...prev, [field.name]: e.target.value }))
                 }
-                className="h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none focus:border-[#673ab7]"
+                className="h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none focus:border-[var(--form-accent)]"
                 placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
               />
             )}
@@ -813,7 +815,7 @@ export default function PublicFormPage() {
               onChange={(e) =>
                 setOtherValues((prev) => ({ ...prev, [field.name]: e.target.value }))
               }
-              className="h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none focus:border-[#673ab7]"
+              className="h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none focus:border-[var(--form-accent)]"
               placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
             />
           )}
@@ -829,7 +831,7 @@ export default function PublicFormPage() {
             id={`field-${field.id}`}
             value={String(values[field.name] || "")}
             onChange={(e) => handleChange(field.name, e.target.value)}
-            className="h-11 w-full appearance-none border-0 border-b border-[#dadce0] bg-transparent px-0 pr-8 text-sm outline-none transition focus:border-[#673ab7] focus:ring-0"
+            className="h-11 w-full appearance-none border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 pr-8 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0"
           >
             <option value="">Pilih opsi</option>
 
@@ -853,7 +855,7 @@ export default function PublicFormPage() {
               onChange={(e) =>
                 setOtherValues((prev) => ({ ...prev, [field.name]: e.target.value }))
               }
-              className="mt-3 h-11 w-full border-0 border-b border-[#dadce0] bg-transparent px-0 text-sm outline-none focus:border-[#673ab7]"
+              className="mt-3 h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none focus:border-[var(--form-accent)]"
               placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
             />
           )}
@@ -867,13 +869,20 @@ export default function PublicFormPage() {
   // =========================
   // LOADING
   // =========================
+  const themeColor = getFormThemeColor(form?.theme_color);
+  const themeStyle = {
+    "--form-accent": themeColor,
+    "--form-accent-fg": readableTextColor(themeColor),
+    "--form-accent-soft": `color-mix(in srgb, ${themeColor} 12%, white)`,
+  } as CSSProperties;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-canvas" style={themeStyle}>
         <PublicFormTopBar />
         <div className="flex min-h-[calc(100vh-3rem)] items-center justify-center px-4">
-          <div className="flex items-center gap-3 text-slate-600">
-            <Loader2 className="h-5 w-5 animate-spin" />
+          <div className="flex items-center gap-3 text-fg-muted">
+            <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />
             <span className="text-sm">Memuat formulir...</span>
           </div>
         </div>
@@ -886,10 +895,10 @@ export default function PublicFormPage() {
   // =========================
   if (!form) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-canvas" style={themeStyle}>
         <PublicFormTopBar />
         <div className="flex min-h-[calc(100vh-3rem)] items-center justify-center px-4 py-8">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="w-full max-w-md rounded-panel border border-line bg-surface p-8 text-center shadow-e2">
             <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-500" />
 
             <h2 className="text-xl font-semibold text-slate-900">Formulir tidak tersedia</h2>
@@ -902,7 +911,7 @@ export default function PublicFormPage() {
               <button
                 type="button"
                 onClick={() => void fetchForm()}
-                className="mt-5 min-h-11 rounded-lg bg-[#673ab7] px-5 py-2 text-sm font-medium text-white"
+                className="mt-5 min-h-11 rounded-lg bg-[var(--form-accent)] px-5 py-2 text-sm font-medium text-[var(--form-accent-fg)]"
               >
                 Coba lagi
               </button>
@@ -922,14 +931,14 @@ export default function PublicFormPage() {
       return (
         <div
           key={field.id}
-          className="rounded-2xl border border-[#d8c8f1] bg-[#f7f2fc] px-5 py-5 shadow-sm sm:px-6"
+          className="rounded-2xl border border-[var(--tracko-line)] bg-[var(--tracko-surface-muted)] px-5 py-5 shadow-sm sm:px-6"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#673ab7]">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--form-accent)]">
                 Section pengujian
               </p>
-              <h2 className="mt-1 text-lg font-semibold text-[#3f2a5f]">{field.label}</h2>
+              <h2 className="mt-1 text-lg font-semibold text-fg">{field.label}</h2>
               {field.description ? (
                 <p className="mt-1 text-sm text-slate-600">{field.description}</p>
               ) : null}
@@ -952,14 +961,14 @@ export default function PublicFormPage() {
             <button
               type="button"
               onClick={fillSectionWithPass}
-              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#d8c8f1] bg-white px-3 py-1.5 text-xs font-semibold text-[#5e35b1] transition hover:bg-[#efe7f9]"
+              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--tracko-line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--form-accent)] transition hover:bg-[var(--tracko-surface-muted)]"
             >
               <Check size={14} /> Tandai semua PASS (yang belum dijawab)
             </button>
           ) : null}
 
           {showNote && note ? (
-            <div className="mt-4 rounded-xl border border-[#e3d6f5] bg-white px-4 py-3">
+            <div className="mt-4 rounded-xl border border-[var(--tracko-line)] bg-white px-4 py-3">
               <label htmlFor={`field-${note.id}`} className="text-xs font-semibold text-slate-600">
                 {note.label}
               </label>
@@ -978,12 +987,12 @@ export default function PublicFormPage() {
       <div
         key={field.id}
         className={`rounded-2xl border bg-white px-5 py-6 shadow-sm transition sm:px-6 ${
-          isHighlighted ? "border-rose-300 ring-2 ring-rose-200" : "border-[#dadce0] hover:shadow-md"
+          isHighlighted ? "border-rose-300 ring-2 ring-rose-200" : "border-[var(--tracko-line)] hover:shadow-md"
         }`}
       >
         <label htmlFor={`field-${field.id}`} className="mb-2 block">
           <div className="flex flex-wrap items-center gap-1">
-            <span className="text-[15px] font-normal text-[#202124]">{field.label}</span>
+            <span className="text-[15px] font-normal text-[var(--tracko-fg)]">{field.label}</span>
             {field.is_required && <span className="text-red-500">*</span>}
           </div>
         </label>
@@ -1018,11 +1027,11 @@ export default function PublicFormPage() {
   // RENDER
   // =========================
   return (
-    <div className="min-h-screen bg-[#f0ebf8]">
+    <div className="min-h-screen bg-[var(--tracko-canvas)]" style={themeStyle}>
       <PublicFormTopBar />
       <div className="mx-auto w-full max-w-3xl px-3 py-6 sm:px-4 sm:py-10">
         {/* HEADER IMAGE */}
-        <div className="overflow-hidden rounded-t-3xl border border-b-0 border-[#dadce0] bg-white shadow-sm">
+        <div className="overflow-hidden rounded-t-3xl border border-b-0 border-[var(--tracko-line)] bg-white shadow-sm">
           {form.header_image ? (
             <img
               src={resolveStorageUrl(form.header_image)}
@@ -1030,20 +1039,20 @@ export default function PublicFormPage() {
               className="max-h-[320px] w-full object-cover sm:max-h-[380px]"
             />
           ) : (
-            <div className="h-24 w-full bg-[#673ab7]" />
+            <div className="h-24 w-full bg-[var(--form-accent)]" />
           )}
         </div>
 
         {/* FORM CARD */}
-        <div className="rounded-b-3xl border border-[#dadce0] bg-white shadow-sm">
+        <div className="rounded-b-3xl border border-[var(--tracko-line)] bg-white shadow-sm">
           {/* TITLE */}
-          <div className="border-t-[10px] border-[#673ab7] px-5 py-6 sm:px-8">
+          <div className="border-t-[10px] border-[var(--form-accent)] px-5 py-6 sm:px-8">
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <FileText className="h-4 w-4" />
               Public Form
             </div>
 
-            <h1 className="mt-3 break-words text-2xl font-normal text-[#202124] sm:text-3xl">
+            <h1 className="mt-3 break-words text-2xl font-normal text-[var(--tracko-fg)] sm:text-3xl">
               {form.name}
             </h1>
 
@@ -1056,14 +1065,14 @@ export default function PublicFormPage() {
 
           {/* NOTE */}
           {form.show_note && form.note_content && (
-            <div className="mx-5 mb-2 rounded-2xl border border-[#f6c26b] bg-[#fef7e0] px-4 py-4 sm:mx-8">
+            <div className="mx-5 mb-2 rounded-2xl border border-warning/25 bg-warning-soft px-4 py-4 sm:mx-8">
               <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#e37400]" />
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
 
                 <div>
-                  <h3 className="text-sm font-medium text-[#5f4339]">Informasi</h3>
+                  <h3 className="text-sm font-medium text-warning">Informasi</h3>
 
-                  <p className="mt-1 text-sm leading-6 text-[#5f4339]">{form.note_content}</p>
+                  <p className="mt-1 text-sm leading-6 text-warning">{form.note_content}</p>
                 </div>
               </div>
             </div>
@@ -1124,7 +1133,7 @@ export default function PublicFormPage() {
                           aria-current={isActive ? "step" : undefined}
                           className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${
                             isActive
-                              ? "bg-[#673ab7] text-white shadow-sm"
+                              ? "bg-[var(--form-accent)] text-[var(--form-accent-fg)] shadow-sm"
                               : complete
                                 ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -1155,7 +1164,7 @@ export default function PublicFormPage() {
                   aria-hidden="true"
                 >
                   <div
-                    className="h-full rounded-full bg-[#673ab7] transition-all duration-300"
+                    className="h-full rounded-full bg-[var(--form-accent)] transition-all duration-300"
                     style={{ width: `${completionPercent}%` }}
                   />
                 </div>
@@ -1174,7 +1183,7 @@ export default function PublicFormPage() {
                   .map((field) => renderFieldCard(field))}
 
                 {/* SUBMIT (sticky di bawah) */}
-                <div className="sticky bottom-0 z-30 -mx-3 mt-2 flex flex-wrap items-center gap-3 border-t border-[#dadce0] bg-white/95 px-3 py-3 backdrop-blur sm:-mx-4 sm:px-4">
+                <div className="sticky bottom-0 z-30 -mx-3 mt-2 flex flex-wrap items-center gap-3 border-t border-[var(--tracko-line)] bg-white/95 px-3 py-3 backdrop-blur sm:-mx-4 sm:px-4">
                   {sectionFields.length > 0 && activeSectionIndex > 0 && (
                     <button
                       type="button"
@@ -1206,7 +1215,7 @@ export default function PublicFormPage() {
                       void handleSubmit();
                     }}
                     disabled={submitting}
-                    className="flex h-11 items-center justify-center rounded-lg bg-[#673ab7] px-6 text-sm font-medium text-white transition hover:bg-[#5e35b1] disabled:cursor-not-allowed disabled:opacity-70"
+                    className="flex h-11 items-center justify-center rounded-lg bg-[var(--form-accent)] px-6 text-sm font-medium text-[var(--form-accent-fg)] transition hover:bg-[var(--form-accent)] disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {isLastSection && submitting && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1227,3 +1236,6 @@ export default function PublicFormPage() {
     </div>
   );
 }
+
+
+

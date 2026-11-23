@@ -55,8 +55,10 @@ export const isCardOverdue = (
 ): boolean => getDueDateStatus(value, options) === "overdue";
 
 export const dueDateBadgeClasses: Record<DueDateStatus, string> = {
-  none: "bg-slate-100 text-slate-500",
-  safe: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  warning: "bg-orange-50 text-orange-700 border-orange-200",
-  overdue: "bg-rose-50 text-rose-700 border-rose-200",
+  // Deadline yang masih jauh bukan "sukses"; biarkan netral agar warna
+  // hijau/kuning/merah hanya muncul saat benar-benar perlu perhatian.
+  none: "border-line bg-surface-muted text-fg-muted",
+  safe: "border-line bg-surface-muted text-fg-muted",
+  warning: "border-warning/25 bg-warning-soft text-warning",
+  overdue: "border-danger/25 bg-danger-soft text-danger",
 };

@@ -31,6 +31,7 @@ class FormController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'header_image' => 'nullable|image|max:2048',
+            'theme_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'show_note' => 'nullable|boolean',
             'note_content' => 'nullable|string|max:10000',
         ]);
@@ -53,6 +54,7 @@ class FormController extends Controller
             'slug' => Str::slug($validated['name'].'-'.uniqid()),
             'description' => $validated['description'] ?? null,
             'header_image' => $imagePath,
+            'theme_color' => $validated['theme_color'] ?? null,
             'show_note' => $request->boolean('show_note'),
             'note_content' => $validated['note_content'] ?? null,
             'created_by' => auth()->id(),
@@ -96,6 +98,7 @@ class FormController extends Controller
             'note_content' => 'sometimes|nullable|string|max:10000',
             'is_active' => 'sometimes|boolean',
             'header_image' => 'sometimes|nullable|image|max:2048',
+            'theme_color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
         if (array_key_exists('workspace_id', $data) && $data['workspace_id'] !== null) {

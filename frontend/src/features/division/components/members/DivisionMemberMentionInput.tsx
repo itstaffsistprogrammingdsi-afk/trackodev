@@ -50,6 +50,9 @@ export default function DivisionMemberMentionInput({
   const wrapperRef =
     useRef<HTMLDivElement>(null);
 
+  const requestIdRef =
+    useRef(0);
+
   useEffect(() => {
     const handleClickOutside = (
       event: MouseEvent
@@ -96,6 +99,7 @@ export default function DivisionMemberMentionInput({
   }, []);
 
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
     const timer = setTimeout(
       async () => {
         const keyword =
@@ -117,6 +121,8 @@ export default function DivisionMemberMentionInput({
               keyword
             );
 
+          if (requestId !== requestIdRef.current) return;
+
           const candidates = result ?? [];
           const filteredCandidates = role === "admin"
             ? candidates.filter((user) =>
@@ -129,11 +135,14 @@ export default function DivisionMemberMentionInput({
           setUsers(filteredCandidates);
           setShow(true);
         } catch {
+          if (requestId !== requestIdRef.current) return;
           setError(
-            "Failed to search users."
+            "Gagal mencari user. Coba lagi."
           );
         } finally {
-          setLoading(false);
+          if (requestId === requestIdRef.current) {
+            setLoading(false);
+          }
         }
       },
       400

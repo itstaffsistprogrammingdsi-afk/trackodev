@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 
 import CardDetailModal from "@/features/card/components/CardDetailModal";
+import EmptyState from "@/components/ui/EmptyState";
 import CardItem from "@/features/card/components/CardItem";
 import NativeCardItem from "@/features/card/components/NativeCardItem";
 import {
@@ -573,39 +574,48 @@ export default function MyAssignedTasks() {
   ).length;
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <header className="flex flex-col gap-3 border-b border-slate-200 px-5 py-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <section className="overflow-hidden rounded-panel border border-line bg-surface">
+      <header className="flex flex-col gap-3 border-b border-line px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
           <div className="flex items-center gap-2">
-            <Inbox className="text-indigo-600 dark:text-indigo-300" size={20} />
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Tugas Saya</h2>
+            <Inbox className="text-fg-subtle" size={16} aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-fg">Tugas saya</h2>
           </div>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-xs leading-5 text-fg-muted">
             Semua card yang ditugaskan langsung kepada Anda, termasuk dari divisi lain. Card tanpa pemilik di campaign Anda juga tampil agar bisa diambil.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 self-start rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-200 sm:self-auto">
-          {isFetching && !isLoading ? <Loader2 className="animate-spin" size={14} /> : null}
+        <div className="inline-flex items-center gap-2 self-start rounded-control bg-surface-muted px-2.5 py-1.5 text-[11px] font-medium text-fg-muted sm:self-auto">
+          {isFetching && !isLoading ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" size={13} aria-hidden="true" />
+          ) : null}
           {totalOpen} tugas aktif
         </div>
       </header>
 
-      <div className="border-b border-indigo-100 bg-indigo-50/50 px-5 py-3 text-xs leading-5 text-indigo-800 dark:border-indigo-950/70 dark:bg-indigo-950/20 dark:text-indigo-200 sm:px-6">
-        Tampilan ini adalah pintasan ke card asli, bukan salinan. Saat status dipindahkan di sini, board pemilik campaign juga langsung ikut berubah. Kartu lintas divisi digabung menjadi satu grup (asli + salinan) — tekan grupnya untuk melihat semua.
+      <div className="border-b border-line bg-surface-muted/50 px-5 py-3 text-[11px] leading-5 text-fg-muted sm:px-6">
+        Tampilan ini adalah pintasan ke card asli, bukan salinan. Saat status dipindahkan di sini, board pemilik campaign juga langsung ikut berubah. Kartu lintas divisi digabung menjadi satu grup (asli + salinan); tekan grupnya untuk melihat semua.
       </div>
 
       {isLoading ? (
-        <div className="flex h-52 items-center justify-center gap-2 text-sm text-slate-500">
-          <Loader2 className="animate-spin" size={18} /> Memuat tugas Anda...
+        <div className="space-y-3 p-5 sm:p-6" role="status" aria-busy="true">
+          <span className="sr-only">Memuat tugas Anda</span>
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="flex gap-3 rounded-card border border-line p-4">
+              <div className="h-9 w-9 animate-pulse rounded-control bg-surface-muted motion-reduce:animate-none" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-2/3 animate-pulse rounded bg-surface-muted motion-reduce:animate-none" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-surface-muted motion-reduce:animate-none" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : cards.length === 0 ? (
-        <div className="flex flex-col items-center px-6 py-14 text-center">
-          <Inbox size={42} className="text-slate-300 dark:text-slate-700" />
-          <h3 className="mt-4 font-semibold text-slate-800 dark:text-slate-100">Belum ada tugas yang ditugaskan</h3>
-          <p className="mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
-            Saat Anda ditambahkan sebagai member card, tugas tersebut akan langsung muncul di sini.
-          </p>
-        </div>
+        <EmptyState
+          icon={Inbox}
+          title="Belum ada tugas yang ditugaskan"
+          description="Saat Anda ditambahkan sebagai member card, tugas tersebut akan langsung muncul di sini."
+        />
       ) : (
         <DndContext
           sensors={sensors}
@@ -630,25 +640,24 @@ export default function MyAssignedTasks() {
 
           <DragOverlay
             dropAnimation={{
-              duration: 240,
-              easing: "cubic-bezier(0.18, 0.67, 0.6, 1.12)",
+              duration: 200,
+              easing: "cubic-bezier(0.22, 1, 0.36, 1)",
             }}
           >
             {activeDragCard ? (
-              <div className="w-[300px] rotate-2 scale-[1.03] cursor-grabbing rounded-2xl border border-indigo-400/40 bg-white p-4 shadow-2xl ring-2 ring-indigo-500/20 dark:bg-slate-900">
+              <div className="w-[300px] cursor-grabbing rounded-card border border-accent/30 bg-surface p-4 shadow-e3 ring-2 ring-accent/15">
                 <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0 flex-1 break-words text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <span className="min-w-0 flex-1 break-words text-sm font-medium text-fg">
                     {activeDragCard.title}
                   </span>
                   {activeDragCard.priority ? (
-                    <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                    <span className="shrink-0 rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-medium capitalize text-warning">
                       {activeDragCard.priority}
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-300">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Memindahkan tugas...</span>
+                <div className="mt-1.5 text-[11px] font-medium text-accent">
+                  Memindahkan tugas
                 </div>
               </div>
             ) : null}

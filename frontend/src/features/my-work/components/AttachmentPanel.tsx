@@ -60,6 +60,14 @@ export default function AttachmentPanel() {
     if (monthlyRangeInvalid) {
       setError(null);
       setLoading(false);
+      setAttachments([]);
+      setSummary({
+        uploaded_files: 0,
+        uploaded_links: 0,
+        total_storage_used_mb: 0,
+      });
+      setPeriodLabel(null);
+      setExpanded(false);
       return;
     }
 

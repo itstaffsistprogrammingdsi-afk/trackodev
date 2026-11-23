@@ -276,34 +276,34 @@ export default function DuplicateCardModal({ card, isOpen, onClose, onCreated }:
 
   return (
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-overlay p-4"
       onClick={() => { if (!saving) onClose(); }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="duplicate-card-title"
-        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-modal border border-line bg-surface shadow-e3"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
+        <div className="flex items-start justify-between border-b border-line px-6 py-5">
           <div>
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-              <Copy size={18} />
-              <span className="text-xs font-bold uppercase tracking-wider">Template card</span>
+            <div className="flex items-center gap-1.5 text-accent">
+              <Copy size={15} aria-hidden="true" />
+              <span className="text-[11px] font-medium">Template card</span>
             </div>
-            <h2 id="duplicate-card-title" className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
-              Duplicate Card
+            <h2 id="duplicate-card-title" className="mt-1 text-xl font-semibold tracking-[-0.02em] text-fg">
+              Duplikasi card
             </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-fg-muted">
               Label, brand, dan checklist akan ikut disalin. Assignee dan due date sengaja dikosongkan.
             </p>
-            <p className="mt-2 text-xs text-blue-600 dark:text-blue-300">
-              Pilihan label dan brand tersimpan otomatis di draft. Klik “Simpan Card” untuk membuat card baru.
+            <p className="mt-2 text-xs text-accent">
+              Pilihan label dan brand tersimpan otomatis di draft. Klik “Simpan card” untuk membuat card baru.
             </p>
           </div>
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-200" aria-label="Tutup duplicate card">
-            <X size={20} />
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-control p-2 text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50" aria-label="Tutup duplikasi card">
+            <X size={18} />
           </button>
         </div>
 

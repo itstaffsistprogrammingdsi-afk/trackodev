@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Link, useLocation } from "react-router";
-import { ChevronRight, Menu } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { ArrowLeft, ChevronRight, Menu } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import NotificationBell from "../components/header/NotificationBell";
@@ -26,27 +26,47 @@ type BreadcrumbItem = {
 /* -------------------------------------------------------------------------- */
 
 const breadcrumbRoutes: BreadcrumbRoute[] = [
-  { pattern: "/divisions", label: "Divisions" },
+  { pattern: "/divisions", label: "Divisi" },
   { pattern: "/divisions/:id", label: "Workspace" },
-  { pattern: "/divisions/:id/detail", label: "Division Detail" },
-  { pattern: "/workspaces/:workspaceId/campaigns", label: "Campaigns" },
+  { pattern: "/divisions/:id/detail", label: "Detail divisi" },
+  { pattern: "/workspaces/:workspaceId/campaigns", label: "Campaign" },
   {
     pattern: "/workspaces/:workspaceId/campaigns/:campaignId",
-    label: "Campaign Detail",
+    label: "Detail campaign",
   },
   {
     pattern: "/workspaces/:workspaceId/campaigns/:campaignId/boards",
     label: "Board",
   },
-  { pattern: "/forms", label: "Forms" },
-  { pattern: "/forms/create", label: "Create Form" },
+  { pattern: "/forms", label: "Form" },
+  { pattern: "/forms/create", label: "Buat form" },
+  { pattern: "/forms/:id/builder", label: "Builder form" },
+  { pattern: "/forms/:id/edit", label: "Edit form" },
   { pattern: "/forms/:id/responses", label: "Responses" },
-  { pattern: "/chats", label: "Chats" },
-  { pattern: "/reports", label: "Report" },
-  { pattern: "/profile", label: "Profile" },
-  { pattern: "/integrations", label: "Integrations" },
+  { pattern: "/chats", label: "Chat" },
+  { pattern: "/notifications", label: "Notifikasi" },
+  { pattern: "/calendar", label: "Kalender" },
+  { pattern: "/virtual-office", label: "Virtual office" },
+  { pattern: "/reports", label: "Laporan" },
+  { pattern: "/profile", label: "Profil" },
+  { pattern: "/account/edit", label: "Pengaturan akun" },
+  { pattern: "/integrations", label: "Integrasi" },
   { pattern: "/assistant/preview", label: "Studio Maskot" },
 ];
+
+/**
+ * Halaman workspace memakai ID divisi yang terakhir dipilih (disimpan sidebar).
+ * Tanpa ID itu, breadcrumb workspace lebih baik tidak ditampilkan daripada
+ * menjadi teks mati yang tidak bisa diklik.
+ */
+function storedDivisionHref(): string | null {
+  try {
+    const divisionId = localStorage.getItem("lastDivisionId");
+    return divisionId ? `/divisions/${divisionId}` : null;
+  } catch {
+    return null;
+  }
+}
 
 /* -------------------------------------------------------------------------- */
 /*                             MATCH ROUTE HELPER                             */
@@ -63,15 +83,20 @@ function matchRoute(pathname: string, pattern: string): boolean {
 /* -------------------------------------------------------------------------- */
 
 function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
+  const divisionHref = storedDivisionHref();
+  const workspaceCrumbs: BreadcrumbItem[] = divisionHref
+    ? [{ href: divisionHref, label: "Workspace" }]
+    : [];
+
   if (pathname === "/divisions") {
-    return [{ href: "/divisions", label: "Divisions" }];
+    return [{ href: "/divisions", label: "Divisi" }];
   }
 
   const workspaceMatch = pathname.match(/^\/divisions\/([^/]+)$/);
   if (workspaceMatch) {
     const divisionId = workspaceMatch[1];
     return [
-      { href: "/divisions", label: "Divisions" },
+      { href: "/divisions", label: "Divisi" },
       { href: `/divisions/${divisionId}`, label: "Workspace" },
     ];
   }
@@ -80,9 +105,9 @@ function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (divisionDetailMatch) {
     const divisionId = divisionDetailMatch[1];
     return [
-      { href: "/divisions", label: "Divisions" },
+      { href: "/divisions", label: "Divisi" },
       { href: `/divisions/${divisionId}`, label: "Workspace" },
-      { label: "Division Detail" },
+      { label: "Detail divisi" },
     ];
   }
 
@@ -92,9 +117,9 @@ function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (campaignListMatch) {
     const workspaceId = campaignListMatch[1];
     return [
-      { href: "/divisions", label: "Divisions" },
-      { label: "Workspace" },
-      { href: `/workspaces/${workspaceId}/campaigns`, label: "Campaigns" },
+      { href: "/divisions", label: "Divisi" },
+      ...workspaceCrumbs,
+      { href: `/workspaces/${workspaceId}/campaigns`, label: "Campaign" },
     ];
   }
 
@@ -103,14 +128,12 @@ function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
   );
   if (campaignDetailMatch) {
     const workspaceId = campaignDetailMatch[1];
-    const campaignId = campaignDetailMatch[2];
     return [
-      { href: "/divisions", label: "Divisions" },
-      { label: "Workspace" },
-      { href: `/workspaces/${workspaceId}/campaigns`, label: "Campaigns" },
+      { href: "/divisions", label: "Divisi" },
+      ...workspaceCrumbs,
+      { href: `/workspaces/${workspaceId}/campaigns`, label: "Campaign" },
       {
-        href: `/workspaces/${workspaceId}/campaigns/${campaignId}`,
-        label: "Campaign Detail",
+        label: "Detail campaign",
       },
     ];
   }
@@ -122,12 +145,12 @@ function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
     const workspaceId = boardMatch[1];
     const campaignId = boardMatch[2];
     return [
-      { href: "/divisions", label: "Divisions" },
-      { label: "Workspace" },
-      { href: `/workspaces/${workspaceId}/campaigns`, label: "Campaigns" },
+      { href: "/divisions", label: "Divisi" },
+      ...workspaceCrumbs,
+      { href: `/workspaces/${workspaceId}/campaigns`, label: "Campaign" },
       {
         href: `/workspaces/${workspaceId}/campaigns/${campaignId}`,
-        label: "Campaign Detail",
+        label: "Detail campaign",
       },
       { label: "Board" },
     ];
@@ -136,7 +159,7 @@ function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const formResponsesMatch = pathname.match(/^\/forms\/([^/]+)\/responses$/);
   if (formResponsesMatch) {
     return [
-      { href: "/forms", label: "Forms" },
+      { href: "/forms", label: "Form" },
       { label: "Responses" },
     ];
   }
@@ -146,7 +169,7 @@ function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
     .sort((a, b) => b.pattern.length - a.pattern.length)[0];
 
   if (matchedRoute) {
-    return [{ href: pathname, label: matchedRoute.label }];
+    return [{ label: matchedRoute.label }];
   }
 
   return [];
@@ -158,6 +181,7 @@ function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
 
 const AppHeader: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const auth = useAuth();
   const { toggleMobileSidebar } = useSidebar();
 
@@ -188,12 +212,24 @@ const AppHeader: React.FC = () => {
 
   const breadcrumbs = useMemo(() => {
     const raw = buildBreadcrumbs(location.pathname);
+
+    // Non-superadmin tidak punya akses ke daftar seluruh divisi. Hapus crumb
+    // itu daripada menampilkan teks yang terlihat seperti tautan mati.
     if (canViewAllDivisions) return raw;
 
-    return raw.map((crumb) =>
-      crumb.href === "/divisions" ? { ...crumb, href: undefined } : crumb,
-    );
+    return raw.filter((crumb) => crumb.href !== "/divisions");
   }, [location.pathname, canViewAllDivisions]);
+
+  const showBack = !["/", "/dashboard", "/my-work"].includes(location.pathname);
+
+  const handleBack = (): void => {
+    if (location.key !== "default") {
+      navigate(-1);
+      return;
+    }
+
+    navigate(canViewAllDivisions ? "/dashboard" : "/my-work");
+  };
 
   const handleBackToAdmin = (): void => {
     const adminToken = localStorage.getItem("admin_token");
@@ -215,11 +251,10 @@ const AppHeader: React.FC = () => {
     relative
     z-30
     border-b
-    border-slate-200/80
-    bg-white/90
-    backdrop-blur-xl
-    dark:border-slate-800
-    dark:bg-slate-950/90
+    border-line
+    bg-canvas/85
+    backdrop-blur-md
+    dark:bg-canvas/80
     flex
     shrink-0
     flex-col
@@ -240,23 +275,39 @@ const AppHeader: React.FC = () => {
         <button
           type="button"
           onClick={toggleMobileSidebar}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
-          aria-label="Toggle mobile sidebar"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-line bg-surface text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg lg:hidden"
+          aria-label="Buka menu navigasi"
         >
-          <Menu className="h-6 w-6" />
+          <Menu className="h-5 w-5" />
         </button>
 
+        {showBack ? (
+          <button
+            type="button"
+            onClick={handleBack}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+            aria-label="Kembali ke halaman sebelumnya"
+            title="Kembali"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Kembali</span>
+          </button>
+        ) : null}
+
         <div className="min-w-0 flex-1 overflow-hidden">
-          <nav className="scrollbar-hide flex items-center gap-2 overflow-x-auto whitespace-nowrap py-1">
+          <nav
+            aria-label="Breadcrumb"
+            className="scrollbar-hide flex items-center gap-2 overflow-x-auto whitespace-nowrap py-1"
+          >
             <Link
               to="/"
               className={`text-sm font-medium transition-colors ${
                 location.pathname === "/"
-                  ? "text-indigo-600 dark:text-indigo-400"
-                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  ? "text-accent"
+                  : "text-fg-muted hover:text-fg"
               }`}
             >
-              Dashboard
+              Beranda
             </Link>
 
             {breadcrumbs.map((breadcrumb, index) => {
@@ -267,19 +318,26 @@ const AppHeader: React.FC = () => {
                   key={`${breadcrumb.href ?? breadcrumb.label}-${index}`}
                   className="flex shrink-0 items-center gap-2"
                 >
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                  <ChevronRight className="h-3.5 w-3.5 text-fg-subtle" aria-hidden="true" />
 
-                  {isLast || !breadcrumb.href ? (
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                  {isLast ? (
+                    <span
+                      aria-current="page"
+                      className="text-sm font-medium text-fg"
+                    >
                       {breadcrumb.label}
                     </span>
-                  ) : (
+                  ) : breadcrumb.href ? (
                     <Link
                       to={breadcrumb.href}
-                      className="text-sm font-medium text-slate-500 transition-colors hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
+                      className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
                     >
                       {breadcrumb.label}
                     </Link>
+                  ) : (
+                    <span className="text-sm font-medium text-fg-subtle">
+                      {breadcrumb.label}
+                    </span>
                   )}
                 </div>
               );
@@ -291,14 +349,11 @@ const AppHeader: React.FC = () => {
       {/* Action Items */}
       <div className="flex items-center justify-between gap-3 lg:justify-end">
         {impersonatedBy && (
-          <div className="flex flex-1 items-center justify-between gap-3 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 dark:border-orange-800 dark:bg-orange-900/20 lg:flex-none">
+          <div className="flex flex-1 items-center justify-between gap-3 rounded-full border border-warning/25 bg-warning-soft px-3 py-1.5 lg:flex-none">
             <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-orange-500" />
-              </span>
+              <span className="h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
 
-              <span className="text-xs font-semibold text-orange-700 dark:text-orange-300">
+              <span className="text-xs font-medium text-warning">
                 Visitor
               </span>
             </div>
@@ -306,14 +361,14 @@ const AppHeader: React.FC = () => {
             <button
               type="button"
               onClick={handleBackToAdmin}
-              className="rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white transition-all hover:bg-red-600 active:scale-95"
+              className="rounded-full bg-danger px-3 py-1 text-xs font-medium text-white transition-colors hover:opacity-90"
             >
               Kembali
             </button>
           </div>
         )}
 
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white transition-all hover:border-indigo-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface transition-colors hover:bg-surface-muted">
           <NotificationBell />
         </div>
       </div>

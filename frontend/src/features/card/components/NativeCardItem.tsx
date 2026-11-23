@@ -2,12 +2,17 @@ import { useState } from "react";
 import {
   ArrowRightLeft,
   CalendarClock,
-  ChevronRight,
+  CheckSquare,
+  MessageSquare,
   UsersRound,
 } from "lucide-react";
 
 import type { Card } from "../types";
-import { getDueDateStatus, isCardCompleted } from "../utils/dueDate";
+import {
+  dueDateBadgeClasses,
+  getDueDateStatus,
+  isCardCompleted,
+} from "../utils/dueDate";
 import { alertIfMirrorConflict } from "../utils/mirrorConflict";
 import { toast } from "@/lib/feedback";
 
@@ -18,21 +23,12 @@ interface NativeCardItemProps {
   onMove?: (card: Card, boardId: string) => Promise<void>;
 }
 
-const priorityClasses: Record<string, string> = {
-  low: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-  medium: "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-  high: "bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300",
-  urgent: "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
+const priorityDot: Record<string, string> = {
+  low: "bg-success",
+  medium: "bg-amber-500",
+  high: "bg-orange-500",
+  urgent: "bg-danger",
 };
-
-const formatCreatedDate = (value?: string) =>
-  value
-    ? new Date(value).toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : null;
 
 const formatDueDate = (value?: string | null) =>
   value
@@ -54,20 +50,36 @@ export default function NativeCardItem({
   const brands = card.brands ?? [];
   const labels = card.labels ?? [];
   const assignees = card.assignees ?? [];
-  const visibleBrands = brands.slice(0, 2);
+  const visibleBrands = brands.slice(0, 1);
   const visibleLabels = labels.slice(0, 2);
   const hiddenTagCount =
     Math.max(0, brands.length - visibleBrands.length) +
     Math.max(0, labels.length - visibleLabels.length);
-  const createdDate = formatCreatedDate(card.created_at);
   const dueDate = formatDueDate(card.due_date);
+  const createdDate = card.created_at ? new Date(card.created_at) : null;
+  const formattedCreatedDate =
+    createdDate && !Number.isNaN(createdDate.getTime())
+      ? createdDate.toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : null;
+  const createdDateTitle =
+    createdDate && !Number.isNaN(createdDate.getTime())
+      ? createdDate.toLocaleString("id-ID", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
+      : undefined;
   const dueStatus = getDueDateStatus(card.due_date, {
     completed: isCardCompleted(card),
     completedAt: card.completed_at,
   });
   const priority = card.priority?.toLowerCase() ?? "";
   const accentColor =
-    brands[0]?.color || (priority === "urgent" ? "#e11d48" : "#3b82f6");
+    brands[0]?.color || (priority === "urgent" ? "#b93832" : "#465fff");
+  const completedTasks = card.tasks?.filter((task) => task.is_completed).length ?? 0;
 
   const handleMove = async (boardId: string) => {
     if (!boardId || boardId === card.board_id || !onMove) return;
@@ -85,10 +97,10 @@ export default function NativeCardItem({
   };
 
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_2px_10px_rgba(15,23,42,0.06)] dark:border-slate-700 dark:bg-slate-900">
+    <article className="relative overflow-hidden rounded-card border border-line bg-surface shadow-e1">
       <span
         aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-1"
+        className="absolute inset-y-0 left-0 w-[3px]"
         style={{ backgroundColor: accentColor }}
       />
 
@@ -96,56 +108,48 @@ export default function NativeCardItem({
         type="button"
         onClick={() => onOpen?.(card)}
         aria-label={`Buka detail ${card.title}`}
-        className="block w-full px-4 pb-3.5 pt-4 text-left outline-none transition-colors active:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:active:bg-slate-800/70"
+        className="block w-full px-4 pb-3 pt-4 text-left outline-none transition-colors active:bg-surface-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
       >
-        <span className="flex items-start gap-3">
-          <span className="min-w-0 flex-1">
-            <span className="block break-words text-[15px] font-bold leading-[1.4] text-slate-900 dark:text-slate-100">
-              {card.title}
-            </span>
-            {card.created_by || createdDate ? (
-              <span className="mt-1 block truncate text-[11px] leading-4 text-slate-400 dark:text-slate-500">
-                {card.created_by ? card.created_by.name : "Dibuat"}
-                {createdDate ? ` · ${createdDate}` : ""}
-              </span>
-            ) : null}
+        <span className="flex items-start justify-between gap-3">
+          <span className="min-w-0 flex-1 break-words text-[14px] font-medium leading-5 text-fg">
+            {card.title}
           </span>
 
-          <span className="flex shrink-0 items-center gap-1.5">
-            {card.priority ? (
+          {card.priority ? (
+            <span
+              className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-[10px] font-medium capitalize text-fg-muted"
+              title={`Prioritas ${card.priority}`}
+            >
               <span
-                className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em] ${
-                  priorityClasses[priority] ?? "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {card.priority}
-              </span>
-            ) : null}
-            <ChevronRight size={17} className="text-slate-300 dark:text-slate-600" />
-          </span>
+                aria-hidden="true"
+                className={`h-1.5 w-1.5 rounded-full ${priorityDot[priority] ?? "bg-fg-subtle"}`}
+              />
+              {card.priority}
+            </span>
+          ) : null}
         </span>
 
         {card.is_cross_division_copy ? (
-          <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+          <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-control bg-accent-soft px-2 py-1 text-[10px] font-medium text-accent">
             <ArrowRightLeft size={11} className="shrink-0" />
             <span className="truncate">
               Lintas divisi
-              {card.source_division ? ` · dari ${card.source_division.name}` : ""}
-              {card.mirrored_by ? ` · oleh ${card.mirrored_by.name}` : ""}
+              {card.source_division ? ` · ${card.source_division.name}` : ""}
             </span>
           </span>
         ) : null}
 
         {visibleBrands.length > 0 || visibleLabels.length > 0 ? (
-          <span className="mt-3 flex flex-wrap gap-1.5">
+          <span className="mt-2.5 flex flex-wrap gap-1.5">
             {visibleBrands.map((brand) => (
               <span
                 key={`brand-${brand.id}`}
-                className="inline-flex min-w-0 max-w-[46%] items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                className="inline-flex min-w-0 max-w-[55%] items-center gap-1.5 rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-fg-muted"
               >
                 <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: brand.color || "#64748b" }}
+                  aria-hidden="true"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: brand.color || "var(--tracko-fg-subtle)" }}
                 />
                 <span className="truncate">{brand.name}</span>
               </span>
@@ -153,51 +157,100 @@ export default function NativeCardItem({
             {visibleLabels.map((label) => (
               <span
                 key={`label-${label.id}`}
-                className="inline-flex min-w-0 max-w-[46%] items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                className="inline-flex min-w-0 max-w-[45%] items-center gap-1.5 rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-fg-muted"
               >
                 <span
-                  className="h-2 w-0.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: label.color || "#3b82f6" }}
+                  aria-hidden="true"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: label.color || "var(--tracko-fg-subtle)" }}
                 />
                 <span className="truncate">{label.name}</span>
               </span>
             ))}
             {hiddenTagCount > 0 ? (
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-fg-subtle">
                 +{hiddenTagCount}
               </span>
             ) : null}
           </span>
         ) : null}
 
-        <span className="mt-3 grid grid-cols-2 gap-2">
-          <MetadataCell
-            icon={<UsersRound size={14} />}
-            label="Member"
-            value={assignees.length > 0 ? `${assignees.length} ditugaskan` : "Belum ada"}
-          />
-          <MetadataCell
-            icon={<CalendarClock size={14} />}
-            label="Deadline"
-            value={dueDate ? (dueStatus === "overdue" ? "Terlambat" : dueDate) : "Belum diatur"}
-            urgent={dueStatus === "overdue"}
-          />
+        <span className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-2.5">
+          <span className="flex min-w-0 items-center gap-2">
+            {assignees.length > 0 ? (
+              <>
+                <span className="flex -space-x-1.5">
+                  {assignees.slice(0, 3).map((user) => (
+                    <span
+                      key={user.id}
+                      title={user.name}
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold text-accent ring-2 ring-surface"
+                    >
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  ))}
+                </span>
+                {assignees.length > 3 ? (
+                  <span className="text-[10px] font-medium text-fg-subtle">
+                    +{assignees.length - 3}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] text-fg-subtle">
+                <UsersRound size={11} aria-hidden="true" />
+                Belum ada member
+              </span>
+            )}
+
+            {card.comments && card.comments.length > 0 ? (
+              <span className="inline-flex items-center gap-1 text-[10px] text-fg-subtle">
+                <MessageSquare size={11} aria-hidden="true" />
+                {card.comments.length}
+              </span>
+            ) : null}
+
+            {card.tasks && card.tasks.length > 0 ? (
+              <span className="inline-flex items-center gap-1 text-[10px] text-fg-subtle">
+                <CheckSquare size={11} aria-hidden="true" />
+                {completedTasks}/{card.tasks.length}
+              </span>
+            ) : null}
+          </span>
+
+          {dueDate ? (
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${dueDateBadgeClasses[dueStatus]}`}
+            >
+              <CalendarClock size={11} aria-hidden="true" />
+              {dueStatus === "overdue" ? "Terlambat" : dueDate}
+            </span>
+          ) : null}
         </span>
+
+        {formattedCreatedDate ? (
+          <span
+            className="mt-1.5 block text-[10px] text-fg-subtle"
+            title={createdDateTitle ? `Dibuat ${createdDateTitle}` : undefined}
+          >
+            Dibuat {formattedCreatedDate}
+          </span>
+        ) : null}
       </button>
 
       {onMove && moveTargets.length > 0 ? (
-        <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/30">
+        <div className="border-t border-line bg-surface-muted/40 px-4 py-3">
           <label className="flex items-center gap-3">
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-              <ArrowRightLeft size={13} />
-              Status
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-fg-muted">
+              <ArrowRightLeft size={12} aria-hidden="true" />
+              Pindah
             </span>
             <select
               value={card.board_id}
               disabled={isMoving}
               aria-label={`Pindahkan ${card.title} ke status lain`}
               onChange={(event) => void handleMove(event.target.value)}
-              className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="h-10 min-w-0 flex-1 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/15 disabled:cursor-wait disabled:opacity-60"
             >
               <option value={card.board_id}>
                 {isMoving ? "Memindahkan..." : "Pilih tujuan"}
@@ -212,37 +265,5 @@ export default function NativeCardItem({
         </div>
       ) : null}
     </article>
-  );
-}
-
-function MetadataCell({
-  icon,
-  label,
-  value,
-  urgent = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  urgent?: boolean;
-}) {
-  return (
-    <span className="flex min-w-0 items-center gap-2 rounded-xl bg-slate-50 px-2.5 py-2 dark:bg-slate-800/70">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 shadow-sm dark:bg-slate-900 dark:text-slate-500">
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">
-          {label}
-        </span>
-        <span
-          className={`block truncate text-[11px] font-semibold ${
-            urgent ? "text-red-600 dark:text-red-400" : "text-slate-700 dark:text-slate-200"
-          }`}
-        >
-          {value}
-        </span>
-      </span>
-    </span>
   );
 }

@@ -20,30 +20,32 @@ export default function SidebarButton({
       type="button"
       onClick={onClick}
       aria-expanded={expanded}
-      className="group flex min-h-12 w-full items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-3.5 py-3 text-left shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99] dark:border-slate-700/80 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80"
+      className={`group flex min-h-10 w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left transition-colors duration-150 ${
+        expanded ? "bg-surface-muted" : "hover:bg-surface-muted"
+      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30`}
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-blue-50 group-hover:text-blue-600 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-blue-500/10 dark:group-hover:text-blue-400">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-surface-muted text-fg-subtle transition-colors group-hover:text-fg">
         {icon}
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+        <span className="block text-[13px] font-medium text-fg">
           {label}
         </span>
         {badge ? (
-          <span className="mt-0.5 block truncate text-[11px] text-slate-400 dark:text-slate-500">
+          <span className="mt-0.5 block truncate text-[11px] text-fg-subtle">
             {badge}
           </span>
         ) : null}
       </span>
 
       <div
-        className={`shrink-0 text-slate-400 transition-transform duration-200 ${
+        className={`shrink-0 text-fg-subtle transition-transform duration-150 ${
           expanded ? "rotate-180" : ""
         }`}
         aria-hidden="true"
       >
-        <ChevronDown size={16} />
+        <ChevronDown size={15} />
       </div>
     </button>
   );

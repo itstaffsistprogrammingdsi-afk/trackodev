@@ -150,7 +150,7 @@ function activityStyle(activity: ActivityLog): {
   if (activity.action.includes("due_date")) {
     return { Icon: CalendarClock, className: "bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400" };
   }
-  return { Icon: Settings2, className: "bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400" };
+  return { Icon: Settings2, className: "bg-surface text-fg-muted" };
 }
 
 const dateKey = (value: string) => {
@@ -233,28 +233,28 @@ export default function ActivitySection({
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl sm:p-6">
+    <section className="p-5 sm:p-6">
       <div className="mb-4 flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-fg-muted">
           <History size={18} />
         </div>
         <div>
-          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 sm:text-lg">Aktivitas</h2>
-          <p className="text-xs text-slate-400 sm:text-sm">Riwayat penting pada card ini</p>
+          <h2 className="text-sm font-semibold text-fg">Aktivitas</h2>
+          <p className="text-xs text-fg-muted">Riwayat penting pada card ini</p>
         </div>
       </div>
 
       {insightItems.length > 0 && (
-        <aside className="mb-5 rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 dark:border-blue-900/60 dark:bg-blue-950/30" aria-label="Insight aktivitas">
+        <aside className="mb-5 rounded-card border border-line bg-surface-muted/60 p-3.5" aria-label="Insight aktivitas">
           <div className="flex gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface text-fg-muted">
               <Lightbulb size={16} />
             </span>
             <div className="min-w-0">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+              <h3 className="text-xs font-semibold text-fg">
                 Insight aktivitas
               </h3>
-              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+              <p className="mt-1 text-xs leading-5 text-fg-muted">
                 {insightItems.join(" ")}
               </p>
             </div>
@@ -263,7 +263,7 @@ export default function ActivitySection({
       )}
 
       {loading && activities.length === 0 ? (
-        <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-fg-muted">
           <Clock3 size={16} className="animate-pulse" /> Memuat aktivitas...
         </div>
       ) : activities.length > 0 ? (
@@ -272,8 +272,8 @@ export default function ActivitySection({
             {Object.entries(groups).map(([key, items]) => (
               <div key={key}>
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{dateLabel(key)}</span>
-                  <span className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
+                  <span className="text-[11px] font-medium text-fg-subtle">{dateLabel(key)}</span>
+                  <span className="h-px flex-1 bg-line" />
                 </div>
                 <div>
                   {items.map((activity, index) => {
@@ -286,13 +286,13 @@ export default function ActivitySection({
                     return (
                       <div key={activity.id} className="relative flex gap-3 pb-5 last:pb-0">
                         {index < items.length - 1 && (
-                          <span className="absolute left-[17px] top-9 h-[calc(100%-2rem)] w-px bg-slate-200 dark:bg-slate-700" />
+                          <span className="absolute left-[17px] top-9 h-[calc(100%-2rem)] w-px bg-line" />
                         )}
                         <span className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${style.className}`}>
                           <style.Icon size={16} />
                         </span>
                         <div className="min-w-0 flex-1 pt-0.5">
-                          <p className="text-sm leading-5 text-slate-700 dark:text-slate-200">
+                          <p className="text-sm leading-5 text-fg">
                             <span className="font-semibold">
                               {activity.user?.name ?? "Sistem"}
                               {activity.user?.divisions?.length
@@ -302,11 +302,11 @@ export default function ActivitySection({
                             {copy.title}
                           </p>
                           {copy.detail && (
-                            <p className="mt-1 break-words rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
+                            <p className="mt-1 break-words rounded-lg bg-surface-muted px-2.5 py-1.5 text-xs text-fg-muted">
                               {copy.detail}
                             </p>
                           )}
-                          <time className="mt-1.5 block text-[11px] text-slate-400" dateTime={activity.created_at} title={exactTime}>
+                          <time className="mt-1.5 block text-[11px] text-fg-subtle" dateTime={activity.created_at} title={exactTime}>
                             {relativeTime(activity.created_at)}
                           </time>
                         </div>
@@ -318,10 +318,10 @@ export default function ActivitySection({
             ))}
           </div>
 
-          <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
-            <span className="text-xs text-slate-400">{activities.length} dari {total} aktivitas</span>
+          <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
+            <span className="text-xs text-fg-subtle">{activities.length} dari {total} aktivitas</span>
             {hasMore && (
-              <button type="button" onClick={loadMore} disabled={loading} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50 dark:text-blue-400">
+              <button type="button" onClick={loadMore} disabled={loading} className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent-strong disabled:opacity-50">
                 {loading ? "Memuat..." : "Tampilkan lebih banyak"} <ChevronDown size={14} />
               </button>
             )}
@@ -329,13 +329,13 @@ export default function ActivitySection({
         </>
       ) : (
         <div className="flex flex-col items-center justify-center py-10 text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface-muted text-fg-subtle">
             <Sparkles size={20} />
           </div>
-          <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+          <h3 className="text-sm font-medium text-fg">
             Belum ada aktivitas
           </h3>
-          <p className="mt-0.5 text-xs text-slate-400">Perubahan penting akan tercatat otomatis di sini.</p>
+          <p className="mt-0.5 text-xs text-fg-subtle">Perubahan penting akan tercatat otomatis di sini.</p>
         </div>
       )}
     </section>
