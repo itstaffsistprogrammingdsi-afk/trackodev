@@ -17,6 +17,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, Pencil, Trash2, X, Check, ArrowRightLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { PersonRow } from "@/components/ui/people-picker/PeoplePicker";
 import { toast, confirmDialog } from "@/lib/feedback";
 
 export default function CampaignCard({
@@ -31,6 +33,7 @@ export default function CampaignCard({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { t, locale } = useLanguage();
 
   const [showMembers, setShowMembers] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -84,7 +87,13 @@ export default function CampaignCard({
 
   // ================= DELETE =================
   const handleDeleteCampaign = async () => {
-    if (!(await confirmDialog({ message: "Yakin ingin menghapus campaign ini?", variant: "danger" }))) return;
+    if (
+      !(await confirmDialog({
+        message: t("Yakin ingin menghapus campaign ini?", "Delete this campaign?"),
+        variant: "danger",
+      }))
+    )
+      return;
 
     try {
       setLoading(true);
@@ -95,7 +104,9 @@ export default function CampaignCard({
 
       onChanged?.();
     } catch (err) {
-      toast.error(getErrorMessage(err, "Gagal menghapus campaign"));
+      toast.error(
+        getErrorMessage(err, t("Gagal menghapus campaign", "Failed to delete campaign")),
+      );
     } finally {
       setLoading(false);
     }
@@ -117,7 +128,9 @@ export default function CampaignCard({
       onChanged?.();
       setShowEdit(false);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Gagal update campaign"));
+      toast.error(
+        getErrorMessage(err, t("Gagal update campaign", "Failed to update campaign")),
+      );
     } finally {
       setLoading(false);
     }
@@ -132,7 +145,7 @@ export default function CampaignCard({
   });
 
   const selectedMoveTarget = useMemo(
-    () => moveTargets.find((t) => t.id === moveTargetId) ?? null,
+    () => moveTargets.find((target) => target.id === moveTargetId) ?? null,
     [moveTargets, moveTargetId],
   );
 
@@ -144,7 +157,12 @@ export default function CampaignCard({
       !confirmCrossDivision &&
       !isSuperAdmin
     ) {
-      toast.info("Centang konfirmasi untuk memindahkan campaign lintas divisi.");
+      toast.info(
+        t(
+          "Centang konfirmasi untuk memindahkan campaign lintas divisi.",
+          "Tick the confirmation to move a campaign across divisions.",
+        ),
+      );
       return;
     }
 
@@ -172,7 +190,14 @@ export default function CampaignCard({
       }
 
       toast.success(
-        `Campaign "${campaign.name}" berhasil dipindahkan ke workspace "${res.summary.target_workspace_name}".`,
+        t(
+          'Campaign "{name}" berhasil dipindahkan ke workspace "{workspace}".',
+          'Campaign "{name}" moved to workspace "{workspace}".',
+          {
+            name: campaign.name,
+            workspace: res.summary.target_workspace_name,
+          },
+        ),
       );
 
       // Navigate hanya bila aktor memang masih punya akses ke workspace tujuan.
@@ -181,11 +206,16 @@ export default function CampaignCard({
         navigate(`/workspaces/${moveTargetId}/campaigns`);
       } else {
         toast.info(
-          "Anda tidak memiliki akses ke workspace tujuan. Minta admin workspace tersebut untuk memberi akses bila perlu memantau campaign ini.",
+          t(
+            "Anda tidak memiliki akses ke workspace tujuan. Minta admin workspace tersebut untuk memberi akses bila perlu memantau campaign ini.",
+            "You don't have access to the target workspace. Ask that workspace's admin for access if you need to monitor this campaign.",
+          ),
         );
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, "Gagal memindahkan campaign"));
+      toast.error(
+        getErrorMessage(err, t("Gagal memindahkan campaign", "Failed to move campaign")),
+      );
     } finally {
       setMoving(false);
     }
@@ -217,7 +247,9 @@ export default function CampaignCard({
           await addMember(campaign.id, user.id);
           successCount += 1;
         } catch (err) {
-          failed.push(`${user.name}: ${getErrorMessage(err, "gagal")}`);
+          failed.push(
+            `${user.name}: ${getErrorMessage(err, t("gagal", "failed"))}`,
+          );
         }
       }
 
@@ -233,12 +265,24 @@ export default function CampaignCard({
       }
 
       if (failed.length === 0) {
-        toast.success(`${successCount} member berhasil ditambahkan.`);
+        toast.success(
+          t("{count} member berhasil ditambahkan.", "{count} members added.", {
+            count: successCount,
+          }),
+        );
       } else if (successCount === 0) {
-        toast.error(`Gagal menambahkan member. ${failed.join("; ")}`);
+        toast.error(
+          t("Gagal menambahkan member. {errors}", "Failed to add members. {errors}", {
+            errors: failed.join("; "),
+          }),
+        );
       } else {
         toast.warning(
-          `${successCount} berhasil, ${failed.length} gagal — ${failed.join("; ")}`,
+          t(
+            "{success} berhasil, {failed} gagal — {errors}",
+            "{success} succeeded, {failed} failed — {errors}",
+            { success: successCount, failed: failed.length, errors: failed.join("; ") },
+          ),
         );
       }
     } finally {
@@ -247,7 +291,13 @@ export default function CampaignCard({
   };
 
   const handleRemoveMember = async (id: string) => {
-    if (!(await confirmDialog({ message: "Yakin hapus member?", variant: "danger" }))) return;
+    if (
+      !(await confirmDialog({
+        message: t("Yakin hapus member?", "Remove this member?"),
+        variant: "danger",
+      }))
+    )
+      return;
 
     try {
       setLoading(true);
@@ -258,7 +308,9 @@ export default function CampaignCard({
         queryKey: ["campaign-members", campaign.id],
       });
     } catch (err) {
-      toast.error(getErrorMessage(err, "Gagal hapus member"));
+      toast.error(
+        getErrorMessage(err, t("Gagal hapus member", "Failed to remove member")),
+      );
     } finally {
       setLoading(false);
     }
@@ -279,14 +331,12 @@ export default function CampaignCard({
         </Link>
 
         <p className="line-clamp-2 text-xs leading-5 text-fg-muted">
-          {description || "Belum ada deskripsi."}
+          {description || t("Belum ada deskripsi.", "No description yet.")}
         </p>
       </header>
 
       {/* META */}
       <section className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-fg-subtle">{members.length} anggota</span>
-
         {dueStatus && (
           <span
             className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
@@ -295,8 +345,8 @@ export default function CampaignCard({
                 : "border-line bg-surface-muted text-fg-muted"
             }`}
           >
-            {dueStatus.isExpired ? "Terlambat" : "Deadline"}{" "}
-            {new Date(campaign.due_date ?? "").toLocaleDateString("id-ID", {
+            {dueStatus.isExpired ? t("Terlambat", "Overdue") : t("Deadline")}{" "}
+            {new Date(campaign.due_date ?? "").toLocaleDateString(locale, {
               day: "2-digit",
               month: "short",
             })}
@@ -315,8 +365,16 @@ export default function CampaignCard({
         <button
           onClick={() => setShowMembers(true)}
           className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
-          title="Kelola anggota"
-          aria-label={`Kelola anggota ${name}`}
+          title={t(
+            "Kelola {count} anggota campaign",
+            "Manage {count} campaign members",
+            { count: members.length },
+          )}
+          aria-label={t(
+            "Kelola {count} anggota campaign {name}",
+            "Manage {count} campaign members {name}",
+            { count: members.length, name },
+          )}
         >
           <Users size={15} />
         </button>
@@ -324,8 +382,8 @@ export default function CampaignCard({
         <button
           onClick={() => setShowEdit(true)}
           className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
-          title="Edit campaign"
-          aria-label={`Edit ${name}`}
+          title={t("Edit campaign")}
+          aria-label={t("Edit {name}", "Edit {name}", { name })}
         >
           <Pencil size={15} />
         </button>
@@ -333,8 +391,12 @@ export default function CampaignCard({
         <button
           onClick={() => setShowMove(true)}
           className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
-          title="Pindah workspace"
-          aria-label={`Pindahkan ${name} ke workspace lain`}
+          title={t("Pindah workspace", "Move workspace")}
+          aria-label={t(
+            "Pindahkan {name} ke workspace lain",
+            "Move {name} to another workspace",
+            { name },
+          )}
         >
           <ArrowRightLeft size={15} />
         </button>
@@ -343,8 +405,8 @@ export default function CampaignCard({
           onClick={handleDeleteCampaign}
           disabled={loading}
           className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-50"
-          title="Hapus campaign"
-          aria-label={`Hapus ${name}`}
+          title={t("Hapus campaign", "Delete campaign")}
+          aria-label={t("Hapus {name}", "Delete {name}", { name })}
         >
           <Trash2 size={15} />
         </button>
@@ -353,76 +415,135 @@ export default function CampaignCard({
           to={`/workspaces/${workspaceId}/campaigns/${campaign.id}`}
           className="ml-auto text-xs font-medium text-accent transition-colors hover:text-accent-strong"
         >
-          Detail
+          {t("Detail", "Details")}
         </Link>
       </footer>
 
       {/* MODALS (tidak diubah karena sudah clean) */}
       {showMembers && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <section role="dialog" aria-modal="true" aria-labelledby="collaborator-dialog-title" className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm">
+          <section role="dialog" aria-modal="true" aria-labelledby="collaborator-dialog-title" className="w-full max-w-md bg-surface rounded-panel shadow-e3 p-5 space-y-4">
             <header className="flex justify-between items-center">
               <div>
-                <h3 id="collaborator-dialog-title" className="text-lg font-semibold">Kelola Collaborator</h3>
-                <p className="mt-0.5 text-xs text-gray-500">
+                <h3 id="collaborator-dialog-title" className="text-lg font-semibold">
+                  {t("Anggota campaign", "Campaign members")}
+                  <span className="ml-1.5 text-sm font-medium tabular-nums text-fg-subtle">
+                    {members.length}
+                  </span>
+                </h3>
+                <p className="mt-0.5 text-xs text-fg-muted">
+                  {t(
+                    "Anggota yang ditambahkan ke campaign ini, bukan seluruh anggota workspace.",
+                    "Members added to this campaign, not all workspace members.",
+                  )}{" "}
                   {isSuperAdmin
-                    ? "Super Admin dapat menambahkan semua user."
-                    : "Tambahkan anggota dari division mana pun. Admin division asal akan menerima notifikasi untuk undangan lintas division."}
+                    ? t(
+                        "Super Admin dapat menambahkan semua user.",
+                        "Super admins can add any user.",
+                      )
+                    : t(
+                        "Admin divisi asal akan menerima notifikasi untuk undangan lintas divisi.",
+                        "Admins of the origin division will be notified about cross-division invitations.",
+                      )}
                 </p>
               </div>
-              <button aria-label="Tutup dialog collaborator" onClick={() => setShowMembers(false)}>
+              <button
+                aria-label={t(
+                  "Tutup dialog anggota campaign",
+                  "Close campaign members dialog",
+                )}
+                onClick={() => setShowMembers(false)}
+              >
                 <X size={18} />
               </button>
             </header>
 
-            <div className="max-h-52 overflow-y-auto space-y-2">
-              {members.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex justify-between text-sm bg-gray-50 px-3 py-2 rounded-lg"
-                >
-                  {m.name}
-                  <button onClick={() => handleRemoveMember(m.id)}>
-                    <X size={14} className="text-red-500" />
-                  </button>
-                </div>
-              ))}
+            <div className="custom-scrollbar max-h-52 space-y-1.5 overflow-y-auto">
+              {members.length === 0 ? (
+                <p className="rounded-control border border-dashed border-line px-3 py-5 text-center text-xs text-fg-subtle">
+                  {t("Belum ada anggota campaign.", "No campaign members yet.")}
+                </p>
+              ) : (
+                members.map((member) => (
+                  <PersonRow
+                    key={member.id}
+                    person={member}
+                    action={
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(member.id)}
+                        disabled={loading}
+                        aria-label={t(
+                          "Hapus {name} dari campaign",
+                          "Remove {name} from campaign",
+                          { name: member.name },
+                        )}
+                        className="flex h-7 w-7 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-50"
+                      >
+                        <X size={13} aria-hidden="true" />
+                      </button>
+                    }
+                  />
+                ))
+              )}
             </div>
 
             <MemberMentionInput
               collaboratorOnly
               workspaceId={workspaceId}
-              placeholder={isSuperAdmin || isAdmin ? "Cari user atau email..." : undefined}
+              placeholder={
+                isSuperAdmin || isAdmin
+                  ? t("Cari anggota campaign", "Search campaign members")
+                  : undefined
+              }
               onSelect={handleSelectUser}
             />
 
-            <div className="flex flex-wrap gap-2">
-              {selectedUsers.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-lg text-xs"
-                >
-                  {u.name}
-                  <button onClick={() => removeSelectedUser(u.id)}>
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
+            {selectedUsers.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedUsers.map((user) => (
+                  <span
+                    key={user.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-accent-soft py-1 pl-2.5 pr-1 text-2xs font-medium text-accent"
+                  >
+                    {user.name}
+                    <button
+                      type="button"
+                      onClick={() => removeSelectedUser(user.id)}
+                      aria-label={t("Batalkan {name}", "Remove {name}", {
+                        name: user.name,
+                      })}
+                      className="flex h-5 w-5 items-center justify-center rounded-full text-accent transition-colors hover:bg-accent/15"
+                    >
+                      <X size={11} aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
             <div className="flex justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setShowMembers(false)}
-                className="px-3 py-1 border rounded-lg"
+                disabled={loading}
+                className="h-8 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted disabled:opacity-50"
               >
-                Close
+                {t("Batal", "Cancel")}
               </button>
 
               <button
+                type="button"
                 onClick={handleAddMembers}
-                className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded-lg"
+                disabled={loading || selectedUsers.length === 0}
+                className="inline-flex h-8 items-center gap-1.5 rounded-control bg-accent px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:opacity-50"
               >
-                <Check size={14} /> Add
+                <Check size={13} aria-hidden="true" />
+                {loading
+                  ? t("Menyimpan…", "Saving…")
+                  : `${t("Tambah", "Add")}${
+                      selectedUsers.length ? ` ${selectedUsers.length}` : ""
+                    }`}
               </button>
             </div>
           </section>
@@ -431,41 +552,43 @@ export default function CampaignCard({
 
       {showEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <section className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-5 space-y-3">
-            <h3 className="text-lg font-semibold">Edit Campaign</h3>
+          <section className="w-full max-w-sm bg-surface rounded-card shadow-e3 p-5 space-y-3">
+            <h3 className="text-lg font-semibold">
+              {t("Edit Campaign", "Edit campaign")}
+            </h3>
 
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              className="w-full border rounded-[7px] px-3 py-2 text-sm"
             />
 
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              className="w-full border rounded-[7px] px-3 py-2 text-sm"
             />
 
             <DatePicker
               selected={dueDate}
               onChange={(date: Date | null) => setDueDate(date)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              className="w-full border rounded-[7px] px-3 py-2 text-sm"
               isClearable
             />
 
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowEdit(false)}
-                className="px-3 py-1 border rounded-lg"
+                className="px-3 py-1 border rounded-[7px]"
               >
-                Cancel
+                {t("Batal", "Cancel")}
               </button>
 
               <button
                 onClick={handleUpdateCampaign}
-                className="px-3 py-1 bg-blue-500 text-white rounded-lg"
+                className="px-3 py-1 bg-accent text-white rounded-[7px]"
               >
-                Save
+                {t("Simpan", "Save")}
               </button>
             </div>
           </section>
@@ -474,28 +597,41 @@ export default function CampaignCard({
 
       {showMove && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <section className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 space-y-4">
+          <section className="w-full max-w-md bg-surface rounded-card shadow-e3 p-5 space-y-4">
             <header className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Pindah Workspace</h3>
+              <h3 className="text-lg font-semibold">
+                {t("Pindah Workspace", "Move workspace")}
+              </h3>
               <button
-                aria-label="Tutup dialog pindah workspace"
+                aria-label={t(
+                  "Tutup dialog pindah workspace",
+                  "Close move workspace dialog",
+                )}
                 onClick={() => setShowMove(false)}
               >
                 <X size={18} />
               </button>
             </header>
 
-            <p className="text-sm text-gray-500">
-              Campaign <span className="font-medium text-gray-800">{campaign.name}</span>{" "}
-              beserta seluruh isinya (board, card, penugasan, dan member) akan
-              dipindahkan. Workspace asal dan tujuan tidak dihapus.
+            <p className="text-sm text-fg-muted">
+              {t("Campaign", "Campaign")}{" "}
+              <span className="font-medium text-fg">{campaign.name}</span>{" "}
+              {t(
+                "beserta seluruh isinya (board, card, penugasan, dan member) akan dipindahkan. Workspace asal dan tujuan tidak dihapus.",
+                "and everything in it (boards, cards, assignments, and members) will be moved. The source and target workspaces are not deleted.",
+              )}
             </p>
 
             {loadingTargets ? (
-              <p className="text-sm text-gray-400">Memuat workspace tujuan...</p>
+              <p className="text-sm text-fg-subtle">
+                {t("Memuat workspace tujuan...", "Loading target workspaces...")}
+              </p>
             ) : moveTargets.length === 0 ? (
-              <p className="text-sm text-gray-400">
-                Tidak ada workspace tujuan yang bisa Anda akses.
+              <p className="text-sm text-fg-subtle">
+                {t(
+                  "Tidak ada workspace tujuan yang bisa Anda akses.",
+                  "No target workspaces you can access.",
+                )}
               </p>
             ) : (
               <div className="space-y-3">
@@ -505,20 +641,24 @@ export default function CampaignCard({
                     setMoveTargetId(e.target.value);
                     setConfirmCrossDivision(false);
                   }}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  className="w-full border rounded-[7px] px-3 py-2 text-sm"
                 >
-                  <option value="">Pilih workspace tujuan...</option>
-                  {moveTargets.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                      {t.division_name ? ` — ${t.division_name}` : ""}
-                      {t.is_cross_division ? " (beda divisi)" : ""}
+                  <option value="">
+                    {t("Pilih workspace tujuan...", "Select a target workspace...")}
+                  </option>
+                  {moveTargets.map((target) => (
+                    <option key={target.id} value={target.id}>
+                      {target.name}
+                      {target.division_name ? ` — ${target.division_name}` : ""}
+                      {target.is_cross_division
+                        ? t(" (beda divisi)", " (different division)")
+                        : ""}
                     </option>
                   ))}
                 </select>
 
                 {selectedMoveTarget?.is_cross_division && !isSuperAdmin && (
-                  <label className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <label className="flex items-start gap-2 text-xs text-warning bg-warning-soft border border-warning/20 rounded-[7px] p-3">
                     <input
                       type="checkbox"
                       checked={confirmCrossDivision}
@@ -526,9 +666,10 @@ export default function CampaignCard({
                       className="mt-0.5"
                     />
                     <span>
-                      Workspace tujuan berada di divisi berbeda. Saya paham
-                      member yang tidak berhak bisa kehilangan akses setelah
-                      dipindahkan.
+                      {t(
+                        "Workspace tujuan berada di divisi berbeda. Saya paham member yang tidak berhak bisa kehilangan akses setelah dipindahkan.",
+                        "The target workspace is in a different division. I understand members without access may lose access after the move.",
+                      )}
                     </span>
                   </label>
                 )}
@@ -538,17 +679,19 @@ export default function CampaignCard({
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowMove(false)}
-                className="px-3 py-1 border rounded-lg"
+                className="px-3 py-1 border rounded-[7px]"
               >
-                Cancel
+                {t("Batal", "Cancel")}
               </button>
 
               <button
                 onClick={handleMoveCampaign}
                 disabled={!moveTargetId || moving}
-                className="px-3 py-1 bg-indigo-600 text-white rounded-lg disabled:opacity-50"
+                className="px-3 py-1 bg-accent text-white rounded-[7px] disabled:opacity-50"
               >
-                {moving ? "Memindahkan..." : "Pindahkan"}
+                {moving
+                  ? t("Memindahkan...", "Moving...")
+                  : t("Pindahkan", "Move")}
               </button>
             </div>
           </section>

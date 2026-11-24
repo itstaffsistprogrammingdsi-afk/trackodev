@@ -16,6 +16,7 @@ import AttachmentSection from "./sections/AttachmentSection";
 import BrandSection from "./sections/BrandSection";
 import LabelSection from "./sections/LabelSection";
 import { useAuth } from '../../../context/AuthContext';
+import { useLanguage } from "@/context/LanguageContext";
 import {
   dueDateBadgeClasses,
   getDueDateStatus,
@@ -119,6 +120,7 @@ export default function CardDetailSidebar({
   fetchBriefAttachments,
 }: Props) {
   const { can, hasRole, managesDivision, user } = useAuth();
+  const { t } = useLanguage();
   const toggleMembers = () => setShowMembers((prev) => !prev);
   const toggleDueDate = () => setShowDueDate((prev) => !prev);
   const toggleBrief = () => setShowBrief((prev) => !prev);
@@ -150,8 +152,10 @@ export default function CardDetailSidebar({
     card.created_by?.id === user?.id ||
     managesDivision() ||
     hasRole("super_admin");
-  const dueDatePermissionMessage =
-    "Hanya pembuat card, Admin, atau Super Admin yang dapat mengubah due date.";
+  const dueDatePermissionMessage = t(
+    "Hanya pembuat card, Admin, atau Super Admin yang dapat mengubah due date.",
+    "Only the card creator, Admin, or Super Admin can change the due date.",
+  );
 
   return (
     <div className="w-full space-y-5 pb-2">
@@ -160,7 +164,7 @@ export default function CardDetailSidebar({
       {/* ========================================= */}
       <div>
         <h3 className="mb-2 px-2.5 text-[11px] font-medium text-fg-subtle">
-          Alat card
+          {t("Alat card", "Card tools")}
         </h3>
 
         <div className="space-y-1">
@@ -168,7 +172,7 @@ export default function CardDetailSidebar({
           <div>
             <SidebarButton
               icon={<Users size={15} />}
-              label="Anggota"
+              label={t("Anggota", "Members")}
               onClick={toggleMembers}
               expanded={showMembers}
             />
@@ -192,12 +196,14 @@ export default function CardDetailSidebar({
           {can('brand.view') && <div>
             <SidebarButton
               icon={<Layers size={15} />}
-              label="Brand"
+              label={t("Brand")}
               onClick={toggleBrands}
               expanded={showBrands}
               badge={
                 (card.brands?.length ?? 0) > 0
-                  ? `${card.brands?.length} terpasang`
+                  ? t("{count} terpasang", "{count} attached", {
+                      count: card.brands?.length ?? 0,
+                    })
                   : undefined
               }
             />
@@ -216,12 +222,14 @@ export default function CardDetailSidebar({
           {can('label.view') && <div>
             <SidebarButton
               icon={<Tag size={15} />}
-              label="Label"
+              label={t("Label")}
               onClick={toggleLabels}
               expanded={showLabels}
               badge={
                 (card.labels?.length ?? 0) > 0
-                  ? `${card.labels?.length} terpasang`
+                  ? t("{count} terpasang", "{count} attached", {
+                      count: card.labels?.length ?? 0,
+                    })
                   : undefined
               }
             />
@@ -238,7 +246,7 @@ export default function CardDetailSidebar({
           <div>
             <SidebarButton
               icon={<Clock3 size={15} />}
-              label="Tenggat waktu"
+              label={t("Deadline")}
               onClick={toggleDueDate}
               expanded={showDueDate}
               badge={
@@ -247,10 +255,10 @@ export default function CardDetailSidebar({
                     className={`inline-flex rounded-full border px-2 py-0.5 font-medium ${dueDateBadgeClasses[dueStatus]}`}
                   >
                     {dueStatus === "overdue"
-                      ? "Terlambat"
+                      ? t("Terlambat", "Overdue")
                       : dueStatus === "warning"
-                        ? "Segera"
-                        : "Aman"}
+                        ? t("Segera", "Due soon")
+                        : t("Aman", "On track")}
                   </span>
                 ) : undefined
               }
@@ -258,7 +266,7 @@ export default function CardDetailSidebar({
             {showDueDate && (
               <div className="mt-2 rounded-card border border-line bg-surface-muted/50 p-3.5 animate-in fade-in duration-150">
                 <label className="mb-1.5 block text-[11px] font-medium text-fg-subtle">
-                  Pilih tenggat waktu
+                  {t("Pilih deadline", "Select deadline")}
                 </label>
                 <input
                   type="datetime-local"
@@ -280,9 +288,13 @@ export default function CardDetailSidebar({
           <div>
             <SidebarButton
               icon={<Paperclip size={15} />}
-              label="Lampiran brief"
+              label={t("Lampiran brief", "Brief attachments")}
               onClick={toggleBrief}
-              badge={`${briefSummary.files} file · ${briefSummary.links} tautan`}
+              badge={t(
+                "{files} file · {links} tautan",
+                "{files} files · {links} links",
+                { files: briefSummary.files, links: briefSummary.links },
+              )}
               expanded={showBrief}
             />
             {showBrief && (
@@ -294,7 +306,7 @@ export default function CardDetailSidebar({
                   fetchAttachments={fetchBriefAttachments}
                   showUploader
                   showList={false}
-                  title="Brief Attachment"
+                  title={t("Lampiran brief", "Brief attachment")}
                   uploadEndpoint={`/cards/${card.id}/brief-attachments`}
                   deleteEndpoint="/brief-attachments"
                   downloadEndpoint="/brief-attachments"
@@ -307,9 +319,13 @@ export default function CardDetailSidebar({
           <div>
             <SidebarButton
               icon={<Paperclip size={15} />}
-              label="Lampiran hasil"
+              label={t("Lampiran hasil", "Result attachments")}
               onClick={toggleResult}
-              badge={`${resultSummary.files} file · ${resultSummary.links} tautan`}
+              badge={t(
+                "{files} file · {links} tautan",
+                "{files} files · {links} links",
+                { files: resultSummary.files, links: resultSummary.links },
+              )}
               expanded={showResult}
             />
             {showResult && (
@@ -322,7 +338,7 @@ export default function CardDetailSidebar({
                   fetchAttachments={fetchAttachments}
                   showUploader
                   showList={false}
-                  title="Result Attachment"
+                  title={t("Lampiran hasil", "Result attachment")}
                   uploadEndpoint={`/cards/${card.id}/attachments`}
                   deleteEndpoint="/attachments"
                   downloadEndpoint="/attachments"
@@ -340,7 +356,7 @@ export default function CardDetailSidebar({
       {/* ========================================= */}
       <div className="border-t border-line pt-4">
         <h3 className="mb-2 px-2.5 text-[11px] font-medium text-fg-subtle">
-          Tindakan
+          {t("Tindakan", "Actions")}
         </h3>
 
         <div className="space-y-2">
@@ -350,14 +366,19 @@ export default function CardDetailSidebar({
             disabled={deleteDisabled}
             title={
               deleteDisabled
-                ? "Card yang sudah melewati deadline tidak dapat dihapus"
-                : "Hapus card"
+                ? t(
+                    "Card yang sudah melewati deadline tidak dapat dihapus",
+                    "Cards past their deadline cannot be deleted",
+                  )
+                : t("Hapus card", "Delete card")
             }
             className="flex h-9 w-full items-center justify-center gap-2 rounded-control border border-danger/20 bg-danger-soft px-4 text-xs font-medium text-danger transition-colors hover:bg-danger-soft/70 disabled:cursor-not-allowed disabled:border-line disabled:bg-surface-muted disabled:text-fg-subtle"
           >
             <Trash2 size={15} />
             <span>
-              {deleteDisabled ? "Tidak dapat dihapus" : "Hapus card"}
+              {deleteDisabled
+                ? t("Tidak dapat dihapus", "Cannot be deleted")
+                : t("Hapus card", "Delete card")}
             </span>
           </button>
         </div>

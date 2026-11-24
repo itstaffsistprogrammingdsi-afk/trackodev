@@ -9,7 +9,7 @@ export default function LandingPage() {
   const { forms, isLoading, error, reload } = useLanding();
 
   return (
-    <div className="flex min-h-screen flex-col overflow-x-hidden bg-slate-50">
+    <div className="flex min-h-screen flex-col overflow-x-hidden bg-canvas">
       <Navbar />
       <main className="flex-1">
         <Hero />

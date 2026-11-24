@@ -8,14 +8,15 @@ import type {
   ExportPeriodType,
 } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { useLanguage } from "@/context/LanguageContext";
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i).reverse();
 
-const PERIOD_OPTIONS: { key: ExportPeriodType; label: string }[] = [
-  { key: "daily", label: "Harian" },
-  { key: "monthly", label: "Bulanan" },
-  { key: "yearly", label: "Tahunan" },
+const PERIOD_OPTIONS: { key: ExportPeriodType; label: string; labelEn: string }[] = [
+  { key: "daily", label: "Harian", labelEn: "Daily" },
+  { key: "monthly", label: "Bulanan", labelEn: "Monthly" },
+  { key: "yearly", label: "Tahunan", labelEn: "Yearly" },
 ];
 
 // Helper: format Date -> "YYYY-MM-DD" (aman dari geseran timezone ala toISOString)
@@ -25,6 +26,7 @@ const toDateInputValue = (d: Date) => {
 };
 
 export default function AttachmentPanel() {
+  const { t, locale } = useLanguage();
   const now = new Date();
 
   // Filter periode, persis pola yang sama dengan ExportLogPanel
@@ -95,7 +97,7 @@ export default function AttachmentPanel() {
         setPeriodLabel(res.filter.label);
         setExpanded(false);
       } catch {
-        if (!cancelled) setError("Gagal memuat attachment untuk periode ini.");
+        if (!cancelled) setError(t("Gagal memuat attachment untuk periode ini.", "Failed to load attachments for this period."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -126,11 +128,13 @@ export default function AttachmentPanel() {
       {/* HEADER */}
       <div className="border-b border-line p-5">
         <h2 className="text-base font-semibold text-fg">
-          Attachments
+          {t("Attachments")}
         </h2>
 
         <p className="text-xs text-fg-subtle mt-1">
-          {periodLabel ? `Periode: ${periodLabel}` : "Files, links, uploads tracking"}
+          {periodLabel
+            ? t("Periode: {period}", "Period: {period}", { period: periodLabel })
+            : t("Pelacakan file, link, dan upload", "Files, links, uploads tracking")}
         </p>
 
         {/* PERIOD TYPE */}
@@ -148,7 +152,7 @@ export default function AttachmentPanel() {
                 }
               `}
             >
-              {opt.label}
+              {t(opt.label, opt.labelEn)}
             </button>
           ))}
         </div>
@@ -164,7 +168,7 @@ export default function AttachmentPanel() {
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="attachment-start-date" className="mb-1 block text-xs text-fg-subtle">
-                Tanggal Awal
+                {t("Tanggal Awal", "Start date")}
               </label>
               <DatePickerField
                 id="attachment-start-date"
@@ -175,7 +179,7 @@ export default function AttachmentPanel() {
 
             <div>
               <label htmlFor="attachment-end-date" className="mb-1 block text-xs text-fg-subtle">
-                Tanggal Akhir
+                {t("Tanggal Akhir", "End date")}
               </label>
               <DatePickerField
                 id="attachment-end-date"
@@ -189,7 +193,7 @@ export default function AttachmentPanel() {
 
         {monthlyRangeInvalid && (
           <p className="mt-2 text-xs text-danger">
-            Tanggal akhir tidak boleh lebih awal dari tanggal awal.
+            {t("Tanggal akhir tidak boleh lebih awal dari tanggal awal.", "The end date cannot be earlier than the start date.")}
           </p>
         )}
 
@@ -211,9 +215,9 @@ export default function AttachmentPanel() {
 
         {/* STATS */}
         <div className="mt-4 grid grid-cols-1 gap-2 xsm:grid-cols-3">
-          <Stat label="Files" value={summary.uploaded_files} />
-          <Stat label="Links" value={summary.uploaded_links} />
-          <Stat label="MB" value={summary.total_storage_used_mb} />
+          <Stat label={t("File")} value={summary.uploaded_files} />
+          <Stat label={t("Link")} value={summary.uploaded_links} />
+          <Stat label={t("MB")} value={summary.total_storage_used_mb} />
         </div>
       </div>
 
@@ -222,19 +226,19 @@ export default function AttachmentPanel() {
 
         {monthlyRangeInvalid ? (
           <div className="rounded-control border border-danger/20 bg-danger-soft px-4 py-6 text-center">
-            <p className="text-sm font-medium text-danger">Rentang tanggal belum valid</p>
-            <p className="mt-1 text-xs text-danger">Perbaiki tanggal untuk menampilkan attachment.</p>
+            <p className="text-sm font-medium text-danger">{t("Rentang tanggal belum valid", "Date range is not valid yet")}</p>
+            <p className="mt-1 text-xs text-danger">{t("Perbaiki tanggal untuk menampilkan attachment.", "Fix the dates to show attachments.")}</p>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-fg-subtle">
             <Loader2 size={16} className="animate-spin" />
-            Memuat attachment...
+            {t("Memuat attachment...", "Loading attachments...")}
           </div>
         ) : error ? (
           <p className="text-sm text-danger">{error}</p>
         ) : attachments.length === 0 ? (
           <p className="text-sm text-fg-subtle">
-            Tidak ada attachment untuk periode ini
+            {t("Tidak ada attachment untuk periode ini", "No attachments for this period")}
           </p>
         ) : (
           <>
@@ -262,15 +266,15 @@ export default function AttachmentPanel() {
 
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-fg">
-                      {attachment.file_name ?? "Untitled file"}
+                      {attachment.file_name ?? t("File tanpa judul", "Untitled file")}
                     </p>
 
                     <p className="truncate text-xs text-fg-subtle">
-                      {attachment.card_title ?? "No related card"}
+                      {attachment.card_title ?? t("Tidak ada card terkait", "No related card")}
                     </p>
 
                     <p className="text-2xs text-fg-subtle leading-none mt-1">
-                      Uploaded: {formatDate(attachment.created_at)}
+                      {t("Diunggah: {date}", "Uploaded: {date}", { date: formatDate(attachment.created_at, locale) })}
                     </p>
                   </div>
 
@@ -283,7 +287,7 @@ export default function AttachmentPanel() {
                   </p>
 
                   <span className="text-xs text-fg-subtle">
-                    {attachment.attachment_type}
+                    {attachment.attachment_type === "file" ? t("File") : t("Link")}
                   </span>
                 </div>
 
@@ -298,8 +302,8 @@ export default function AttachmentPanel() {
                   className="text-sm font-medium text-accent hover:text-accent-strong"
                 >
                   {expanded
-                    ? "Show Less"
-                    : `Show More (${attachments.length - MAX_VISIBLE})`}
+                    ? t("Tampilkan lebih sedikit", "Show less")
+                    : t("Tampilkan lebih banyak ({count})", "Show more ({count})", { count: attachments.length - MAX_VISIBLE })}
                 </button>
               </div>
             )}
@@ -333,6 +337,7 @@ function FilePreview({
   url?: string | null;
   type?: string;
 }) {
+  const { t } = useLanguage();
   const isImage =
     type?.includes("image") ||
     url?.match(/\.(jpg|jpeg|png|webp|gif)$/i);
@@ -341,7 +346,7 @@ function FilePreview({
     return (
       <img
         src={url}
-        alt="preview"
+        alt={t("Pratinjau", "Preview")}
         className="h-10 w-10 rounded-control object-cover border border-line shrink-0"
       />
     );
@@ -357,8 +362,8 @@ function FilePreview({
 /* =========================
    FORMAT DATE
 ========================= */
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleString("id-ID", {
+function formatDate(dateString: string, locale: string) {
+  return new Date(dateString).toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

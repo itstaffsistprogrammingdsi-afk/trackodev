@@ -12,6 +12,8 @@ import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import DatePickerField from "@/features/my-work/components/DatePickerField";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useLanguage } from "@/context/LanguageContext";
+import { getLocale, translate } from "@/i18n/translate";
 import {
   getDivisionActivities,
   type DivisionActivity,
@@ -40,28 +42,34 @@ const REALTIME_RESOURCES = [
   "Brand",
 ] as const;
 
-const FILTERS: Array<{ value: DivisionActivityCategory; label: string }> = [
-  { value: "all", label: "Semua aktivitas" },
-  { value: "create", label: "Create" },
-  { value: "update", label: "Update" },
-  { value: "delete", label: "Delete" },
-  { value: "comment", label: "Comment" },
+type LocalizedLabel = { id: string; en: string };
+
+const FILTERS: Array<{
+  value: DivisionActivityCategory;
+  label: string;
+  labelEn: string;
+}> = [
+  { value: "all", label: "Semua aktivitas", labelEn: "All activity" },
+  { value: "create", label: "Dibuat", labelEn: "Created" },
+  { value: "update", label: "Diperbarui", labelEn: "Updated" },
+  { value: "delete", label: "Dihapus", labelEn: "Deleted" },
+  { value: "comment", label: "Komentar", labelEn: "Comments" },
 ];
 
-const entityLabels: Record<string, string> = {
-  division: "Division",
-  workspace: "Workspace",
-  campaign: "Campaign",
-  board: "Board",
-  card: "Card",
-  task: "Task",
-  subtask: "Subtask",
-  card_comment: "Comment",
-  card_attachment: "Attachment",
-  card_brief_attachment: "Brief attachment",
-  form: "Form",
-  form_field: "Form field",
-  brand: "Brand",
+const entityLabels: Record<string, LocalizedLabel> = {
+  division: { id: "Divisi", en: "Division" },
+  workspace: { id: "Workspace", en: "Workspace" },
+  campaign: { id: "Campaign", en: "Campaign" },
+  board: { id: "Board", en: "Board" },
+  card: { id: "Kartu", en: "Card" },
+  task: { id: "Task", en: "Task" },
+  subtask: { id: "Subtask", en: "Subtask" },
+  card_comment: { id: "Komentar", en: "Comment" },
+  card_attachment: { id: "Lampiran", en: "Attachment" },
+  card_brief_attachment: { id: "Lampiran brief", en: "Brief attachment" },
+  form: { id: "Form", en: "Form" },
+  form_field: { id: "Kolom form", en: "Form field" },
+  brand: { id: "Brand", en: "Brand" },
 };
 
 const activityMeta = (
@@ -74,26 +82,38 @@ const activityMeta = (
     : undefined;
 };
 
-const actionLabels: Record<string, string> = {
-  created: "Create",
-  updated: "Update",
-  deleted: "Delete",
-  added: "Create",
-  removed: "Delete",
-  attached: "Create",
-  detached: "Delete",
-  assigned: "Update",
-  unassigned: "Delete",
-  moved: "Update",
-  completed: "Update",
-  reopened: "Update",
-  reordered: "Update",
+const actionLabels: Record<string, LocalizedLabel> = {
+  created: { id: "Buat", en: "Create" },
+  updated: { id: "Perbarui", en: "Update" },
+  deleted: { id: "Hapus", en: "Delete" },
+  added: { id: "Buat", en: "Create" },
+  removed: { id: "Hapus", en: "Delete" },
+  attached: { id: "Buat", en: "Create" },
+  detached: { id: "Hapus", en: "Delete" },
+  assigned: { id: "Perbarui", en: "Update" },
+  unassigned: { id: "Hapus", en: "Delete" },
+  moved: { id: "Perbarui", en: "Update" },
+  completed: { id: "Perbarui", en: "Update" },
+  reopened: { id: "Perbarui", en: "Update" },
+  reordered: { id: "Perbarui", en: "Update" },
+};
+
+const activityTypeLabels: Record<string, LocalizedLabel> = {
+  create: { id: "Buat", en: "Create" },
+  update: { id: "Perbarui", en: "Update" },
+  delete: { id: "Hapus", en: "Delete" },
+  comment: { id: "Komentar", en: "Comment" },
 };
 
 function actionLabel(activity: DivisionActivity): string {
-  if (activity.activity_type === "comment") return "Comment";
+  if (activity.activity_type === "comment") {
+    return translate("Komentar", "Comment");
+  }
   const action = activity.action.split(".").pop() ?? activity.action;
-  return actionLabels[action] ?? activity.activity_type[0].toUpperCase() + activity.activity_type.slice(1);
+  const label = actionLabels[action] ?? activityTypeLabels[activity.activity_type];
+  return label
+    ? translate(label.id, label.en)
+    : activity.activity_type[0].toUpperCase() + activity.activity_type.slice(1);
 }
 
 function activityIcon(activity: DivisionActivity) {
@@ -105,21 +125,26 @@ function activityIcon(activity: DivisionActivity) {
 
 function activityIconClass(activity: DivisionActivity): string {
   if (activity.activity_type === "comment") {
-    return "bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300";
+    return "bg-accent-soft text-accent";
   }
   if (activity.activity_type === "create") {
-    return "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300";
+    return "bg-success-soft text-success";
   }
   if (activity.activity_type === "delete") {
-    return "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300";
+    return "bg-danger-soft text-danger";
   }
-  return "bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300";
+  return "bg-info-soft text-info";
 }
 
 function activityText(activity: DivisionActivity): string {
   if (activity.description?.trim()) return activity.description;
 
-  const subject = entityLabels[activity.entity_type] ?? activity.entity_type;
+  const subject = entityLabels[activity.entity_type]
+    ? translate(
+        entityLabels[activity.entity_type].id,
+        entityLabels[activity.entity_type].en,
+      )
+    : activity.entity_type;
   const verb = actionLabel(activity).toLowerCase();
   return `${verb} ${subject.toLowerCase()}`;
 }
@@ -129,7 +154,9 @@ function relativeTime(value: string): string {
   if (Number.isNaN(timestamp)) return "-";
 
   const seconds = Math.round((timestamp - Date.now()) / 1000);
-  const formatter = new Intl.RelativeTimeFormat("id-ID", { numeric: "auto" });
+  const formatter = new Intl.RelativeTimeFormat(getLocale(), {
+    numeric: "auto",
+  });
   if (Math.abs(seconds) < 60) return formatter.format(seconds, "second");
   const minutes = Math.round(seconds / 60);
   if (Math.abs(minutes) < 60) return formatter.format(minutes, "minute");
@@ -137,7 +164,7 @@ function relativeTime(value: string): string {
   if (Math.abs(hours) < 24) return formatter.format(hours, "hour");
   const days = Math.round(hours / 24);
   if (Math.abs(days) < 7) return formatter.format(days, "day");
-  return new Date(value).toLocaleDateString("id-ID", {
+  return new Date(value).toLocaleDateString(getLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -145,6 +172,7 @@ function relativeTime(value: string): string {
 }
 
 export default function DivisionActivitySection({ divisionId }: Props) {
+  const { t, locale, language } = useLanguage();
   const [category, setCategory] = useState<DivisionActivityCategory>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -186,7 +214,12 @@ export default function DivisionActivitySection({ divisionId }: Props) {
         setTotal(response.total_logs);
       } catch (err) {
         console.error("Gagal memuat aktivitas division", err);
-        setError("Gagal memuat aktivitas. Silakan coba lagi.");
+        setError(
+          t(
+            "Gagal memuat aktivitas. Silakan coba lagi.",
+            "Failed to load activity. Please try again.",
+          ),
+        );
         if (!append) {
           setActivities([]);
           setTotal(0);
@@ -196,7 +229,7 @@ export default function DivisionActivitySection({ divisionId }: Props) {
         setLoading(false);
       }
     },
-    [category, dateFrom, dateRangeInvalid, dateTo, divisionId],
+    [category, dateFrom, dateRangeInvalid, dateTo, divisionId, language, t],
   );
 
   useEffect(() => {
@@ -217,18 +250,21 @@ export default function DivisionActivitySection({ divisionId }: Props) {
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl sm:p-6">
+    <section className="rounded-panel border border-line bg-surface p-4 sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            <History size={19} />
-          </div>
+        <div className="flex items-start gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-surface-muted text-fg-muted">
+            <History size={17} aria-hidden="true" />
+          </span>
           <div>
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 sm:text-lg">
-              Aktivitas division
+            <h2 className="text-sm font-semibold tracking-heading text-fg">
+              {t("Aktivitas divisi", "Division activity")}
             </h2>
-            <p className="mt-0.5 text-xs text-slate-400 sm:text-sm">
-              Log create, update, delete, dan comment untuk audit.
+            <p className="mt-0.5 text-xs text-fg-muted">
+              {t(
+                "Jejak perubahan untuk audit dan pemantauan tim.",
+                "Change history for auditing and team monitoring.",
+              )}
             </p>
           </div>
         </div>
@@ -236,17 +272,17 @@ export default function DivisionActivitySection({ divisionId }: Props) {
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           <div className="flex items-center justify-end gap-2">
             <label htmlFor="division-activity-filter" className="sr-only">
-              Filter aktivitas
+              {t("Filter aktivitas", "Filter activity")}
             </label>
             <select
               id="division-activity-filter"
               value={category}
               onChange={(event) => setCategory(event.target.value as DivisionActivityCategory)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-blue-400 dark:focus:ring-blue-900/40"
+              className="h-9 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
             >
               {FILTERS.map((filter) => (
                 <option key={filter.value} value={filter.value}>
-                  {filter.label}
+                  {t(filter.label, filter.labelEn)}
                 </option>
               ))}
             </select>
@@ -254,37 +290,44 @@ export default function DivisionActivitySection({ divisionId }: Props) {
               type="button"
               onClick={() => void fetchActivities(1, false)}
               disabled={loading || dateRangeInvalid}
-              aria-label="Muat ulang aktivitas"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              aria-label={t("Muat ulang aktivitas", "Reload activity")}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
             >
-              <RefreshCw size={15} className={loading ? "animate-spin" : undefined} />
+              <RefreshCw
+                size={14}
+                className={
+                  loading
+                    ? "animate-spin motion-reduce:animate-none"
+                    : undefined
+                }
+              />
             </button>
           </div>
 
           <div className="flex flex-wrap items-end justify-end gap-2">
             <div>
-              <label htmlFor="division-activity-date-from" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                Dari tanggal
+              <label htmlFor="division-activity-date-from" className="mb-1 block text-2xs font-medium text-fg-subtle">
+                {t("Dari tanggal", "From date")}
               </label>
               <DatePickerField
                 id="division-activity-date-from"
                 value={dateFrom}
                 onChange={setDateFrom}
                 maxDate={dateTo || undefined}
-                placeholder="Pilih tanggal"
+                placeholder={t("Pilih tanggal", "Select date")}
                 className="w-44"
               />
             </div>
             <div>
-              <label htmlFor="division-activity-date-to" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                Sampai tanggal
+              <label htmlFor="division-activity-date-to" className="mb-1 block text-2xs font-medium text-fg-subtle">
+                {t("Sampai tanggal", "To date")}
               </label>
               <DatePickerField
                 id="division-activity-date-to"
                 value={dateTo}
                 minDate={dateFrom || undefined}
                 onChange={setDateTo}
-                placeholder="Pilih tanggal"
+                placeholder={t("Pilih tanggal", "Select date")}
                 align="right"
                 className="w-44"
               />
@@ -296,15 +339,18 @@ export default function DivisionActivitySection({ divisionId }: Props) {
                   setDateFrom("");
                   setDateTo("");
                 }}
-                className="h-9 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="h-9 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
               >
-                Reset
+                {t("Reset", "Reset")}
               </button>
             )}
           </div>
           {dateRangeInvalid && (
-            <p className="text-right text-[11px] font-medium text-rose-500">
-              Tanggal mulai harus sebelum atau sama dengan tanggal akhir.
+            <p className="text-right text-2xs font-medium text-danger">
+              {t(
+                "Tanggal mulai harus sebelum atau sama dengan tanggal akhir.",
+                "The start date must be before or equal to the end date.",
+              )}
             </p>
           )}
         </div>
@@ -322,12 +368,14 @@ export default function DivisionActivitySection({ divisionId }: Props) {
             className="inline-flex h-8 w-fit items-center gap-1.5 rounded-control border border-danger/25 bg-surface px-3 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
           >
             <RefreshCw size={13} aria-hidden="true" />
-            Coba lagi
+            {t("Coba lagi", "Try again")}
           </button>
         </div>
       ) : loading && activities.length === 0 ? (
         <div className="mt-6 space-y-3" role="status" aria-busy="true">
-          <span className="sr-only">Memuat aktivitas division</span>
+          <span className="sr-only">
+            {t("Memuat aktivitas division", "Loading division activity")}
+          </span>
           {[0, 1, 2].map((item) => (
             <div key={item} className="flex gap-3 rounded-card border border-line p-4">
               <Skeleton className="h-9 w-9 rounded-full" />
@@ -341,46 +389,57 @@ export default function DivisionActivitySection({ divisionId }: Props) {
       ) : activities.length === 0 ? (
         <EmptyState
           icon={History}
-          title="Belum ada aktivitas untuk filter ini"
-          description="Aktivitas baru akan muncul otomatis saat ada perubahan di division."
+          title={t(
+            "Belum ada aktivitas untuk filter ini",
+            "No activity for this filter yet",
+          )}
+          description={t(
+            "Aktivitas baru akan muncul otomatis saat ada perubahan di division.",
+            "New activity will appear automatically when the division changes.",
+          )}
           className="mt-5"
         />
       ) : (
         <>
-          <div className="mt-6 divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="mt-5 divide-y divide-line">
             {activities.map((activity) => {
               const Icon = activityIcon(activity);
-              const exactTime = new Date(activity.created_at).toLocaleString("id-ID", {
+              const exactTime = new Date(activity.created_at).toLocaleString(locale, {
                 dateStyle: "full",
                 timeStyle: "short",
               });
-              const actor = activity.user?.name ?? "Sistem";
-              const entity = entityLabels[activity.entity_type] ?? activity.entity_type;
+              const actor = activity.user?.name ?? t("Sistem", "System");
+              const entity = entityLabels[activity.entity_type]
+                ? t(
+                    entityLabels[activity.entity_type].id,
+                    entityLabels[activity.entity_type].en,
+                  )
+                : activity.entity_type;
 
               return (
-                <article key={activity.id} className="flex gap-3 py-4 first:pt-0 last:pb-0">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${activityIconClass(activity)}`}>
-                    <Icon size={16} />
+                <article key={activity.id} className="flex gap-2.5 py-3.5 first:pt-0 last:pb-0">
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${activityIconClass(activity)}`}>
+                    <Icon size={14} aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm leading-5 text-slate-700 dark:text-slate-200">
-                        <span className="font-semibold">{actor}</span>{" "}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="text-xs leading-5 text-fg-muted">
+                        <span className="font-medium text-fg">{actor}</span>{" "}
                         {activityText(activity)}
                       </p>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-fg-subtle">
                         {entity}
                       </span>
-                      <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:bg-slate-800/70 dark:text-slate-500">
+                      <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-fg-subtle">
                         {actionLabel(activity)}
                       </span>
                     </div>
                     {activity.entity_type === "card_comment" && activityMeta(activity, "comment_preview") && (
-                      <p className="mt-1.5 break-words rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
+                      <p className="mt-1.5 break-words rounded-[7px] bg-surface-muted/60 px-2 py-1.5 text-2xs leading-4 text-fg-muted">
                         {activityMeta(activity, "comment_preview")}
                       </p>
                     )}
-                    <time className="mt-1.5 block text-[11px] text-slate-400" dateTime={activity.created_at} title={exactTime}>
+                    <time className="mt-1 block text-2xs text-fg-subtle" dateTime={activity.created_at} title={exactTime}>
                       {relativeTime(activity.created_at)}
                     </time>
                   </div>
@@ -389,18 +448,24 @@ export default function DivisionActivitySection({ divisionId }: Props) {
             })}
           </div>
 
-          <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
-            <span className="text-xs text-slate-400">
-              Menampilkan {activities.length} dari {total} aktivitas
+          <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
+            <span className="text-2xs tabular-nums text-fg-subtle">
+              {t(
+                "Menampilkan {shown} dari {total} aktivitas",
+                "Showing {shown} of {total} activities",
+                { shown: activities.length, total },
+              )}
             </span>
             {hasMore && (
               <button
                 type="button"
                 onClick={loadMore}
                 disabled={loading}
-                className="text-xs font-semibold text-blue-600 transition hover:text-blue-700 disabled:opacity-50 dark:text-blue-400"
+                className="text-xs font-medium text-accent transition-colors hover:text-accent-strong disabled:opacity-50"
               >
-                {loading ? "Memuat..." : "Tampilkan lebih banyak"}
+                {loading
+                  ? t("Memuat…", "Loading…")
+                  : t("Tampilkan lebih banyak", "Show more")}
               </button>
             )}
           </div>

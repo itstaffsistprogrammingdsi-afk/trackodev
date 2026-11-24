@@ -4,12 +4,14 @@ import { getCampaignStats } from "../api/campaign.api";
 import type { CampaignStatsData } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   campaignId: string;
 };
 
 export default function CampaignStats({ campaignId }: Props) {
+  const { t } = useLanguage();
   const [data, setData] = useState<CampaignStatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const realtimeRevision = useRealtimeRevision([
@@ -50,17 +52,17 @@ export default function CampaignStats({ campaignId }: Props) {
   if (!data) {
     return (
       <div className="rounded-panel border border-line bg-surface p-4 text-sm text-fg-muted">
-        Statistik campaign belum tersedia.
+        {t("Statistik campaign belum tersedia.", "Campaign statistics are not available yet.")}
       </div>
     );
   }
 
   return (
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line lg:grid-cols-4">
-      <StatCard title="Total task" value={data.total_tasks ?? 0} />
-      <StatCard title="Selesai" value={data.completed ?? 0} tone="success" />
-      <StatCard title="Berjalan" value={data.in_progress ?? 0} tone="accent" />
-      <StatCard title="Terlambat" value={data.overdue ?? 0} tone="danger" />
+      <StatCard title={t("Total task", "Total tasks")} value={data.total_tasks ?? 0} />
+      <StatCard title={t("Selesai", "Completed")} value={data.completed ?? 0} tone="success" />
+      <StatCard title={t("Berjalan", "In progress")} value={data.in_progress ?? 0} tone="accent" />
+      <StatCard title={t("Terlambat", "Overdue")} value={data.overdue ?? 0} tone="danger" />
     </div>
   );
 }
@@ -74,6 +76,7 @@ function StatCard({
   value: number;
   tone?: "default" | "success" | "accent" | "danger";
 }) {
+  const { locale } = useLanguage();
   const toneClass =
     tone === "danger" && value > 0
       ? "text-danger"
@@ -86,7 +89,7 @@ function StatCard({
   return (
     <div className="bg-surface p-4 sm:p-5">
       <p className={`text-[22px] font-semibold leading-none tabular-nums tracking-[-0.02em] ${toneClass}`}>
-        {value.toLocaleString("id-ID")}
+        {value.toLocaleString(locale)}
       </p>
       <p className="mt-2 text-[11px] font-medium text-fg-muted">{title}</p>
     </div>

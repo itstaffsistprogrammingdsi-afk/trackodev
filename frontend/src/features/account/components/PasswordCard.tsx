@@ -2,11 +2,13 @@ import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 import { useUpdatePassword } from "../hooks/useAccount";
+import { useLanguage } from "@/context/LanguageContext";
 
 const inputClass =
   "h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/50 focus:ring-2 focus:ring-accent/15";
 
 export default function PasswordCard() {
+  const { t } = useLanguage();
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
@@ -20,12 +22,19 @@ export default function PasswordCard() {
     setLocalError(null);
 
     if (password.length < 8) {
-      setLocalError("Kata sandi baru minimal 8 karakter.");
+      setLocalError(
+        t(
+          "Kata sandi baru minimal 8 karakter.",
+          "New password must be at least 8 characters.",
+        ),
+      );
       return;
     }
 
     if (password !== passwordConfirmation) {
-      setLocalError("Konfirmasi kata sandi tidak cocok.");
+      setLocalError(
+        t("Konfirmasi kata sandi tidak cocok.", "Password confirmation does not match."),
+      );
       return;
     }
 
@@ -37,7 +46,7 @@ export default function PasswordCard() {
       },
       {
         onSuccess: () => {
-          setSuccessMsg("Kata sandi berhasil diubah.");
+          setSuccessMsg(t("Kata sandi berhasil diubah.", "Password changed successfully."));
           setCurrentPassword("");
           setPassword("");
           setPasswordConfirmation("");
@@ -49,9 +58,12 @@ export default function PasswordCard() {
   return (
     <section className="rounded-panel border border-line bg-surface p-5 lg:p-6">
       <div className="mb-5">
-        <h2 className="text-sm font-semibold text-fg">Kata sandi</h2>
+        <h2 className="text-sm font-semibold text-fg">{t("Kata sandi", "Password")}</h2>
         <p className="mt-0.5 text-xs text-fg-muted">
-          Gunakan minimal 8 karakter dan jangan bagikan kata sandi Anda.
+          {t(
+            "Gunakan minimal 8 karakter dan jangan bagikan kata sandi Anda.",
+            "Use at least 8 characters and never share your password.",
+          )}
         </p>
       </div>
 
@@ -61,7 +73,7 @@ export default function PasswordCard() {
             htmlFor="current-password"
             className="mb-1.5 block text-xs font-medium text-fg-muted"
           >
-            Kata sandi saat ini
+            {t("Kata sandi saat ini", "Current password")}
           </label>
           <input
             id="current-password"
@@ -80,7 +92,7 @@ export default function PasswordCard() {
               htmlFor="new-password"
               className="mb-1.5 block text-xs font-medium text-fg-muted"
             >
-              Kata sandi baru
+              {t("Kata sandi baru", "New password")}
             </label>
             <input
               id="new-password"
@@ -94,7 +106,7 @@ export default function PasswordCard() {
               className={inputClass}
             />
             <p id="new-password-hint" className="mt-1.5 text-[11px] text-fg-subtle">
-              Minimal 8 karakter.
+              {t("Minimal 8 karakter.", "At least 8 characters.")}
             </p>
           </div>
 
@@ -103,7 +115,7 @@ export default function PasswordCard() {
               htmlFor="confirm-password"
               className="mb-1.5 block text-xs font-medium text-fg-muted"
             >
-              Konfirmasi kata sandi baru
+              {t("Konfirmasi kata sandi baru", "Confirm new password")}
             </label>
             <input
               id="confirm-password"
@@ -121,7 +133,10 @@ export default function PasswordCard() {
         {(localError || error) && (
           <p role="alert" className="text-xs font-medium text-danger">
             {localError ||
-              "Gagal mengubah kata sandi. Periksa kata sandi saat ini Anda."}
+              t(
+                "Gagal mengubah kata sandi. Periksa kata sandi saat ini Anda.",
+                "Failed to change password. Check your current password.",
+              )}
           </p>
         )}
         {successMsg && (
@@ -140,7 +155,7 @@ export default function PasswordCard() {
             disabled={isPending}
             className="h-9 rounded-control bg-accent px-4 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "Menyimpan..." : "Ubah kata sandi"}
+            {isPending ? t("Menyimpan...", "Saving...") : t("Ubah kata sandi", "Change password")}
           </button>
         </div>
       </form>

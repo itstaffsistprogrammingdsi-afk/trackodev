@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import { lazy, Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
@@ -66,6 +67,7 @@ function isSuperAdminUser(auth: ReturnType<typeof useAuth>) {
 function RootRoute() {
   const token = localStorage.getItem("token");
   const auth = useAuth();
+  const { t } = useLanguage();
 
   if (!token) {
     localStorage.removeItem(LAST_APP_ROUTE_KEY);
@@ -74,8 +76,8 @@ function RootRoute() {
 
   if (auth.loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-medium text-slate-500">
-        Loading page...
+      <div className="flex min-h-screen items-center justify-center bg-canvas text-sm font-medium text-fg-muted">
+        {t("Memuat aplikasi...", "Loading application...")}
       </div>
     );
   }
@@ -109,6 +111,8 @@ function MyWorkRoute() {
 }
 
 export default function App() {
+  const { t } = useLanguage();
+
   return (
     <Router>
       <MobileAppBridge />
@@ -117,8 +121,8 @@ export default function App() {
 
       <Suspense
         fallback={
-          <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-medium text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-            Loading page...
+          <div className="flex min-h-screen items-center justify-center bg-canvas text-sm font-medium text-fg-muted">
+            {t("Memuat halaman...", "Loading page...")}
           </div>
         }
       >

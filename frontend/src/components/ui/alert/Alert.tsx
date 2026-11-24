@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 interface AlertProps {
   variant: "success" | "error" | "warning" | "info"; // Alert type
   title: string; // Title of the alert
@@ -15,8 +17,12 @@ const Alert: React.FC<AlertProps> = ({
   message,
   showLink = false,
   linkHref = "#",
-  linkText = "Learn more",
+  linkText,
 }) => {
+  const { t } = useLanguage();
+  const resolvedLinkText =
+    linkText ?? t("Pelajari lebih lanjut", "Learn more");
+
   // Tailwind classes for each variant
   const variantClasses = {
     success: {
@@ -113,7 +119,7 @@ const Alert: React.FC<AlertProps> = ({
 
   return (
     <div
-      className={`rounded-xl border p-4 ${variantClasses[variant].container}`}
+      className={`rounded-control border p-4 ${variantClasses[variant].container}`}
     >
       <div className="flex items-start gap-3">
         <div className={`-mt-0.5 ${variantClasses[variant].icon}`}>
@@ -121,18 +127,18 @@ const Alert: React.FC<AlertProps> = ({
         </div>
 
         <div>
-          <h4 className="mb-1 text-sm font-semibold text-gray-800 dark:text-white/90">
+          <h4 className="mb-1 text-sm font-semibold text-fg text-fg">
             {title}
           </h4>
 
-          <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+          <p className="text-sm text-fg-muted dark:text-fg-subtle">{message}</p>
 
           {showLink && (
             <Link
               to={linkHref}
-              className="inline-block mt-3 text-sm font-medium text-gray-500 underline dark:text-gray-400"
+              className="inline-block mt-3 text-sm font-medium text-fg-muted underline dark:text-fg-subtle"
             >
-              {linkText}
+              {resolvedLinkText}
             </Link>
           )}
         </div>

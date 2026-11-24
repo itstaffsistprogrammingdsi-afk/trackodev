@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getApiBaseUrl } from "./mobileConfig";
+import { translate } from "@/i18n/translate";
 import { emitToast } from "../context/ToastContext";
 
 declare module "axios" {
@@ -36,31 +37,44 @@ api.interceptors.response.use(
     const requestUrl = String(err.config?.url ?? "");
     const isLoginRequest = /(?:^|\/)auth\/login(?:\?|$)/.test(requestUrl);
     const skipToast = err.config?.skipErrorToast === true;
+    const isImpersonating = Boolean(localStorage.getItem("impersonated_by"));
 
     if (skipToast) {
       // Blob/export callers read the error body themselves so the user gets
       // one specific message instead of a generic toast plus a second one.
-    } else if (status === 403 && !isLoginRequest) {
+    } else if (
+      status === 403 &&
+      !isLoginRequest &&
+      !isImpersonating
+    ) {
       emitToast({
         variant: "error",
-        title: "Akses ditolak",
-        message:
+        title: translate("Akses ditolak", "Access denied"),
+        message: translate(
           err.response?.data?.message ||
-          "Anda tidak memiliki izin untuk melakukan tindakan ini.",
+            "Anda tidak memiliki izin untuk melakukan tindakan ini.",
+          "You don't have permission to perform this action.",
+        ),
       });
     } else if (status >= 500) {
       emitToast({
         variant: "error",
-        title: "Server bermasalah",
-        message: "Layanan sedang mengalami kendala. Silakan coba lagi.",
+        title: translate("Server bermasalah", "Server error"),
+        message: translate(
+          "Layanan sedang mengalami kendala. Silakan coba lagi.",
+          "The service is having trouble. Please try again.",
+        ),
       });
     }
 
     if (status === 401 && !isLoginRequest) {
       emitToast({
         variant: "warning",
-        title: "Sesi berakhir",
-        message: "Sesi Anda telah berakhir. Silakan masuk kembali.",
+        title: translate("Sesi berakhir", "Session expired"),
+        message: translate(
+          "Sesi Anda telah berakhir. Silakan masuk kembali.",
+          "Your session has expired. Please sign in again.",
+        ),
         durationMs: 5000,
       });
 

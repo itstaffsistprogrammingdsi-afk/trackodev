@@ -8,6 +8,10 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 
+import { useLanguage } from "@/context/LanguageContext";
+import { getLocale, translate } from "@/i18n/translate";
+import { translatePeriodLabel, translateScopeLabel } from "./dashboardLabels";
+
 export type SystemInsightDetail = {
   id: string;
   title: string;
@@ -32,16 +36,16 @@ export type SystemInsight = {
   action_path?: string | null;
 };
 
-const statusLabels: Record<string, string> = {
-  todo: "Belum dimulai",
-  in_progress: "Sedang berjalan",
-  completed: "Selesai",
+const statusLabels: Record<string, { id: string; en: string }> = {
+  todo: { id: "Belum dimulai", en: "Not started" },
+  in_progress: { id: "Sedang berjalan", en: "In progress" },
+  completed: { id: "Selesai", en: "Completed" },
 };
 
 const formatDueDate = (dueDate?: string | null) => {
-  if (!dueDate) return "Tanpa tenggat";
+  if (!dueDate) return translate("Tanpa deadline", "No deadline");
 
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat(getLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -55,6 +59,7 @@ const severityStyles = {
     badge: "bg-danger-soft text-danger",
     metric: "text-danger",
     label: "Perlu tindakan",
+    labelEn: "Action required",
   },
   warning: {
     icon: CircleAlert,
@@ -62,6 +67,7 @@ const severityStyles = {
     badge: "bg-warning-soft text-warning",
     metric: "text-warning",
     label: "Perlu dipantau",
+    labelEn: "Needs monitoring",
   },
   success: {
     icon: CheckCircle2,
@@ -69,6 +75,7 @@ const severityStyles = {
     badge: "bg-success-soft text-success",
     metric: "text-success",
     label: "Terkendali",
+    labelEn: "Under control",
   },
   info: {
     icon: Info,
@@ -76,6 +83,7 @@ const severityStyles = {
     badge: "bg-info-soft text-info",
     metric: "text-info",
     label: "Informasi",
+    labelEn: "Information",
   },
 };
 
@@ -88,6 +96,8 @@ export default function SystemInsights({
   periodLabel: string;
   scopeLabel: string;
 }) {
+  const { t, locale } = useLanguage();
+
   if (insights.length === 0) return null;
 
   const criticalCount = insights.filter(
@@ -102,8 +112,19 @@ export default function SystemInsights({
   const attentionCount = criticalCount + warningCount;
   const categoryCount = new Set(insights.map((insight) => insight.category)).size;
   const summary = attentionCount > 0
-    ? `${attentionCount} kondisi memerlukan perhatian: ${criticalCount} perlu tindakan dan ${warningCount} perlu dipantau.`
-    : "Tidak ada kondisi kritis atau peringatan yang terdeteksi pada data saat ini.";
+    ? t(
+        "{attention} kondisi memerlukan perhatian: {critical} perlu tindakan dan {warning} perlu dipantau.",
+        "{attention} conditions need attention: {critical} require action and {warning} need monitoring.",
+        {
+          attention: attentionCount,
+          critical: criticalCount,
+          warning: warningCount,
+        },
+      )
+    : t(
+        "Tidak ada kondisi kritis atau peringatan yang terdeteksi pada data saat ini.",
+        "No critical conditions or warnings were detected in the current data.",
+      );
 
   return (
     <section
@@ -118,40 +139,59 @@ export default function SystemInsights({
             </span>
             <div>
               <h2 id="system-insights-title" className="text-base font-semibold text-fg">
-                System insights
+                {t("System insights")}
               </h2>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-fg-muted">
-                {summary} Analisis mencakup {categoryCount} area pada {scopeLabel} untuk periode {periodLabel}.
+                {summary}{" "}
+                {t(
+                  "Analisis mencakup {count} area pada {scope} untuk periode {period}.",
+                  "The analysis covers {count} areas in {scope} for {period}.",
+                  {
+                    count: categoryCount,
+                    scope: translateScopeLabel(scopeLabel),
+                    period: translatePeriodLabel(periodLabel),
+                  },
+                )}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 lg:justify-end" aria-label="Ringkasan tingkat insight">
+          <div className="flex flex-wrap items-center gap-1.5 lg:justify-end" aria-label={t("Ringkasan tingkat insight", "Insight level summary")}>
             <span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-fg-muted">
-              {insights.length} indikator
+              {t("{count} indikator", "{count} indicators", {
+                count: insights.length,
+              })}
             </span>
             {criticalCount > 0 ? (
               <span className="rounded-full bg-danger-soft px-2.5 py-1 text-xs font-medium text-danger">
-                {criticalCount} perlu tindakan
+                {t("{count} perlu tindakan", "{count} require action", {
+                  count: criticalCount,
+                })}
               </span>
             ) : null}
             {warningCount > 0 ? (
               <span className="rounded-full bg-warning-soft px-2.5 py-1 text-xs font-medium text-warning">
-                {warningCount} perlu dipantau
+                {t("{count} perlu dipantau", "{count} need monitoring", {
+                  count: warningCount,
+                })}
               </span>
             ) : null}
             {stableCount > 0 ? (
               <span className="rounded-full bg-success-soft px-2.5 py-1 text-xs font-medium text-success">
-                {stableCount} terkendali
+                {t("{count} terkendali", "{count} under control", {
+                  count: stableCount,
+                })}
               </span>
             ) : null}
           </div>
         </div>
 
         <div className="mt-4 rounded-card border border-line bg-surface-muted/60 px-4 py-3 text-xs leading-5 text-fg-muted">
-          <span className="font-medium text-fg">Cara membaca:</span>{" "}
-          hanya deadline overdue dan attachment yang menunggu QC yang ditampilkan. Angka mengikuti scope dan filter periode aktif;
-          status overdue dihitung terhadap waktu saat ini.
+          <span className="font-medium text-fg">{t("Cara membaca:", "How to read:")}</span>{" "}
+          {t(
+            "hanya deadline overdue dan attachment yang menunggu QC yang ditampilkan. Angka mengikuti scope dan filter periode aktif; status overdue dihitung terhadap waktu saat ini.",
+            "only overdue deadlines and attachments awaiting QC are shown. Figures follow the active scope and period filter; overdue status is calculated against the current time.",
+          )}
         </div>
       </div>
 
@@ -165,7 +205,7 @@ export default function SystemInsights({
               <div className="flex items-start justify-between gap-3">
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${style.badge}`}>
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                  {style.label}
+                  {t(style.label, style.labelEn)}
                 </span>
                 <span className={`text-right text-base font-semibold tabular-nums ${style.metric}`}>
                   {insight.metric}
@@ -177,13 +217,13 @@ export default function SystemInsights({
               <h3 className="mt-1 text-sm font-semibold text-fg">{insight.title}</h3>
               <div className="mt-3 flex-1">
                 <p className="text-[11px] font-medium text-fg-subtle">
-                  Kondisi aktual
+                  {t("Kondisi aktual", "Current condition")}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-fg-muted">{insight.message}</p>
                 {insight.details && insight.details.length > 0 ? (
                   <div className="mt-3">
                     <p className="text-[11px] font-medium text-fg-subtle">
-                      {insight.details_label ?? "Item yang perlu ditangani"} ({insight.details.length})
+                      {insight.details_label ?? t("Item yang perlu ditangani", "Items to address")} ({insight.details.length})
                     </p>
                     <ul className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
                       {insight.details.map((detail) => (
@@ -192,7 +232,7 @@ export default function SystemInsights({
                             <Link
                               to={detail.action_path}
                               className="block rounded-control border border-line bg-surface/80 p-3 transition-colors hover:border-line-strong hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-                              aria-label={`${detail.action_label ?? "Buka card"}: ${detail.title}`}
+                              aria-label={`${detail.action_label ?? t("Buka card", "Open card")}: ${detail.title}`}
                             >
                               <span className="flex items-start justify-between gap-2">
                                 <span className="text-xs font-medium text-fg">{detail.title}</span>
@@ -202,10 +242,21 @@ export default function SystemInsights({
                                 {detail.context}
                               </span>
                               <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-medium text-fg-muted">
-                                <span>{statusLabels[detail.status ?? ""] ?? detail.status ?? "Status tidak tersedia"}</span>
-                                <span>Jatuh tempo: {formatDueDate(detail.due_date)}</span>
+                                <span>
+                                  {statusLabels[detail.status ?? ""]
+                                    ? t(
+                                        statusLabels[detail.status ?? ""].id,
+                                        statusLabels[detail.status ?? ""].en,
+                                      )
+                                    : detail.status ?? t("Status tidak tersedia", "Status unavailable")}
+                                </span>
+                                <span>
+                                  {t("Jatuh tempo:", "Deadline:")} {formatDueDate(detail.due_date)}
+                                </span>
                                 {detail.quantity !== undefined && detail.quantity !== null ? (
-                                  <span>Quantity: {detail.quantity.toLocaleString("id-ID")}</span>
+                                  <span>
+                                    {t("Quantity")}: {detail.quantity.toLocaleString(locale)}
+                                  </span>
                                 ) : null}
                               </span>
                             </Link>

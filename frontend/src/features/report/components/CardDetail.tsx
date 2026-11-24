@@ -1,18 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { Attachment, Card, User } from '../types';
-import { X, Download, FileSpreadsheet, Eye, CheckCircle, Clock } from 'lucide-react';
-import { AttachmentPreviewModal } from './AttachmentPreviewModal';
-import { reportApi } from '../api/report.api';
-import { useAuth } from '@/context/AuthContext';
-import { toast } from '@/lib/feedback';
+import React, { useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  Clock3,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  X,
+} from "lucide-react";
+
+import { Attachment, Card, User } from "../types";
+import { AttachmentPreviewModal } from "./AttachmentPreviewModal";
+import { reportApi } from "../api/report.api";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { toast } from "@/lib/feedback";
 
 interface CardDetailProps {
   selectedUser: User;
   cards: Card[];
   loading: boolean;
-  onQcSubmit: (attachmentId: string, qcQuantity: number, qcNote: string) => Promise<boolean>;
+  onQcSubmit: (
+    attachmentId: string,
+    qcQuantity: number,
+    qcNote: string,
+  ) => Promise<boolean>;
   onClose: () => void;
-  onExport?: (type: 'excel' | 'pdf', userId?: string | number) => void;
+  onExport?: (type: "excel" | "pdf", userId?: string | number) => void;
   onPreview?: (userId?: string | number) => void;
   exporting?: boolean;
 }
@@ -28,14 +43,20 @@ export const CardDetail: React.FC<CardDetailProps> = ({
   exporting = false,
 }) => {
   const { can } = useAuth();
-  const canPreview = can('report.preview') || can('report.preview.pdf');
-  const canExportPdf = can('report.export') || can('report.export.pdf');
-  const canExportExcel = can('report.export') || can('report.export.excel');
-  const canQc = can('report.qc');
+  const { t } = useLanguage();
+  const canPreview = can("report.preview") || can("report.preview.pdf");
+  const canExportPdf = can("report.export") || can("report.export.pdf");
+  const canExportExcel = can("report.export") || can("report.export.excel");
+  const canQc = can("report.qc");
+
   const [qcValues, setQcValues] = useState<{ [key: string]: string }>({});
   const [qcNotes, setQcNotes] = useState<{ [key: string]: string }>({});
-  const [submittingQc, setSubmittingQc] = useState<{ [key: string]: boolean }>({});
-  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [submittingQc, setSubmittingQc] = useState<{ [key: string]: boolean }>(
+    {},
+  );
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(
+    null,
+  );
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
   const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
 
@@ -45,8 +66,23 @@ export const CardDetail: React.FC<CardDetailProps> = ({
     };
   }, [previewObjectUrl]);
 
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose]);
+
   const openPreview = async (attachment: Attachment) => {
-    if (attachment.attachment_type !== 'file') return;
+    if (attachment.attachment_type !== "file") return;
 
     setPreviewLoadingId(attachment.id);
     try {
@@ -59,7 +95,10 @@ export const CardDetail: React.FC<CardDetailProps> = ({
       setPreviewAttachment(attachment);
     } catch (error) {
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message ?? 'Gagal memuat lampiran.');
+      toast.error(
+        err.response?.data?.message ??
+          t("Gagal memuat lampiran.", "Failed to load the attachment."),
+      );
     } finally {
       setPreviewLoadingId(null);
     }
@@ -74,292 +113,410 @@ export const CardDetail: React.FC<CardDetailProps> = ({
   };
 
   const handleQcSubmit = async (attachmentId: string) => {
-    const quantity = parseInt(qcValues[attachmentId] || '0');
-    const note = qcNotes[attachmentId] || '';
+    const quantity = parseInt(qcValues[attachmentId] || "0");
+    const note = qcNotes[attachmentId] || "";
 
-    if (isNaN(quantity) || quantity < 0) {
-      toast.error('Jumlah QC harus berupa angka positif');
+    if (Number.isNaN(quantity) || quantity < 0) {
+      toast.error(t("Jumlah QC harus berupa angka positif", "QC quantity must be a positive number"));
       return;
     }
 
-    setSubmittingQc((prev) => ({ ...prev, [attachmentId]: true }));
+    setSubmittingQc((previous) => ({ ...previous, [attachmentId]: true }));
     try {
       const success = await onQcSubmit(attachmentId, quantity, note);
       if (success) {
-        setQcValues((prev) => ({ ...prev, [attachmentId]: '' }));
-        setQcNotes((prev) => ({ ...prev, [attachmentId]: '' }));
+        setQcValues((previous) => ({ ...previous, [attachmentId]: "" }));
+        setQcNotes((previous) => ({ ...previous, [attachmentId]: "" }));
       }
     } finally {
-      setSubmittingQc((prev) => ({ ...prev, [attachmentId]: false }));
+      setSubmittingQc((previous) => ({ ...previous, [attachmentId]: false }));
     }
   };
 
   return (
     <div className="fixed inset-0 z-40 overflow-hidden">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-overlay backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
-      <div className="absolute inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl overflow-hidden">
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">{selectedUser.name}</h2>
-              <p className="text-sm text-gray-500">Detail Laporan Pekerjaan</p>
-            </div>
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-              <button
-                onClick={() => onPreview?.(selectedUser.id)}
-                className={`${canPreview ? 'flex' : 'hidden'} shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-blue-50 px-3 py-1.5 text-sm text-blue-600 transition-colors hover:bg-blue-100`}
-              >
-                <Eye className="w-4 h-4" />
-                Preview
-              </button>
-              <button
-                onClick={() => onExport?.('pdf', selectedUser.id)}
-                disabled={exporting}
-                className={`${canExportPdf ? 'flex' : 'hidden'} shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-red-50 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50`}
-              >
-                <Download className="w-4 h-4" />
-                PDF
-              </button>
-              <button
-                onClick={() => onExport?.('excel', selectedUser.id)}
-                disabled={exporting}
-                className={`${canExportExcel ? 'flex' : 'hidden'} shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-green-50 px-3 py-1.5 text-sm text-green-600 transition-colors hover:bg-green-100 disabled:opacity-50`}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                Excel
-              </button>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("Detail laporan {name}", "Report details {name}", { name: selectedUser.name })}
+        className="absolute inset-y-0 right-0 flex w-full max-w-5xl flex-col border-l border-line bg-canvas shadow-e3"
+        style={{ animation: "ui-page-in 180ms var(--ease-soft)" }}
+      >
+        <header className="flex flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+          <div className="min-w-0">
+            <p className="text-2xs font-medium text-fg-subtle">
+              {t("Detail laporan", "Report details")}
+            </p>
+            <h2 className="truncate text-lg font-semibold tracking-heading text-fg">
+              {selectedUser.name}
+            </h2>
+            <p className="mt-0.5 text-xs text-fg-muted">
+              {t("{count} card dalam periode ini", "{count} cards in this period", { count: cards.length })}
+            </p>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-              </div>
-            ) : cards.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-gray-500">Tidak ada card yang ditemukan untuk user ini.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {cards.map((card) => {
-                  // Backend sudah memfilter arsip. Filter ini menjaga QC tetap aman
-                  // dari payload lama yang masih tersimpan di cache browser.
-                  const activeAttachments = card.attachments?.filter(
+          <div className="flex flex-wrap items-center gap-2">
+            {canPreview ? (
+              <button
+                type="button"
+                onClick={() => onPreview?.(selectedUser.id)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("Preview")}
+              </button>
+            ) : null}
+
+            {canExportPdf ? (
+              <button
+                type="button"
+                onClick={() => onExport?.("pdf", selectedUser.id)}
+                disabled={exporting}
+                className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                PDF
+              </button>
+            ) : null}
+
+            {canExportExcel ? (
+              <button
+                type="button"
+                onClick={() => onExport?.("excel", selectedUser.id)}
+                disabled={exporting}
+                className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
+              >
+                <FileSpreadsheet
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
+                Excel
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t("Tutup detail laporan", "Close report details")}
+              className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6">
+          {loading ? (
+            <div
+              className="flex h-full items-center justify-center gap-2 text-sm text-fg-muted"
+              role="status"
+            >
+              <Loader2
+                className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+              {t("Memuat card…", "Loading cards…")}
+            </div>
+          ) : cards.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center rounded-panel border border-dashed border-line bg-surface px-6 py-16 text-center">
+              <FileText
+                className="h-8 w-8 text-fg-subtle"
+                aria-hidden="true"
+              />
+              <p className="mt-3 text-sm font-medium text-fg">
+                {t("Tidak ada card pada periode ini", "No cards in this period")}
+              </p>
+              <p className="mt-1 max-w-sm text-xs text-fg-muted">
+                {t("Ubah filter periode atau pilih anggota lain untuk melihat laporan.", "Change the period filter or select another member to see the report.")}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {cards.map((card) => {
+                const activeAttachments =
+                  card.attachments?.filter(
                     (attachment) => !attachment.archived_at,
                   ) ?? [];
 
-                  return (
-                  <div key={card.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-                    {/* Card Header */}
-                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{card.title}</h3>
-                        {card.is_cross_division_copy ? (
-                          <p className="mt-1 inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
-                            Lintas divisi
-                            {card.source_division ? ` · dari ${card.source_division.name}` : ""}
-                            {card.mirrored_by ? ` · oleh ${card.mirrored_by.name}` : ""}
-                          </p>
-                        ) : null}
-                        {card.campaign && (
-                          <p className="text-sm text-gray-500">Campaign: {card.campaign.name}</p>
-                        )}
-                        {card.board && (
-                          <p className="text-sm text-gray-500">Board: {card.board.name}</p>
-                        )}
+                return (
+                  <article
+                    key={card.id}
+                    className="rounded-panel border border-line bg-surface p-4 sm:p-5"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <h3 className="break-words text-sm font-semibold text-fg">
+                          {card.title}
+                        </h3>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs text-fg-subtle">
+                          {card.campaign ? (
+                            <span>{card.campaign.name}</span>
+                          ) : null}
+                          {card.board ? (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span>{card.board.name}</span>
+                            </>
+                          ) : null}
+                          {card.is_cross_division_copy ? (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span className="text-accent">
+                                {t("Lintas divisi", "Cross-division")}
+                                {card.source_division
+                                  ? t(" dari {division}", " from {division}", {
+                                      division: card.source_division.name,
+                                    })
+                                  : ""}
+                              </span>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
+
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        className={`inline-flex shrink-0 items-center gap-1.5 self-start rounded-full px-2 py-0.5 text-2xs font-medium ${
                           card.is_completed
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
+                            ? "bg-success-soft text-success"
+                            : "bg-warning-soft text-warning"
                         }`}
                       >
-                        {card.is_completed ? 'Completed' : 'In Progress'}
+                        {card.is_completed ? (
+                          <CheckCircle2
+                            className="h-3 w-3"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Clock3 className="h-3 w-3" aria-hidden="true" />
+                        )}
+                        {card.is_completed ? t("Selesai", "Completed") : t("Berjalan", "In progress")}
                       </span>
                     </div>
 
-                    {/* Labels & Brands */}
-                    {(card.labels?.length > 0 || card.brands?.length > 0) && (
-                      <div className="flex flex-wrap gap-2 mb-4">
+                    {card.labels?.length || card.brands?.length ? (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
                         {card.labels?.map((label) => (
                           <span
                             key={label.id}
-                            className="px-2 py-1 text-xs rounded-md"
-                            style={{ backgroundColor: label.color || '#e5e7eb' }}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted"
                           >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  label.color || "var(--tracko-fg-subtle)",
+                              }}
+                            />
                             {label.name}
                           </span>
                         ))}
                         {card.brands?.map((brand) => (
                           <span
                             key={brand.id}
-                            className="px-2 py-1 text-xs rounded-md border"
-                            style={{ borderColor: brand.color || '#d1d5db' }}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted"
                           >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  brand.color || "var(--tracko-fg-subtle)",
+                              }}
+                            />
                             {brand.name}
                           </span>
                         ))}
                       </div>
-                    )}
+                    ) : null}
 
-                    {/* Attachments */}
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Attachment & QC</h4>
-                      <div className="space-y-3">
-                        {activeAttachments.length > 0 ? (
-                          activeAttachments.map((attachment) => {
-                            const isQcDone = attachment.qc_quantity !== null;
-                            const isSubmitting = submittingQc[attachment.id] || false;
+                    <div className="mt-4 border-t border-line pt-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <h4 className="text-2xs font-medium text-fg-subtle">
+                          {t("Lampiran & QC", "Attachments & QC")}
+                        </h4>
+                        <span className="text-2xs tabular-nums text-fg-subtle">
+                          {activeAttachments.length}
+                        </span>
+                      </div>
+
+                      {activeAttachments.length > 0 ? (
+                        <div className="space-y-2">
+                          {activeAttachments.map((attachment) => {
+                            const isQcDone =
+                              attachment.qc_quantity !== null &&
+                              attachment.qc_quantity !== undefined;
+                            const isSubmitting =
+                              submittingQc[attachment.id] || false;
                             const maxQty = attachment.quantity || 0;
 
                             return (
                               <div
                                 key={attachment.id}
-                                className={`bg-gray-50 rounded-lg p-4 border ${
-                                  isQcDone ? 'border-green-200' : 'border-gray-200'
+                                className={`rounded-card border p-3 ${
+                                  isQcDone
+                                    ? "border-success/20 bg-success-soft/40"
+                                    : "border-line bg-surface-muted/40"
                                 }`}
                               >
-                                <div className="flex flex-col gap-3">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => void openPreview(attachment)}
-                                          disabled={attachment.attachment_type !== 'file' || previewLoadingId === attachment.id}
-                                          className="max-w-full truncate text-left font-medium text-blue-700 underline decoration-blue-200 underline-offset-4 transition hover:text-blue-800 disabled:cursor-default disabled:text-gray-800 disabled:no-underline"
-                                          title={
-                                            attachment.attachment_type === 'file'
-                                              ? `Preview ${attachment.file_name}`
-                                              : attachment.file_name
-                                          }
-                                        >
-                                          {attachment.file_name}
-                                          {previewLoadingId === attachment.id ? ' (memuat...)' : ''}
-                                        </button>
-                                        {isQcDone ? (
-                                          <CheckCircle className="w-4 h-4 text-green-600" />
-                                        ) : (
-                                          <Clock className="w-4 h-4 text-yellow-500" />
-                                        )}
-                                      </div>
-                                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                                        <span>Total: {maxQty}</span>
-                                        {isQcDone && (
-                                          <>
-                                            <span>|</span>
-                                            <span className="text-green-600 font-medium">
-                                              QC: {attachment.qc_quantity}
-                                            </span>
-                                            {attachment.qc_user && (
-                                              <span>| oleh: {attachment.qc_user.name}</span>
-                                            )}
-                                            {attachment.qc_at && (
-                                              <span>| {new Date(attachment.qc_at).toLocaleDateString()}</span>
-                                            )}
-                                          </>
-                                        )}
-                                      </div>
-                                      {attachment.qc_note && (
-                                        <p className="text-sm text-gray-600 mt-1 bg-gray-100 p-2 rounded">
-                                          📝 Catatan: {attachment.qc_note}
-                                        </p>
-                                      )}
-                                    </div>
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void openPreview(attachment)
+                                      }
+                                      disabled={
+                                        attachment.attachment_type !==
+                                          "file" ||
+                                        previewLoadingId === attachment.id
+                                      }
+                                      className="max-w-full truncate text-left text-xs font-medium text-accent transition-colors hover:text-accent-strong disabled:cursor-default disabled:text-fg"
+                                      title={
+                                        attachment.attachment_type ===
+                                        "file"
+                                          ? t("Preview {file}", "Preview {file}", { file: attachment.file_name })
+                                          : attachment.file_name
+                                      }
+                                    >
+                                      {attachment.file_name}
+                                      {previewLoadingId === attachment.id
+                                        ? t(" (memuat…)", " (loading…)")
+                                        : ""}
+                                    </button>
+
+                                    <p className="mt-1 text-2xs text-fg-subtle">
+                                      {t("Jumlah {count}", "Quantity {count}", { count: maxQty })}
+                                      {isQcDone ? (
+                                        <>
+                                          {" · "}
+                                          <span className="font-medium text-success">
+                                            {t("QC {quantity}", "QC {quantity}", { quantity: attachment.qc_quantity ?? 0 })}
+                                          </span>
+                                          {attachment.qc_user
+                                            ? t(" oleh {name}", " by {name}", { name: attachment.qc_user.name })
+                                            : ""}
+                                        </>
+                                      ) : null}
+                                    </p>
+
+                                    {attachment.qc_note ? (
+                                      <p className="mt-1.5 rounded-[7px] bg-surface px-2 py-1.5 text-2xs leading-4 text-fg-muted">
+                                        {attachment.qc_note}
+                                      </p>
+                                    ) : null}
                                   </div>
 
-                                  {/* QC Input Area */}
-                                  <div className={`${canQc ? 'flex' : 'hidden'} flex-col sm:flex-row items-start sm:items-center gap-2 bg-white p-3 rounded-lg border border-gray-200`}>
-                                    <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-                                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                                        QC:
-                                      </label>
+                                  {isQcDone ? (
+                                    <CheckCircle2
+                                      className="h-4 w-4 shrink-0 text-success"
+                                      aria-label={t("QC selesai", "QC completed")}
+                                    />
+                                  ) : (
+                                    <Clock3
+                                      className="h-4 w-4 shrink-0 text-warning"
+                                      aria-label={t("Menunggu QC", "Awaiting QC")}
+                                    />
+                                  )}
+                                </div>
+
+                                {canQc ? (
+                                  <div className="mt-2.5 flex flex-col gap-2 border-t border-line pt-2.5 sm:flex-row sm:items-center">
+                                    <label className="flex items-center gap-1.5 text-2xs text-fg-muted">
+                                      {t("QC")}
                                       <input
                                         type="number"
                                         min="0"
                                         max={maxQty}
-                                        value={qcValues[attachment.id] ?? ''}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          if (val === '' || (!isNaN(Number(val)) && Number(val) >= 0)) {
-                                            setQcValues((prev) => ({
-                                              ...prev,
-                                              [attachment.id]: val,
+                                        value={
+                                          qcValues[attachment.id] ?? ""
+                                        }
+                                        onChange={(event) => {
+                                          const value = event.target.value;
+                                          if (
+                                            value === "" ||
+                                            (!Number.isNaN(Number(value)) &&
+                                              Number(value) >= 0)
+                                          ) {
+                                            setQcValues((previous) => ({
+                                              ...previous,
+                                              [attachment.id]: value,
                                             }));
                                           }
                                         }}
-                                        placeholder={`0 - ${maxQty}`}
-                                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                                        placeholder={`0–${maxQty}`}
+                                        aria-label={t("Jumlah QC {file}", "QC quantity {file}", { file: attachment.file_name })}
+                                        className="h-8 w-20 rounded-[7px] border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
                                         disabled={isQcDone || isSubmitting}
                                       />
-                                      <span className="text-sm text-gray-400">/ {maxQty}</span>
-                                    </div>
+                                      <span className="text-fg-subtle">
+                                        / {maxQty}
+                                      </span>
+                                    </label>
 
-                                    <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-                                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                                        Catatan:
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={qcNotes[attachment.id] ?? ''}
-                                        onChange={(e) => {
-                                          setQcNotes((prev) => ({
-                                            ...prev,
-                                            [attachment.id]: e.target.value,
-                                          }));
-                                        }}
-                                        placeholder="Catatan QC..."
-                                        className="min-w-0 flex-1 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-                                        disabled={isQcDone || isSubmitting}
-                                      />
-                                    </div>
+                                    <input
+                                      type="text"
+                                      value={qcNotes[attachment.id] ?? ""}
+                                      onChange={(event) =>
+                                        setQcNotes((previous) => ({
+                                          ...previous,
+                                          [attachment.id]: event.target.value,
+                                        }))
+                                      }
+                                      placeholder={t("Catatan QC (opsional)", "QC note (optional)")}
+                                      aria-label={t("Catatan QC {file}", "QC note {file}", { file: attachment.file_name })}
+                                      className="h-8 min-w-0 flex-1 rounded-[7px] border border-line bg-surface px-2 text-xs text-fg outline-none placeholder:text-fg-subtle focus:border-accent focus:ring-2 focus:ring-accent/15"
+                                      disabled={isQcDone || isSubmitting}
+                                    />
 
                                     <button
-                                      onClick={() => handleQcSubmit(attachment.id)}
+                                      type="button"
+                                      onClick={() =>
+                                        void handleQcSubmit(attachment.id)
+                                      }
                                       disabled={
                                         isQcDone ||
                                         isSubmitting ||
                                         !qcValues[attachment.id] ||
-                                        Number(qcValues[attachment.id]) < 0 ||
-                                        Number(qcValues[attachment.id]) > maxQty
+                                        Number(
+                                          qcValues[attachment.id],
+                                        ) < 0 ||
+                                        Number(
+                                          qcValues[attachment.id],
+                                        ) > maxQty
                                       }
-                                      className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                                        isQcDone
-                                          ? 'bg-green-100 text-green-700 cursor-default'
-                                          : isSubmitting
-                                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                                      }`}
+                                      className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[7px] bg-accent px-2.5 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-fg-subtle"
                                     >
-                                      {isQcDone ? '✓ Selesai' : isSubmitting ? '...' : 'Submit QC'}
+                                      {isSubmitting ? (
+                                        <Loader2
+                                          className="h-3 w-3 animate-spin motion-reduce:animate-none"
+                                          aria-hidden="true"
+                                        />
+                                      ) : null}
+                                      {isQcDone ? t("Selesai", "Completed") : t("Kirim QC", "Submit QC")}
                                     </button>
                                   </div>
-                                </div>
+                                ) : null}
                               </div>
                             );
-                          })
-                        ) : (
-                          <p className="text-gray-400 text-sm">Tidak ada attachment</p>
-                        )}
-                      </div>
+                          })}
+                        </div>
+                      ) : (
+                        <p className="rounded-card border border-dashed border-line px-3 py-4 text-center text-2xs text-fg-subtle">
+                          {t("Tidak ada lampiran", "No attachments")}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -367,7 +524,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
         attachment={
           previewAttachment && previewObjectUrl
             ? {
-                name: previewAttachment.file_name,
+                name: previewAttachment.file_name ?? t("Lampiran", "Attachment"),
                 url: previewObjectUrl,
                 fileType: previewAttachment.file_type,
               }

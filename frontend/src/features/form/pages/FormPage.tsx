@@ -18,6 +18,7 @@ import {
 import { getForms, deleteForm } from "../api/form.api";
 import type { Form } from "../types";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { toast, confirmDialog } from "@/lib/feedback";
 import EmptyState from "@/components/ui/EmptyState";
@@ -25,15 +26,20 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 type StatusFilter = "all" | "active" | "inactive";
 
-const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
-  { value: "all", label: "Semua" },
-  { value: "active", label: "Aktif" },
-  { value: "inactive", label: "Nonaktif" },
+const STATUS_OPTIONS: Array<{
+  value: StatusFilter;
+  label: string;
+  labelEn: string;
+}> = [
+  { value: "all", label: "Semua", labelEn: "All" },
+  { value: "active", label: "Aktif", labelEn: "Active" },
+  { value: "inactive", label: "Nonaktif", labelEn: "Inactive" },
 ];
 
 export default function FormPage() {
   const navigate = useNavigate();
   const { can } = useAuth();
+  const { t, locale, language } = useLanguage();
   const realtimeRevision = useRealtimeRevision([
     "Form", "FormField", "FormSubmission",
   ]);
@@ -56,12 +62,17 @@ export default function FormPage() {
       setForms(data);
     } catch (err) {
       console.error(err);
-      setError("Gagal memuat daftar form. Silakan coba lagi.");
+      setError(
+        t(
+          "Gagal memuat daftar form. Silakan coba lagi.",
+          "Failed to load forms. Please try again.",
+        ),
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [language, t]);
 
   useEffect(() => {
     void fetchForms();
@@ -69,7 +80,10 @@ export default function FormPage() {
 
   const handleDelete = async (id: string) => {
     const confirmed = await confirmDialog({
-      message: "Hapus form ini? Tindakan ini tidak dapat dibatalkan.",
+      message: t(
+        "Hapus form ini? Tindakan ini tidak dapat dibatalkan.",
+        "Delete this form? This action cannot be undone.",
+      ),
       variant: "danger",
     });
 
@@ -77,18 +91,18 @@ export default function FormPage() {
 
     try {
       await deleteForm(id);
-      toast.success("Form berhasil dihapus.");
+      toast.success(t("Form berhasil dihapus.", "Form deleted successfully."));
       await fetchForms();
     } catch (err) {
       console.error(err);
-      toast.error("Gagal menghapus form.");
+      toast.error(t("Gagal menghapus form.", "Failed to delete form."));
     }
   };
 
   const formatDate = (date: string) => {
     const parsed = new Date(date);
     if (Number.isNaN(parsed.getTime())) return "-";
-    return parsed.toLocaleDateString("id-ID", {
+    return parsed.toLocaleDateString(locale, {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -100,10 +114,10 @@ export default function FormPage() {
 
     try {
       await navigator.clipboard.writeText(publicLink);
-      toast.success("Link form disalin.");
+      toast.success(t("Link form disalin.", "Form link copied."));
     } catch (error) {
       console.error(error);
-      toast.error("Gagal menyalin link.");
+      toast.error(t("Gagal menyalin link.", "Failed to copy link."));
     }
   };
 
@@ -140,10 +154,13 @@ export default function FormPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">
-            Form
+            {t("Form", "Forms")}
           </h1>
           <p className="mt-1 text-sm text-fg-muted">
-            Buat form, bagikan link publik, dan kelola jawaban tim di satu tempat.
+            {t(
+              "Buat form, bagikan link publik, dan kelola jawaban tim di satu tempat.",
+              "Create forms, share public links, and manage team responses in one place.",
+            )}
           </p>
         </div>
 
@@ -152,14 +169,14 @@ export default function FormPage() {
             type="button"
             onClick={() => void fetchForms(true)}
             disabled={refreshing}
-            aria-label="Muat ulang daftar form"
+            aria-label={t("Muat ulang daftar form", "Reload form list")}
             className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:cursor-wait disabled:opacity-60"
           >
             <RefreshCw
               className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
               aria-hidden="true"
             />
-            {refreshing ? "Memuat..." : "Muat ulang"}
+            {refreshing ? t("Memuat...", "Loading...") : t("Muat ulang", "Reload")}
           </button>
 
           {canCreate ? (
@@ -169,7 +186,7 @@ export default function FormPage() {
               className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Buat form
+              {t("Buat form", "Create form")}
             </button>
           ) : null}
         </div>
@@ -186,14 +203,14 @@ export default function FormPage() {
             onClick={() => void fetchForms(true)}
             className="h-8 shrink-0 rounded-control border border-danger/25 bg-surface px-3 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
           >
-            Coba lagi
+            {t("Coba lagi", "Try again")}
           </button>
         </div>
       ) : null}
 
       {loading ? (
         <div className="space-y-4" role="status" aria-busy="true">
-          <span className="sr-only">Memuat daftar form</span>
+          <span className="sr-only">{t("Memuat daftar form", "Loading form list")}</span>
           <div className="grid grid-cols-3 gap-px overflow-hidden rounded-panel border border-line bg-line">
             {[0, 1, 2].map((item) => (
               <div key={item} className="space-y-2 bg-surface p-4">
@@ -223,9 +240,13 @@ export default function FormPage() {
         <>
           {/* RINGKASAN */}
           <div className="grid grid-cols-3 gap-px overflow-hidden rounded-panel border border-line bg-line">
-            <SummaryCell label="Total form" value={forms.length} />
-            <SummaryCell label="Form aktif" value={activeCount} tone="success" />
-            <SummaryCell label="Total field" value={fieldCount} />
+            <SummaryCell label={t("Total form", "Total forms")} value={forms.length} />
+            <SummaryCell
+              label={t("Form aktif", "Active forms")}
+              value={activeCount}
+              tone="success"
+            />
+            <SummaryCell label={t("Total field", "Total fields")} value={fieldCount} />
           </div>
 
           {forms.length > 0 ? (
@@ -239,8 +260,8 @@ export default function FormPage() {
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari nama atau deskripsi form"
-                  aria-label="Cari form"
+                  placeholder={t("Cari nama atau deskripsi form", "Search form name or description")}
+                  aria-label={t("Cari form", "Search forms")}
                   className="h-9 w-full rounded-control border border-transparent bg-surface-muted pl-9 pr-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:bg-surface focus:ring-2 focus:ring-accent/15"
                 />
               </div>
@@ -258,13 +279,13 @@ export default function FormPage() {
                         : "text-fg-muted hover:text-fg"
                     }`}
                   >
-                    {option.label}
+                    {t(option.label, option.labelEn)}
                   </button>
                 ))}
               </div>
 
               <span className="shrink-0 px-1 text-[11px] font-medium tabular-nums text-fg-muted">
-                {filteredForms.length} form
+                {t("{count} form", "{count} forms", { count: filteredForms.length })}
               </span>
             </div>
           ) : null}
@@ -272,21 +293,30 @@ export default function FormPage() {
           {forms.length === 0 ? (
             <EmptyState
               icon={FileText}
-              title="Belum ada form"
-              description="Buat form pertama untuk mengumpulkan request, brief, atau data tim."
+              title={t("Belum ada form", "No forms yet")}
+              description={t(
+                "Buat form pertama untuk mengumpulkan request, brief, atau data tim.",
+                "Create your first form to collect requests, briefs, or team data.",
+              )}
               action={
                 canCreate
-                  ? { label: "Buat form", onClick: () => navigate("/forms/create") }
+                  ? {
+                      label: t("Buat form", "Create form"),
+                      onClick: () => navigate("/forms/create"),
+                    }
                   : undefined
               }
             />
           ) : filteredForms.length === 0 ? (
             <EmptyState
               icon={Inbox}
-              title="Form tidak ditemukan"
-              description="Tidak ada form yang cocok dengan pencarian atau filter status saat ini."
+              title={t("Form tidak ditemukan", "No forms found")}
+              description={t(
+                "Tidak ada form yang cocok dengan pencarian atau filter status saat ini.",
+                "No forms match the current search or status filter.",
+              )}
               action={{
-                label: "Hapus filter",
+                label: t("Hapus filter", "Clear filters"),
                 onClick: () => {
                   setSearch("");
                   setStatus("all");
@@ -307,7 +337,7 @@ export default function FormPage() {
                         {form.name}
                       </h2>
                       <p className="mt-1 line-clamp-2 text-xs leading-5 text-fg-muted">
-                        {form.description || "Belum ada deskripsi."}
+                        {form.description || t("Belum ada deskripsi.", "No description yet.")}
                       </p>
                     </div>
 
@@ -323,16 +353,22 @@ export default function FormPage() {
                       ) : (
                         <CircleSlash className="h-3 w-3" aria-hidden="true" />
                       )}
-                      {form.is_active ? "Aktif" : "Nonaktif"}
+                      {form.is_active ? t("Aktif", "Active") : t("Nonaktif", "Inactive")}
                     </span>
                   </div>
 
                   <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-subtle">
                     <span className="inline-flex items-center gap-1">
                       <ListChecks className="h-3 w-3" aria-hidden="true" />
-                      {form.fields?.length ?? 0} field
+                      {t("{count} field", "{count} fields", {
+                        count: form.fields?.length ?? 0,
+                      })}
                     </span>
-                    <span>Dibuat {formatDate(form.created_at)}</span>
+                    <span>
+                      {t("Dibuat {date}", "Created {date}", {
+                        date: formatDate(form.created_at),
+                      })}
+                    </span>
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
@@ -343,7 +379,7 @@ export default function FormPage() {
                         className="inline-flex h-8 items-center gap-1.5 rounded-control bg-accent-soft px-3 text-xs font-medium text-accent transition-colors hover:bg-accent-soft/70"
                       >
                         <Inbox className="h-3.5 w-3.5" aria-hidden="true" />
-                        Responses
+                        {t("Respons", "Responses")}
                       </button>
                     ) : null}
 
@@ -356,7 +392,7 @@ export default function FormPage() {
                         className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
                       >
                         <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
-                        Fields
+                        {t("Field", "Fields")}
                       </button>
                     ) : null}
 
@@ -367,7 +403,7 @@ export default function FormPage() {
                         className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
                       >
                         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                        Edit
+                        {t("Edit", "Edit")}
                       </button>
                     ) : null}
 
@@ -376,8 +412,10 @@ export default function FormPage() {
                         type="button"
                         onClick={() => void copyPublicLink(form.slug)}
                         className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
-                        aria-label={`Salin link publik ${form.name}`}
-                        title="Salin link publik"
+                        aria-label={t("Salin link publik {name}", "Copy public link for {name}", {
+                          name: form.name,
+                        })}
+                        title={t("Salin link publik", "Copy public link")}
                       >
                         <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
@@ -387,8 +425,10 @@ export default function FormPage() {
                         target="_blank"
                         rel="noreferrer"
                         className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
-                        aria-label={`Buka form publik ${form.name}`}
-                        title="Buka form publik"
+                        aria-label={t("Buka form publik {name}", "Open public form {name}", {
+                          name: form.name,
+                        })}
+                        title={t("Buka form publik", "Open public form")}
                       >
                         <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                       </a>
@@ -398,8 +438,10 @@ export default function FormPage() {
                           type="button"
                           onClick={() => void handleDelete(form.id)}
                           className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger"
-                          aria-label={`Hapus form ${form.name}`}
-                          title="Hapus form"
+                          aria-label={t("Hapus form {name}", "Delete form {name}", {
+                            name: form.name,
+                          })}
+                          title={t("Hapus form", "Delete form")}
                         >
                           <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -425,6 +467,8 @@ function SummaryCell({
   value: number;
   tone?: "default" | "success";
 }) {
+  const { locale } = useLanguage();
+
   return (
     <div className="bg-surface p-4 sm:p-5">
       <p
@@ -432,7 +476,7 @@ function SummaryCell({
           tone === "success" && value > 0 ? "text-success" : "text-fg"
         }`}
       >
-        {value.toLocaleString("id-ID")}
+        {value.toLocaleString(locale)}
       </p>
       <p className="mt-2 text-[11px] font-medium text-fg-muted">{label}</p>
     </div>

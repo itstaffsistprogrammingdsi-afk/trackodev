@@ -1,5 +1,7 @@
 import { CheckCircle2, ClipboardList, TrendingUp } from "lucide-react";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 type Props = {
   totalCards: number;
   completedCards: number;
@@ -13,6 +15,7 @@ export default function SummaryCards({
   completionRate,
   loading = false,
 }: Props) {
+  const { t } = useLanguage();
   const safeRate = Number.isFinite(completionRate) ? completionRate : 0;
 
   return (
@@ -23,21 +26,21 @@ export default function SummaryCards({
       aria-busy={loading}
     >
       <SummaryCard
-        title="Total task"
+        title={t("Total task", "Total tasks")}
         value={totalCards ?? 0}
-        description="Task pada periode terpilih"
+        description={t("Task pada periode terpilih", "Tasks in the selected period")}
         icon={<ClipboardList size={16} aria-hidden="true" />}
       />
       <SummaryCard
-        title="Selesai"
+        title={t("Selesai", "Completed")}
         value={completedCards ?? 0}
-        description="Task berstatus selesai"
+        description={t("Task berstatus selesai", "Tasks marked as completed")}
         icon={<CheckCircle2 size={16} aria-hidden="true" />}
       />
       <SummaryCard
-        title="Completion rate"
+        title={t("Completion rate")}
         value={`${safeRate.toFixed(1)}%`}
-        description="Rasio penyelesaian task"
+        description={t("Rasio penyelesaian task", "Task completion rate")}
         icon={<TrendingUp size={16} aria-hidden="true" />}
       />
     </div>

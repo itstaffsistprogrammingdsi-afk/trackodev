@@ -1,4 +1,6 @@
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Option {
   value: string;
@@ -11,53 +13,61 @@ interface SelectProps {
   onChange: (value: string) => void;
   className?: string;
   defaultValue?: string;
+  id?: string;
+  name?: string;
+  disabled?: boolean;
+  "aria-label"?: string;
 }
 
 const Select: React.FC<SelectProps> = ({
   options,
-  placeholder = "Select an option",
+  placeholder,
   onChange,
   className = "",
   defaultValue = "",
+  id,
+  name,
+  disabled = false,
+  "aria-label": ariaLabel,
 }) => {
-  // Manage the selected value
+  const { t } = useLanguage();
+  const resolvedPlaceholder = placeholder ?? t("Pilih opsi", "Select an option");
   const [selectedValue, setSelectedValue] = useState<string>(defaultValue);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedValue(value);
-    onChange(value); // Trigger parent handler
+    onChange(value);
   };
 
   return (
-    <select
-      className={`h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 ${
-        selectedValue
-          ? "text-gray-800 dark:text-white/90"
-          : "text-gray-400 dark:text-gray-400"
-      } ${className}`}
-      value={selectedValue}
-      onChange={handleChange}
-    >
-      {/* Placeholder option */}
-      <option
-        value=""
-        disabled
-        className="text-gray-700 dark:bg-gray-900 dark:text-gray-400"
+    <div className={`relative ${className}`}>
+      <select
+        id={id}
+        name={name}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        className={`h-10 w-full cursor-pointer appearance-none rounded-control border border-line bg-surface pl-3 pr-9 text-sm outline-none transition-[border-color,box-shadow] duration-150 hover:border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-fg-subtle ${
+          selectedValue ? "text-fg" : "text-fg-subtle"
+        }`}
+        value={selectedValue}
+        onChange={handleChange}
       >
-        {placeholder}
-      </option>
-      {/* Map over options */}
-      {options.map((option) => (
-        <option
-          key={option.value}
-          value={option.value}
-          className="text-gray-700 dark:bg-gray-900 dark:text-gray-400"
-        >
-          {option.label}
+        <option value="" disabled>
+          {resolvedPlaceholder}
         </option>
-      ))}
-    </select>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+
+      <ChevronDown
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+      />
+    </div>
   );
 };
 

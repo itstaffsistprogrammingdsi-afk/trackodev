@@ -3,6 +3,7 @@ import api from "@/lib/axios";
 import { Brand, Card } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { deleteBrand as deleteBrandRequest } from "../api/card.api";
+import { translate } from "@/i18n/translate";
 
 interface UseCardBrandReturn {
   brands: Brand[];
@@ -55,7 +56,7 @@ export function useCardBrand(
       setError(null);
     } catch (err) {
       console.error(err);
-      setError("Gagal memuat daftar brand.");
+      setError(translate("Gagal memuat daftar brand.", "Failed to load brands."));
     } finally {
       setLoading(false);
     }
@@ -68,7 +69,9 @@ export function useCardBrand(
     if (!card) return;
 
     if (!campaignId) {
-      const campaignError = new Error("Campaign card tidak ditemukan.");
+      const campaignError = new Error(
+        translate("Campaign card tidak ditemukan.", "Card campaign not found."),
+      );
       setError(campaignError.message);
       throw campaignError;
     }
@@ -106,7 +109,7 @@ export function useCardBrand(
       });
     } catch (err) {
       console.error(err);
-      setError(errorMessage(err, "Brand gagal dibuat."));
+      setError(errorMessage(err, translate("Brand gagal dibuat.", "Failed to create brand.")));
       throw err;
     }
   };
@@ -144,7 +147,7 @@ export function useCardBrand(
       ));
     } catch (err) {
       console.error(err);
-      setError(errorMessage(err, "Brand gagal ditambahkan."));
+      setError(errorMessage(err, translate("Brand gagal ditambahkan.", "Failed to attach brand.")));
     }
   };
 
@@ -174,7 +177,7 @@ export function useCardBrand(
       ));
     } catch (err) {
       console.error(err);
-      setError(errorMessage(err, "Brand gagal dilepas."));
+      setError(errorMessage(err, translate("Brand gagal dilepas.", "Failed to detach brand.")));
     }
   };
 
@@ -188,7 +191,7 @@ export function useCardBrand(
       setBrands((prev) => prev.filter((brand) => brand.id !== brandId));
     } catch (err) {
       console.error(err);
-      setError(errorMessage(err, "Brand gagal dihapus."));
+      setError(errorMessage(err, translate("Brand gagal dihapus.", "Failed to delete brand.")));
     }
   };
 

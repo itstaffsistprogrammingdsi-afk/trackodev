@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { getForm, updateForm } from "../api/form.api";
 import { toast } from "@/lib/feedback";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function EditFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,11 +39,11 @@ export default function EditFormPage() {
       });
     } catch (error) {
       console.error(error);
-      toast.error("Gagal load form");
+      toast.error(t("Gagal load form", "Failed to load form"));
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   const handleSubmit = async () => {
     if (!id) return;
@@ -62,11 +64,11 @@ export default function EditFormPage() {
 
       await updateForm(id, payload);
 
-      toast.success("Form berhasil diupdate");
+      toast.success(t("Form berhasil diupdate", "Form updated successfully"));
       navigate("/forms");
     } catch (error) {
       console.error(error);
-      toast.error("Gagal update form");
+      toast.error(t("Gagal update form", "Failed to update form"));
     } finally {
       setSaving(false);
     }
@@ -77,18 +79,18 @@ export default function EditFormPage() {
   }, [fetchForm]);
 
   if (loading) {
-    return <div className="p-6">Loading form...</div>;
+    return <div className="p-6">{t("Memuat form...", "Loading form...")}</div>;
   }
 
   return (
     <div className="p-6">
-      <div className="mx-auto max-w-3xl rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="mb-6 text-2xl font-bold">Edit Form</h1>
+      <div className="mx-auto max-w-3xl rounded-panel border border-line bg-surface p-6 shadow-e1">
+        <h1 className="mb-6 text-2xl font-bold">{t("Edit form", "Edit form")}</h1>
 
         <div className="space-y-5">
           <div>
             <label className="mb-2 block text-sm font-medium">
-              Form Name
+              {t("Nama form", "Form name")}
             </label>
             <input
               type="text"
@@ -105,7 +107,7 @@ export default function EditFormPage() {
 
           <div>
             <label className="mb-2 block text-sm font-medium">
-              Description
+              {t("Deskripsi", "Description")}
             </label>
             <textarea
               rows={4}
@@ -122,7 +124,7 @@ export default function EditFormPage() {
 
           <div>
             <label className="mb-2 block text-sm font-medium">
-              Header Image
+              {t("Gambar header", "Header image")}
             </label>
             <input
               type="file"
@@ -144,7 +146,7 @@ export default function EditFormPage() {
                 })
               }
             />
-            <span>Active</span>
+            <span>{t("Aktif", "Active")}</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -158,13 +160,13 @@ export default function EditFormPage() {
                 })
               }
             />
-            <span>Show Note</span>
+            <span>{t("Tampilkan catatan", "Show note")}</span>
           </div>
 
           {formData.show_note && (
             <div>
               <label className="mb-2 block text-sm font-medium">
-                Note Content
+                {t("Isi catatan", "Note content")}
               </label>
               <textarea
                 rows={3}
@@ -185,7 +187,7 @@ export default function EditFormPage() {
               onClick={() => navigate("/forms")}
               className="rounded-lg border px-4 py-2"
             >
-              Cancel
+              {t("Batal", "Cancel")}
             </button>
 
             <button
@@ -193,7 +195,7 @@ export default function EditFormPage() {
               disabled={saving}
               className="rounded-lg bg-blue-600 px-5 py-2 text-white"
             >
-              {saving ? "Saving..." : "Update"}
+              {saving ? t("Menyimpan...", "Saving...") : t("Perbarui", "Update")}
             </button>
           </div>
         </div>

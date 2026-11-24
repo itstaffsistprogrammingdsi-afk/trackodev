@@ -1,58 +1,80 @@
 import { Link } from "react-router";
+import { Languages } from "lucide-react";
+
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function Navbar() {
+  const { language, t, toggleLanguage } = useLanguage();
+
   return (
     <nav
-      aria-label="Navigasi utama"
-      className="fixed inset-x-0 top-0 z-50 mx-auto max-w-6xl px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:pt-4"
+      aria-label={t("Navigasi utama", "Main navigation")}
+      className="fixed inset-x-0 top-0 z-50 border-b border-line bg-canvas/90 pt-[env(safe-area-inset-top)] backdrop-blur-md"
     >
-      <div className="flex h-14 items-center justify-between rounded-2xl border border-white/70 bg-white/95 px-3 shadow-lg shadow-slate-200/60 backdrop-blur-md sm:h-16 sm:rounded-full sm:px-6">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:h-16 sm:px-6 lg:px-8">
         <Link
           to="/"
-          aria-label="Tracko - halaman utama"
-          className="flex min-w-0 items-center gap-2"
+          aria-label={t("Tracko - halaman utama", "Tracko - home page")}
+          className="flex min-w-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <img
-            width={32}
-            height={32}
+            width={28}
+            height={28}
             src="/images/logo/icon.svg"
             alt=""
-            className="h-8 w-8 shrink-0"
+            className="h-7 w-7 shrink-0"
           />
-          <span className="truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+          <span className="truncate text-base font-semibold tracking-heading text-fg">
             Tracko
           </span>
         </Link>
 
-        <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
+        <div className="hidden items-center gap-6 text-xs font-medium text-fg-muted md:flex">
           <a
             href="#beranda"
-            className="rounded-full bg-blue-50 px-3 py-1 text-blue-600"
+            className="text-accent transition-colors hover:text-accent-strong"
           >
-            Beranda
+            {t("Beranda", "Home")}
           </a>
-          <a href="#formulir" className="transition hover:text-blue-600">
-            Form Request
+          <a href="#formulir" className="transition-colors hover:text-fg">
+            {t("Form request", "Form requests")}
           </a>
-          <a href="#download-apk" className="transition hover:text-blue-600">
-            Download APK
+          <a href="#download-apk" className="transition-colors hover:text-fg">
+            {t("Download APK")}
           </a>
           <a
             href="https://wa.me/6288806798349"
             target="_blank"
             rel="noreferrer"
-            className="transition hover:text-blue-600"
+            className="transition-colors hover:text-fg"
           >
-            Kontak
+            {t("Kontak", "Contact")}
           </a>
         </div>
 
-        <Link
-          to="/signin"
-          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-4 text-sm font-semibold text-white shadow-md transition hover:shadow-lg active:scale-[0.98] sm:px-6"
-        >
-          Masuk
-        </Link>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            aria-label={
+              language === "id"
+                ? t("Ganti ke bahasa Inggris", "Switch to English")
+                : t("Ganti ke bahasa Indonesia", "Switch to Indonesian")
+            }
+            title={t("Ganti bahasa", "Switch language")}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            <Languages size={14} aria-hidden="true" />
+            {language === "id" ? "ID" : "EN"}
+          </button>
+
+          <Link
+            to="/signin"
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-control bg-accent px-4 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+          >
+            {t("Masuk", "Sign in")}
+          </Link>
+        </div>
       </div>
     </nav>
   );

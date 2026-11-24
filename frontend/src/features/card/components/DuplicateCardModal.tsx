@@ -11,6 +11,7 @@ import {
 } from "../api/card.api";
 import type { Card, DuplicateDraft, User } from "../types";
 import { toast } from "@/lib/feedback";
+import { useLanguage } from "@/context/LanguageContext";
 import RichTextEditor from "./RichTextEditor";
 
 interface Props {
@@ -41,6 +42,7 @@ function TaxonomyMultiSelect({
   onChange,
   fallbackColor,
 }: TaxonomyMultiSelectProps) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -66,49 +68,54 @@ function TaxonomyMultiSelect({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+    <div className="rounded-card border border-line p-2.5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{title}</span>
-          <p className="mt-0.5 text-[11px] text-slate-400">
-            Terpilih otomatis dari card sumber
-            {options.length ? ` • ${options.length} tersedia` : ""}
+          <span className="text-2xs font-medium text-fg-subtle">{title}</span>
+          <p className="mt-0.5 text-2xs text-fg-subtle">
+            {t("Terpilih otomatis dari card sumber", "Selected automatically from the source card")}
+            {options.length
+              ? ` · ${t("{count} tersedia", "{count} available", {
+                  count: options.length,
+                })}`
+              : ""}
           </p>
         </div>
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-slate-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+          className="h-7 rounded-[7px] border border-line bg-surface px-2 text-2xs font-medium text-accent transition-colors hover:bg-accent-soft"
         >
-          {open ? "Tutup" : "Ubah pilihan"}
+          {open ? t("Tutup", "Close") : t("Ubah", "Edit")}
         </button>
       </div>
 
-      <div className="mt-2 flex min-h-8 flex-wrap gap-1.5">
+      <div className="mt-2 flex min-h-7 flex-wrap gap-1.5">
         {selected.length ? selected.map((option) => (
-          <span key={option.id} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white py-1 pl-2 pr-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: option.color ?? fallbackColor }} />
+          <span key={option.id} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface py-1 pl-2 pr-1 text-2xs font-medium text-fg-muted">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: option.color ?? fallbackColor }} />
             <span className="max-w-36 truncate">{option.name}</span>
-            <button type="button" onClick={() => toggle(option.id)} className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200" aria-label={`Hapus ${title.toLowerCase()} ${option.name}`}>
-              <X size={12} />
+            <button type="button" onClick={() => toggle(option.id)} className="flex h-5 w-5 items-center justify-center rounded-full text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger" aria-label={t("Hapus {title} {name}", "Remove {title} {name}", { title: title.toLowerCase(), name: option.name })}>
+              <X size={11} />
             </button>
           </span>
-        )) : <span className="text-sm text-slate-400">Tidak ada {title.toLowerCase()} yang dipilih</span>}
+        )) : <span className="text-xs text-fg-subtle">{t("Belum ada {title} yang dipilih", "No {title} selected yet", { title: title.toLowerCase() })}</span>}
       </div>
 
       {open ? (
-        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-950/60">
+        <div className="mt-2.5 rounded-control border border-line bg-surface-muted/40 p-2">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={`Cari ${title.toLowerCase()}...`}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              placeholder={t("Cari {title}", "Search {title}", { title: title.toLowerCase() })}
+              aria-label={t("Cari {title}", "Search {title}", { title })}
+              className="h-8 w-full rounded-[7px] border border-line bg-surface pl-8 pr-2.5 text-xs text-fg outline-none placeholder:text-fg-subtle focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
           </div>
-          <div className="mt-2 max-h-36 space-y-1 overflow-y-auto">
+          <div className="mt-1.5 max-h-36 space-y-0.5 overflow-y-auto">
             {filtered.length ? filtered.map((option) => {
               const checked = selectedSet.has(option.id);
               return (
@@ -116,16 +123,16 @@ function TaxonomyMultiSelect({
                   key={option.id}
                   type="button"
                   onClick={() => toggle(option.id)}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${checked ? "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200" : "hover:bg-white dark:hover:bg-slate-800"}`}
+                  className={`flex w-full items-center justify-between rounded-[7px] px-2.5 py-1.5 text-left text-xs transition-colors ${checked ? "bg-accent-soft text-accent-strong" : "text-fg-muted hover:bg-surface-muted"}`}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: option.color ?? fallbackColor }} />
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: option.color ?? fallbackColor }} />
                     <span className="truncate">{option.name}</span>
                   </span>
-                  {checked ? <Check size={15} /> : null}
+                  {checked ? <Check size={13} /> : null}
                 </button>
               );
-            }) : <p className="px-3 py-3 text-sm text-slate-400">Tidak ditemukan.</p>}
+            }) : <p className="px-2.5 py-3 text-xs text-fg-subtle">{t("Tidak ditemukan.", "No results found.")}</p>}
           </div>
         </div>
       ) : null}
@@ -150,6 +157,7 @@ const mergeTaxonomyOptions = (
 };
 
 export default function DuplicateCardModal({ card, isOpen, onClose, onCreated }: Props) {
+  const { t } = useLanguage();
   const [draft, setDraft] = useState<DuplicateDraft | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [labelOptions, setLabelOptions] = useState<TaxonomyOption[]>([]);
@@ -199,14 +207,19 @@ export default function DuplicateCardModal({ card, isOpen, onClose, onCreated }:
         setLabelOptions(mergeTaxonomyOptions(nextDraft.available_labels ?? labelCatalog, nextDraft.labels));
         setBrandOptions(mergeTaxonomyOptions(nextDraft.available_brands ?? brandCatalog, nextDraft.brands));
         if (labelsResult.status === "rejected" || brandsResult.status === "rejected") {
-          setCatalogNotice("Sebagian katalog tidak dapat dimuat. Pilihan dari card sumber tetap digunakan.");
+          setCatalogNotice(
+            t(
+              "Sebagian katalog tidak dapat dimuat. Pilihan dari card sumber tetap digunakan.",
+              "Some of the catalog could not be loaded. Selections from the source card are still used.",
+            ),
+          );
         }
       })
       .catch((err: unknown) => {
         if (!active) return;
         const message = err instanceof AxiosError
-          ? (typeof err.response?.data?.message === "string" ? err.response.data.message : "Draft duplicate gagal dimuat.")
-          : "Draft duplicate gagal dimuat.";
+          ? (typeof err.response?.data?.message === "string" ? err.response.data.message : t("Draft duplicate gagal dimuat.", "Failed to load duplicate draft."))
+          : t("Draft duplicate gagal dimuat.", "Failed to load duplicate draft.");
         setError(message);
       })
       .finally(() => {
@@ -243,7 +256,7 @@ export default function DuplicateCardModal({ card, isOpen, onClose, onCreated }:
 
   const handleSave = async () => {
     if (!draft || !title.trim()) {
-      setError("Judul card wajib diisi.");
+      setError(t("Judul card wajib diisi.", "Card title is required."));
       return;
     }
 
@@ -259,13 +272,13 @@ export default function DuplicateCardModal({ card, isOpen, onClose, onCreated }:
         label_ids: selectedLabelIds,
         brand_ids: selectedBrandIds,
       });
-      toast.success("Card berhasil dibuat dari template.");
+      toast.success(t("Card berhasil dibuat dari template.", "Card created from template."));
       await onCreated?.(created);
       onClose();
     } catch (err: unknown) {
       const message = err instanceof AxiosError
-        ? (typeof err.response?.data?.message === "string" ? err.response.data.message : "Duplicate card gagal disimpan.")
-        : "Duplicate card gagal disimpan.";
+        ? (typeof err.response?.data?.message === "string" ? err.response.data.message : t("Duplicate card gagal disimpan.", "Failed to save duplicate card."))
+        : t("Duplicate card gagal disimpan.", "Failed to save duplicate card.");
       setError(message);
     } finally {
       setSaving(false);
@@ -290,106 +303,116 @@ export default function DuplicateCardModal({ card, isOpen, onClose, onCreated }:
           <div>
             <div className="flex items-center gap-1.5 text-accent">
               <Copy size={15} aria-hidden="true" />
-              <span className="text-[11px] font-medium">Template card</span>
+              <span className="text-[11px] font-medium">{t("Template card", "Card template")}</span>
             </div>
             <h2 id="duplicate-card-title" className="mt-1 text-xl font-semibold tracking-[-0.02em] text-fg">
-              Duplikasi card
+              {t("Duplikasi card", "Duplicate card")}
             </h2>
             <p className="mt-1 text-sm text-fg-muted">
-              Label, brand, dan checklist akan ikut disalin. Assignee dan due date sengaja dikosongkan.
+              {t(
+                "Label, brand, dan checklist akan ikut disalin. Assignee dan due date sengaja dikosongkan.",
+                "Labels, brands, and checklists will be copied. Assignees and due date are intentionally left empty.",
+              )}
             </p>
             <p className="mt-2 text-xs text-accent">
-              Pilihan label dan brand tersimpan otomatis di draft. Klik “Simpan card” untuk membuat card baru.
+              {t(
+                "Pilihan label dan brand tersimpan otomatis di draft. Klik “Simpan card” untuk membuat card baru.",
+                "Label and brand selections are saved automatically in the draft. Click “Save card” to create the new card.",
+              )}
             </p>
           </div>
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-control p-2 text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50" aria-label="Tutup duplikasi card">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-control p-2 text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50" aria-label={t("Tutup duplikasi card", "Close duplicate card")}>
             <X size={18} />
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {loading ? (
-            <div className="flex min-h-48 items-center justify-center text-sm text-slate-500">
-              <Loader2 className="mr-2 animate-spin" size={18} /> Memuat template...
+            <div className="flex min-h-48 items-center justify-center gap-2 text-xs text-fg-muted" role="status">
+              <Loader2 className="animate-spin motion-reduce:animate-none" size={14} /> {t("Memuat template…", "Loading template…")}
             </div>
           ) : error && !draft ? (
-            <p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{error}</p>
+            <p role="alert" className="rounded-control bg-danger-soft p-3 text-xs text-danger">{error}</p>
           ) : draft ? (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <label className="block">
-                <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Judul</span>
-                <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={255} className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                <span className="mb-1.5 block text-xs font-medium text-fg-muted">{t("Judul", "Title")}</span>
+                <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={255} className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none focus:border-accent focus:ring-2 focus:ring-accent/15" />
               </label>
 
               <label className="block">
-                <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Deskripsi</span>
+                <span className="mb-1.5 block text-xs font-medium text-fg-muted">{t("Deskripsi", "Description")}</span>
                 <RichTextEditor
                   value={description}
                   onChange={setDescription}
-                  placeholder="Tulis deskripsi card..."
-                  ariaLabel="Deskripsi card duplicate"
-                  className="border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950"
+                  placeholder={t("Tulis deskripsi card", "Write a card description")}
+                  ariaLabel={t("Deskripsi card duplicate", "Duplicate card description")}
+                  className="border-line bg-surface"
                 />
               </label>
 
               <div>
-                <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Due date (opsional)</span>
-                <input type="datetime-local" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                <span className="mb-1.5 block text-xs font-medium text-fg-muted">{t("Deadline (opsional)", "Deadline (optional)")}</span>
+                <input type="datetime-local" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="h-10 rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none focus:border-accent focus:ring-2 focus:ring-accent/15" />
               </div>
 
               <div className="space-y-3">
                 <TaxonomyMultiSelect
-                  title="Label"
+                  title={t("Label")}
                   options={labelOptions}
                   selectedIds={selectedLabelIds}
                   onChange={setSelectedLabelIds}
                   fallbackColor="#3b82f6"
                 />
                 <TaxonomyMultiSelect
-                  title="Brand"
+                  title={t("Brand")}
                   options={brandOptions}
                   selectedIds={selectedBrandIds}
                   onChange={setSelectedBrandIds}
                   fallbackColor="#64748b"
                 />
               </div>
-              {catalogNotice ? <p className="text-xs text-amber-600 dark:text-amber-300">{catalogNotice}</p> : null}
+              {catalogNotice ? <p className="text-2xs text-warning">{catalogNotice}</p> : null}
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Assignee/member (opsional)</span>
-                  {assignees.length ? <span className="text-xs text-blue-600 dark:text-blue-400">{assignees.length} dipilih</span> : null}
+                  <span className="text-xs font-medium text-fg-muted">{t("Anggota (opsional)", "Members (optional)")}</span>
+                  {assignees.length ? <span className="text-2xs text-accent">{t("{count} dipilih", "{count} selected", { count: assignees.length })}</span> : null}
                 </div>
                 <div className="relative mb-2">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Cari member..." className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+                  <input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder={t("Cari anggota", "Search members")} aria-label={t("Cari anggota", "Search members")} className="h-9 w-full rounded-control border border-line bg-surface pl-8 pr-2.5 text-xs text-fg outline-none placeholder:text-fg-subtle focus:border-accent focus:ring-2 focus:ring-accent/15" />
                 </div>
-                <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-800">
+                <div className="custom-scrollbar max-h-40 space-y-0.5 overflow-y-auto rounded-control border border-line p-1.5">
                   {visibleUsers.length ? visibleUsers.map((user) => {
                     const selected = assignees.includes(user.id);
                     return (
-                      <button key={user.id} type="button" onClick={() => toggleAssignee(user.id)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selected ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" : "hover:bg-slate-50 dark:hover:bg-slate-800"}`}>
-                        <span><span className="font-medium text-slate-800 dark:text-slate-100">{user.name}</span><span className="ml-2 text-xs text-slate-400">{user.email}</span></span>
-                        {selected ? <Check size={16} /> : null}
+                      <button key={user.id} type="button" onClick={() => toggleAssignee(user.id)} className={`flex w-full items-center justify-between rounded-[7px] px-2.5 py-1.5 text-left text-xs transition-colors ${selected ? "bg-accent-soft text-accent-strong" : "text-fg-muted hover:bg-surface-muted"}`}>
+                        <span className="min-w-0"><span className="font-medium text-fg">{user.name}</span><span className="ml-2 truncate text-2xs text-fg-subtle">{user.email}</span></span>
+                        {selected ? <Check size={13} /> : null}
                       </button>
                     );
-                  }) : <p className="px-3 py-3 text-sm text-slate-400">Member tidak ditemukan.</p>}
+                  }) : <p className="px-2.5 py-3 text-xs text-fg-subtle">{t("Anggota tidak ditemukan.", "No members found.")}</p>}
                 </div>
               </div>
 
-              <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                Checklist yang akan disalin: <strong>{draft.tasks.length} task</strong> dan seluruh subtask-nya. Status checklist akan dimulai dari belum selesai.
+              <div className="rounded-control bg-surface-muted/60 px-3 py-2.5 text-xs leading-5 text-fg-muted">
+                {t("Checklist yang disalin:", "Copied checklist:")} <strong className="font-medium text-fg">{t("{count} task", "{count} tasks", { count: draft.tasks.length })}</strong>{" "}
+                {t(
+                  "beserta subtask-nya. Semua dimulai dari status belum selesai.",
+                  "along with their subtasks. All start as incomplete.",
+                )}
               </div>
-              {error ? <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{error}</p> : null}
+              {error ? <p role="alert" className="text-xs text-danger">{error}</p> : null}
             </div>
           ) : null}
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800">Batal</button>
-          <button type="button" onClick={() => void handleSave()} disabled={loading || saving || !draft} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />}
-            {saving ? "Menyimpan..." : "Simpan Card"}
+        <div className="flex justify-end gap-2 border-t border-line px-6 py-4">
+          <button type="button" onClick={onClose} disabled={saving} className="h-9 rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50">{t("Batal", "Cancel")}</button>
+          <button type="button" onClick={() => void handleSave()} disabled={loading || saving || !draft} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50">
+            {saving ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" /> : <Copy size={14} />}
+            {saving ? t("Menyimpan…", "Saving…") : t("Simpan card", "Save card")}
           </button>
         </div>
       </div>

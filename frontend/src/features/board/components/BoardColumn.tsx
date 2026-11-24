@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { AxiosError } from "axios";
 import { useQuery } from "@tanstack/react-query";
-import { Inbox } from "lucide-react";
+import { Inbox, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -15,6 +15,7 @@ import { AssignTarget, Card, User } from "@/features/card/types";
 import CardItem from "@/features/card/components/CardItem";
 import MemberSection from "@/features/card/components/sections/MemberSection";
 import EmptyState from "@/components/ui/EmptyState";
+import { useLanguage } from "@/context/LanguageContext";
 
 import { createCard, getBoardMemberCandidates } from "@/features/card/api/card.api";
 
@@ -45,20 +46,20 @@ type Props = {
 };
 
 const priorities = [
-  { value: "low", label: "Low", color: "bg-priority-low" },
-  { value: "medium", label: "Medium", color: "bg-priority-medium" },
-  { value: "high", label: "High", color: "bg-priority-high" },
-  { value: "urgent", label: "Urgent", color: "bg-priority-urgent" },
+  { value: "low", label: "Rendah", labelEn: "Low", color: "bg-priority-low-dot" },
+  { value: "medium", label: "Normal", labelEn: "Medium", color: "bg-priority-medium-dot" },
+  { value: "high", label: "Tinggi", labelEn: "High", color: "bg-priority-high-dot" },
+  { value: "urgent", label: "Urgent", labelEn: "Urgent", color: "bg-priority-urgent-dot" },
 ];
 
 const PRIORITY_CONFIG: Record<
   Priority,
-  { label: string; dot: string }
+  { label: string; labelEn: string; dot: string }
 > = {
-  low: { label: "Low", dot: "bg-priority-low" },
-  medium: { label: "Medium", dot: "bg-priority-medium" },
-  high: { label: "High", dot: "bg-priority-high" },
-  urgent: { label: "Urgent", dot: "bg-priority-urgent" },
+  low: { label: "Rendah", labelEn: "Low", dot: "bg-priority-low-dot" },
+  medium: { label: "Normal", labelEn: "Medium", dot: "bg-priority-medium-dot" },
+  high: { label: "Tinggi", labelEn: "High", dot: "bg-priority-high-dot" },
+  urgent: { label: "Urgent", labelEn: "Urgent", dot: "bg-priority-urgent-dot" },
 };
 
 export default function BoardColumn({
@@ -70,11 +71,12 @@ export default function BoardColumn({
   onMoveCard,
   onEdit,
   onDelete,
-  emptyMessage = "Belum ada task",
+  emptyMessage,
   dragHandle,
   suggestedAssignee,
   fullWidth = false,
 }: Props) {
+  const { t } = useLanguage();
   const { setNodeRef, isOver } = useDroppable({ id: board.id });
 
   const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -194,7 +196,7 @@ export default function BoardColumn({
 
   const handleCreate = async (): Promise<void> => {
     if (!title.trim()) {
-      setError("Judul task tidak boleh kosong.");
+      setError(t("Judul task tidak boleh kosong.", "Task title is required."));
       return;
     }
 
@@ -231,7 +233,7 @@ export default function BoardColumn({
         await onRefresh?.();
       }
     } catch (err: unknown) {
-      let message = "Gagal membuat task baru.";
+      let message = t("Gagal membuat task baru.", "Failed to create task.");
       if (err instanceof AxiosError) {
         const serverMessage = err.response?.data?.message;
         message =
@@ -273,7 +275,7 @@ export default function BoardColumn({
     <div
       ref={setNodeRef}
       className={`flex max-h-none w-full shrink-0 flex-col rounded-panel border transition-colors duration-200 ${
-        fullWidth ? "max-w-none" : "md:h-full md:w-80"
+        fullWidth ? "max-w-none" : "md:h-full md:w-[300px]"
       } ${
         isOver
           ? "border-accent/40 bg-accent-soft/40 ring-2 ring-accent/10"
@@ -305,22 +307,20 @@ export default function BoardColumn({
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                aria-label="Column options"
+                aria-label={t("Aksi kolom {name}", "Column actions for {name}", {
+                  name: board.name,
+                })}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                className="flex h-11 w-11 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 md:h-auto md:w-auto md:p-1.5"
+                className="flex h-11 w-11 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 md:h-9 md:w-9"
               >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="12" cy="5" r="1.75" />
-                  <circle cx="12" cy="12" r="1.75" />
-                  <circle cx="12" cy="19" r="1.75" />
-                </svg>
+                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
               </button>
 
               {menuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-e2 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-card border border-line bg-surface p-1 shadow-e2"
                 >
                   {onEdit && (
                     <button
@@ -330,19 +330,13 @@ export default function BoardColumn({
                         setMenuOpen(false);
                         onEdit();
                       }}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
+                      className="flex w-full items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                     >
-                      <svg
-                        className="h-4 w-4 text-fg-subtle"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                      Edit Column
+                      <Pencil
+                        className="h-3.5 w-3.5 text-fg-subtle"
+                        aria-hidden="true"
+                      />
+                      {t("Edit kolom", "Edit column")}
                     </button>
                   )}
 
@@ -354,18 +348,10 @@ export default function BoardColumn({
                         setMenuOpen(false);
                         onDelete();
                       }}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-danger transition-colors hover:bg-danger-soft"
+                      className="flex w-full items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left text-xs font-medium text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/30"
                     >
-                      <svg
-                        className="h-4 w-4 text-danger"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Delete Column
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t("Hapus kolom", "Delete column")}
                     </button>
                   )}
                 </div>
@@ -395,14 +381,14 @@ export default function BoardColumn({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </span>
-            <span>Tambah task</span>
+            <span>{t("Tambah task", "Add task")}</span>
           </button>
         ) : (
           <div className="flex flex-col rounded-card border border-line bg-surface shadow-e2">
             {/* TOP FORM HEADER */}
             <div className="flex items-center justify-between border-b border-line px-3 py-2">
               <span className="text-[11px] font-medium text-fg-subtle">
-                Task baru
+                {t("Task baru", "New task")}
               </span>
 
               <div className="flex items-center gap-1.5">
@@ -414,7 +400,7 @@ export default function BoardColumn({
                   }}
                   className="min-h-9 rounded-control px-2.5 py-1 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg md:min-h-0"
                 >
-                  Batal
+                  {t("Batal", "Cancel")}
                 </button>
 
                 <button
@@ -429,7 +415,9 @@ export default function BoardColumn({
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                     </svg>
                   )}
-                  {loading ? "Menyimpan..." : "Buat task"}
+                  {loading
+                    ? t("Menyimpan...", "Saving...")
+                    : t("Buat task", "Create task")}
                 </button>
               </div>
             </div>
@@ -443,7 +431,10 @@ export default function BoardColumn({
                   if (error) setError(null);
                 }}
                 onKeyDown={handleTextareaKeyDown}
-                placeholder="Apa yang ingin dikerjakan?"
+                placeholder={t(
+                  "Apa yang ingin dikerjakan?",
+                  "What needs to be done?",
+                )}
                 rows={2}
                 autoFocus
                 className="w-full resize-none border-0 bg-transparent p-0 text-sm font-medium text-fg placeholder:font-normal placeholder:text-fg-subtle focus:outline-none focus:ring-0"
@@ -488,7 +479,12 @@ export default function BoardColumn({
                 >
                   <div className="flex items-center gap-1.5">
                     <span className={`h-2 w-2 rounded-full ${PRIORITY_CONFIG[priority].dot}`} />
-                    <span className="capitalize">{PRIORITY_CONFIG[priority].label}</span>
+                    <span className="capitalize">
+                      {t(
+                        PRIORITY_CONFIG[priority].label,
+                        PRIORITY_CONFIG[priority].labelEn,
+                      )}
+                    </span>
                   </div>
                   <svg
                     className={`h-3.5 w-3.5 text-fg-subtle transition-transform duration-200 ${
@@ -521,7 +517,7 @@ export default function BoardColumn({
                       >
                         <div className="flex items-center gap-2">
                           <span className={`h-2 w-2 rounded-full ${item.color}`} />
-                          <span>{item.label}</span>
+                          <span>{t(item.label, item.labelEn)}</span>
                         </div>
 
                         {priority === item.value && (
@@ -564,7 +560,7 @@ export default function BoardColumn({
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
                 </svg>
-                <span>Anggota</span>
+                <span>{t("Anggota", "Members")}</span>
                 {selectedUsers.length > 0 && (
                   <span className="ml-0.5 rounded-full bg-accent/15 px-1.5 py-0.2 text-[10px] font-semibold text-accent">
                     {selectedUsers.length}
@@ -581,9 +577,11 @@ export default function BoardColumn({
                   onClick={() => handleAssign(suggestedAssignee.id)}
                   className="w-full rounded-control border border-warning/25 bg-warning-soft px-2.5 py-1.5 text-left text-[11px] font-medium text-warning transition-colors hover:bg-warning-soft/70"
                 >
-                  Tugaskan ke {suggestedAssignee.name}?
+                  {t("Tugaskan ke {name}?", "Assign to {name}?", {
+                    name: suggestedAssignee.name,
+                  })}
                   <span className="ml-1 font-normal text-warning/80">
-                    (pemilik campaign)
+                    {t("(pemilik campaign)", "(campaign owner)")}
                   </span>
                 </button>
               </div>
@@ -604,7 +602,9 @@ export default function BoardColumn({
                   ))}
                 </div>
                 <span className="text-[11px] font-medium text-fg-muted">
-                  {selectedUsers.length} ditugaskan
+                  {t("{count} ditugaskan", "{count} assigned", {
+                    count: selectedUsers.length,
+                  })}
                 </span>
               </div>
             )}
@@ -650,8 +650,11 @@ export default function BoardColumn({
               <EmptyState
                 compact
                 icon={Inbox}
-                title={emptyMessage}
-                description="Tarik kartu ke sini atau buat task baru."
+                title={emptyMessage ?? t("Belum ada task", "No tasks yet")}
+                description={t(
+                  "Tarik kartu ke sini atau buat task baru.",
+                  "Drag a card here or create a new task.",
+                )}
               />
             )}
 

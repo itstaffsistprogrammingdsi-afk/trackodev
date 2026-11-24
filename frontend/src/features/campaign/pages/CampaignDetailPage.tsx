@@ -13,11 +13,13 @@ import BoardProgress from "../components/BoardProgress";
 import CampaignGantt from "../components/CampaignGantt";
 import OverdueTasks from "../components/OverdueTasks";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function CampaignDetailPage() {
   const { can } = useAuth();
+  const { t, locale } = useLanguage();
   const { campaignId } = useParams();
   const navigate = useNavigate();
 
@@ -44,7 +46,7 @@ export default function CampaignDetailPage() {
   if (!campaign) {
     return (
       <div className="w-full space-y-6" role="status" aria-busy="true">
-        <span className="sr-only">Memuat detail campaign</span>
+        <span className="sr-only">{t("Memuat detail campaign", "Loading campaign details")}</span>
         <div className="space-y-3 rounded-panel border border-line bg-surface p-5 sm:p-6 lg:p-8">
           <Skeleton className="h-8 w-72 max-w-full" />
           <Skeleton className="h-4 w-full max-w-2xl" />
@@ -72,7 +74,7 @@ export default function CampaignDetailPage() {
   const endDate = campaign.due_date ? new Date(campaign.due_date) : null;
 
   const formatDate = (date: Date) =>
-    date.toLocaleDateString("id-ID", {
+    date.toLocaleDateString(locale, {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -102,7 +104,8 @@ export default function CampaignDetailPage() {
             </h1>
 
             <p className="mt-2 max-w-4xl text-sm leading-6 text-fg-muted">
-              {campaign.description || "Belum ada deskripsi campaign."}
+              {campaign.description ||
+                t("Belum ada deskripsi campaign.", "No campaign description yet.")}
             </p>
 
             {/* PERIOD */}
@@ -113,7 +116,7 @@ export default function CampaignDetailPage() {
 
               <div>
                 <div className="text-[11px] font-medium text-fg-subtle">
-                  Periode campaign
+                  {t("Periode campaign", "Campaign period")}
                 </div>
 
                 <div className="mt-0.5 text-sm font-medium text-fg">
@@ -124,9 +127,10 @@ export default function CampaignDetailPage() {
 
                 {durationDays && (
                   <div className="mt-0.5 text-xs text-fg-muted">
-                    Durasi
+                    {t("Durasi", "Duration")}
                     <span className="ml-1 font-medium text-fg">
-                      {durationDays} hari
+                      {durationDays}{" "}
+                      {durationDays === 1 ? t("hari", "day") : t("hari", "days")}
                     </span>
                   </div>
                 )}

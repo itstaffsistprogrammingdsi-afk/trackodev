@@ -1,6 +1,7 @@
 import React from 'react';
 import { User, FilterParams } from '../types';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import EmptyState from '@/components/ui/EmptyState';
 import {
   CalendarDays,
@@ -84,6 +85,7 @@ export const UserList: React.FC<UserListProps> = ({
   onImpersonate,
 }) => {
   const { can } = useAuth();
+  const { t, locale } = useLanguage();
   const canPreview = can('report.preview') || can('report.preview.pdf');
   const canExportPdf = can('report.export') || can('report.export.pdf');
   const canExportExcel = can('report.export') || can('report.export.excel');
@@ -111,13 +113,13 @@ export const UserList: React.FC<UserListProps> = ({
       <div className="rounded-panel border border-line bg-surface p-4 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">Laporan & QC</h1>
-            <p className="mt-1 text-sm text-fg-muted">Tinjau hasil pekerjaan dan lakukan verifikasi kualitas.</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">{t("Laporan & QC", "Reports & QC")}</h1>
+            <p className="mt-1 text-sm text-fg-muted">{t("Tinjau hasil pekerjaan dan lakukan verifikasi kualitas.", "Review work results and perform quality verification.")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {activeFilterCount > 0 ? (
               <span className="rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-fg-muted">
-                {activeFilterCount} filter aktif
+                {t("{count} filter aktif", "{count} active filters", { count: activeFilterCount })}
               </span>
             ) : null}
             {(filters.search || filters.division_id || filters.start_date || filters.end_date || 
@@ -130,7 +132,7 @@ export const UserList: React.FC<UserListProps> = ({
                 })}
                 className="h-8 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
               >
-                Reset filter
+                {t("Reset filter", "Reset filters")}
               </button>
             )}
           </div>
@@ -142,7 +144,7 @@ export const UserList: React.FC<UserListProps> = ({
             className="mb-4 flex flex-col gap-2 rounded-card border border-danger/20 bg-danger-soft px-3 py-2 text-xs text-danger sm:flex-row sm:items-center sm:justify-between"
           >
             <span>
-              {filterOptionsError} Dropdown filter mungkin kosong.
+              {t("{error} Dropdown filter mungkin kosong.", "{error} Filter dropdowns may be empty.", { error: filterOptionsError })}
             </span>
             {onReloadFilterOptions ? (
               <button
@@ -150,7 +152,7 @@ export const UserList: React.FC<UserListProps> = ({
                 onClick={onReloadFilterOptions}
                 className="h-7 shrink-0 rounded-control border border-danger/25 bg-surface px-2.5 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
               >
-                Coba lagi
+                {t("Coba lagi", "Try again")}
               </button>
             ) : null}
           </div>
@@ -164,7 +166,7 @@ export const UserList: React.FC<UserListProps> = ({
                 htmlFor="report-user-search"
                 className="mb-1.5 block text-xs font-medium text-fg"
               >
-                Cari anggota
+                {t("Cari anggota", "Search members")}
               </label>
               <div className="relative">
                 <Search
@@ -175,7 +177,7 @@ export const UserList: React.FC<UserListProps> = ({
                   id="report-user-search"
                   type="search"
                   autoComplete="off"
-                  placeholder="Nama atau email anggota"
+                  placeholder={t("Nama atau email anggota", "Member name or email")}
                   value={filters.search || ''}
                   onChange={(e) => onFilterChange({ search: e.target.value })}
                   aria-describedby="report-user-search-hint"
@@ -185,7 +187,7 @@ export const UserList: React.FC<UserListProps> = ({
                   <button
                     type="button"
                     onClick={() => onFilterChange({ search: '' })}
-                    aria-label="Hapus pencarian anggota"
+                    aria-label={t("Hapus pencarian anggota", "Clear member search")}
                     className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[8px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
                     <X aria-hidden="true" className="h-4 w-4" />
@@ -196,12 +198,12 @@ export const UserList: React.FC<UserListProps> = ({
                 id="report-user-search-hint"
                 className="mt-1.5 text-[11px] text-fg-subtle"
               >
-                Nama atau email. Daftar diperbarui otomatis saat Anda mengetik.
+                {t("Nama atau email. Daftar diperbarui otomatis saat Anda mengetik.", "Name or email. The list updates automatically as you type.")}
               </p>
             </div>
 
             <p aria-live="polite" className="text-xs text-fg-subtle">
-              {pagination.total.toLocaleString('id-ID')} anggota
+              {t("{count} anggota", "{count} members", { count: pagination.total.toLocaleString(locale) })}
             </p>
           </div>
         </div>
@@ -209,12 +211,12 @@ export const UserList: React.FC<UserListProps> = ({
         {/* FILTER LAINNYA */}
         <div className="mt-5 border-t border-line pt-4">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-xs font-medium text-fg">Filter laporan</h2>
-            <span className="text-[11px] text-fg-subtle">Opsional</span>
+            <h2 className="text-xs font-medium text-fg">{t("Filter laporan", "Report filters")}</h2>
+            <span className="text-[11px] text-fg-subtle">{t("Opsional", "Optional")}</span>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <FilterField label="Tanggal mulai" htmlFor="report-start-date">
+            <FilterField label={t("Tanggal mulai", "Start date")} htmlFor="report-start-date">
               <div className="relative">
                 <CalendarDays
                   aria-hidden="true"
@@ -223,8 +225,8 @@ export const UserList: React.FC<UserListProps> = ({
                 <input
                   id="report-start-date"
                   type="date"
-                  aria-label="Tanggal mulai periode hasil kerja"
-                  title="Tanggal mulai periode hasil kerja"
+                  aria-label={t("Tanggal mulai periode hasil kerja", "Start date of the work result period")}
+                  title={t("Tanggal mulai periode hasil kerja", "Start date of the work result period")}
                   aria-invalid={dateRangeInvalid}
                   max={filters.end_date || undefined}
                   value={filters.start_date || ''}
@@ -235,7 +237,7 @@ export const UserList: React.FC<UserListProps> = ({
               </div>
             </FilterField>
 
-            <FilterField label="Tanggal selesai" htmlFor="report-end-date">
+            <FilterField label={t("Tanggal selesai", "End date")} htmlFor="report-end-date">
               <div className="relative">
                 <CalendarDays
                   aria-hidden="true"
@@ -244,8 +246,8 @@ export const UserList: React.FC<UserListProps> = ({
                 <input
                   id="report-end-date"
                   type="date"
-                  aria-label="Tanggal akhir periode hasil kerja"
-                  title="Tanggal akhir periode hasil kerja"
+                  aria-label={t("Tanggal akhir periode hasil kerja", "End date of the work result period")}
+                  title={t("Tanggal akhir periode hasil kerja", "End date of the work result period")}
                   aria-invalid={dateRangeInvalid}
                   min={filters.start_date || undefined}
                   value={filters.end_date || ''}
@@ -256,7 +258,7 @@ export const UserList: React.FC<UserListProps> = ({
               </div>
             </FilterField>
 
-            <FilterField label="Divisi" htmlFor="report-division">
+            <FilterField label={t("Divisi", "Division")} htmlFor="report-division">
               <div className="relative">
                 <select
                   id="report-division"
@@ -264,7 +266,7 @@ export const UserList: React.FC<UserListProps> = ({
                   onChange={(e) => onFilterChange({ division_id: e.target.value })}
                   className={filterSelectClass}
                 >
-                  <option value="">Semua divisi</option>
+                  <option value="">{t("Semua divisi", "All divisions")}</option>
                   {masterData.divisions.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
@@ -276,7 +278,7 @@ export const UserList: React.FC<UserListProps> = ({
               </div>
             </FilterField>
 
-            <FilterField label="Workspace" htmlFor="report-workspace">
+            <FilterField label={t("Workspace")} htmlFor="report-workspace">
               <div className="relative">
                 <select
                   id="report-workspace"
@@ -284,7 +286,7 @@ export const UserList: React.FC<UserListProps> = ({
                   onChange={(e) => onFilterChange({ workspace_id: e.target.value })}
                   className={filterSelectClass}
                 >
-                  <option value="">Semua workspace</option>
+                  <option value="">{t("Semua workspace", "All workspaces")}</option>
                   {masterData.workspaces.map((w) => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
@@ -296,7 +298,7 @@ export const UserList: React.FC<UserListProps> = ({
               </div>
             </FilterField>
 
-            <FilterField label="Campaign" htmlFor="report-campaign">
+            <FilterField label={t("Campaign")} htmlFor="report-campaign">
               <div className="relative">
                 <select
                   id="report-campaign"
@@ -304,7 +306,7 @@ export const UserList: React.FC<UserListProps> = ({
                   onChange={(e) => onFilterChange({ campaign_id: e.target.value })}
                   className={filterSelectClass}
                 >
-                  <option value="">Semua campaign</option>
+                  <option value="">{t("Semua campaign", "All campaigns")}</option>
                   {masterData.campaigns.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -316,7 +318,7 @@ export const UserList: React.FC<UserListProps> = ({
               </div>
             </FilterField>
 
-            <FilterField label="Brand" htmlFor="report-brand">
+            <FilterField label={t("Brand")} htmlFor="report-brand">
               <div className="relative">
                 <select
                   id="report-brand"
@@ -324,7 +326,7 @@ export const UserList: React.FC<UserListProps> = ({
                   onChange={(e) => onFilterChange({ brand_id: e.target.value })}
                   className={filterSelectClass}
                 >
-                  <option value="">Semua brand</option>
+                  <option value="">{t("Semua brand", "All brands")}</option>
                   {masterData.brands.map((b) => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
@@ -336,7 +338,7 @@ export const UserList: React.FC<UserListProps> = ({
               </div>
             </FilterField>
 
-            <FilterField label="Label" htmlFor="report-label">
+            <FilterField label={t("Label")} htmlFor="report-label">
               <div className="relative">
                 <select
                   id="report-label"
@@ -344,7 +346,7 @@ export const UserList: React.FC<UserListProps> = ({
                   onChange={(e) => onFilterChange({ label_id: e.target.value })}
                   className={filterSelectClass}
                 >
-                  <option value="">Semua label</option>
+                  <option value="">{t("Semua label", "All labels")}</option>
                   {masterData.labels.map((l) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
@@ -356,7 +358,7 @@ export const UserList: React.FC<UserListProps> = ({
               </div>
             </FilterField>
 
-            <FilterField label="Judul card" htmlFor="report-card-search">
+            <FilterField label={t("Judul card", "Card title")} htmlFor="report-card-search">
               <div className="relative">
                 <Search
                   aria-hidden="true"
@@ -366,8 +368,8 @@ export const UserList: React.FC<UserListProps> = ({
                   id="report-card-search"
                   type="search"
                   autoComplete="off"
-                  placeholder="Cari judul card"
-                  aria-label="Cari judul card"
+                  placeholder={t("Cari judul card", "Search card title")}
+                  aria-label={t("Cari judul card", "Search card title")}
                   value={filters.search_card || ''}
                   onChange={(e) => onFilterChange({ search_card: e.target.value })}
                   className={`${filterSearchClass} [&::-webkit-search-cancel-button]:hidden`}
@@ -376,7 +378,7 @@ export const UserList: React.FC<UserListProps> = ({
                   <button
                     type="button"
                     onClick={() => onFilterChange({ search_card: '' })}
-                    aria-label="Hapus pencarian judul card"
+                    aria-label={t("Hapus pencarian judul card", "Clear card title search")}
                     className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
                     <X aria-hidden="true" className="h-3.5 w-3.5" />
@@ -389,12 +391,12 @@ export const UserList: React.FC<UserListProps> = ({
 
         {dateRangeInvalid ? (
           <p role="alert" className="mt-3 text-[11px] font-medium text-danger">
-            Tanggal mulai harus sebelum atau sama dengan tanggal akhir.
+            {t("Tanggal mulai harus sebelum atau sama dengan tanggal akhir.", "The start date must be before or equal to the end date.")}
           </p>
         ) : null}
 
         <p className="mt-3 text-[11px] leading-5 text-fg-muted">
-          Periode hasil kerja: card selesai mengikuti tanggal selesai, sedangkan card yang masih berjalan mengikuti tanggal dibuat.
+          {t("Periode hasil kerja: card selesai mengikuti tanggal selesai, sedangkan card yang masih berjalan mengikuti tanggal dibuat.", "Work result period: completed cards follow the completion date, while in-progress cards follow the creation date.")}
         </p>
       </div>
 
@@ -402,7 +404,7 @@ export const UserList: React.FC<UserListProps> = ({
       <div className="overflow-hidden rounded-panel border border-line bg-surface">
         {loading ? (
           <div className="space-y-3 p-4" role="status" aria-busy="true">
-            <span className="sr-only">Memuat daftar anggota</span>
+            <span className="sr-only">{t("Memuat daftar anggota", "Loading member list")}</span>
             {[0, 1, 2, 3, 4].map((item) => (
               <div key={item} className="flex items-center gap-3 rounded-card border border-line p-3.5">
                 <div className="h-9 w-9 animate-pulse rounded-full bg-surface-muted motion-reduce:animate-none" />
@@ -416,16 +418,16 @@ export const UserList: React.FC<UserListProps> = ({
         ) : users.length === 0 ? (
           <EmptyState
             icon={UserIcon}
-            title="Tidak ada anggota yang ditemukan"
-            description="Ubah atau reset filter untuk melihat anggota lain."
+            title={t("Tidak ada anggota yang ditemukan", "No members found")}
+            description={t("Ubah atau reset filter untuk melihat anggota lain.", "Change or reset the filters to see other members.")}
           />
         ) : (
           <div className="overflow-hidden sm:overflow-x-auto">
             <table className="block w-full text-left text-sm sm:table sm:whitespace-nowrap">
               <thead className="hidden border-b border-line bg-surface-muted/50 text-[11px] font-medium text-fg-subtle sm:table-header-group">
                 <tr>
-                  <th scope="col" className="px-6 py-4 rounded-tl-2xl">Anggota Tim</th>
-                  <th scope="col" className="px-6 py-4 text-right rounded-tr-2xl">Aksi</th>
+                  <th scope="col" className="px-6 py-4 rounded-tl-2xl">{t("Anggota Tim", "Team members")}</th>
+                  <th scope="col" className="px-6 py-4 text-right rounded-tr-2xl">{t("Aksi", "Actions")}</th>
                 </tr>
               </thead>
               <tbody className="block space-y-3 p-3 sm:table-row-group sm:space-y-0 sm:divide-y sm:divide-line sm:p-0">
@@ -467,7 +469,7 @@ export const UserList: React.FC<UserListProps> = ({
                           className={`${canPreview ? 'inline-flex' : 'hidden'} items-center px-3 py-1.5 text-xs font-medium rounded-control border border-line bg-surface text-fg-muted hover:bg-surface-muted hover:text-fg transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-1`}
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          Preview
+                          {t("Preview")}
                         </button>
 
                         <button
@@ -507,7 +509,7 @@ export const UserList: React.FC<UserListProps> = ({
   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
   </svg>
-  Bypass
+  {t("Bypass")}
 </button>
 
 <button
@@ -518,7 +520,7 @@ export const UserList: React.FC<UserListProps> = ({
   className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-control border border-line bg-surface text-fg-muted hover:bg-surface-muted hover:text-fg transition-colors gap-1"
 >
   <UserIcon className="w-3.5 h-3.5" />
-  Detail
+  {t("Detail")}
 </button>
 
 
@@ -534,14 +536,14 @@ export const UserList: React.FC<UserListProps> = ({
 
       {/* PAGINATION */}
       <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-3.5 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-xs font-medium text-fg-muted">Total: {pagination.total} Anggota</span>
+        <span className="text-xs font-medium text-fg-muted">{t("Total: {count} Anggota", "Total: {count} members", { count: pagination.total.toLocaleString(locale) })}</span>
         <div className="grid w-full grid-cols-[1fr_auto_1fr] gap-2 sm:w-auto">
           <button
             disabled={pagination.current_page <= 1}
             onClick={() => onFilterChange({ page: pagination.current_page - 1 })}
             className="h-9 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
           >
-            Sebelumnya
+            {t("Sebelumnya", "Previous")}
           </button>
           <span className="inline-flex h-9 items-center rounded-control bg-accent-soft px-3 text-xs font-medium text-accent">
             {pagination.current_page} / {pagination.last_page}
@@ -551,7 +553,7 @@ export const UserList: React.FC<UserListProps> = ({
             onClick={() => onFilterChange({ page: pagination.current_page + 1 })}
             className="h-9 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
           >
-            Selanjutnya
+            {t("Selanjutnya", "Next")}
           </button>
         </div>
       </div>

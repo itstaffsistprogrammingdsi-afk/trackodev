@@ -44,8 +44,10 @@ import {
 import { alertIfMirrorConflict } from "@/features/card/utils/mirrorConflict";
 import type { Card, CardWorkflowBoard } from "@/features/card/types";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { toast } from "@/lib/feedback";
+import { translate } from "@/i18n/translate";
 
 type WorkColumn = {
   id: string;
@@ -115,11 +117,11 @@ function isCompletedWorkflow(board?: CardWorkflowBoard): boolean {
 
 function workflowDescription(board: CardWorkflowBoard): string {
   const value = normalizeWorkflowValue(board.type || board.name);
-  if (["request", "by_request", "requested"].includes(value)) return "Menunggu permintaan";
-  if (["todo", "to_do", "backlog"].includes(value)) return "Belum dikerjakan";
-  if (["progress", "in_progress", "doing", "on_progress"].includes(value)) return "Sedang dikerjakan";
-  if (isCompletedWorkflow(board)) return "Sudah selesai";
-  return "Kolom workflow";
+  if (["request", "by_request", "requested"].includes(value)) return translate("Menunggu permintaan", "Waiting for request");
+  if (["todo", "to_do", "backlog"].includes(value)) return translate("Belum dikerjakan", "Not started");
+  if (["progress", "in_progress", "doing", "on_progress"].includes(value)) return translate("Sedang dikerjakan", "In progress");
+  if (isCompletedWorkflow(board)) return translate("Sudah selesai", "Completed");
+  return translate("Kolom workflow", "Workflow column");
 }
 
 function workflowIcon(board: CardWorkflowBoard): typeof Clock3 {
@@ -153,14 +155,18 @@ function OwnerClaimRow({
   onClaimCard: (card: Card) => Promise<void>;
   claimingCardId: string | null;
 }) {
+  const { t } = useLanguage();
+
   if ((card.assignees ?? []).length > 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-1">
       <span className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning-soft px-2 py-0.5 text-2xs font-semibold text-warning dark:border-warning/30 dark:bg-warning-soft dark:text-warning">
         <UserRound size={11} aria-hidden="true" />
-        Belum ada pemilik
-        {card.created_by?.name ? ` · dibuat oleh ${card.created_by.name}` : ""}
+        {t("Belum ada pemilik", "No owner yet")}
+        {card.created_by?.name
+          ? t(" · dibuat oleh {name}", " · created by {name}", { name: card.created_by.name })
+          : ""}
       </span>
       <button
         type="button"
@@ -168,7 +174,9 @@ function OwnerClaimRow({
         onClick={() => void onClaimCard(card)}
         className="rounded-full border border-accent/20 bg-accent-soft px-2 py-0.5 text-2xs font-semibold text-accent transition hover:bg-accent-soft disabled:opacity-50 dark:border-accent/30 dark:bg-accent-soft dark:text-accent"
       >
-        {claimingCardId === card.id ? "Mengambil..." : "Ambil"}
+        {claimingCardId === card.id
+          ? t("Mengambil...", "Claiming...")
+          : t("Ambil", "Claim")}
       </button>
     </div>
   );
@@ -199,14 +207,15 @@ function MyTaskGroupRow({
   claimingCardId: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useLanguage();
   const { representative, members, originals, copies } = group;
   const siblings = members.filter((card) => card.id !== representative.id);
 
   const badgeDivision = copies[0]?.source_division?.name;
   const badgeText =
     originals.length > 0 && copies.length > 0
-      ? `Asli + ${copies.length} salinan`
-      : `${copies.length} salinan lintas divisi`;
+      ? t("Asli + {count} salinan", "Original + {count} copies", { count: copies.length })
+      : t("{count} salinan lintas divisi", "{count} cross-division copies", { count: copies.length });
 
   if (siblings.length === 0) {
     return (
@@ -304,6 +313,7 @@ function MyTaskColumn({
   claimingCardId: string | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `my-task-${column.id}` });
+  const { t } = useLanguage();
   const Icon = column.icon;
 
   return (
@@ -346,7 +356,7 @@ function MyTaskColumn({
 
           {groups.length === 0 ? (
             <div className="rounded-control border border-dashed border-current/25 bg-surface/35 px-3 py-8 text-center text-xs font-medium opacity-70 dark:bg-surface-muted/20">
-              Tidak ada tugas
+              {t("Tidak ada tugas", "No tasks")}
             </div>
           ) : null}
         </div>
@@ -357,6 +367,7 @@ function MyTaskColumn({
 
 export default function MyAssignedTasks() {
   const { user } = useAuth();
+  const { t, language } = useLanguage();
   const realtimeRevision = useRealtimeRevision([
     "ActivityLog",
     "Card",
@@ -400,7 +411,7 @@ export default function MyAssignedTasks() {
         return;
       }
       console.error("Claim card failed", error);
-      toast.error("Gagal mengambil tugas ini. Silakan coba lagi.");
+      toast.error(t("Gagal mengambil tugas ini. Silakan coba lagi.", "Failed to claim this task. Please try again."));
     } finally {
       setClaimingCardId(null);
     }
@@ -439,7 +450,7 @@ export default function MyAssignedTasks() {
         void order;
         return column;
       });
-  }, [cards]);
+  }, [cards, language]);
 
   /*
   |--------------------------------------------------------------------------
@@ -526,7 +537,10 @@ export default function MyAssignedTasks() {
 
     if (!targetBoard) {
       toast.error(
-        "Campaign sumber tidak memiliki kolom workflow ini. Gunakan pilihan status pada card untuk memilih board tujuan.",
+        t(
+          "Campaign sumber tidak memiliki kolom workflow ini. Gunakan pilihan status pada card untuk memilih board tujuan.",
+          "The source campaign does not have this workflow column. Use the card status selector to choose the destination board.",
+        ),
       );
       return;
     }
@@ -579,27 +593,27 @@ export default function MyAssignedTasks() {
         <div>
           <div className="flex items-center gap-2">
             <Inbox className="text-fg-subtle" size={16} aria-hidden="true" />
-            <h2 className="text-sm font-semibold text-fg">Tugas saya</h2>
+            <h2 className="text-sm font-semibold text-fg">{t("Tugas saya", "My tasks")}</h2>
           </div>
           <p className="mt-1 text-xs leading-5 text-fg-muted">
-            Semua card yang ditugaskan langsung kepada Anda, termasuk dari divisi lain. Card tanpa pemilik di campaign Anda juga tampil agar bisa diambil.
+            {t("Semua card yang ditugaskan langsung kepada Anda, termasuk dari divisi lain. Card tanpa pemilik di campaign Anda juga tampil agar bisa diambil.", "All cards assigned directly to you, including from other divisions. Unowned cards in your campaigns also appear so you can claim them.")}
           </p>
         </div>
         <div className="inline-flex items-center gap-2 self-start rounded-control bg-surface-muted px-2.5 py-1.5 text-2xs font-medium text-fg-muted sm:self-auto">
           {isFetching && !isLoading ? (
             <Loader2 className="animate-spin motion-reduce:animate-none" size={13} aria-hidden="true" />
           ) : null}
-          {totalOpen} tugas aktif
+          {t("{count} tugas aktif", "{count} active tasks", { count: totalOpen })}
         </div>
       </header>
 
       <div className="border-b border-line bg-surface-muted/50 px-5 py-3 text-2xs leading-5 text-fg-muted sm:px-6">
-        Tampilan ini adalah pintasan ke card asli, bukan salinan. Saat status dipindahkan di sini, board pemilik campaign juga langsung ikut berubah. Kartu lintas divisi digabung menjadi satu grup (asli + salinan); tekan grupnya untuk melihat semua.
+        {t("Tampilan ini adalah pintasan ke card asli, bukan salinan. Saat status dipindahkan di sini, board pemilik campaign juga langsung ikut berubah. Kartu lintas divisi digabung menjadi satu grup (asli + salinan); tekan grupnya untuk melihat semua.", "This view is a shortcut to the original card, not a copy. Moving the status here also updates the campaign owner's board immediately. Cross-division cards are grouped together (original + copies); expand the group to see them all.")}
       </div>
 
       {isLoading ? (
         <div className="space-y-3 p-5 sm:p-6" role="status" aria-busy="true">
-          <span className="sr-only">Memuat tugas Anda</span>
+          <span className="sr-only">{t("Memuat tugas Anda", "Loading your tasks")}</span>
           {[0, 1, 2].map((item) => (
             <div key={item} className="flex gap-3 rounded-card border border-line p-4">
               <div className="h-9 w-9 animate-pulse rounded-control bg-surface-muted motion-reduce:animate-none" />
@@ -613,8 +627,8 @@ export default function MyAssignedTasks() {
       ) : cards.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title="Belum ada tugas yang ditugaskan"
-          description="Saat Anda ditambahkan sebagai member card, tugas tersebut akan langsung muncul di sini."
+          title={t("Belum ada tugas yang ditugaskan", "No tasks assigned yet")}
+          description={t("Saat Anda ditambahkan sebagai member card, tugas tersebut akan langsung muncul di sini.", "When you are added as a card member, the task will appear here right away.")}
         />
       ) : (
         <DndContext
@@ -657,7 +671,7 @@ export default function MyAssignedTasks() {
                   ) : null}
                 </div>
                 <div className="mt-1.5 text-2xs font-medium text-accent">
-                  Memindahkan tugas
+                  {t("Memindahkan tugas", "Moving task")}
                 </div>
               </div>
             ) : null}
@@ -680,7 +694,7 @@ export default function MyAssignedTasks() {
 
       {movingCardId ? (
         <span className="sr-only" aria-live="polite">
-          Memindahkan card {movingCardId}
+          {t("Memindahkan card {id}", "Moving card {id}", { id: movingCardId })}
         </span>
       ) : null}
     </section>

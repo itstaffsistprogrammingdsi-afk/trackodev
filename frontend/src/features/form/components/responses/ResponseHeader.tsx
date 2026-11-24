@@ -10,6 +10,7 @@ import {
 
 import type { Form } from "../../types";
 import { toast } from "@/lib/feedback";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   form: Form;
@@ -17,14 +18,15 @@ type Props = {
 };
 
 export default function ResponseHeader({ form, total }: Props) {
+  const { t, locale } = useLanguage();
   const publicLink = `${window.location.origin}/public/forms/${form.slug}`;
 
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(publicLink);
-      toast.success("Link form disalin.");
+      toast.success(t("Link form disalin.", "Form link copied."));
     } catch {
-      toast.error("Gagal menyalin link.");
+      toast.error(t("Gagal menyalin link.", "Failed to copy link."));
     }
   };
 
@@ -35,7 +37,7 @@ export default function ResponseHeader({ form, total }: Props) {
         className="inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        Semua form
+        {t("Semua form", "All forms")}
       </Link>
 
       <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
@@ -48,7 +50,7 @@ export default function ResponseHeader({ form, total }: Props) {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-semibold tracking-[-0.02em] text-fg">
-                  Responses
+                  {t("Respons", "Responses")}
                 </h1>
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
@@ -62,7 +64,7 @@ export default function ResponseHeader({ form, total }: Props) {
                   ) : (
                     <CircleSlash className="h-3 w-3" aria-hidden="true" />
                   )}
-                  {form.is_active ? "Aktif" : "Nonaktif"}
+                  {form.is_active ? t("Aktif", "Active") : t("Nonaktif", "Inactive")}
                 </span>
               </div>
 
@@ -70,14 +72,17 @@ export default function ResponseHeader({ form, total }: Props) {
                 {form.name}
               </p>
               <p className="mt-0.5 line-clamp-2 max-w-2xl text-xs leading-5 text-fg-muted">
-                {form.description || "Form ini belum memiliki deskripsi."}
+                {form.description ||
+                  t("Form ini belum memiliki deskripsi.", "This form has no description yet.")}
               </p>
             </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-surface-muted px-3 text-xs font-medium tabular-nums text-fg-muted">
-              {total.toLocaleString("id-ID")} respons
+              {t("{count} respons", "{count} responses", {
+                count: total.toLocaleString(locale),
+              })}
             </span>
 
             <button
@@ -86,7 +91,7 @@ export default function ResponseHeader({ form, total }: Props) {
               className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
             >
               <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-              Salin link
+              {t("Salin link", "Copy link")}
             </button>
 
             <a
@@ -96,7 +101,7 @@ export default function ResponseHeader({ form, total }: Props) {
               className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
             >
               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              Buka form
+              {t("Buka form", "Open form")}
             </a>
           </div>
         </div>

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { LiveUpdate } from "@capawesome/capacitor-live-update";
-import { AlertTriangle, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
+import { AlertTriangle, RefreshCw, ShieldCheck, Download, X } from "lucide-react";
 
 import { isMobileApp } from "@/lib/mobileConfig";
+import { useLanguage } from "@/context/LanguageContext";
+import { translate } from "@/i18n/translate";
 
 const CHECK_INTERVAL_MS = 15 * 60 * 1000;
 
@@ -42,6 +44,7 @@ const isUpdateManifest = (value: unknown): value is UpdateManifest => {
 };
 
 export default function MobileLiveUpdate() {
+  const { t } = useLanguage();
   const [blockingState, setBlockingState] = useState<BlockingState>(null);
   const [checking, setChecking] = useState(false);
   const [readyUpdate, setReadyUpdate] = useState<UpdateManifest | null>(null);
@@ -93,7 +96,10 @@ export default function MobileLiveUpdate() {
           kind: "maintenance",
           message:
             payload.maintenanceMessage ||
-            "Tracko sedang menjalani pemeliharaan. Silakan coba kembali beberapa saat lagi.",
+            translate(
+              "Tracko sedang menjalani pemeliharaan. Silakan coba kembali beberapa saat lagi.",
+              "Tracko is under maintenance. Please try again in a moment.",
+            ),
         });
         return;
       }
@@ -105,8 +111,10 @@ export default function MobileLiveUpdate() {
       if (Number(versionCode) < payload.minimumNativeVersionCode) {
         setBlockingState({
           kind: "native-update",
-          message:
+          message: translate(
             "Versi aplikasi ini sudah tidak kompatibel. Instal versi aplikasi terbaru untuk melanjutkan.",
+            "This app version is no longer compatible. Install the latest version to continue.",
+          ),
         });
         return;
       }
@@ -176,27 +184,36 @@ export default function MobileLiveUpdate() {
       <aside
         role="status"
         aria-live="polite"
-        className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[100000] mx-auto max-w-md overflow-hidden rounded-2xl border border-blue-200/70 bg-white/95 p-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl dark:border-blue-900/70 dark:bg-slate-900/95"
+        className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[100000] mx-auto max-w-md overflow-hidden rounded-panel border border-line bg-surface p-4 shadow-e3"
       >
         <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25">
-            <Sparkles size={20} aria-hidden="true" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+            <Download size={20} aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">Update Tracko siap</p>
-                <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                <p className="text-sm font-semibold text-fg">
+                  {t("Update Tracko siap", "Tracko update ready")}
+                </p>
+                <p className="mt-0.5 text-xs leading-5 text-fg-muted">
                   {readyUpdate.webVersion
-                    ? `Versi ${readyUpdate.webVersion} sudah diunduh.`
-                    : "Pembaruan terbaru sudah diunduh."}
+                    ? t(
+                        "Versi {version} sudah diunduh.",
+                        "Version {version} has been downloaded.",
+                        { version: readyUpdate.webVersion },
+                      )
+                    : t(
+                        "Pembaruan terbaru sudah diunduh.",
+                        "The latest update has been downloaded.",
+                      )}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setReadyUpdate(null)}
-                aria-label="Terapkan nanti"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                aria-label={t("Terapkan nanti", "Apply later")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
               >
                 <X size={17} />
               </button>
@@ -205,10 +222,12 @@ export default function MobileLiveUpdate() {
               type="button"
               disabled={applying}
               onClick={() => void applyReadyUpdate()}
-              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 active:scale-[0.99] disabled:opacity-60"
+              className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-4 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:opacity-60"
             >
               <RefreshCw size={16} className={applying ? "animate-spin" : ""} />
-              {applying ? "Memasang update..." : "Perbarui sekarang"}
+              {applying
+                ? t("Memasang update...", "Installing update...")
+                : t("Perbarui sekarang", "Update now")}
             </button>
           </div>
         </div>
@@ -221,24 +240,26 @@ export default function MobileLiveUpdate() {
   const maintenance = blockingState.kind === "maintenance";
 
   return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950 px-6 text-white">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-canvas px-6 text-fg">
       <div className="w-full max-w-sm text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-panel bg-surface-muted">
           {maintenance ? <ShieldCheck size={30} /> : <AlertTriangle size={30} />}
         </div>
-        <h1 className="mt-6 text-xl font-bold">
-          {maintenance ? "Sedang dalam pemeliharaan" : "Aplikasi perlu diperbarui"}
+        <h1 className="mt-6 text-lg font-semibold tracking-heading">
+          {maintenance
+            ? t("Sedang dalam pemeliharaan", "Under maintenance")
+            : t("Aplikasi perlu diperbarui", "App update required")}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-300">{blockingState.message}</p>
+        <p className="mt-3 text-sm leading-6 text-fg-muted">{blockingState.message}</p>
         {maintenance ? (
           <button
             type="button"
             disabled={checking}
             onClick={() => void checkForUpdate(true)}
-            className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white font-semibold text-slate-900 disabled:opacity-60"
+            className="mt-7 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-control bg-accent text-xs font-medium text-accent-fg hover:bg-accent-strong disabled:opacity-60"
           >
             <RefreshCw size={17} className={checking ? "animate-spin" : ""} />
-            {checking ? "Memeriksa..." : "Coba lagi"}
+            {checking ? t("Memeriksa...", "Checking...") : t("Coba lagi", "Try again")}
           </button>
         ) : null}
       </div>

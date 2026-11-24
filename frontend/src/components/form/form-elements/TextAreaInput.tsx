@@ -2,16 +2,18 @@ import { useState } from "react";
 import ComponentCard from "../../common/ComponentCard";
 import TextArea from "../input/TextArea";
 import Label from "../Label";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function TextAreaInput() {
+  const { t } = useLanguage();
   const [message, setMessage] = useState("");
   const [messageTwo, setMessageTwo] = useState("");
   return (
-    <ComponentCard title="Textarea input field">
+    <ComponentCard title={t("Kolom input teks area", "Textarea input field")}>
       <div className="space-y-6">
         {/* Default TextArea */}
         <div>
-          <Label>Description</Label>
+          <Label>{t("Deskripsi", "Description")}</Label>
           <TextArea
             value={message}
             onChange={(value) => setMessage(value)}
@@ -21,19 +23,19 @@ export default function TextAreaInput() {
 
         {/* Disabled TextArea */}
         <div>
-          <Label>Description</Label>
+          <Label>{t("Deskripsi", "Description")}</Label>
           <TextArea rows={6} disabled />
         </div>
 
         {/* Error TextArea */}
         <div>
-          <Label>Description</Label>
+          <Label>{t("Deskripsi", "Description")}</Label>
           <TextArea
             rows={6}
             value={messageTwo}
             error
             onChange={(value) => setMessageTwo(value)}
-            hint="Please enter a valid message."
+            hint={t("Masukkan pesan yang valid.", "Please enter a valid message.")}
           />
         </div>
       </div>

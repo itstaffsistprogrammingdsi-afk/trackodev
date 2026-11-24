@@ -4,6 +4,7 @@ import { AlertCircle, FolderKanban, Loader2, X } from "lucide-react";
 
 import { useCreateWorkspace, useUpdateWorkspace } from "../hooks/useWorkspaces";
 import { Workspace } from "../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   open: boolean;
@@ -23,6 +24,7 @@ export default function WorkspaceModal({
   divisionId,
   workspace = null,
 }: Props) {
+  const { t } = useLanguage();
   const isEditMode = Boolean(workspace);
 
   const createMutation = useCreateWorkspace(divisionId);
@@ -73,13 +75,21 @@ export default function WorkspaceModal({
 
   const errorMessage = mutation.error
     ? (mutation.error.response?.data?.message ??
-      "Perubahan belum dapat disimpan. Coba lagi.")
+      t(
+        "Perubahan belum dapat disimpan. Coba lagi.",
+        "Changes couldn't be saved. Try again.",
+      ))
     : null;
 
-  const title = isEditMode ? "Edit workspace" : "Workspace baru";
+  const title = isEditMode
+    ? t("Edit workspace", "Edit workspace")
+    : t("Workspace baru", "New workspace");
   const description = isEditMode
-    ? "Perbarui nama dan deskripsi workspace."
-    : "Kelompokkan campaign dan board dalam satu ruang kerja.";
+    ? t("Perbarui nama dan deskripsi workspace.", "Update the workspace name and description.")
+    : t(
+        "Kelompokkan campaign dan board dalam satu ruang kerja.",
+        "Group campaigns and boards in one workspace.",
+      );
 
   return (
     <div
@@ -117,7 +127,7 @@ export default function WorkspaceModal({
             type="button"
             onClick={handleClose}
             disabled={mutation.isPending}
-            aria-label="Tutup"
+            aria-label={t("Tutup", "Close")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
           >
             <X aria-hidden="true" className="h-4 w-4" />
@@ -130,19 +140,28 @@ export default function WorkspaceModal({
               htmlFor="workspace-name"
               className="block text-xs font-medium text-fg-muted"
             >
-              Nama workspace
+              {t("Nama workspace", "Workspace name")}
             </label>
             <input
               id="workspace-name"
               autoFocus
               {...register("name", {
-                required: "Nama workspace wajib diisi.",
+                required: t(
+                  "Nama workspace wajib diisi.",
+                  "Workspace name is required.",
+                ),
                 maxLength: {
                   value: 255,
-                  message: "Nama workspace maksimal 255 karakter.",
+                  message: t(
+                    "Nama workspace maksimal 255 karakter.",
+                    "Workspace name must be at most 255 characters.",
+                  ),
                 },
               })}
-              placeholder="Contoh: Marketing Campaign"
+              placeholder={t(
+                "Contoh: Marketing Campaign",
+                "Example: Marketing Campaign",
+              )}
               aria-invalid={errors.name ? true : undefined}
               aria-describedby={errors.name ? "workspace-name-error" : undefined}
               className={`h-10 w-full rounded-control border bg-surface px-3 text-sm text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle focus:ring-4 ${
@@ -166,13 +185,16 @@ export default function WorkspaceModal({
               htmlFor="workspace-description"
               className="block text-xs font-medium text-fg-muted"
             >
-              Deskripsi
+              {t("Deskripsi", "Description")}
             </label>
             <textarea
               id="workspace-description"
               rows={4}
               {...register("description")}
-              placeholder="Tujuan atau cakupan workspace ini (opsional)"
+              placeholder={t(
+                "Tujuan atau cakupan workspace ini (opsional)",
+                "The purpose or scope of this workspace (optional)",
+              )}
               className="w-full resize-none rounded-control border border-line bg-surface px-3 py-2.5 text-sm leading-6 text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15"
             />
           </div>
@@ -197,7 +219,7 @@ export default function WorkspaceModal({
               disabled={mutation.isPending}
               className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Batal
+              {t("Batal", "Cancel")}
             </button>
 
             <button
@@ -212,12 +234,12 @@ export default function WorkspaceModal({
                     aria-hidden="true"
                     className="h-4 w-4 animate-spin motion-reduce:animate-none"
                   />
-                  Menyimpan
+                  {t("Menyimpan", "Saving")}
                 </>
               ) : isEditMode ? (
-                "Simpan perubahan"
+                t("Simpan perubahan", "Save changes")
               ) : (
-                "Buat workspace"
+                t("Buat workspace", "Create workspace")
               )}
             </button>
           </div>

@@ -1,8 +1,12 @@
 import { AxiosError } from "axios";
 import { toast } from "@/lib/feedback";
+import { translate } from "@/i18n/translate";
 
 export const MIRROR_CONFLICT_FALLBACK =
   "Terdeteksi sedang melakukan tugas bersamaan (contoh pindah card), mohon tunggu beberapa saat lagi.";
+
+const MIRROR_CONFLICT_FALLBACK_EN =
+  "Another action is still in progress (for example moving a card). Please wait a moment and try again.";
 
 export function isConflictError(error: unknown): boolean {
   return (
@@ -12,7 +16,10 @@ export function isConflictError(error: unknown): boolean {
 
 export function getConflictMessage(
   error: unknown,
-  fallback: string = MIRROR_CONFLICT_FALLBACK,
+  fallback: string = translate(
+    MIRROR_CONFLICT_FALLBACK,
+    MIRROR_CONFLICT_FALLBACK_EN,
+  ),
 ): string {
   if (error instanceof AxiosError) {
     const message = error.response?.data?.message;

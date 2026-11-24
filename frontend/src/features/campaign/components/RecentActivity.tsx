@@ -1,40 +1,43 @@
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function RecentActivity() {
+  const { t } = useLanguage();
+
   return (
-    <div className="bg-white border rounded-xl p-5 shadow-sm">
+    <div className="bg-surface border rounded-control p-5 shadow-e1">
       <h2 className="font-semibold text-lg mb-5">
-        Recent Activity
+        {t("Aktivitas terbaru", "Recent activity")}
       </h2>
 
       <div className="space-y-5">
         <ActivityItem
-          action="Moved card"
+          action={t("Memindahkan card", "Moved card")}
           target="Landing Page Design"
-          time="10 minutes ago"
+          time={t("10 menit lalu", "10 minutes ago")}
         />
 
         <ActivityItem
-          action="Uploaded file"
+          action={t("Mengunggah file", "Uploaded file")}
           target="company-profile-v2.pdf"
-          time="35 minutes ago"
+          time={t("35 menit lalu", "35 minutes ago")}
         />
 
         <ActivityItem
-          action="Commented on"
+          action={t("Mengomentari", "Commented on")}
           target="Homepage Revision"
-          time="1 hour ago"
+          time={t("1 jam lalu", "1 hour ago")}
         />
 
         <ActivityItem
-          action="Completed task"
+          action={t("Menyelesaikan task", "Completed task")}
           target="Wireframe Mobile"
-          time="3 hours ago"
+          time={t("3 jam lalu", "3 hours ago")}
         />
 
         <ActivityItem
-          action="Assigned member"
+          action={t("Menugaskan anggota", "Assigned member")}
           target="Product Banner"
-          time="5 hours ago"
+          time={t("5 jam lalu", "5 hours ago")}
         />
       </div>
     </div>
@@ -51,7 +54,7 @@ function ActivityItem({
   time: string;
 }) {
   return (
-<div className="flex gap-3 items-start">      <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 shrink-0" />
+<div className="flex gap-3 items-start">      <div className="w-2 h-2 rounded-full bg-accent-soft0 mt-2 shrink-0" />
 
       <div>
         <p className="text-sm">
@@ -61,7 +64,7 @@ function ActivityItem({
           {target}
         </p>
 
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-fg-muted mt-1">
           {time}
         </p>
       </div>

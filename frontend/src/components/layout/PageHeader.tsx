@@ -31,12 +31,12 @@ export default function PageHeader({
           </div>
         ) : null}
 
-        <h1 className="text-[26px] font-semibold leading-tight tracking-heading text-fg sm:text-[28px]">
+        <h1 className="text-balance text-[26px] font-semibold leading-tight tracking-heading text-fg sm:text-[28px]">
           {title}
         </h1>
 
         {description ? (
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-fg-muted">
+          <p className="mt-1.5 max-w-2xl text-pretty text-sm leading-6 text-fg-muted">
             {description}
           </p>
         ) : null}

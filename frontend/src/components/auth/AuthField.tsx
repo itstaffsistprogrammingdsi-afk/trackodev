@@ -2,6 +2,7 @@ import type { InputHTMLAttributes, ReactNode } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface AuthFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "className"> {
@@ -88,12 +89,14 @@ interface PasswordToggleProps {
 }
 
 export function PasswordToggle({ visible, onToggle }: PasswordToggleProps) {
+  const { t } = useLanguage();
+
   return (
     <button
       type="button"
       onClick={onToggle}
       onMouseDown={(event) => event.preventDefault()}
-      aria-label={visible ? "Sembunyikan password" : "Tampilkan password"}
+      aria-label={visible ? t("Sembunyikan password", "Hide password") : t("Tampilkan password", "Show password")}
       aria-pressed={visible}
       className="absolute right-0.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-[8px] text-fg-subtle transition-colors duration-150 hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >

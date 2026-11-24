@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import api from "@/lib/axios";
+import { translate } from "@/i18n/translate";
 
 import { CardTask } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
@@ -65,7 +66,7 @@ export default function useTasks(
       } catch (err) {
         if (requestId === requestRef.current) {
           console.error("FAILED FETCH TASKS", err);
-          setError("Task gagal dimuat.");
+          setError(translate("Task gagal dimuat.", "Failed to load subtasks."));
         }
       }
     };
@@ -119,7 +120,7 @@ export default function useTasks(
             : task,
         ),
       );
-      setError("Task gagal ditambahkan.");
+      setError(translate("Task gagal ditambahkan.", "Failed to add subtask."));
     } catch (err) {
       console.error(
         "FAILED CREATE TASK",
@@ -171,7 +172,7 @@ export default function useTasks(
 
       // rollback
       setTasks(oldTasks);
-      setError("Status task gagal diperbarui.");
+      setError(translate("Status task gagal diperbarui.", "Failed to update subtask status."));
     }
   };
 
@@ -200,7 +201,7 @@ export default function useTasks(
 
       // rollback
       setTasks(oldTasks);
-      setError("Task gagal dihapus.");
+      setError(translate("Task gagal dihapus.", "Failed to delete subtask."));
     }
   };
 

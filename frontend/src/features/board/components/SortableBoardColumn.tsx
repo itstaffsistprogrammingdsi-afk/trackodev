@@ -6,6 +6,7 @@ import { Card } from "@/features/card/types";
 import BoardColumn from "./BoardColumn";
 import { Board } from "../types";
 import { getBoardSortableId, isBoardOrderLocked } from "../utils/boardOrder";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   board: Board;
@@ -28,6 +29,7 @@ export default function SortableBoardColumn({
   fullWidth = false,
   ...columnProps
 }: Props) {
+  const { t } = useLanguage();
   const isLocked = isBoardOrderLocked(board);
   const {
     attributes,
@@ -49,7 +51,7 @@ export default function SortableBoardColumn({
       className={`${
         fullWidth
           ? "w-full max-w-none"
-          : "w-[85vw] max-w-[320px] shrink-0 sm:w-[320px] sm:max-w-none md:h-full"
+          : "w-[85vw] max-w-[300px] shrink-0 sm:w-[300px] sm:max-w-none md:h-full"
       } ${
         isDragging ? "z-20 opacity-40" : ""
       }`}
@@ -61,8 +63,12 @@ export default function SortableBoardColumn({
         dragHandle={
           disableDrag ? undefined : isLocked ? (
             <span
-              title="Posisi column ini dikunci"
-              aria-label={`Column ${board.name} tidak dapat dipindahkan`}
+              title={t("Posisi column ini dikunci", "This column's position is locked")}
+              aria-label={t(
+                "Column {name} tidak dapat dipindahkan",
+                "Column {name} cannot be moved",
+                { name: board.name },
+              )}
               className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-fg-subtle"
             >
               <LockKeyhole size={14} />
@@ -72,8 +78,15 @@ export default function SortableBoardColumn({
               type="button"
               {...attributes}
               {...listeners}
-              aria-label={`Pindahkan column ${board.name}`}
-              title="Geser untuk memindahkan column"
+              aria-label={t(
+                "Pindahkan column {name}",
+                "Move column {name}",
+                { name: board.name },
+              )}
+              title={t(
+                "Geser untuk memindahkan column",
+                "Drag to move column",
+              )}
               className="inline-flex h-7 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
             >
               <GripVertical size={16} />

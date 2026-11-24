@@ -7,10 +7,13 @@ import {
   CalendarClock,
   CheckSquare,
   MessageSquare,
+  Paperclip,
+  PenLine,
 } from "lucide-react";
 
 import { isMobileApp } from "@/lib/mobileConfig";
 import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
+import { useLanguage } from "@/context/LanguageContext";
 import { Card } from "../types";
 import NativeCardItem from "./NativeCardItem";
 import {
@@ -18,6 +21,11 @@ import {
   getDueDateStatus,
   isCardCompleted,
 } from "../utils/dueDate";
+import {
+  priorityBadgeClasses,
+  priorityDotClasses,
+  priorityLabels,
+} from "../utils/priority";
 
 // =========================================
 // PROPS
@@ -31,6 +39,7 @@ interface Props {
 }
 
 export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Props) {
+  const { t, locale } = useLanguage();
   const mobileApp = isMobileApp();
   const compactViewport = useIsCompactViewport();
   const compactLayout = mobileApp || compactViewport;
@@ -71,14 +80,22 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   const createdDate = card.created_at ? new Date(card.created_at) : null;
   const createdDateTitle =
     createdDate && !Number.isNaN(createdDate.getTime())
-      ? createdDate.toLocaleString("id-ID", {
+      ? createdDate.toLocaleString(locale, {
           dateStyle: "medium",
           timeStyle: "short",
         })
       : undefined;
+  const formattedCreatedDate =
+    createdDate && !Number.isNaN(createdDate.getTime())
+      ? createdDate.toLocaleDateString(locale, {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : null;
 
   const formattedDueDate = card.due_date
-    ? new Date(card.due_date.replace(" ", "T")).toLocaleString("id-ID", {
+    ? new Date(card.due_date.replace(" ", "T")).toLocaleString(locale, {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
@@ -94,9 +111,20 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
     completedAt: card.completed_at,
   });
   const dueClasses = dueDateBadgeClasses[dueStatus];
+  const priorityLabel = card.priority
+    ? priorityLabels[card.priority]
+    : undefined;
   const brands = card.brands ?? [];
   const labels = card.labels ?? [];
   const assignees = card.assignees ?? [];
+  const commentsCount = card.comments_count ?? card.comments?.length ?? 0;
+  const attachmentsCount =
+    card.attachments_count ?? card.attachments?.length ?? 0;
+  const tasksCount = card.tasks_count ?? card.tasks?.length ?? 0;
+  const completedTasksCount =
+    card.completed_tasks_count ??
+    card.tasks?.filter((task) => task.is_completed).length ??
+    0;
 
   // =========================================
   // EVENTS
@@ -157,9 +185,15 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
       }}
       role="button"
       tabIndex={0}
-      title={createdDateTitle ? `Dibuat ${createdDateTitle}` : undefined}
-      aria-label={`Buka detail ${card.title}${
-        dueStatus === "overdue" ? ", sudah melewati deadline" : ""
+      title={
+        createdDateTitle
+          ? t("Dibuat {date}", "Created {date}", { date: createdDateTitle })
+          : undefined
+      }
+      aria-label={`${t("Buka detail", "Open details")} ${card.title}${
+        dueStatus === "overdue"
+          ? t(", sudah melewati deadline", ", past its deadline")
+          : ""
       }`}
       className={[
         "group relative flex cursor-grab flex-col gap-2.5 rounded-card border bg-surface p-3.5 text-left shadow-e1",
@@ -182,38 +216,73 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
 
         {card.priority ? (
           <span
-            className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-fg-muted"
-            title={`Prioritas ${card.priority}`}
+            className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+              priorityBadgeClasses[card.priority] ??
+              "bg-surface-muted text-fg-muted"
+            }`}
+            title={`${t("Prioritas", "Priority")} ${
+              priorityLabel
+                ? t(priorityLabel.label, priorityLabel.labelEn)
+                : card.priority
+            }`}
           >
             <span
               aria-hidden="true"
               className={`h-1.5 w-1.5 rounded-full ${
-                card.priority === "urgent"
-                  ? "bg-priority-urgent"
-                  : card.priority === "high"
-                    ? "bg-priority-high"
-                    : card.priority === "medium"
-                      ? "bg-priority-medium"
-                      : "bg-priority-low"
+                priorityDotClasses[card.priority] ?? "bg-fg-subtle"
               }`}
             />
-            <span className="capitalize">{card.priority}</span>
+            {priorityLabel
+              ? t(priorityLabel.label, priorityLabel.labelEn)
+              : card.priority}
           </span>
         ) : null}
       </div>
+
+      {card.created_by || formattedCreatedDate ? (
+        <div
+          className="flex min-w-0 items-center gap-1.5 text-[10px] leading-4 text-fg-subtle"
+          title={
+            createdDateTitle
+              ? t("Dibuat {date}", "Created {date}", { date: createdDateTitle })
+              : undefined
+          }
+        >
+          <PenLine size={10} className="shrink-0" aria-hidden="true" />
+          <span className="truncate">
+            {card.created_by ? (
+              <>
+                {t("Dibuat oleh", "Created by")}{" "}
+                <span className="font-medium text-fg-muted">
+                  {card.created_by.name}
+                </span>
+              </>
+            ) : (
+              t("Dibuat", "Created")
+            )}
+            {formattedCreatedDate ? (
+              <span> · {formattedCreatedDate}</span>
+            ) : null}
+          </span>
+        </div>
+      ) : null}
 
       {card.is_cross_division_copy ? (
         <span
           className="inline-flex max-w-full items-center gap-1.5 self-start rounded-control bg-accent-soft px-2 py-1 text-[10px] font-medium text-accent"
           title={
             card.mirrored_by
-              ? `Ditugaskan oleh ${card.mirrored_by.name}${card.source_division ? ` · dari divisi ${card.source_division.name}` : ""}`
-              : "Copy lintas divisi"
+              ? `${t("Ditugaskan oleh", "Assigned by")} ${card.mirrored_by.name}${
+                  card.source_division
+                    ? ` · ${t("dari divisi", "from division")} ${card.source_division.name}`
+                    : ""
+                }`
+              : t("Copy lintas divisi", "Cross-division copy")
           }
         >
           <ArrowRightLeft size={11} className="shrink-0" />
           <span className="truncate">
-            Lintas divisi
+            {t("Lintas divisi", "Cross-division")}
             {card.source_division ? ` · ${card.source_division.name}` : ""}
           </span>
         </span>
@@ -264,7 +333,11 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
           {assignees.length > 0 ? (
             <div
               className="flex -space-x-1.5"
-              aria-label={`${assignees.length} anggota ditugaskan`}
+              aria-label={t(
+                "{count} anggota ditugaskan",
+                "{count} members assigned",
+                { count: assignees.length },
+              )}
             >
               {assignees.slice(0, 3).map((user) => (
                 <span
@@ -284,23 +357,43 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
             </span>
           ) : null}
 
-          {card.comments && card.comments.length > 0 ? (
+          {commentsCount > 0 ? (
             <span
               className="inline-flex items-center gap-1 text-[10px] text-fg-subtle"
-              title={`${card.comments.length} komentar`}
+              title={t("{count} komentar", "{count} comments", {
+                count: commentsCount,
+              })}
             >
               <MessageSquare size={11} aria-hidden="true" />
-              {card.comments.length}
+              <span className="tabular-nums">{commentsCount}</span>
             </span>
           ) : null}
 
-          {card.tasks && card.tasks.length > 0 ? (
+          {attachmentsCount > 0 ? (
             <span
               className="inline-flex items-center gap-1 text-[10px] text-fg-subtle"
-              title={`${card.tasks.filter((task) => task.is_completed).length} dari ${card.tasks.length} subtask selesai`}
+              title={t("{count} lampiran", "{count} attachments", {
+                count: attachmentsCount,
+              })}
+            >
+              <Paperclip size={11} aria-hidden="true" />
+              <span className="tabular-nums">{attachmentsCount}</span>
+            </span>
+          ) : null}
+
+          {tasksCount > 0 ? (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] text-fg-subtle"
+              title={t(
+                "{done} dari {total} subtask selesai",
+                "{done} of {total} subtasks completed",
+                { done: completedTasksCount, total: tasksCount },
+              )}
             >
               <CheckSquare size={11} aria-hidden="true" />
-              {card.tasks.filter((task) => task.is_completed).length}/{card.tasks.length}
+              <span className="tabular-nums">
+                {completedTasksCount}/{tasksCount}
+              </span>
             </span>
           ) : null}
         </div>
@@ -308,12 +401,22 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
         {formattedDueDate ? (
           <span
             className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${dueClasses}`}
-            title={dueStatus === "overdue" ? "Sudah melewati deadline" : "Deadline"}
+            title={
+              dueStatus === "overdue"
+                ? t("Sudah melewati deadline", "Past its deadline")
+                : t("Deadline")
+            }
           >
             <CalendarClock size={11} aria-hidden="true" />
-            {dueStatus === "overdue" ? "Terlambat" : formattedDueDate}
+            {dueStatus === "overdue" ? t("Terlambat", "Overdue") : t("Deadline")}{" "}
+            {formattedDueDate}
           </span>
-        ) : null}
+        ) : (
+          <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-fg-subtle">
+            <CalendarClock size={11} aria-hidden="true" />
+            {t("Tanpa deadline", "No deadline")}
+          </span>
+        )}
       </div>
     </article>
   );

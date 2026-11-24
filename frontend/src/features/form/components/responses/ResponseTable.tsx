@@ -16,6 +16,7 @@ import type {
 import { formatDate } from "../../utils/formatDate";
 
 import RenderCellValue from "../cells/RenderCellValue";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   form: Form;
@@ -50,21 +51,23 @@ export default function ResponseTable({
   onAssign,
   canAssign,
 }: Props) {
+  const { t } = useLanguage();
+
   return (
     <div
       className="
         hidden
         overflow-hidden
-        rounded-2xl
+        rounded-card
         border
-        border-zinc-200
-        bg-white
+        border-line
+        bg-surface
         xl:block
       "
     >
       <table className="w-full text-sm">
-        <thead className="bg-zinc-50">
-          <tr className="border-b border-zinc-200">
+        <thead className="bg-surface-muted/40">
+          <tr className="border-b border-line">
             <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500">
               #
             </th>
@@ -81,15 +84,15 @@ export default function ResponseTable({
             )}
 
             <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500">
-              Status
+              {t("Status", "Status")}
             </th>
 
             <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500">
-              Date
+              {t("Tanggal", "Date")}
             </th>
 
             <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500">
-              Action
+              {t("Aksi", "Action")}
             </th>
           </tr>
         </thead>
@@ -107,7 +110,7 @@ export default function ResponseTable({
 
               return (
                 <Fragment key={s.id}>
-                  <tr className="border-b border-zinc-100 hover:bg-zinc-50">
+                  <tr className="border-b border-zinc-100 hover:bg-surface-muted/40">
                     {/* NUMBER */}
                     <td className="px-4 py-4 text-zinc-500">
                       {i + 1}
@@ -152,11 +155,11 @@ export default function ResponseTable({
                             ${
                               s.status ===
                               "assigned"
-                                ? "bg-emerald-100 text-emerald-700"
+                                ? "bg-emerald-100 text-success"
                                 : s.status ===
                                     "forwarded"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : "bg-amber-100 text-amber-700"
+                                  ? "bg-accent-soft text-accent"
+                                  : "bg-amber-100 text-warning"
                             }
                           `}
                         >
@@ -167,23 +170,19 @@ export default function ResponseTable({
                           <div className="text-xs text-zinc-500">
                             <div className="flex items-center gap-1">
                               <span className="font-medium text-zinc-700">
-                                Koordinator: {s
-                                  .assignment
-                                  ?.coordinator
-                                  ?.name ||
-                                  "-"}
+                                {t("Koordinator: {name}", "Coordinator: {name}", {
+                                  name: s.assignment?.coordinator?.name || "-",
+                                })}
                               </span>
 
                               <ArrowRight
                                 size={11}
                               />
 
-                              <span className="font-medium text-indigo-600">
-                                PIC: {s
-                                  .assignment
-                                  ?.designer
-                                  ?.name ||
-                                  "-"}
+                              <span className="font-medium text-accent">
+                                {t("PIC: {name}", "PIC: {name}", {
+                                  name: s.assignment?.designer?.name || "-",
+                                })}
                               </span>
                             </div>
 
@@ -224,9 +223,9 @@ export default function ResponseTable({
                             flex
                             items-center
                             gap-1
-                            rounded-lg
+                            rounded-control
                             border
-                            border-zinc-200
+                            border-line
                             px-3
                             py-2
                             text-xs
@@ -246,8 +245,8 @@ export default function ResponseTable({
                           )}
 
                           {isOpen
-                            ? "Hide"
-                            : "View"}
+                            ? t("Sembunyikan", "Hide")
+                            : t("Lihat", "View")}
                         </button>
 
                         <button
@@ -264,15 +263,15 @@ export default function ResponseTable({
                             flex
                             items-center
                             gap-1.5
-                            rounded-lg
-                            bg-indigo-600
+                            rounded-control
+                            bg-accent
                             px-3
                             py-2
                             text-xs
                             font-medium
                             text-white
                             transition
-                            hover:bg-indigo-700
+                            hover:bg-accent-strong
                             disabled:cursor-not-allowed
                             disabled:bg-zinc-300
                           "
@@ -283,8 +282,8 @@ export default function ResponseTable({
 
                           {s.status ===
                           "assigned"
-                            ? "Assigned"
-                            : "Assign"}
+                            ? t("Ditugaskan", "Assigned")
+                            : t("Tugaskan", "Assign")}
                         </button>
                       </div>
                     </td>
@@ -298,7 +297,7 @@ export default function ResponseTable({
                           summaryFields.length +
                           4
                         }
-                        className="bg-zinc-50 p-5"
+                        className="bg-surface-muted/40 p-5"
                       >
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                           {form.fields?.filter((f) => f.type !== "section").map(
@@ -308,10 +307,10 @@ export default function ResponseTable({
                               <div
                                 key={f.id}
                                 className="
-                                  rounded-xl
+                                  rounded-control
                                   border
-                                  border-zinc-200
-                                  bg-white
+                                  border-line
+                                  bg-surface
                                   p-3
                                 "
                               >

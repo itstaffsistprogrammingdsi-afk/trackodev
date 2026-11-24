@@ -1,5 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Option {
   value: string;
@@ -23,8 +24,10 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   value,
   onChange,
   disabled = false,
-  placeholder = "Select options",
+  placeholder,
 }) => {
+  const { t } = useLanguage();
+  const resolvedPlaceholder = placeholder ?? t("Pilih opsi", "Select options");
   const isControlled = value !== undefined;
   const [internalSelected, setInternalSelected] =
     useState<string[]>(defaultSelected);
@@ -106,7 +109,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   return (
     <div className="w-full" ref={dropdownRef}>
       <label
-        className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400"
+        className="mb-1.5 block text-sm font-medium text-fg-muted dark:text-fg-subtle"
         id={`${label}-label`}
       >
         {label}
@@ -126,9 +129,9 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             tabIndex={disabled ? -1 : 0}
           >
             <div
-              className={`mb-2 flex min-h-11  rounded-lg border border-gray-300 py-1.5 pl-3 pr-3 shadow-theme-xs outline-hidden transition focus:border-brand-300 focus:shadow-focus-ring dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-300 ${
+              className={`mb-2 flex min-h-11  rounded-control border border-line-strong py-1.5 pl-3 pr-3 shadow-e1 outline-hidden transition focus:border-accent focus:shadow-focus-ring dark:border-line-strong dark:bg-surface dark:focus:border-accent ${
                 disabled
-                  ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
+                  ? "opacity-50 cursor-not-allowed bg-surface-muted/40 dark:bg-surface-muted"
                   : "cursor-pointer"
               }`}
             >
@@ -140,7 +143,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                     return (
                       <div
                         key={value}
-                        className="group flex items-center justify-center rounded-full border-[0.7px] border-transparent bg-gray-100 py-1 pl-2.5 pr-2 text-sm text-gray-800 hover:border-gray-200 dark:bg-gray-800 dark:text-white/90 dark:hover:border-gray-800"
+                        className="group flex items-center justify-center rounded-full border-[0.7px] border-transparent bg-surface-muted py-1 pl-2.5 pr-2 text-sm text-fg hover:border-line dark:hover:border-line-strong"
                       >
                         <span className="flex-initial max-w-full">{text}</span>
                         <button
@@ -150,8 +153,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                             if (!disabled) removeOption(value);
                           }}
                           disabled={disabled}
-                          className="pl-2 text-gray-500 cursor-pointer group-hover:text-gray-400 dark:text-gray-400 disabled:cursor-not-allowed"
-                          aria-label={`Remove ${text}`}
+                          className="pl-2 text-fg-muted cursor-pointer group-hover:text-fg-subtle dark:text-fg-subtle disabled:cursor-not-allowed"
+                           aria-label={t("Hapus {text}", "Remove {text}", { text })}
                         >
                           <svg
                             className="fill-current"
@@ -171,8 +174,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                     );
                   })
                 ) : (
-                  <div className="w-full h-full p-1 pr-2 text-sm text-gray-400 dark:text-gray-500 pointer-events-none">
-                    {placeholder}
+                  <div className="w-full h-full p-1 pr-2 text-sm text-fg-subtle dark:text-fg-muted pointer-events-none">
+                    {resolvedPlaceholder}
                   </div>
                 )}
               </div>
@@ -184,7 +187,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                     toggleDropdown();
                   }}
                   disabled={disabled}
-                  className="w-5 h-5 text-gray-700 outline-hidden cursor-pointer focus:outline-hidden dark:text-gray-400 disabled:cursor-not-allowed"
+                  className="w-5 h-5 text-fg-muted outline-hidden cursor-pointer focus:outline-none dark:text-fg-subtle disabled:cursor-not-allowed"
                 >
                   <svg
                     className={`stroke-current transition-transform ${
@@ -211,7 +214,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 
           {isOpen && (
             <div
-              className="absolute left-0 z-40 w-full overflow-y-auto bg-white rounded-lg shadow-sm top-full max-h-select dark:bg-gray-900"
+              className="absolute left-0 z-40 w-full overflow-y-auto bg-surface rounded-control shadow-e1 top-full max-h-select dark:bg-surface"
               onClick={(e) => e.stopPropagation()}
               role="listbox"
               aria-label={label}
@@ -223,7 +226,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 return (
                   <div
                     key={option.value}
-                    className={`hover:bg-primary/5 w-full cursor-pointer rounded-t border-b border-gray-200 dark:border-gray-800 ${
+                    className={`hover:bg-primary/5 w-full cursor-pointer rounded-t border-b border-line dark:border-line ${
                       isFocused ? "bg-primary/5" : ""
                     } ${isSelected ? "bg-primary/10" : ""}`}
                     onClick={() => handleSelect(option.value)}
@@ -231,7 +234,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                     aria-selected={isSelected}
                   >
                     <div className="relative flex w-full items-center p-2 pl-2">
-                      <div className="mx-2 leading-6 text-gray-800 dark:text-white/90">
+                      <div className="mx-2 leading-6 text-fg text-fg">
                         {option.text}
                       </div>
                     </div>

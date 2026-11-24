@@ -12,12 +12,14 @@ import type { BoardProgressData } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   campaignId: string;
 };
 
 export default function BoardProgress({ campaignId }: Props) {
+  const { t } = useLanguage();
   const [data, setData] = useState<BoardProgressData | null>(null);
   const [loading, setLoading] = useState(true);
   const realtimeRevision = useRealtimeRevision([
@@ -47,7 +49,9 @@ export default function BoardProgress({ campaignId }: Props) {
         role="status"
         aria-busy="true"
       >
-        <span className="sr-only">Memuat progress board</span>
+        <span className="sr-only">
+          {t("Memuat progress board", "Loading board progress")}
+        </span>
         <div className="mb-5 flex items-center justify-between">
           <div className="space-y-2">
             <Skeleton className="h-4 w-32" />
@@ -72,8 +76,11 @@ export default function BoardProgress({ campaignId }: Props) {
       <div className="rounded-panel border border-line bg-surface p-5">
         <EmptyState
           icon={BarChart3}
-          title="Progress belum tersedia"
-          description="Data progress akan muncul setelah board campaign memiliki task."
+          title={t("Progress belum tersedia", "Progress isn't available yet")}
+          description={t(
+            "Data progress akan muncul setelah board campaign memiliki task.",
+            "Progress data will appear once a campaign board has tasks.",
+          )}
         />
       </div>
     );
@@ -87,18 +94,25 @@ export default function BoardProgress({ campaignId }: Props) {
     <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
       <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-sm font-semibold text-fg">Progress task</h2>
+          <h2 className="text-sm font-semibold text-fg">
+            {t("Progress task", "Task progress")}
+          </h2>
           <p className="mt-0.5 text-xs text-fg-muted">
-            Distribusi status seluruh task campaign.
+            {t(
+              "Distribusi status seluruh task campaign.",
+              "Status distribution of all campaign tasks.",
+            )}
           </p>
         </div>
 
         <div className="flex items-center gap-2 text-[11px] font-medium">
           <span className="rounded-full bg-surface-muted px-2.5 py-1 tabular-nums text-fg-muted">
-            {total} task
+            {t("{count} task", "{count} tasks", { count: total })}
           </span>
           <span className="rounded-full bg-success-soft px-2.5 py-1 tabular-nums text-success">
-            {completionPercent}% selesai
+            {t("{percent}% selesai", "{percent}% complete", {
+              percent: completionPercent,
+            })}
           </span>
         </div>
       </div>
@@ -110,34 +124,34 @@ export default function BoardProgress({ campaignId }: Props) {
             {completionPercent}%
           </p>
           <p className="mt-0.5 text-[11px] text-fg-muted">
-            Completion rate
+            {t("Tingkat penyelesaian", "Completion rate")}
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2">
           <StatusCard
-            title="Belum dimulai"
+            title={t("Belum dimulai", "Not started")}
             count={data.todo}
             icon={<Circle size={15} />}
             tone="neutral"
             total={total}
           />
           <StatusCard
-            title="Berjalan"
+            title={t("Berjalan", "In progress")}
             count={data.in_progress}
             icon={<Clock3 size={15} />}
             tone="accent"
             total={total}
           />
           <StatusCard
-            title="Selesai"
+            title={t("Selesai", "Completed")}
             count={data.completed}
             icon={<CheckCircle2 size={15} />}
             tone="success"
             total={total}
           />
           <StatusCard
-            title="Terlambat"
+            title={t("Terlambat", "Overdue")}
             count={data.overdue}
             icon={<AlertTriangle size={15} />}
             tone="danger"
@@ -199,6 +213,7 @@ function StatusCard({
   tone: "neutral" | "accent" | "success" | "danger";
   total: number;
 }) {
+  const { t } = useLanguage();
   const percent = total > 0 ? Math.round((count / total) * 100) : 0;
   const styles = {
     neutral: { dot: "bg-fg-subtle", bar: "bg-fg-subtle", text: "text-fg-muted" },
@@ -222,7 +237,7 @@ function StatusCard({
         {count}
       </p>
       <p className="mt-0.5 text-[10px] text-fg-subtle">
-        {percent}% dari total task
+        {t("{percent}% dari total task", "{percent}% of total tasks", { percent })}
       </p>
 
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-muted">

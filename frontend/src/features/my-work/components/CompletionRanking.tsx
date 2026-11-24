@@ -14,11 +14,12 @@ import type {
   RankingPeriod,
 } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { useLanguage } from "@/context/LanguageContext";
 
-const PERIODS: { value: RankingPeriod; label: string }[] = [
-  { value: "day", label: "Hari" },
-  { value: "month", label: "Bulan" },
-  { value: "year", label: "Tahun" },
+const PERIODS: { value: RankingPeriod; label: string; labelEn: string }[] = [
+  { value: "day", label: "Hari", labelEn: "Day" },
+  { value: "month", label: "Bulan", labelEn: "Month" },
+  { value: "year", label: "Tahun", labelEn: "Year" },
 ];
 
 const RANK_STYLES = [
@@ -41,6 +42,7 @@ const RANK_STYLES = [
 
 const periodLabel = (
   filter: CompletionRankingResponse["filter"] | null,
+  locale: string,
 ): string => {
   if (!filter) return "";
 
@@ -52,10 +54,11 @@ const periodLabel = (
         ? { month: "long", year: "numeric" }
         : { year: "numeric" };
 
-  return new Intl.DateTimeFormat("id-ID", options).format(date);
+  return new Intl.DateTimeFormat(locale, options).format(date);
 };
 
 export default function CompletionRanking() {
+  const { t, locale } = useLanguage();
   const [period, setPeriod] = useState<RankingPeriod>("month");
   const [data, setData] = useState<CompletionRankingResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +71,7 @@ export default function CompletionRanking() {
       setError(null);
       setData(await getCompletionRanking(selectedPeriod));
     } catch {
-      setError("Ranking belum dapat dimuat.");
+      setError(t("Ranking belum dapat dimuat.", "Ranking could not be loaded."));
     } finally {
       setLoading(false);
     }
@@ -94,10 +97,10 @@ export default function CompletionRanking() {
               id="completion-ranking-title"
               className="text-sm font-semibold text-fg"
             >
-              Top task finisher
+              {t("Penyelesai task teratas", "Top task finisher")}
             </h2>
             <p className="text-xs text-fg-muted">
-              3 anggota dengan task selesai terbanyak
+              {t("3 anggota dengan task selesai terbanyak", "Top 3 members with the most completed tasks")}
             </p>
           </div>
         </div>
@@ -116,7 +119,7 @@ export default function CompletionRanking() {
                   : "text-fg-muted hover:text-fg"
               }`}
             >
-              {option.label}
+              {t(option.label, option.labelEn)}
             </button>
           ))}
         </div>
@@ -125,7 +128,7 @@ export default function CompletionRanking() {
       <div className="p-5 sm:p-6">
         <div className="mb-5 flex items-center gap-2 text-xs font-medium text-fg-muted">
           <CalendarDays size={14} aria-hidden="true" />
-          Periode {periodLabel(data?.filter ?? null)}
+          {t("Periode {period}", "Period {period}", { period: periodLabel(data?.filter ?? null, locale) })}
         </div>
 
         {error ? (
@@ -137,7 +140,7 @@ export default function CompletionRanking() {
               className="mt-3 inline-flex items-center gap-2 rounded-control border border-danger/25 bg-surface px-3 py-1.5 text-xs font-medium text-danger transition-colors hover:bg-danger-soft"
             >
               <RefreshCw size={14} aria-hidden="true" />
-              Coba lagi
+              {t("Coba lagi", "Try again")}
             </button>
           </div>
         ) : loading && !data ? (
@@ -160,10 +163,10 @@ export default function CompletionRanking() {
               aria-hidden="true"
             />
             <p className="mt-3 text-sm font-medium text-fg">
-              Belum ada task yang selesai
+              {t("Belum ada task yang selesai", "No completed tasks yet")}
             </p>
             <p className="mt-1 text-xs text-fg-muted">
-              Ranking akan tampil setelah anggota menyelesaikan task pada periode ini.
+              {t("Ranking akan tampil setelah anggota menyelesaikan task pada periode ini.", "The ranking will appear once members complete tasks in this period.")}
             </p>
           </div>
         )}
@@ -173,6 +176,7 @@ export default function CompletionRanking() {
 }
 
 function RankingCard({ item }: { item: CompletionRankingItem }) {
+  const { t } = useLanguage();
   const style = RANK_STYLES[item.rank - 1] ?? RANK_STYLES[2];
   const RankIcon = style.icon;
   const initials = item.user.name
@@ -196,7 +200,7 @@ function RankingCard({ item }: { item: CompletionRankingItem }) {
             {item.completed_tasks}
           </span>
           <span className="text-2xs font-medium text-fg-subtle">
-            task selesai
+            {t("task selesai", "completed tasks")}
           </span>
         </span>
       </div>
@@ -210,7 +214,7 @@ function RankingCard({ item }: { item: CompletionRankingItem }) {
             {item.user.name}
           </p>
           <p className="mt-0.5 text-2xs text-fg-muted">
-            Peringkat {item.rank}
+            {t("Peringkat {rank}", "Rank {rank}", { rank: item.rank })}
           </p>
         </div>
       </div>

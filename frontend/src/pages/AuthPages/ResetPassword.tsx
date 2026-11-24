@@ -15,9 +15,11 @@ import AuthField, {
   authPrimaryButtonClass,
 } from "../../components/auth/AuthField";
 import { resetPassword } from "../../lib/auth.service";
+import { useLanguage } from "@/context/LanguageContext";
 import AuthLayout from "./AuthPageLayout";
 
 export default function ResetPassword() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
   const [email, setEmail] = useState(searchParams.get("email") || "");
@@ -33,15 +35,30 @@ export default function ResetPassword() {
     setError("");
 
     if (!token) {
-      setError("Token reset tidak ditemukan. Silakan minta tautan baru.");
+      setError(
+        t(
+          "Token reset tidak ditemukan. Silakan minta tautan baru.",
+          "Reset token not found. Please request a new link.",
+        ),
+      );
       return;
     }
     if (password.length < 8) {
-      setError("Password baru minimal 8 karakter.");
+      setError(
+        t(
+          "Password baru minimal 8 karakter.",
+          "The new password must be at least 8 characters.",
+        ),
+      );
       return;
     }
     if (password !== confirmation) {
-      setError("Konfirmasi password belum sama.");
+      setError(
+        t(
+          "Konfirmasi password belum sama.",
+          "Password confirmation does not match.",
+        ),
+      );
       return;
     }
 
@@ -56,7 +73,10 @@ export default function ResetPassword() {
       setSuccess(true);
     } catch {
       setError(
-        "Tautan reset tidak valid atau sudah kedaluwarsa. Silakan minta tautan baru.",
+        t(
+          "Tautan reset tidak valid atau sudah kedaluwarsa. Silakan minta tautan baru.",
+          "The reset link is invalid or has expired. Please request a new link.",
+        ),
       );
     } finally {
       setLoading(false);
@@ -66,8 +86,11 @@ export default function ResetPassword() {
   return (
     <>
       <PageMeta
-        title="Reset Password | Tracko"
-        description="Tetapkan password baru akun Tracko."
+        title={t("Reset Password | Tracko", "Reset password | Tracko")}
+        description={t(
+          "Tetapkan password baru akun Tracko.",
+          "Set a new password for your Tracko account.",
+        )}
       />
       <AuthLayout>
         {success ? (
@@ -76,14 +99,16 @@ export default function ResetPassword() {
               <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
             </span>
             <h1 className="mt-4 text-[26px] font-medium leading-tight tracking-[-0.02em] text-fg sm:text-[30px]">
-              Password diperbarui
+              {t("Password diperbarui", "Password updated")}
             </h1>
             <p className="mt-2 text-sm leading-6 text-fg-muted">
-              Semua sesi lama sudah ditutup. Masuk kembali dengan password baru
-              Anda.
+              {t(
+                "Semua sesi lama sudah ditutup. Masuk kembali dengan password baru Anda.",
+                "All old sessions have been closed. Sign in again with your new password.",
+              )}
             </p>
             <Link to="/signin" className={`${authPrimaryButtonClass} mt-6`}>
-              Masuk
+              {t("Masuk", "Sign in")}
             </Link>
           </div>
         ) : (
@@ -93,20 +118,23 @@ export default function ResetPassword() {
               className="inline-flex items-center gap-1.5 rounded-[4px] text-xs font-medium text-fg-muted transition-colors duration-150 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             >
               <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-              Kembali ke halaman masuk
+              {t("Kembali ke halaman masuk", "Back to sign in")}
             </Link>
 
             <h1 className="mt-8 text-[26px] font-medium leading-tight tracking-[-0.02em] text-fg sm:text-[30px]">
-              Buat password baru
+              {t("Buat password baru", "Create a new password")}
             </h1>
             <p className="mt-2 text-sm leading-6 text-fg-muted">
-              Pilih password yang kuat dan belum pernah dipakai di akun lain.
+              {t(
+                "Pilih password yang kuat dan belum pernah dipakai di akun lain.",
+                "Choose a strong password you haven't used on another account.",
+              )}
             </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <AuthField
                 id="reset-email"
-                label="Email"
+                label={t("Email")}
                 type="email"
                 required
                 autoComplete="email"
@@ -120,7 +148,7 @@ export default function ResetPassword() {
 
               <AuthField
                 id="reset-password"
-                label="Password baru"
+                label={t("Password baru", "New password")}
                 type={showPassword ? "text" : "password"}
                 required
                 autoComplete="new-password"
@@ -129,8 +157,8 @@ export default function ResetPassword() {
                   setPassword(event.target.value);
                   setError("");
                 }}
-                placeholder="Minimal 8 karakter"
-                hint="Gunakan minimal 8 karakter."
+                placeholder={t("Minimal 8 karakter", "At least 8 characters")}
+                hint={t("Gunakan minimal 8 karakter.", "Use at least 8 characters.")}
                 icon={<LockKeyhole />}
                 trailing={
                   <PasswordToggle
@@ -142,7 +170,7 @@ export default function ResetPassword() {
 
               <AuthField
                 id="reset-password-confirmation"
-                label="Konfirmasi password"
+                label={t("Konfirmasi password", "Confirm password")}
                 type={showPassword ? "text" : "password"}
                 required
                 autoComplete="new-password"
@@ -151,7 +179,7 @@ export default function ResetPassword() {
                   setConfirmation(event.target.value);
                   setError("");
                 }}
-                placeholder="Ulangi password baru"
+                placeholder={t("Ulangi password baru", "Repeat the new password")}
                 icon={<LockKeyhole />}
               />
 
@@ -177,10 +205,10 @@ export default function ResetPassword() {
                       aria-hidden="true"
                       className="h-4 w-4 animate-spin motion-reduce:animate-none"
                     />
-                    Memperbarui password
+                    {t("Memperbarui password", "Updating password")}
                   </>
                 ) : (
-                  "Simpan password baru"
+                  t("Simpan password baru", "Save new password")
                 )}
               </button>
             </form>

@@ -4,17 +4,25 @@ import {
   CalendarClock,
   CheckSquare,
   MessageSquare,
+  Paperclip,
+  PenLine,
   UsersRound,
 } from "lucide-react";
 
-import type { Card } from "../types";
+import type { Card, CardPriority } from "../types";
 import {
   dueDateBadgeClasses,
   getDueDateStatus,
   isCardCompleted,
 } from "../utils/dueDate";
 import { alertIfMirrorConflict } from "../utils/mirrorConflict";
+import {
+  priorityBadgeClasses as priorityBadge,
+  priorityDotClasses as priorityDot,
+  priorityLabels,
+} from "../utils/priority";
 import { toast } from "@/lib/feedback";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface NativeCardItemProps {
   card: Card;
@@ -23,16 +31,9 @@ interface NativeCardItemProps {
   onMove?: (card: Card, boardId: string) => Promise<void>;
 }
 
-const priorityDot: Record<string, string> = {
-  low: "bg-success",
-  medium: "bg-priority-medium",
-  high: "bg-priority-high",
-  urgent: "bg-danger",
-};
-
-const formatDueDate = (value?: string | null) =>
+const formatDueDate = (value: string | null | undefined, locale: string) =>
   value
-    ? new Date(value.replace(" ", "T")).toLocaleString("id-ID", {
+    ? new Date(value.replace(" ", "T")).toLocaleString(locale, {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
@@ -46,6 +47,7 @@ export default function NativeCardItem({
   moveTargets = [],
   onMove,
 }: NativeCardItemProps) {
+  const { t, locale } = useLanguage();
   const [isMoving, setIsMoving] = useState(false);
   const brands = card.brands ?? [];
   const labels = card.labels ?? [];
@@ -55,11 +57,11 @@ export default function NativeCardItem({
   const hiddenTagCount =
     Math.max(0, brands.length - visibleBrands.length) +
     Math.max(0, labels.length - visibleLabels.length);
-  const dueDate = formatDueDate(card.due_date);
+  const dueDate = formatDueDate(card.due_date, locale);
   const createdDate = card.created_at ? new Date(card.created_at) : null;
   const formattedCreatedDate =
     createdDate && !Number.isNaN(createdDate.getTime())
-      ? createdDate.toLocaleDateString("id-ID", {
+      ? createdDate.toLocaleDateString(locale, {
           day: "2-digit",
           month: "short",
           year: "numeric",
@@ -67,7 +69,7 @@ export default function NativeCardItem({
       : null;
   const createdDateTitle =
     createdDate && !Number.isNaN(createdDate.getTime())
-      ? createdDate.toLocaleString("id-ID", {
+      ? createdDate.toLocaleString(locale, {
           dateStyle: "medium",
           timeStyle: "short",
         })
@@ -79,7 +81,14 @@ export default function NativeCardItem({
   const priority = card.priority?.toLowerCase() ?? "";
   const accentColor =
     brands[0]?.color || (priority === "urgent" ? "#b93832" : "#465fff");
-  const completedTasks = card.tasks?.filter((task) => task.is_completed).length ?? 0;
+  const completedTasks =
+    card.completed_tasks_count ??
+    card.tasks?.filter((task) => task.is_completed).length ??
+    0;
+  const tasksCount = card.tasks_count ?? card.tasks?.length ?? 0;
+  const commentsCount = card.comments_count ?? card.comments?.length ?? 0;
+  const attachmentsCount =
+    card.attachments_count ?? card.attachments?.length ?? 0;
 
   const handleMove = async (boardId: string) => {
     if (!boardId || boardId === card.board_id || !onMove) return;
@@ -90,7 +99,12 @@ export default function NativeCardItem({
     } catch (error) {
       if (alertIfMirrorConflict(error)) return;
       console.error("Move card failed", error);
-      toast.error("Card gagal dipindahkan. Silakan coba lagi.");
+      toast.error(
+        t(
+          "Card gagal dipindahkan. Silakan coba lagi.",
+          "Failed to move card. Please try again.",
+        ),
+      );
     } finally {
       setIsMoving(false);
     }
@@ -107,7 +121,7 @@ export default function NativeCardItem({
       <button
         type="button"
         onClick={() => onOpen?.(card)}
-        aria-label={`Buka detail ${card.title}`}
+        aria-label={`${t("Buka detail", "Open details")} ${card.title}`}
         className="block w-full px-4 pb-3 pt-4 text-left outline-none transition-colors active:bg-surface-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
       >
         <span className="flex items-start justify-between gap-3">
@@ -117,23 +131,64 @@ export default function NativeCardItem({
 
           {card.priority ? (
             <span
-              className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-[10px] font-medium capitalize text-fg-muted"
-              title={`Prioritas ${card.priority}`}
+              className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+                priorityBadge[priority as CardPriority] ??
+                "bg-surface-muted text-fg-muted"
+              }`}
+              title={`${t("Prioritas", "Priority")} ${t(
+                priorityLabels[priority as CardPriority]?.label ?? priority,
+                priorityLabels[priority as CardPriority]?.labelEn ?? priority,
+              )}`}
             >
               <span
                 aria-hidden="true"
-                className={`h-1.5 w-1.5 rounded-full ${priorityDot[priority] ?? "bg-fg-subtle"}`}
+                className={`h-1.5 w-1.5 rounded-full ${
+                  priorityDot[priority as CardPriority] ?? "bg-fg-subtle"
+                }`}
               />
-              {card.priority}
+              {priorityLabels[priority as CardPriority]
+                ? t(
+                    priorityLabels[priority as CardPriority].label,
+                    priorityLabels[priority as CardPriority].labelEn,
+                  )
+                : card.priority}
             </span>
           ) : null}
         </span>
+
+        {card.created_by || formattedCreatedDate ? (
+          <span
+            className="mt-1.5 flex min-w-0 items-center gap-1 text-[10px] leading-4 text-fg-subtle"
+            title={
+              createdDateTitle
+                ? t("Dibuat {date}", "Created {date}", { date: createdDateTitle })
+                : undefined
+            }
+          >
+            <PenLine size={10} className="shrink-0" aria-hidden="true" />
+            <span className="truncate">
+              {card.created_by ? (
+                <>
+                  {t("Dibuat oleh", "Created by")}{" "}
+                  <span className="font-medium text-fg-muted">
+                    {card.created_by.name}
+                  </span>
+                </>
+              ) : (
+                t("Dibuat", "Created")
+              )}
+              {formattedCreatedDate ? (
+                <span> · {formattedCreatedDate}</span>
+              ) : null}
+            </span>
+          </span>
+        ) : null}
 
         {card.is_cross_division_copy ? (
           <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-control bg-accent-soft px-2 py-1 text-[10px] font-medium text-accent">
             <ArrowRightLeft size={11} className="shrink-0" />
             <span className="truncate">
-              Lintas divisi
+              {t("Lintas divisi", "Cross-division")}
               {card.source_division ? ` · ${card.source_division.name}` : ""}
             </span>
           </span>
@@ -199,21 +254,30 @@ export default function NativeCardItem({
             ) : (
               <span className="inline-flex items-center gap-1 text-[10px] text-fg-subtle">
                 <UsersRound size={11} aria-hidden="true" />
-                Belum ada member
+                {t("Belum ada member", "No members yet")}
               </span>
             )}
 
-            {card.comments && card.comments.length > 0 ? (
+            {commentsCount > 0 ? (
               <span className="inline-flex items-center gap-1 text-[10px] text-fg-subtle">
                 <MessageSquare size={11} aria-hidden="true" />
-                {card.comments.length}
+                <span className="tabular-nums">{commentsCount}</span>
               </span>
             ) : null}
 
-            {card.tasks && card.tasks.length > 0 ? (
+            {attachmentsCount > 0 ? (
+              <span className="inline-flex items-center gap-1 text-[10px] text-fg-subtle">
+                <Paperclip size={11} aria-hidden="true" />
+                <span className="tabular-nums">{attachmentsCount}</span>
+              </span>
+            ) : null}
+
+            {tasksCount > 0 ? (
               <span className="inline-flex items-center gap-1 text-[10px] text-fg-subtle">
                 <CheckSquare size={11} aria-hidden="true" />
-                {completedTasks}/{card.tasks.length}
+                <span className="tabular-nums">
+                  {completedTasks}/{tasksCount}
+                </span>
               </span>
             ) : null}
           </span>
@@ -223,19 +287,15 @@ export default function NativeCardItem({
               className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${dueDateBadgeClasses[dueStatus]}`}
             >
               <CalendarClock size={11} aria-hidden="true" />
-              {dueStatus === "overdue" ? "Terlambat" : dueDate}
+              {dueStatus === "overdue" ? t("Terlambat", "Overdue") : t("Deadline")} {dueDate}
             </span>
-          ) : null}
+          ) : (
+            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-fg-subtle">
+              <CalendarClock size={11} aria-hidden="true" />
+              {t("Tanpa deadline", "No deadline")}
+            </span>
+          )}
         </span>
-
-        {formattedCreatedDate ? (
-          <span
-            className="mt-1.5 block text-[10px] text-fg-subtle"
-            title={createdDateTitle ? `Dibuat ${createdDateTitle}` : undefined}
-          >
-            Dibuat {formattedCreatedDate}
-          </span>
-        ) : null}
       </button>
 
       {onMove && moveTargets.length > 0 ? (
@@ -243,17 +303,21 @@ export default function NativeCardItem({
           <label className="flex items-center gap-3">
             <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-fg-muted">
               <ArrowRightLeft size={12} aria-hidden="true" />
-              Pindah
+              {t("Pindah", "Move")}
             </span>
             <select
               value={card.board_id}
               disabled={isMoving}
-              aria-label={`Pindahkan ${card.title} ke status lain`}
+              aria-label={t(
+                "Pindahkan {title} ke status lain",
+                "Move {title} to another status",
+                { title: card.title },
+              )}
               onChange={(event) => void handleMove(event.target.value)}
               className="h-10 min-w-0 flex-1 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/15 disabled:cursor-wait disabled:opacity-60"
             >
               <option value={card.board_id}>
-                {isMoving ? "Memindahkan..." : "Pilih tujuan"}
+                {isMoving ? t("Memindahkan...", "Moving...") : t("Pilih tujuan", "Select destination")}
               </option>
               {moveTargets.map((target) => (
                 <option key={target.id} value={target.id}>

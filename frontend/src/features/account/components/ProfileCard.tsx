@@ -3,6 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 
 import { useUpdateProfile } from "../hooks/useAccount";
 import type { AccountUser } from "../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ProfileCardProps {
   user?: AccountUser;
@@ -12,6 +13,7 @@ const inputClass =
   "h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/50 focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:bg-surface-muted";
 
 export default function ProfileCard({ user }: ProfileCardProps) {
+  const { t } = useLanguage();
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -30,7 +32,8 @@ export default function ProfileCard({ user }: ProfileCardProps) {
     mutate(
       { name, email },
       {
-        onSuccess: () => setSuccessMsg("Profil berhasil diperbarui."),
+        onSuccess: () =>
+          setSuccessMsg(t("Profil berhasil diperbarui.", "Profile updated successfully.")),
       },
     );
   };
@@ -38,9 +41,14 @@ export default function ProfileCard({ user }: ProfileCardProps) {
   return (
     <section className="rounded-panel border border-line bg-surface p-5 lg:p-6">
       <div className="mb-5">
-        <h2 className="text-sm font-semibold text-fg">Informasi profil</h2>
+        <h2 className="text-sm font-semibold text-fg">
+          {t("Informasi profil", "Profile information")}
+        </h2>
         <p className="mt-0.5 text-xs text-fg-muted">
-          Nama ini tampil di kartu, komentar, dan aktivitas tim.
+          {t(
+            "Nama ini tampil di kartu, komentar, dan aktivitas tim.",
+            "This name appears on cards, comments, and team activity.",
+          )}
         </p>
       </div>
 
@@ -51,7 +59,7 @@ export default function ProfileCard({ user }: ProfileCardProps) {
               htmlFor="profile-name"
               className="mb-1.5 block text-xs font-medium text-fg-muted"
             >
-              Nama lengkap
+              {t("Nama lengkap", "Full name")}
             </label>
             <input
               id="profile-name"
@@ -69,7 +77,7 @@ export default function ProfileCard({ user }: ProfileCardProps) {
               htmlFor="profile-email"
               className="mb-1.5 block text-xs font-medium text-fg-muted"
             >
-              Email
+              {t("Email")}
             </label>
             <input
               id="profile-email"
@@ -85,7 +93,10 @@ export default function ProfileCard({ user }: ProfileCardProps) {
 
         {error ? (
           <p role="alert" className="text-xs font-medium text-danger">
-            Gagal menyimpan perubahan. Periksa kembali data Anda.
+            {t(
+              "Gagal menyimpan perubahan. Periksa kembali data Anda.",
+              "Failed to save changes. Please check your details.",
+            )}
           </p>
         ) : null}
         {successMsg ? (
@@ -104,7 +115,7 @@ export default function ProfileCard({ user }: ProfileCardProps) {
             disabled={isPending}
             className="h-9 rounded-control bg-accent px-4 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "Menyimpan..." : "Simpan perubahan"}
+            {isPending ? t("Menyimpan...", "Saving...") : t("Simpan perubahan", "Save changes")}
           </button>
         </div>
       </form>

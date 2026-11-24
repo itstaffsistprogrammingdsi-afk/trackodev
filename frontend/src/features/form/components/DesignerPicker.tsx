@@ -9,6 +9,7 @@ import {
 } from "../api/form.api"
 
 import { User } from "../types"
+import { useLanguage } from "@/context/LanguageContext"
 
 type Props = {
   divisionId?: string
@@ -25,6 +26,8 @@ export default function DesignerPicker({
   selected,
   onSelect,
 }: Props) {
+
+  const { t } = useLanguage()
 
   const [query, setQuery] =
     useState("")
@@ -144,12 +147,12 @@ export default function DesignerPicker({
         }
         placeholder={
           !divisionId
-            ? "Pilih division terlebih dahulu"
-            : "Cari PIC/anggota..."
+            ? t("Pilih division terlebih dahulu", "Select a division first")
+            : t("Cari PIC/anggota...", "Search PIC/member...")
         }
         className="
           w-full
-          rounded-xl
+          rounded-control
           border
           px-3 py-2
           text-sm
@@ -169,25 +172,25 @@ export default function DesignerPicker({
             max-h-60
             w-full
             overflow-y-auto
-            rounded-xl
+            rounded-control
             border
-            bg-white
-            shadow-lg
+            bg-surface
+            shadow-e2
           "
         >
 
           {loading && (
 
             <div className="p-3 text-sm">
-              Loading...
+              {t("Memuat...", "Loading...")}
             </div>
           )}
 
           {!loading &&
             users.length === 0 && (
 
-            <div className="p-3 text-sm text-zinc-500">
-              User tidak ditemukan
+            <div className="p-3 text-sm text-fg-subtle">
+              {t("User tidak ditemukan", "No users found")}
             </div>
           )}
 
@@ -202,10 +205,10 @@ export default function DesignerPicker({
               }
               className="
                 w-full
-                border-b
+                border-b border-line
                 px-3 py-2
                 text-left
-                hover:bg-zinc-100
+                hover:bg-surface-muted
               "
             >
 
@@ -213,7 +216,7 @@ export default function DesignerPicker({
                 {u.name}
               </div>
 
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-fg-subtle">
                 {u.email}
               </div>
 
@@ -227,10 +230,10 @@ export default function DesignerPicker({
         <div
           className="
             mt-3
-            rounded-2xl
+            rounded-card
             border
-            border-emerald-200
-            bg-emerald-50
+            border-success/20
+            bg-success-soft
             px-4 py-3
           "
         >
@@ -238,10 +241,10 @@ export default function DesignerPicker({
           <p
             className="
               text-xs
-              text-emerald-700
+              text-success
             "
           >
-            PIC/anggota dipilih
+            {t("PIC/anggota dipilih", "PIC/member selected")}
           </p>
 
           <p

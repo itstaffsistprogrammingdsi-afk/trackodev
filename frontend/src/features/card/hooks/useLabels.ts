@@ -10,6 +10,7 @@ import {
 
 import { Card, Label } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { translate } from "@/i18n/translate";
 
 interface Props {
   detail: Card | null;
@@ -62,7 +63,7 @@ export default function useLabels({
       setError(null);
     } catch (err) {
       console.error(err);
-      setError("Gagal memuat daftar label.");
+      setError(translate("Gagal memuat daftar label.", "Failed to load labels."));
     } finally {
       setLoading(false);
     }
@@ -113,7 +114,7 @@ export default function useLabels({
       }
     } catch (err) {
       console.error(err);
-      setError(messageFromError(err, "Label gagal dibuat."));
+      setError(messageFromError(err, translate("Label gagal dibuat.", "Failed to create label.")));
       throw err;
     }
   }
@@ -153,7 +154,7 @@ async function attach(
     setError(null);
   } catch (err) {
     console.error(err);
-    setError(messageFromError(err, "Label gagal ditambahkan."));
+    setError(messageFromError(err, translate("Label gagal ditambahkan.", "Failed to attach label.")));
   }
 }
 
@@ -184,7 +185,7 @@ async function detach(
     setError(null);
   } catch (err) {
     console.error(err);
-    setError(messageFromError(err, "Label gagal dilepas."));
+    setError(messageFromError(err, translate("Label gagal dilepas.", "Failed to detach label.")));
   }
 }
 
@@ -198,7 +199,7 @@ async function detach(
       setLabels((prev) => prev.filter((label) => label.id !== labelId));
     } catch (err) {
       console.error(err);
-      setError(messageFromError(err, "Label gagal dihapus."));
+      setError(messageFromError(err, translate("Label gagal dihapus.", "Failed to delete label.")));
     }
   }
 

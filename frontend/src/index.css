@@ -240,14 +240,18 @@ body {
   --tracko-info-soft: #e8f3f8;
   --tracko-overlay: rgb(31 31 28 / 0.44);
 
-  --tracko-priority-low: #0f7a55;
-  --tracko-priority-low-soft: #e9f6f0;
-  --tracko-priority-medium: #a4570a;
-  --tracko-priority-medium-soft: #fdf3e2;
-  --tracko-priority-high: #b45309;
-  --tracko-priority-high-soft: #fdf0e7;
-  --tracko-priority-urgent: #b93832;
-  --tracko-priority-urgent-soft: #fceceb;
+  --tracko-priority-low: #047857;
+  --tracko-priority-low-soft: #d9f7e9;
+  --tracko-priority-low-dot: #22c55e;
+  --tracko-priority-medium: #b45309;
+  --tracko-priority-medium-soft: #fef3c7;
+  --tracko-priority-medium-dot: #f59e0b;
+  --tracko-priority-high: #c2410c;
+  --tracko-priority-high-soft: #ffedd5;
+  --tracko-priority-high-dot: #f97316;
+  --tracko-priority-urgent: #b91c1c;
+  --tracko-priority-urgent-soft: #fee2e2;
+  --tracko-priority-urgent-dot: #ef4444;
 
   --tracko-chart-1: #3f51f5;
   --tracko-chart-2: #0b6a94;
@@ -286,14 +290,18 @@ html.dark {
   --tracko-info-soft: rgb(11 165 236 / 0.14);
   --tracko-overlay: rgb(0 0 0 / 0.6);
 
-  --tracko-priority-low: #5fd0a3;
-  --tracko-priority-low-soft: rgb(18 183 106 / 0.14);
-  --tracko-priority-medium: #f0b45c;
-  --tracko-priority-medium-soft: rgb(247 144 9 / 0.14);
-  --tracko-priority-high: #f6a96b;
-  --tracko-priority-high-soft: rgb(249 115 22 / 0.16);
-  --tracko-priority-urgent: #ff8c84;
-  --tracko-priority-urgent-soft: rgb(240 68 56 / 0.15);
+  --tracko-priority-low: #6ee7b7;
+  --tracko-priority-low-soft: rgb(34 197 94 / 0.16);
+  --tracko-priority-low-dot: #4ade80;
+  --tracko-priority-medium: #fcd34d;
+  --tracko-priority-medium-soft: rgb(245 158 11 / 0.16);
+  --tracko-priority-medium-dot: #fbbf24;
+  --tracko-priority-high: #fdba74;
+  --tracko-priority-high-soft: rgb(249 115 22 / 0.18);
+  --tracko-priority-high-dot: #fb923c;
+  --tracko-priority-urgent: #fca5a5;
+  --tracko-priority-urgent-soft: rgb(239 68 68 / 0.18);
+  --tracko-priority-urgent-dot: #f87171;
 
   --tracko-chart-1: #8a9bff;
   --tracko-chart-2: #74c8e8;
@@ -330,12 +338,16 @@ html.dark {
   --color-overlay: var(--tracko-overlay);
   --color-priority-low: var(--tracko-priority-low);
   --color-priority-low-soft: var(--tracko-priority-low-soft);
+  --color-priority-low-dot: var(--tracko-priority-low-dot);
   --color-priority-medium: var(--tracko-priority-medium);
   --color-priority-medium-soft: var(--tracko-priority-medium-soft);
+  --color-priority-medium-dot: var(--tracko-priority-medium-dot);
   --color-priority-high: var(--tracko-priority-high);
   --color-priority-high-soft: var(--tracko-priority-high-soft);
+  --color-priority-high-dot: var(--tracko-priority-high-dot);
   --color-priority-urgent: var(--tracko-priority-urgent);
   --color-priority-urgent-soft: var(--tracko-priority-urgent-soft);
+  --color-priority-urgent-dot: var(--tracko-priority-urgent-dot);
   --color-chart-1: var(--tracko-chart-1);
   --color-chart-2: var(--tracko-chart-2);
   --color-chart-3: var(--tracko-chart-3);

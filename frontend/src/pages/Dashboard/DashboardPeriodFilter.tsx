@@ -1,13 +1,14 @@
 import { CalendarDays, CalendarRange, SlidersHorizontal } from "lucide-react";
 
+import { useLanguage } from "@/context/LanguageContext";
 import type { DashboardFilter, DashboardPeriod } from "./dashboard.types";
 
-const PERIOD_OPTIONS: Array<{ value: DashboardPeriod; label: string }> = [
-  { value: "day", label: "Harian" },
-  { value: "week", label: "Mingguan" },
-  { value: "month", label: "Bulanan" },
-  { value: "year", label: "Tahunan" },
-  { value: "all", label: "Semua" },
+const PERIOD_OPTIONS: Array<{ value: DashboardPeriod; label: string; labelEn: string }> = [
+  { value: "day", label: "Harian", labelEn: "Daily" },
+  { value: "week", label: "Mingguan", labelEn: "Weekly" },
+  { value: "month", label: "Bulanan", labelEn: "Monthly" },
+  { value: "year", label: "Tahunan", labelEn: "Yearly" },
+  { value: "all", label: "Semua", labelEn: "All" },
 ];
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export default function DashboardPeriodFilter({ value, onChange, loading }: Props) {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1999 }, (_, index) => currentYear - index);
 
@@ -35,9 +37,12 @@ export default function DashboardPeriodFilter({ value, onChange, loading }: Prop
             <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-medium text-fg">Filter seluruh dashboard</h2>
+            <h2 className="text-sm font-medium text-fg">{t("Filter seluruh dashboard", "Dashboard-wide filter")}</h2>
             <p className="mt-0.5 text-xs text-fg-muted">
-              KPI, status task, dan ranking divisi menggunakan periode yang sama.
+              {t(
+                "KPI, status task, dan ranking divisi menggunakan periode yang sama.",
+                "KPIs, task status, and division ranking use the same period.",
+              )}
             </p>
           </div>
         </div>
@@ -57,7 +62,7 @@ export default function DashboardPeriodFilter({ value, onChange, loading }: Prop
                     : "text-fg-muted hover:text-fg"
                 }`}
               >
-                {option.label}
+                {t(option.label, option.labelEn)}
               </button>
             ))}
           </div>
@@ -93,6 +98,7 @@ function ContextualPeriodInput({
   ) => void;
   onChange: (filter: DashboardFilter) => void;
 }) {
+  const { t } = useLanguage();
   const now = new Date();
   const todayDate = [
     now.getFullYear(),
@@ -108,7 +114,9 @@ function ContextualPeriodInput({
     return (
       <label className="relative block">
         <span className="sr-only">
-          {value.period === "day" ? "Pilih tanggal" : "Tanggal acuan minggu"}
+          {value.period === "day"
+            ? t("Pilih tanggal", "Select date")
+            : t("Tanggal acuan minggu", "Reference date for the week")}
         </span>
         <CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-subtle" />
         <input
@@ -133,7 +141,7 @@ function ContextualPeriodInput({
   if (value.period === "month") {
     return (
       <label className="relative block">
-        <span className="sr-only">Pilih bulan</span>
+        <span className="sr-only">{t("Pilih bulan", "Select month")}</span>
         <CalendarRange className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-subtle" />
         <input
           type="month"
@@ -156,7 +164,7 @@ function ContextualPeriodInput({
   if (value.period === "year") {
     return (
       <label>
-        <span className="sr-only">Pilih tahun</span>
+        <span className="sr-only">{t("Pilih tahun", "Select year")}</span>
         <select
           value={value.year}
           disabled={loading}
@@ -165,7 +173,7 @@ function ContextualPeriodInput({
         >
           {years.map((year) => (
             <option key={year} value={year}>
-              Tahun {year}
+              {t("Tahun {year}", "Year {year}", { year })}
             </option>
           ))}
         </select>
@@ -175,7 +183,9 @@ function ContextualPeriodInput({
 
   return (
     <label>
-      <span className="sr-only">Batasi semua data berdasarkan tahun</span>
+      <span className="sr-only">
+        {t("Batasi semua data berdasarkan tahun", "Limit all data by year")}
+      </span>
       <select
         value={value.all_year ?? ""}
         disabled={loading}
@@ -184,10 +194,10 @@ function ContextualPeriodInput({
         }
         className={inputClass}
       >
-        <option value="">Semua tahun</option>
+        <option value="">{t("Semua tahun", "All years")}</option>
         {years.map((year) => (
           <option key={year} value={year}>
-            Hanya tahun {year}
+            {t("Hanya tahun {year}", "Year {year} only", { year })}
           </option>
         ))}
       </select>

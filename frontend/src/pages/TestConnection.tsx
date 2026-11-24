@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import api from "../lib/axios";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function TestConnection() {
+  const { t } = useLanguage();
 
   useEffect(() => {
     api.get("/api/ping")
@@ -11,8 +13,8 @@ export default function TestConnection() {
 
   return (
     <div style={{ padding: "20px" }}>
-      <h1>Test Connection Page</h1>
-      <p>Cek console (F12) untuk hasil</p>
+      <h1>{t("Test Connection Page", "Test connection page")}</h1>
+      <p>{t("Cek console (F12) untuk hasil", "Check the console (F12) for the result")}</p>
     </div>
   );
 }

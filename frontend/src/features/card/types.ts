@@ -169,6 +169,11 @@ export type Card = {
   completed_at?: string | null;
 
   comments?: CardComment[];
+  attachments?: Attachment[];
+  attachments_count?: number;
+  comments_count?: number;
+  tasks_count?: number;
+  completed_tasks_count?: number;
 
   assignees?: User[];
 

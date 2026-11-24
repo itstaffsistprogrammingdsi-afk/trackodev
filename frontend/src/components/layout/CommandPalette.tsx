@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { CornerDownLeft, Search } from "lucide-react";
 
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/context/LanguageContext";
 
 export interface CommandPaletteItem {
   id: string;
@@ -27,6 +28,7 @@ export default function CommandPalette({
   onNavigate,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -104,7 +106,7 @@ export default function CommandPalette({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Cari menu"
+        aria-label={t("Cari menu", "Search menu")}
         onClick={(event) => event.stopPropagation()}
         style={{ animation: "ui-scale-in 160ms ease-out" }}
         className="w-full max-w-lg overflow-hidden rounded-panel border border-line bg-surface shadow-e3"
@@ -119,8 +121,11 @@ export default function CommandPalette({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Cari menu atau halaman…"
-            aria-label="Cari menu"
+            placeholder={t(
+              "Cari menu atau halaman…",
+              "Search menus or pages…",
+            )}
+            aria-label={t("Cari menu", "Search menu")}
             className="h-full w-full bg-transparent pl-11 pr-16 text-sm text-fg outline-none placeholder:text-fg-subtle"
           />
           <kbd className="absolute right-3 rounded border border-line bg-surface-muted px-1.5 py-0.5 text-2xs text-fg-subtle">
@@ -132,14 +137,20 @@ export default function CommandPalette({
           {filtered.length === 0 ? (
             <div className="px-4 py-10 text-center">
               <p className="text-sm font-medium text-fg">
-                Menu tidak ditemukan
+                {t("Menu tidak ditemukan", "No menu found")}
               </p>
               <p className="mt-1 text-xs text-fg-muted">
-                Coba kata kunci lain atau periksa hak akses Anda.
+                {t(
+                  "Coba kata kunci lain atau periksa hak akses Anda.",
+                  "Try another keyword or check your access.",
+                )}
               </p>
             </div>
           ) : (
-            <ul role="listbox" aria-label="Hasil pencarian menu">
+            <ul
+              role="listbox"
+              aria-label={t("Hasil pencarian menu", "Menu search results")}
+            >
               {filtered.map((item, index) => {
                 const active = index === activeIndex;
 
@@ -194,16 +205,16 @@ export default function CommandPalette({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-line px-3 py-2 text-2xs text-fg-subtle">
-          <span>Navigasi cepat Tracko</span>
+          <span>{t("Navigasi cepat Tracko", "Tracko quick navigation")}</span>
           <span className="flex items-center gap-1.5">
             <kbd className="rounded border border-line bg-surface-muted px-1.5 py-0.5">
               ↑↓
             </kbd>
-            pilih
+            {t("pilih", "select")}
             <kbd className="rounded border border-line bg-surface-muted px-1.5 py-0.5">
               ↵
             </kbd>
-            buka
+            {t("buka", "open")}
           </span>
         </div>
       </div>

@@ -16,6 +16,8 @@ import axios from "../../lib/axios";
 import { toDashboardParams } from "./dashboard.types";
 import type { DashboardFilter, DashboardFilterPayload } from "./dashboard.types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { useLanguage } from "@/context/LanguageContext";
+import { translatePeriodLabel } from "./dashboardLabels";
 
 type RankingUser = {
   id: string;
@@ -68,7 +70,7 @@ const rankStyle = [
 ];
 
 const formatPeriod = (data: DivisionRankingResponse | null) => {
-  return data?.filter.label ?? "Periode aktif";
+  return translatePeriodLabel(data?.filter.label ?? "Periode aktif");
 };
 
 export default function DivisionRankingSection({
@@ -78,6 +80,7 @@ export default function DivisionRankingSection({
   filter: DashboardFilter;
   refreshKey: number;
 }) {
+  const { t } = useLanguage();
   const [data, setData] = useState<DivisionRankingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +100,7 @@ export default function DivisionRankingSection({
       );
       setData(response.data);
     } catch {
-      setError("Leaderboard per divisi belum dapat dimuat.");
+      setError("load_failed");
     } finally {
       setLoading(false);
     }
@@ -134,26 +137,40 @@ export default function DivisionRankingSection({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 id="division-ranking-title" className="text-lg font-semibold text-fg">
-              Top 3 user setiap divisi
+              {t("Top 3 user setiap divisi", "Top 3 users per division")}
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-muted">
-              Peringkat berdasarkan jumlah task selesai dan pelaku perpindahan terakhir
-              card ke tahap selesai.
+              {t(
+                "Peringkat berdasarkan jumlah task selesai dan pelaku perpindahan terakhir card ke tahap selesai.",
+                "Ranked by completed task count and by who last moved a card to the completed stage.",
+              )}
             </p>
           </div>
 
           <div className="inline-flex w-fit items-center gap-1.5 rounded-control bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-fg-muted">
             <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
-            Mengikuti filter dashboard
+            {t("Mengikuti filter dashboard", "Follows the dashboard filter")}
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] text-fg-muted">
-          <SummaryChip icon={Building2} label={`${data?.summary.divisions ?? 0} divisi`} />
-          <SummaryChip icon={Users} label={`${data?.summary.ranked_users ?? 0} user produktif`} />
+          <SummaryChip
+            icon={Building2}
+            label={t("{count} divisi", "{count} divisions", {
+              count: data?.summary.divisions ?? 0,
+            })}
+          />
+          <SummaryChip
+            icon={Users}
+            label={t("{count} user produktif", "{count} productive users", {
+              count: data?.summary.ranked_users ?? 0,
+            })}
+          />
           <SummaryChip
             icon={CheckCircle2}
-            label={`${data?.summary.completed_tasks ?? 0} task selesai`}
+            label={t("{count} task selesai", "{count} completed tasks", {
+              count: data?.summary.completed_tasks ?? 0,
+            })}
           />
           <SummaryChip icon={CalendarRange} label={formatPeriod(data)} />
         </div>
@@ -162,14 +179,19 @@ export default function DivisionRankingSection({
       <div className="p-4 sm:p-6">
         {error ? (
           <div className="flex flex-col items-center rounded-card border border-dashed border-danger/30 bg-danger-soft px-5 py-10 text-center">
-            <p className="text-sm font-medium text-danger">{error}</p>
+            <p className="text-sm font-medium text-danger">
+              {t(
+                "Leaderboard per divisi belum dapat dimuat.",
+                "The division leaderboard could not be loaded.",
+              )}
+            </p>
             <button
               type="button"
               onClick={() => void loadRanking()}
               className="mt-4 inline-flex items-center gap-2 rounded-control border border-danger/25 bg-surface px-3 py-1.5 text-xs font-medium text-danger transition-colors hover:bg-danger-soft"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              Coba lagi
+              {t("Coba lagi", "Try again")}
             </button>
           </div>
         ) : loading && !data ? (
@@ -185,10 +207,15 @@ export default function DivisionRankingSection({
             {totalPages > 1 && (
               <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-center text-xs font-medium text-fg-muted sm:text-left">
-                  Menampilkan {page * pageSize + 1}-
-                  {Math.min((page + 1) * pageSize, data.divisions.length)} dari{
-                  " "
-                  }{data.divisions.length} divisi
+                  {t(
+                    "Menampilkan {start}-{end} dari {total} divisi",
+                    "Showing {start}-{end} of {total} divisions",
+                    {
+                      start: page * pageSize + 1,
+                      end: Math.min((page + 1) * pageSize, data.divisions.length),
+                      total: data.divisions.length,
+                    },
+                  )}
                 </p>
                 <div className="flex items-center justify-center gap-2">
                   <button
@@ -196,12 +223,15 @@ export default function DivisionRankingSection({
                     disabled={page === 0 || loading}
                     onClick={() => setPage((current) => Math.max(0, current - 1))}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-control border border-line bg-surface text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-35"
-                    aria-label="Divisi sebelumnya"
+                    aria-label={t("Divisi sebelumnya", "Previous division")}
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </button>
                   <span className="min-w-20 text-center text-xs font-medium tabular-nums text-fg-muted">
-                    Halaman {page + 1} / {totalPages}
+                    {t("Halaman {page} / {total}", "Page {page} of {total}", {
+                      page: page + 1,
+                      total: totalPages,
+                    })}
                   </span>
                   <button
                     type="button"
@@ -210,7 +240,7 @@ export default function DivisionRankingSection({
                       setPage((current) => Math.min(totalPages - 1, current + 1))
                     }
                     className="inline-flex h-8 w-8 items-center justify-center rounded-control border border-line bg-surface text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-35"
-                    aria-label="Divisi berikutnya"
+                    aria-label={t("Divisi berikutnya", "Next division")}
                   >
                     <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -221,7 +251,9 @@ export default function DivisionRankingSection({
         ) : (
           <div className="rounded-card border border-dashed border-line bg-surface-muted/40 px-5 py-12 text-center">
             <Building2 className="mx-auto h-7 w-7 text-fg-subtle" aria-hidden="true" />
-            <p className="mt-3 text-sm font-medium text-fg">Belum ada divisi</p>
+            <p className="mt-3 text-sm font-medium text-fg">
+              {t("Belum ada divisi", "No divisions yet")}
+            </p>
           </div>
         )}
       </div>
@@ -245,6 +277,8 @@ function SummaryChip({
 }
 
 function DivisionCard({ division }: { division: DivisionRanking }) {
+  const { t } = useLanguage();
+
   return (
     <article className="overflow-hidden rounded-card border border-line bg-surface">
       <div className="flex items-start justify-between border-b border-line bg-surface-muted/40 px-4 py-3.5">
@@ -255,7 +289,9 @@ function DivisionCard({ division }: { division: DivisionRanking }) {
           <div className="min-w-0">
             <h3 className="truncate text-[13px] font-semibold text-fg">{division.name}</h3>
             <p className="mt-0.5 text-[11px] text-fg-muted">
-              {division.member_count} anggota
+              {t("{count} anggota", "{count} members", {
+                count: division.member_count,
+              })}
             </p>
           </div>
         </div>
@@ -273,7 +309,7 @@ function DivisionCard({ division }: { division: DivisionRanking }) {
           <div className="px-3 py-8 text-center">
             <Trophy className="mx-auto h-6 w-6 text-fg-subtle/50" aria-hidden="true" />
             <p className="mt-2 text-xs font-medium text-fg-subtle">
-              Belum ada task selesai pada periode ini
+              {t("Belum ada task selesai pada periode ini", "No completed tasks in this period")}
             </p>
           </div>
         )}
@@ -283,6 +319,7 @@ function DivisionCard({ division }: { division: DivisionRanking }) {
 }
 
 function RankingRow({ item }: { item: RankingItem }) {
+  const { t, locale } = useLanguage();
   const style = rankStyle[item.rank - 1] ?? rankStyle[2];
   const RankIcon = style.icon;
   const initials = item.user.name
@@ -302,13 +339,17 @@ function RankingRow({ item }: { item: RankingItem }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium text-fg">{item.user.name}</p>
-        <p className="text-[10px] text-fg-subtle">Peringkat {item.rank}</p>
+        <p className="text-[10px] text-fg-subtle">
+          {t("Peringkat {rank}", "Rank {rank}", { rank: item.rank })}
+        </p>
       </div>
       <div className="text-right">
         <p className="text-base font-semibold leading-none tabular-nums text-fg">
-          {item.completed_tasks.toLocaleString("id-ID")}
+          {item.completed_tasks.toLocaleString(locale)}
         </p>
-        <p className="mt-1 text-[10px] text-fg-subtle">task selesai</p>
+        <p className="mt-1 text-[10px] text-fg-subtle">
+          {t("task selesai", "completed tasks")}
+        </p>
       </div>
     </div>
   );

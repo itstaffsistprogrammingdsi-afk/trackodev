@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import type { ActivityItem } from "../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   activities: ActivityItem[];
@@ -18,6 +19,7 @@ export default function ActivityTimeline({
   activities = [],
   total,
 }: Props) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
 
   const MAX_VISIBLE = 5;
@@ -33,10 +35,10 @@ export default function ActivityTimeline({
       <div className="flex items-center justify-between border-b border-line px-5 py-4">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-fg">
-            Activity Feed
+            {t("Feed aktivitas", "Activity feed")}
           </h2>
           <p className="text-xs text-fg-subtle">
-            Latest activity from your work
+            {t("Aktivitas terbaru dari pekerjaan Anda", "Latest activity from your work")}
           </p>
         </div>
 
@@ -70,8 +72,8 @@ export default function ActivityTimeline({
                   className="text-sm font-medium text-accent hover:text-accent-strong"
                 >
                   {expanded
-                    ? "Show Less"
-                    : `Show More (${activities.length - MAX_VISIBLE})`}
+                    ? t("Tampilkan lebih sedikit", "Show less")
+                    : t("Tampilkan lebih banyak ({count})", "Show more ({count})", { count: activities.length - MAX_VISIBLE })}
                 </button>
               </div>
             )}
@@ -166,9 +168,10 @@ function ActivityRow({
 ========================= */
 
 function EmptyState() {
+  const { t } = useLanguage();
   return (
     <div className="py-10 text-center text-sm text-fg-subtle">
-      📭 No Activity Found
+      {t("📭 Tidak ada aktivitas", "📭 No activity found")}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 type Props = {
   value: string; // "YYYY-MM-DD" (empty string = belum dipilih)
   onChange: (value: string) => void;
@@ -13,12 +15,21 @@ type Props = {
   clearable?: boolean;
 };
 
-const WEEKDAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const WEEKDAYS = {
+  id: ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"],
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+};
 
-const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
+const MONTHS = {
+  id: [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  ],
+  en: [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ],
+};
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -48,9 +59,13 @@ export default function DatePickerField({
   id,
   minDate,
   maxDate,
-  placeholder = "Pilih tanggal",
+  placeholder,
   clearable = false,
 }: Props) {
+  const { t, language } = useLanguage();
+  const weekdays = WEEKDAYS[language];
+  const months = MONTHS[language];
+  const resolvedPlaceholder = placeholder ?? t("Pilih tanggal", "Select date");
   const selected = value ? parseValue(value) : null;
   const minimum = minDate ? parseValue(minDate) : null;
   const maximum = maxDate ? parseValue(maxDate) : null;
@@ -148,8 +163,8 @@ export default function DatePickerField({
   ];
 
   const displayLabel = selected
-    ? `${selected.getDate()} ${MONTHS[selected.getMonth()]} ${selected.getFullYear()}`
-    : placeholder;
+    ? `${selected.getDate()} ${months[selected.getMonth()]} ${selected.getFullYear()}`
+    : resolvedPlaceholder;
 
   return (
     <div ref={rootRef} className={`relative ${className}`}>
@@ -168,7 +183,7 @@ export default function DatePickerField({
       {clearable && selected && (
         <button
           type="button"
-          aria-label="Kosongkan tanggal"
+          aria-label={t("Kosongkan tanggal", "Clear date")}
           onClick={() => {
             onChange("");
             setOpen(false);
@@ -182,7 +197,7 @@ export default function DatePickerField({
       {open && (
         <div
           role="dialog"
-          aria-label="Pilih tanggal"
+          aria-label={t("Pilih tanggal", "Select date")}
           className={`absolute z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-control border border-line bg-surface p-3 shadow-xl ${
             align === "right" ? "right-0" : "left-0"
           }`}
@@ -199,7 +214,7 @@ export default function DatePickerField({
             </button>
 
             <span className="text-sm font-medium text-fg">
-              {MONTHS[viewMonth]} {viewYear}
+              {months[viewMonth]} {viewYear}
             </span>
 
             <button
@@ -213,7 +228,7 @@ export default function DatePickerField({
 
           {/* WEEKDAYS */}
           <div className="grid grid-cols-7 gap-1 mb-1">
-            {WEEKDAYS.map((w) => (
+            {weekdays.map((w) => (
               <div key={w} className="text-center text-2xs text-fg-subtle py-1">
                 {w}
               </div>
@@ -265,7 +280,7 @@ export default function DatePickerField({
               onClick={goToToday}
               className="text-xs font-medium text-accent hover:text-accent-strong"
             >
-              Hari ini
+              {t("Hari ini", "Today")}
             </button>
           </div>
 

@@ -33,6 +33,7 @@ import {
 import type { FormField } from "../types";
 import { FORM_THEMES, readableTextColor } from "../utils/theme";
 import RequiredToggle from "../components/RequiredToggle";
+import { useLanguage } from "@/context/LanguageContext";
 
 // ======================================================
 // TYPES
@@ -59,17 +60,18 @@ type FieldType =
 const FIELD_TYPES: Array<{
   value: FieldType;
   label: string;
+  labelEn: string;
   icon: typeof Type;
 }> = [
-  { value: "text", label: "Teks singkat", icon: Type },
-  { value: "textarea", label: "Paragraf", icon: AlignLeft },
-  { value: "number", label: "Angka", icon: Hash },
-  { value: "date", label: "Tanggal", icon: Calendar },
-  { value: "file", label: "Upload file", icon: Upload },
-  { value: "select", label: "Dropdown", icon: List },
-  { value: "checkbox", label: "Checkbox", icon: CheckSquare },
-  { value: "radio", label: "Pilihan ganda", icon: CircleDot },
-  { value: "section", label: "Section", icon: Heading },
+  { value: "text", label: "Teks singkat", labelEn: "Short text", icon: Type },
+  { value: "textarea", label: "Paragraf", labelEn: "Paragraph", icon: AlignLeft },
+  { value: "number", label: "Angka", labelEn: "Number", icon: Hash },
+  { value: "date", label: "Tanggal", labelEn: "Date", icon: Calendar },
+  { value: "file", label: "Upload file", labelEn: "File upload", icon: Upload },
+  { value: "select", label: "Dropdown", labelEn: "Dropdown", icon: List },
+  { value: "checkbox", label: "Checkbox", labelEn: "Checkbox", icon: CheckSquare },
+  { value: "radio", label: "Pilihan ganda", labelEn: "Multiple choice", icon: CircleDot },
+  { value: "section", label: "Section", labelEn: "Section", icon: Heading },
 ];
 
 // ======================================================
@@ -78,6 +80,7 @@ const FIELD_TYPES: Array<{
 
 export default function CreateFormBuilderPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // ======================================================
   // FORM STATE
@@ -169,7 +172,7 @@ export default function CreateFormBuilderPage() {
 
   const handleCreateForm = async () => {
     if (!formData.name.trim()) {
-      toast.error("Form name wajib diisi");
+      toast.error(t("Form name wajib diisi", "Form name is required"));
       return;
     }
 
@@ -221,12 +224,15 @@ export default function CreateFormBuilderPage() {
       });
 
       toast.success(
-        "Form berhasil dibuat. Sekarang tambahkan field.",
+        t(
+          "Form berhasil dibuat. Sekarang tambahkan field.",
+          "Form created successfully. Now add fields.",
+        ),
       );
     } catch (error) {
       console.error(error);
 
-      toast.error("Gagal membuat form");
+      toast.error(t("Gagal membuat form", "Failed to create form"));
     } finally {
       setLoadingForm(false);
     }
@@ -248,10 +254,10 @@ export default function CreateFormBuilderPage() {
       setCreatedForm((current) =>
         current ? { ...current, theme_color: color } : current,
       );
-      toast.success("Warna form disimpan.");
+      toast.success(t("Warna form disimpan.", "Form color saved."));
     } catch (error) {
       console.error(error);
-      toast.error("Gagal menyimpan warna form.");
+      toast.error(t("Gagal menyimpan warna form.", "Failed to save form color."));
     }
   };
 
@@ -274,7 +280,7 @@ export default function CreateFormBuilderPage() {
     if (!createdForm?.id) return;
 
     if (!label.trim()) {
-      toast.error("Label field wajib diisi");
+      toast.error(t("Label field wajib diisi", "Field label is required"));
       return;
     }
 
@@ -324,14 +330,18 @@ export default function CreateFormBuilderPage() {
       }
 
       resetFieldForm();
-      toast.success(wasEditing ? "Field diperbarui." : "Field ditambahkan.");
+      toast.success(
+        wasEditing
+          ? t("Field diperbarui.", "Field updated.")
+          : t("Field ditambahkan.", "Field added."),
+      );
     } catch (error) {
       console.error(error);
 
       toast.error(
         editingFieldId
-          ? "Gagal mengubah field"
-          : "Gagal menambahkan field",
+          ? t("Gagal mengubah field", "Failed to update field")
+          : t("Gagal menambahkan field", "Failed to add field"),
       );
     } finally {
       setSavingField(false);
@@ -346,7 +356,7 @@ export default function CreateFormBuilderPage() {
     fieldId: string,
   ) => {
     const confirmed = await confirmDialog({
-      message: "Hapus field ini?",
+      message: t("Hapus field ini?", "Delete this field?"),
       variant: "danger",
     });
 
@@ -359,11 +369,11 @@ export default function CreateFormBuilderPage() {
         prev.filter((f) => f.id !== fieldId),
       );
       if (editingFieldId === fieldId) resetFieldForm();
-      toast.success("Field dihapus.");
+      toast.success(t("Field dihapus.", "Field deleted."));
     } catch (error) {
       console.error(error);
 
-      toast.error("Gagal menghapus field");
+      toast.error(t("Gagal menghapus field", "Failed to delete field"));
     }
   };
 
@@ -384,10 +394,10 @@ export default function CreateFormBuilderPage() {
       } as Partial<FormField>);
 
       setFields((prev) => [...prev, duplicate]);
-      toast.success("Field diduplikasi.");
+      toast.success(t("Field diduplikasi.", "Field duplicated."));
     } catch (error) {
       console.error(error);
-      toast.error("Gagal menduplikasi field.");
+      toast.error(t("Gagal menduplikasi field.", "Failed to duplicate field."));
     } finally {
       setSavingField(false);
     }
@@ -407,11 +417,14 @@ export default function CreateFormBuilderPage() {
         <div className="mb-6 flex flex-col gap-4 border-b border-line pb-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">
-              Buat form
+              {t("Buat form", "Create form")}
             </h1>
 
             <p className="mt-1 text-sm text-fg-muted">
-              Susun form seperti Google Forms, lihat pratinjau langsung, lalu bagikan link publiknya.
+              {t(
+                "Susun form seperti Google Forms, lihat pratinjau langsung, lalu bagikan link publiknya.",
+                "Build a form like Google Forms, preview it live, then share its public link.",
+              )}
             </p>
           </div>
 
@@ -423,7 +436,7 @@ export default function CreateFormBuilderPage() {
                   key={theme.value}
                   type="button"
                   onClick={() => void handleThemeChange(theme.value)}
-                  aria-label={`Warna ${theme.label}`}
+                  aria-label={t("Warna {color}", "Color {color}", { color: theme.label })}
                   aria-pressed={themeColor === theme.value}
                   title={theme.label}
                   className={`h-5 w-5 rounded-full ring-2 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-offset-1 ${
@@ -434,7 +447,7 @@ export default function CreateFormBuilderPage() {
               ))}
               <label
                 className="relative flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-line-strong text-fg-subtle"
-                title="Warna kustom"
+                title={t("Warna kustom", "Custom color")}
               >
                 <input
                   type="color"
@@ -442,7 +455,7 @@ export default function CreateFormBuilderPage() {
                   onChange={(event) => setThemeColor(event.target.value)}
                   onBlur={(event) => void handleThemeChange(event.target.value)}
                   className="absolute inset-0 cursor-pointer opacity-0"
-                  aria-label="Pilih warna kustom"
+                  aria-label={t("Pilih warna kustom", "Choose custom color")}
                 />
                 <span className="text-[10px] font-semibold">+</span>
               </label>
@@ -457,7 +470,7 @@ export default function CreateFormBuilderPage() {
                   mobileView === "editor" ? "bg-surface-muted text-fg" : "text-fg-muted"
                 }`}
               >
-                Editor
+                {t("Editor", "Editor")}
               </button>
               <button
                 type="button"
@@ -468,7 +481,7 @@ export default function CreateFormBuilderPage() {
                 }`}
               >
                 <Eye className="h-3 w-3" aria-hidden="true" />
-                Pratinjau
+                {t("Pratinjau", "Preview")}
               </button>
             </div>
           </div>
@@ -485,7 +498,9 @@ export default function CreateFormBuilderPage() {
           <div className="h-2 w-full" style={{ backgroundColor: themeColor }} />
 
           <div className="border-b border-line px-5 py-6 sm:px-7">
-            <label className="sr-only" htmlFor="form-name">Nama form</label>
+            <label className="sr-only" htmlFor="form-name">
+              {t("Nama form", "Form name")}
+            </label>
             <input
               id="form-name"
               type="text"
@@ -494,11 +509,13 @@ export default function CreateFormBuilderPage() {
               onChange={(event) =>
                 setFormData({ ...formData, name: event.target.value })
               }
-              placeholder="Nama form"
+              placeholder={t("Nama form", "Form name")}
               className="w-full border-0 border-b border-line bg-transparent pb-2 text-2xl font-medium text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent focus:ring-0 disabled:opacity-80"
             />
 
-            <label className="sr-only" htmlFor="form-description">Deskripsi form</label>
+            <label className="sr-only" htmlFor="form-description">
+              {t("Deskripsi form", "Form description")}
+            </label>
             <textarea
               id="form-description"
               rows={2}
@@ -507,7 +524,7 @@ export default function CreateFormBuilderPage() {
               onChange={(event) =>
                 setFormData({ ...formData, description: event.target.value })
               }
-              placeholder="Deskripsi form (opsional)"
+              placeholder={t("Deskripsi form (opsional)", "Form description (optional)")}
               className="mt-3 w-full resize-none border-0 bg-transparent text-sm leading-6 text-fg-muted outline-none placeholder:text-fg-subtle focus:ring-0 disabled:opacity-80"
             />
           </div>
@@ -524,9 +541,11 @@ export default function CreateFormBuilderPage() {
                 style={{ accentColor: themeColor }}
               />
               <span>
-                <span className="block text-xs font-medium text-fg">Form aktif</span>
+                <span className="block text-xs font-medium text-fg">
+                  {t("Form aktif", "Form active")}
+                </span>
                 <span className="mt-0.5 block text-[11px] text-fg-muted">
-                  Form dapat menerima jawaban
+                  {t("Form dapat menerima jawaban", "The form can receive responses")}
                 </span>
               </span>
             </label>
@@ -542,16 +561,21 @@ export default function CreateFormBuilderPage() {
                 style={{ accentColor: themeColor }}
               />
               <span>
-                <span className="block text-xs font-medium text-fg">Tampilkan catatan</span>
+                <span className="block text-xs font-medium text-fg">
+                  {t("Tampilkan catatan", "Show note")}
+                </span>
                 <span className="mt-0.5 block text-[11px] text-fg-muted">
-                  Tampilkan informasi tambahan di atas pertanyaan
+                  {t(
+                    "Tampilkan informasi tambahan di atas pertanyaan",
+                    "Show extra information above the questions",
+                  )}
                 </span>
               </span>
             </label>
 
             <div className="sm:col-span-2">
               <label htmlFor="form-header-image" className="mb-1.5 block text-[11px] font-medium text-fg-muted">
-                Gambar header (opsional)
+                {t("Gambar header (opsional)", "Header image (optional)")}
               </label>
               <input
                 id="form-header-image"
@@ -565,7 +589,9 @@ export default function CreateFormBuilderPage() {
               />
               {headerImage ? (
                 <p className="mt-1.5 truncate text-[10px] text-fg-subtle">
-                  Dipilih: {headerImage.name}
+                  {t("Dipilih: {name}", "Selected: {name}", {
+                    name: headerImage.name,
+                  })}
                 </p>
               ) : null}
             </div>
@@ -573,7 +599,7 @@ export default function CreateFormBuilderPage() {
             {formData.show_note ? (
               <div className="sm:col-span-2">
                 <label htmlFor="form-note-content" className="mb-1.5 block text-[11px] font-medium text-fg-muted">
-                  Isi catatan
+                  {t("Isi catatan", "Note content")}
                 </label>
                 <textarea
                   id="form-note-content"
@@ -583,7 +609,10 @@ export default function CreateFormBuilderPage() {
                   onChange={(event) =>
                     setFormData({ ...formData, note_content: event.target.value })
                   }
-                  placeholder="Tulis catatan untuk pengisi form..."
+                  placeholder={t(
+                    "Tulis catatan untuk pengisi form...",
+                    "Write a note for respondents...",
+                  )}
                   className="w-full rounded-control border border-line bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/15 disabled:opacity-60"
                 />
               </div>
@@ -593,8 +622,14 @@ export default function CreateFormBuilderPage() {
           <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
             <p className="text-[11px] text-fg-muted">
               {createdForm
-                ? "Form sudah tersimpan. Tambahkan pertanyaan di bawah."
-                : "Simpan form terlebih dahulu, lalu tambahkan pertanyaan."}
+                ? t(
+                    "Form sudah tersimpan. Tambahkan pertanyaan di bawah.",
+                    "Form saved. Add questions below.",
+                  )
+                : t(
+                    "Simpan form terlebih dahulu, lalu tambahkan pertanyaan.",
+                    "Save the form first, then add questions.",
+                  )}
             </p>
 
             {!createdForm ? (
@@ -607,12 +642,12 @@ export default function CreateFormBuilderPage() {
                   color: readableTextColor(themeColor),
                 }}
               >
-                {loadingForm ? "Membuat..." : "Buat form & lanjut"}
+                {loadingForm ? t("Membuat...", "Creating...") : t("Buat form & lanjut", "Create form & continue")}
               </button>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-8 items-center rounded-full bg-success-soft px-3 text-[11px] font-medium text-success">
-                  Form tersimpan
+                  {t("Form tersimpan", "Form saved")}
                 </span>
                 <button
                   type="button"
@@ -620,7 +655,7 @@ export default function CreateFormBuilderPage() {
                   className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-[11px] font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
                 >
                   <Pencil className="h-3 w-3" aria-hidden="true" />
-                  Edit info
+                  {t("Edit info", "Edit info")}
                 </button>
               </div>
             )}
@@ -667,13 +702,21 @@ export default function CreateFormBuilderPage() {
                 <div className="mb-5 flex items-start justify-between gap-3">
                   <div>
                     <h2 id="field-editor-title" className="text-sm font-semibold text-fg">
-                      {editingFieldId ? "Edit pertanyaan" : "Tambah pertanyaan"}
+                      {editingFieldId
+                        ? t("Edit pertanyaan", "Edit question")
+                        : t("Tambah pertanyaan", "Add question")}
                     </h2>
 
                     <p className="mt-1 text-xs text-fg-muted">
                       {editingFieldId
-                        ? "Perbarui pertanyaan ini, lalu simpan perubahan."
-                        : "Atur pertanyaan baru untuk form."}
+                        ? t(
+                            "Perbarui pertanyaan ini, lalu simpan perubahan.",
+                            "Update this question, then save your changes.",
+                          )
+                        : t(
+                            "Atur pertanyaan baru untuk form.",
+                            "Set up a new question for the form.",
+                          )}
                     </p>
                   </div>
 
@@ -681,7 +724,7 @@ export default function CreateFormBuilderPage() {
                     <button
                       type="button"
                       onClick={resetFieldForm}
-                      aria-label="Tutup editor pertanyaan"
+                      aria-label={t("Tutup editor pertanyaan", "Close question editor")}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
@@ -693,7 +736,7 @@ export default function CreateFormBuilderPage() {
                   {/* LABEL */}
                   <div>
                     <label className="mb-2 block text-xs font-medium text-fg-muted">
-                      Label
+                      {t("Label", "Label")}
                     </label>
 
                     <input
@@ -703,7 +746,7 @@ export default function CreateFormBuilderPage() {
                           e.target.value,
                         )
                       }
-                      placeholder="Contoh: Nama lengkap"
+                      placeholder={t("Contoh: Nama lengkap", "Example: Full name")}
                       className="w-full h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
                     />
                   </div>
@@ -711,14 +754,17 @@ export default function CreateFormBuilderPage() {
                   {/* DESCRIPTION */}
                   <div>
                     <label className="mb-2 block text-xs font-medium text-fg-muted">
-                      Deskripsi pertanyaan (opsional)
+                      {t("Deskripsi pertanyaan (opsional)", "Question description (optional)")}
                     </label>
 
                     <textarea
                       rows={2}
                       value={fieldDescription}
                       onChange={(event) => setFieldDescription(event.target.value)}
-                      placeholder="Panduan singkat di bawah pertanyaan"
+                      placeholder={t(
+                        "Panduan singkat di bawah pertanyaan",
+                        "Short guidance below the question",
+                      )}
                       className="w-full resize-none rounded-control border border-line bg-surface px-3 py-2 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
                     />
                   </div>
@@ -726,7 +772,7 @@ export default function CreateFormBuilderPage() {
                   {/* TYPE */}
                   <div>
                     <label className="mb-2 block text-xs font-medium text-fg-muted">
-                      Tipe pertanyaan
+                      {t("Tipe pertanyaan", "Question type")}
                     </label>
 
                     <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -752,7 +798,7 @@ export default function CreateFormBuilderPage() {
                             }`}
                           >
                             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                            <span className="truncate">{fieldType.label}</span>
+                            <span className="truncate">{t(fieldType.label, fieldType.labelEn)}</span>
                           </button>
                         );
                       })}
@@ -769,8 +815,8 @@ export default function CreateFormBuilderPage() {
                   {isOptionType && (
                     <div className="rounded-card border border-line p-4">
                       <div className="mb-3 flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-gray-800">
-                          Opsi
+                        <h3 className="text-sm font-semibold text-fg">
+                          {t("Opsi", "Options")}
                         </h3>
 
                         <button
@@ -783,7 +829,7 @@ export default function CreateFormBuilderPage() {
                           }
                           className="text-xs font-medium text-accent hover:underline"
                         >
-                          + Tambah
+                          {t("+ Tambah", "+ Add")}
                         </button>
                       </div>
 
@@ -809,9 +855,10 @@ export default function CreateFormBuilderPage() {
                                     updated,
                                   );
                                 }}
-                                placeholder={`Opsi ${
-                                  index + 1
-                                }`}
+                                placeholder={t(
+                                  `Opsi ${index + 1}`,
+                                  `Option ${index + 1}`,
+                                )}
                                 className="flex-1 h-9 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
                               />
 
@@ -859,8 +906,8 @@ export default function CreateFormBuilderPage() {
                             }
                           />
 
-                          <span className="text-sm text-gray-700">
-                            Izinkan opsi lain
+                          <span className="text-sm text-fg-muted">
+                            {t("Izinkan opsi lain", "Allow another option")}
                           </span>
                         </label>
 
@@ -873,7 +920,7 @@ export default function CreateFormBuilderPage() {
                                   .value,
                               )
                             }
-                            placeholder="Label opsi lain"
+                            placeholder={t("Label opsi lain", "Other option label")}
                             className="mt-3 w-full h-9 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
                           />
                         )}
@@ -890,7 +937,7 @@ export default function CreateFormBuilderPage() {
                         className="inline-flex w-full items-center justify-center gap-2 inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg sm:w-auto"
                       >
                         <X size={16} />
-                        Batal
+                        {t("Batal", "Cancel")}
                       </button>
                     )}
                     <button
@@ -900,10 +947,10 @@ export default function CreateFormBuilderPage() {
                       className="inline-flex w-full items-center justify-center gap-2 inline-flex h-9 items-center justify-center rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {savingField
-                        ? "Menyimpan..."
+                        ? t("Menyimpan...", "Saving...")
                         : editingFieldId
-                          ? "Simpan perubahan"
-                          : "Tambah field"}
+                          ? t("Simpan perubahan", "Save changes")
+                          : t("Tambah field", "Add field")}
                     </button>
                   </div>
                 </div>
@@ -919,11 +966,13 @@ export default function CreateFormBuilderPage() {
                 <div className="mb-5 flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-fg">
-                      Daftar pertanyaan
+                      {t("Daftar pertanyaan", "Question list")}
                     </h2>
 
                     <p className="mt-1 text-sm text-fg-muted">
-                      Total field: {fields.length}
+                      {t("Total field: {count}", "Total fields: {count}", {
+                        count: fields.length,
+                      })}
                     </p>
                   </div>
                 </div>
@@ -931,11 +980,14 @@ export default function CreateFormBuilderPage() {
                 {!fields.length ? (
                   <div className="rounded-card border border-dashed border-line p-10 text-center">
                     <div className="text-sm font-medium text-fg">
-                      Belum ada pertanyaan
+                      {t("Belum ada pertanyaan", "No questions yet")}
                     </div>
 
                     <p className="mt-2 text-xs text-fg-muted">
-                      Tambahkan pertanyaan pertama dari panel editor di bawah.
+                      {t(
+                        "Tambahkan pertanyaan pertama dari panel editor di bawah.",
+                        "Add your first question from the editor panel below.",
+                      )}
                     </p>
                   </div>
                 ) : (
@@ -958,7 +1010,7 @@ export default function CreateFormBuilderPage() {
 
                               {field.is_required ? (
                                 <span className="rounded-full bg-danger-soft px-2 py-0.5 text-[10px] font-medium text-danger">
-                                  Wajib
+                                  {t("Wajib", "Required")}
                                 </span>
                               ) : null}
                             </div>
@@ -982,7 +1034,7 @@ export default function CreateFormBuilderPage() {
 
                                 {field.allow_other ? (
                                   <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-[10px] font-medium text-success">
-                                    {field.other_label || "Lainnya"}
+                                    {field.other_label || t("Lainnya", "Other")}
                                   </span>
                                 ) : null}
                               </div>
@@ -995,8 +1047,10 @@ export default function CreateFormBuilderPage() {
                               onClick={() => void handleDuplicateField(field)}
                               disabled={savingField}
                               className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg disabled:cursor-wait disabled:opacity-50"
-                              aria-label={`Duplikasi field ${field.label}`}
-                              title="Duplikasi field"
+                              aria-label={t("Duplikasi field {label}", "Duplicate field {label}", {
+                                label: field.label,
+                              })}
+                              title={t("Duplikasi field", "Duplicate field")}
                             >
                               <Copy size={13} aria-hidden="true" />
                             </button>
@@ -1006,14 +1060,16 @@ export default function CreateFormBuilderPage() {
                               className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
                             >
                               <Pencil size={13} />
-                              Edit
+                              {t("Edit", "Edit")}
                             </button>
                             <button
                               type="button"
                               onClick={() => handleHapusField(field.id)}
                               className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger"
-                              aria-label={`Hapus field ${field.label}`}
-                              title="Hapus field"
+                              aria-label={t("Hapus field {label}", "Delete field {label}", {
+                                label: field.label,
+                              })}
+                              title={t("Hapus field", "Delete field")}
                             >
                               <Trash2 size={13} />
                             </button>
@@ -1038,7 +1094,7 @@ export default function CreateFormBuilderPage() {
                 color: readableTextColor(themeColor),
               }}
             >
-              Selesai
+              {t("Selesai", "Done")}
             </button>
           </div>
         ) : null}
@@ -1056,7 +1112,10 @@ export default function CreateFormBuilderPage() {
                 headerImageName={headerImage?.name}
               />
               <p className="px-1 text-[10px] leading-4 text-fg-subtle">
-                Pratinjau ini mengikuti isi editor dan warna yang dipilih. Form publik memakai tema yang sama setelah disimpan.
+                {t(
+                  "Pratinjau ini mengikuti isi editor dan warna yang dipilih. Form publik memakai tema yang sama setelah disimpan.",
+                  "This preview follows the editor content and selected color. The public form uses the same theme once saved.",
+                )}
               </p>
             </div>
           </div>
@@ -1083,14 +1142,18 @@ function FormPreview({
   noteContent: string;
   headerImageName?: string | null;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-e2">
       <div className="h-2 w-full" style={{ backgroundColor: themeColor }} />
 
       <div className="border-b border-line px-5 py-5">
-        <p className="text-[10px] font-medium text-fg-subtle">Pratinjau form</p>
+        <p className="text-[10px] font-medium text-fg-subtle">
+          {t("Pratinjau form", "Form preview")}
+        </p>
         <h3 className="mt-2 break-words text-xl font-medium text-fg">
-          {name.trim() || "Form tanpa judul"}
+          {name.trim() || t("Form tanpa judul", "Untitled form")}
         </h3>
         {description.trim() ? (
           <p className="mt-2 whitespace-pre-line text-sm leading-6 text-fg-muted">
@@ -1099,7 +1162,7 @@ function FormPreview({
         ) : null}
         {headerImageName ? (
           <p className="mt-2 truncate text-[10px] text-fg-subtle">
-            Header: {headerImageName}
+            {t("Header: {name}", "Header: {name}", { name: headerImageName })}
           </p>
         ) : null}
       </div>
@@ -1114,10 +1177,13 @@ function FormPreview({
         {fields.length === 0 ? (
           <div className="rounded-card border border-dashed border-line px-4 py-8 text-center">
             <p className="text-xs font-medium text-fg-muted">
-              Pertanyaan akan tampil di sini
+              {t("Pertanyaan akan tampil di sini", "Questions will appear here")}
             </p>
             <p className="mt-1 text-[11px] text-fg-subtle">
-              Tambahkan field untuk melihat bentuk form publiknya.
+              {t(
+                "Tambahkan field untuk melihat bentuk form publiknya.",
+                "Add a field to see how the public form looks.",
+              )}
             </p>
           </div>
         ) : (
@@ -1137,10 +1203,13 @@ function FormPreview({
             color: readableTextColor(themeColor),
           }}
         >
-          Kirim
+          {t("Kirim", "Submit")}
         </button>
         <p className="mt-2 text-[10px] text-fg-subtle">
-          Ini pratinjau. Form publik memiliki tombol aktif.
+          {t(
+            "Ini pratinjau. Form publik memiliki tombol aktif.",
+            "This is a preview. The public form has an active button.",
+          )}
         </p>
       </div>
     </div>
@@ -1154,6 +1223,8 @@ function PreviewField({
   field: FormField;
   accent: string;
 }) {
+  const { t } = useLanguage();
+
   if (field.type === "section") {
     return (
       <div className="rounded-card border border-line bg-surface-muted/40 px-3 py-2.5">
@@ -1165,7 +1236,7 @@ function PreviewField({
     );
   }
 
-  const options = field.options?.length ? field.options : ["Opsi 1"];
+  const options = field.options?.length ? field.options : [t("Opsi 1", "Option 1")];
 
   return (
     <div className="rounded-card border border-line bg-surface px-3.5 py-3">
@@ -1182,7 +1253,7 @@ function PreviewField({
         <div className="mt-2 h-14 rounded-control border-b border-line bg-surface-muted/40" />
       ) : field.type === "select" ? (
         <div className="mt-2 h-8 rounded-control border border-line bg-surface-muted/40 px-2 text-[11px] leading-8 text-fg-subtle">
-          Pilih opsi
+          {t("Pilih opsi", "Select an option")}
         </div>
       ) : field.type === "radio" || field.type === "checkbox" ? (
         <div className="mt-2 space-y-1.5">
@@ -1205,13 +1276,13 @@ function PreviewField({
                 }`}
                 aria-hidden="true"
               />
-              {field.other_label || "Lainnya"}
+              {field.other_label || t("Lainnya", "Other")}
             </div>
           ) : null}
         </div>
       ) : field.type === "file" ? (
         <div className="mt-2 rounded-control border border-dashed border-line-strong bg-surface-muted/30 px-3 py-4 text-center text-[11px] text-fg-subtle">
-          Unggah file
+          {t("Unggah file", "Upload file")}
         </div>
       ) : (
         <div className="mt-2 h-8 rounded-control border-b border-line bg-surface-muted/40" />

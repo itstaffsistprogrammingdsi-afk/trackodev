@@ -5,44 +5,46 @@ import Input from "../input/InputField";
 import Select from "../Select";
 import { EyeCloseIcon, EyeIcon, TimeIcon } from "../../../icons";
 import DatePicker from "../date-picker.tsx";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function DefaultInputs() {
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const options = [
-    { value: "marketing", label: "Marketing" },
-    { value: "template", label: "Template" },
-    { value: "development", label: "Development" },
+    { value: "marketing", label: t("Pemasaran", "Marketing") },
+    { value: "template", label: t("Templat", "Template") },
+    { value: "development", label: t("Pengembangan", "Development") },
   ];
   const handleSelectChange = (value: string) => {
     console.log("Selected value:", value);
   };
 
   return (
-    <ComponentCard title="Default Inputs">
+    <ComponentCard title={t("Input bawaan", "Default inputs")}>
       <div className="space-y-6">
         <div>
-          <Label htmlFor="input">Input</Label>
+          <Label htmlFor="input">{t("Input")}</Label>
           <Input type="text" id="input" />
         </div>
         <div>
-          <Label htmlFor="inputTwo">Input with Placeholder</Label>
+          <Label htmlFor="inputTwo">{t("Input dengan placeholder", "Input with placeholder")}</Label>
           <Input type="text" id="inputTwo" placeholder="info@gmail.com" />
         </div>
         <div>
-          <Label>Select Input</Label>
+          <Label>{t("Input pilihan", "Select input")}</Label>
           <Select
             options={options}
-            placeholder="Select an option"
+            placeholder={t("Pilih opsi", "Select an option")}
             onChange={handleSelectChange}
             className="dark:bg-dark-900"
           />
         </div>
         <div>
-          <Label>Password Input</Label>
+          <Label>{t("Input kata sandi", "Password input")}</Label>
           <div className="relative">
             <Input
               type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
+              placeholder={t("Masukkan kata sandi Anda", "Enter your password")}
             />
             <button
               onClick={() => setShowPassword(!showPassword)}
@@ -60,8 +62,8 @@ export default function DefaultInputs() {
         <div>
           <DatePicker
             id="date-picker"
-            label="Date Picker Input"
-            placeholder="Select a date"
+            label={t("Input pemilih tanggal", "Date picker input")}
+            placeholder={t("Pilih tanggal", "Select a date")}
             onChange={(dates, currentDateString) => {
               // Handle your logic
               console.log({ dates, currentDateString });
@@ -70,7 +72,7 @@ export default function DefaultInputs() {
         </div>
 
         <div>
-          <Label htmlFor="tm">Time Picker Input</Label>
+          <Label htmlFor="tm">{t("Input pemilih waktu", "Time picker input")}</Label>
           <div className="relative">
             <Input
               type="time"
@@ -78,20 +80,20 @@ export default function DefaultInputs() {
               name="tm"
               onChange={(e) => console.log(e.target.value)}
             />
-            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
+            <span className="absolute text-fg-muted -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-fg-subtle">
               <TimeIcon className="size-6" />
             </span>
           </div>
         </div>
         <div>
-          <Label htmlFor="tm">Input with Payment</Label>
+          <Label htmlFor="tm">{t("Input pembayaran", "Payment input")}</Label>
           <div className="relative">
             <Input
               type="text"
-              placeholder="Card number"
+              placeholder={t("Nomor kartu", "Card number")}
               className="pl-[62px]"
             />
-            <span className="absolute left-0 top-1/2 flex h-11 w-[46px] -translate-y-1/2 items-center justify-center border-r border-gray-200 dark:border-gray-800">
+            <span className="absolute left-0 top-1/2 flex h-11 w-[46px] -translate-y-1/2 items-center justify-center border-r border-line dark:border-line">
               <svg
                 width="20"
                 height="20"

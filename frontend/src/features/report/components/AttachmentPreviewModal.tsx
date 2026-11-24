@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { File, Image as ImageIcon, ShieldCheck, X } from 'lucide-react';
 
 import { resolveStorageUrl } from '@/lib/storageUrl';
+import { useLanguage } from '@/context/LanguageContext';
 
 export type ReportAttachmentPreview = {
   name: string;
@@ -15,6 +16,8 @@ type Props = {
 };
 
 export function AttachmentPreviewModal({ attachment, onClose }: Props) {
+  const { t } = useLanguage();
+
   useEffect(() => {
     if (!attachment) return;
 
@@ -36,7 +39,7 @@ export function AttachmentPreviewModal({ attachment, onClose }: Props) {
       className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label={`Preview ${attachment.name}`}
+      aria-label={t("Preview {name}", "Preview {name}", { name: attachment.name })}
       onMouseDown={onClose}
     >
       <div
@@ -50,7 +53,7 @@ export function AttachmentPreviewModal({ attachment, onClose }: Props) {
             </h3>
             <p className="mt-1 flex items-center gap-1.5 text-xs text-emerald-300">
               <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              Preview aman di dalam aplikasi
+              {t("Preview aman di dalam aplikasi", "Secure preview inside the app")}
             </p>
           </div>
 
@@ -58,7 +61,7 @@ export function AttachmentPreviewModal({ attachment, onClose }: Props) {
             type="button"
             onClick={onClose}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-            aria-label="Tutup preview attachment"
+            aria-label={t("Tutup preview attachment", "Close attachment preview")}
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -68,8 +71,8 @@ export function AttachmentPreviewModal({ attachment, onClose }: Props) {
           {!previewUrl ? (
             <PreviewMessage
               icon={<File className="h-12 w-12" aria-hidden="true" />}
-              title="File tidak dapat dipreview"
-              description="Alamat file tidak valid atau menggunakan protokol yang tidak diizinkan."
+              title={t("File tidak dapat dipreview", "File cannot be previewed")}
+              description={t("Alamat file tidak valid atau menggunakan protokol yang tidak diizinkan.", "The file address is invalid or uses a disallowed protocol.")}
             />
           ) : previewKind === 'image' ? (
             <img
@@ -89,8 +92,8 @@ export function AttachmentPreviewModal({ attachment, onClose }: Props) {
           ) : (
             <PreviewMessage
               icon={<ImageIcon className="h-12 w-12" aria-hidden="true" />}
-              title="Preview belum tersedia"
-              description="Format ini tidak dapat ditampilkan dengan aman di browser. File tidak akan dibuka di tab baru."
+              title={t("Preview belum tersedia", "Preview not available yet")}
+              description={t("Format ini tidak dapat ditampilkan dengan aman di browser. File tidak akan dibuka di tab baru.", "This format cannot be displayed safely in the browser. The file will not open in a new tab.")}
             />
           )}
         </div>

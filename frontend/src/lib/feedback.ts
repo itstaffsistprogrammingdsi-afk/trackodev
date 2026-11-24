@@ -14,6 +14,7 @@ import {
   emitToast,
   type ToastVariant,
 } from "@/context/ToastContext";
+import { translate } from "@/i18n/translate";
 
 export type { ToastVariant };
 
@@ -53,13 +54,33 @@ export function getConfirm(): ConfirmState | null {
 
 export const toast = {
   success: (message: string, durationMs?: number) =>
-    emitToast({ message, variant: "success", title: "Berhasil", durationMs }),
+    emitToast({
+      message,
+      variant: "success",
+      title: translate("Berhasil", "Success"),
+      durationMs,
+    }),
   error: (message: string, durationMs?: number) =>
-    emitToast({ message, variant: "error", title: "Gagal", durationMs }),
+    emitToast({
+      message,
+      variant: "error",
+      title: translate("Gagal", "Failed"),
+      durationMs,
+    }),
   warning: (message: string, durationMs?: number) =>
-    emitToast({ message, variant: "warning", title: "Perlu perhatian", durationMs }),
+    emitToast({
+      message,
+      variant: "warning",
+      title: translate("Perlu perhatian", "Needs attention"),
+      durationMs,
+    }),
   info: (message: string, durationMs?: number) =>
-    emitToast({ message, variant: "info", title: "Informasi", durationMs }),
+    emitToast({
+      message,
+      variant: "info",
+      title: translate("Informasi", "Information"),
+      durationMs,
+    }),
 };
 
 /**

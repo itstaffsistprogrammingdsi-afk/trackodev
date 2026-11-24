@@ -4,6 +4,7 @@ import {
   getNotificationTargetPath,
   type AppNotification,
 } from "@/features/notification/types";
+import { translate } from "@/i18n/translate";
 
 export const LAST_APP_ROUTE_KEY = "tracko:last-route:v1";
 export const APP_RESUMED_EVENT = "tracko:app-resumed";
@@ -42,8 +43,11 @@ export function setupNativeNotifications(): Promise<boolean> {
     if (Capacitor.getPlatform() === "android") {
       await LocalNotifications.createChannel({
         id: "tracko-notifications",
-        name: "Notifikasi Tracko",
-        description: "Update task, assignment, dan aktivitas Tracko",
+        name: translate("Notifikasi Tracko", "Tracko notifications"),
+        description: translate(
+          "Update task, assignment, dan aktivitas Tracko",
+          "Tracko task, assignment, and activity updates",
+        ),
         importance: 4,
         visibility: 1,
       });
@@ -80,7 +84,12 @@ export async function showNativeNotification(notification: AppNotification) {
       {
         id: notificationId(notification.id),
         title: notification.title || "Tracko",
-        body: notification.body || "Ada aktivitas baru di Tracko.",
+        body:
+          notification.body ||
+          translate(
+            "Ada aktivitas baru di Tracko.",
+            "There is new activity in Tracko.",
+          ),
         channelId: "tracko-notifications",
         extra: { path: getNotificationTargetPath(notification) ?? "/notifications" },
       },

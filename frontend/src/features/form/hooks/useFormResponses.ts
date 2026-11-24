@@ -17,6 +17,7 @@ import type {
 
 import useExpandedRows from "./useExpandedRows";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { translate } from "@/i18n/translate";
 
 import { exportSubmissionPDF }
 from "../components/export/exportSubmissionPDF";
@@ -97,7 +98,12 @@ export function useFormResponses(
       setSubmissions(submissionData);
     } catch (err) {
       console.error(err);
-      setError("Gagal memuat form dan responses. Silakan coba lagi.");
+      setError(
+        translate(
+          "Gagal memuat form dan responses. Silakan coba lagi.",
+          "Failed to load the form and responses. Please try again.",
+        ),
+      );
       setForm(null);
       setSubmissions([]);
     } finally {

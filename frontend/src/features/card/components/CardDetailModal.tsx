@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Props {
   card: Card | null;
@@ -46,6 +47,7 @@ export default function CardDetailModal({
   onUpdated,
   onDeleted,
 }: Props) {
+  const { t, locale } = useLanguage();
   const [showLabels, setShowLabels] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -269,7 +271,9 @@ export default function CardDetailModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={`Detail card ${detail?.title ?? card.title}`}
+        aria-label={t("Detail card {title}", "Card details {title}", {
+          title: detail?.title ?? card.title,
+        })}
         className="
           relative flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden
           bg-canvas shadow-e3 transition-colors duration-200
@@ -298,7 +302,7 @@ export default function CardDetailModal({
                 priority={detail?.priority ?? card.priority}
                 dueDate={
                   dueDate
-                    ? new Date(dueDate).toLocaleString("id-ID", {
+                    ? new Date(dueDate).toLocaleString(locale, {
                         dateStyle: "medium",
                         timeStyle: "short",
                       })
@@ -326,7 +330,7 @@ export default function CardDetailModal({
                   aria-live="polite"
                   aria-busy="true"
                 >
-                  <span className="sr-only">Memuat detail task</span>
+                  <span className="sr-only">{t("Memuat detail task", "Loading task details")}</span>
                   <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
                     <div className="mb-5 flex items-center gap-3">
                       <Skeleton className="h-9 w-9 rounded-control" />
@@ -362,14 +366,17 @@ export default function CardDetailModal({
                       className="flex flex-col gap-2 rounded-card border border-danger/20 bg-danger-soft p-4 text-sm text-danger sm:flex-row sm:items-center sm:justify-between"
                     >
                       <span>
-                        Detail card gagal dimuat. Deskripsi mungkin belum tampil.
+                        {t(
+                          "Detail card gagal dimuat. Deskripsi mungkin belum tampil.",
+                          "Failed to load card details. The description may not appear yet.",
+                        )}
                       </span>
                       <button
                         type="button"
                         onClick={() => void fetchDetail()}
                         className="shrink-0 rounded-control bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:opacity-90"
                       >
-                        Coba lagi
+                        {t("Coba lagi", "Try again")}
                       </button>
                     </div>
                   ) : null}
@@ -387,22 +394,22 @@ export default function CardDetailModal({
 
                       <div className="flex-1">
                         <h2 className="text-sm font-semibold text-fg">
-                          Description
+                          {t("Deskripsi", "Description")}
                         </h2>
                         <p className="text-xs text-fg-muted">
-                          Describe this task clearly
+                          {t("Jelaskan task ini dengan jelas", "Describe this task clearly")}
                         </p>
                       </div>
 
                       {saving ? (
                         <div className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
                           <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
-                          <span>Saving...</span>
+                          <span>{t("Menyimpan...", "Saving...")}</span>
                         </div>
                       ) : refreshing ? (
                         <div className="flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium text-fg-muted">
                           <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
-                          <span>Syncing...</span>
+                          <span>{t("Menyinkronkan...", "Syncing...")}</span>
                         </div>
                       ) : null}
                     </div>
@@ -415,8 +422,8 @@ export default function CardDetailModal({
                     <RichTextEditor
                       value={description}
                       onChange={setDescription}
-                      placeholder="Add a detailed description..."
-                      ariaLabel="Deskripsi card"
+                      placeholder={t("Tulis deskripsi lengkap...", "Add a detailed description...")}
+                      ariaLabel={t("Deskripsi card", "Card description")}
                     />
                   </section>
 
@@ -441,10 +448,10 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   <div className="border-b border-line p-5 sm:p-6">
                     <h4 className="mb-4 text-sm font-semibold text-fg">
-                      Brief Attachments
+                      {t("Lampiran brief", "Brief attachments")}
                     </h4>
                     <AttachmentSection
-                      title="Brief Attachments"
+                      title={t("Lampiran brief", "Brief attachments")}
                       attachments={briefAttachments}
                       setAttachments={setBriefAttachments}
                       fetchAttachments={fetchBriefAttachments}
@@ -458,10 +465,10 @@ export default function CardDetailModal({
                   {/* ========================================= */}
                   <div className="border-b border-line p-5 sm:p-6">
                     <h4 className="mb-4 text-sm font-semibold text-fg">
-                      Result Attachments
+                      {t("Lampiran hasil", "Result attachments")}
                     </h4>
                     <AttachmentSection
-                      title="Result Attachments"
+                      title={t("Lampiran hasil", "Result attachments")}
                       attachments={attachments}
                       archivedAttachments={archivedAttachments}
                       setAttachments={setAttachments}
@@ -512,7 +519,7 @@ export default function CardDetailModal({
                 type="button"
                 onClick={closeModal}
                 className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-                aria-label="Close card detail"
+                aria-label={t("Tutup detail card", "Close card detail")}
               >
                 <X size={18} strokeWidth={2} />
               </button>
@@ -530,7 +537,7 @@ export default function CardDetailModal({
             className="flex h-11 w-full items-center justify-center gap-2.5 rounded-control bg-accent px-5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             <SlidersHorizontal size={18} />
-            Card tools
+            {t("Alat card", "Card tools")}
           </button>
         </div>
 
@@ -538,27 +545,32 @@ export default function CardDetailModal({
           <div className="absolute inset-0 z-40 flex items-end lg:hidden">
             <button
               type="button"
-              aria-label="Tutup card tools"
+              aria-label={t("Tutup card tools", "Close card tools")}
               onClick={closeMobileSidebar}
-              className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-overlay backdrop-blur-[2px]"
             />
 
             <section
               role="dialog"
               aria-modal="true"
-              aria-label="Card tools"
+              aria-label={t("Alat card", "Card tools")}
               className="relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-modal border-t border-line bg-canvas shadow-e3 animate-in slide-in-from-bottom duration-200"
             >
               <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-line-strong" />
               <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">
                 <div>
-                  <h2 className="text-sm font-semibold text-fg">Card tools</h2>
-                  <p className="mt-0.5 text-xs text-fg-muted">Kelola member, label, deadline, dan lampiran</p>
+                  <h2 className="text-sm font-semibold text-fg">{t("Alat card", "Card tools")}</h2>
+                  <p className="mt-0.5 text-xs text-fg-muted">
+                    {t(
+                      "Kelola member, label, deadline, dan lampiran",
+                      "Manage members, labels, deadlines, and attachments",
+                    )}
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={closeMobileSidebar}
-                  aria-label="Tutup card tools"
+                  aria-label={t("Tutup card tools", "Close card tools")}
                   className="flex h-10 w-10 items-center justify-center rounded-control bg-surface-muted text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
                 >
                   <X size={18} />

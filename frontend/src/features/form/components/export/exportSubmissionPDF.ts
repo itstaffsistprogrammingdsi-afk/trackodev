@@ -6,6 +6,7 @@ import type {
 } from "../../types";
 
 import { formatDate } from "../../utils/formatDate";
+import { translate } from "@/i18n/translate";
 
 export function exportSubmissionPDF(
   form: Form,
@@ -18,7 +19,7 @@ export function exportSubmissionPDF(
   pdf.setFont("helvetica", "bold");
 
   pdf.text(
-    "Form Submission Report",
+    translate("Laporan Submission Form", "Form Submission Report"),
     14,
     y
   );
@@ -27,14 +28,18 @@ export function exportSubmissionPDF(
 
   pdf.setFont("helvetica", "normal");
 
-  pdf.text(`Form: ${form.name}`, 14, y);
+  pdf.text(
+    translate("Form: {name}", "Form: {name}", { name: form.name }),
+    14,
+    y
+  );
 
   y += 6;
 
   pdf.text(
-    `Submitted: ${formatDate(
-      submission.created_at
-    )}`,
+    translate("Dikirim: {date}", "Submitted: {date}", {
+      date: formatDate(submission.created_at),
+    }),
     14,
     y
   );

@@ -6,8 +6,10 @@ import {
   resolveConfirm,
   subscribeFeedback,
 } from "@/lib/feedback";
+import { useLanguage } from "@/context/LanguageContext";
 
 function ConfirmDialog() {
+  const { t } = useLanguage();
   const confirm = useSyncExternalStore(
     subscribeFeedback,
     getConfirm,
@@ -43,7 +45,7 @@ function ConfirmDialog() {
               id="ui-confirm-title"
               className="text-base font-semibold tracking-heading text-fg"
             >
-              {confirm.title ?? "Konfirmasi"}
+              {confirm.title ?? t("Konfirmasi", "Confirm")}
             </h3>
 
             <p className="mt-1 text-sm leading-5 text-fg-muted">
@@ -58,7 +60,7 @@ function ConfirmDialog() {
             onClick={() => resolveConfirm(false)}
             className="h-10 rounded-control border border-line bg-surface px-4 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            {confirm.cancelText ?? "Batal"}
+            {confirm.cancelText ?? t("Batal", "Cancel")}
           </button>
 
           <button
@@ -71,7 +73,7 @@ function ConfirmDialog() {
                 : "bg-accent text-accent-fg hover:bg-accent-strong focus-visible:ring-accent/40"
             }`}
           >
-            {confirm.confirmText ?? "Lanjutkan"}
+            {confirm.confirmText ?? t("Lanjutkan", "Continue")}
           </button>
         </div>
       </div>

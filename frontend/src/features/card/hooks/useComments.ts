@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import api from "@/lib/axios";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { translate } from "@/i18n/translate";
 import { addComment } from "../api/card.api";
 import type { CardComment } from "../types";
 
@@ -36,7 +37,7 @@ export default function useComments(
       .catch((fetchError) => {
         if (requestId === requestRef.current) {
           console.error("FAILED FETCH COMMENTS", fetchError);
-          setError("Komentar gagal dimuat.");
+          setError(translate("Komentar gagal dimuat.", "Failed to load comments."));
         }
       });
 
@@ -53,7 +54,7 @@ export default function useComments(
     const temporaryComment: CardComment = {
       id: temporaryId,
       content,
-      user: { id: "current-user", name: "You", email: "" },
+      user: { id: "current-user", name: translate("Anda", "You"), email: "" },
     };
 
     setComments((current) => [temporaryComment, ...current]);
@@ -71,7 +72,12 @@ export default function useComments(
         current.filter((item) => item.id !== temporaryId),
       );
       setComment((current) => current || content);
-      setError("Komentar gagal dikirim. Teks Anda dipulihkan.");
+      setError(
+        translate(
+          "Komentar gagal dikirim. Teks Anda dipulihkan.",
+          "Failed to send comment. Your text has been restored.",
+        ),
+      );
     } finally {
       setSending(false);
     }

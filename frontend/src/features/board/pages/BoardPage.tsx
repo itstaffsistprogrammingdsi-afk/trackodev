@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 import {
   DndContext,
@@ -109,6 +110,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
   const id = campaignId ?? "";
   const requestedCardId = searchParams.get("card");
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const { data, isLoading, refetch } = useBoards(id);
   const { data: campaign, isLoading: isCampaignLoading } = useQuery<Campaign>({
@@ -192,12 +194,25 @@ const { campaignId } = useParams<{ campaignId: string }>();
 
     if (missingCardNotified.current !== requestedCardId) {
       missingCardNotified.current = requestedCardId;
-      toast.error("Card tidak ditemukan. Mungkin sudah dihapus atau Anda tidak memiliki akses ke card tersebut.");
+      toast.error(
+        t(
+          "Card tidak ditemukan. Mungkin sudah dihapus atau Anda tidak memiliki akses ke card tersebut.",
+          "Card not found. It may have been deleted or you do not have access to it.",
+        ),
+      );
       const nextParams = new URLSearchParams(searchParams);
       nextParams.delete("card");
       setSearchParams(nextParams, { replace: true });
     }
-  }, [boards, compactLayout, requestedCardId, selectedCard?.id, searchParams, setSearchParams]);
+  }, [
+    boards,
+    compactLayout,
+    requestedCardId,
+    selectedCard?.id,
+    searchParams,
+    setSearchParams,
+    t,
+  ]);
 
   const closeCardDetail = () => {
     setSelectedCard(null);
@@ -596,10 +611,13 @@ const { campaignId } = useParams<{ campaignId: string }>();
         <div className="text-center">
           <FolderKanban className="mx-auto mb-3 h-10 w-10 text-fg-subtle/60" aria-hidden="true" />
           <h3 className="text-base font-semibold text-fg">
-            Campaign tidak ditemukan
+            {t("Campaign tidak ditemukan", "Campaign not found")}
           </h3>
           <p className="mt-1 text-xs text-fg-muted">
-            Silakan pilih campaign yang valid untuk melihat board task.
+            {t(
+              "Silakan pilih campaign yang valid untuk melihat board task.",
+              "Select a valid campaign to view its task board.",
+            )}
           </p>
         </div>
       </div>
@@ -638,14 +656,17 @@ const { campaignId } = useParams<{ campaignId: string }>();
           />
           <div className="min-w-0">
             <span className="block text-[10px] font-medium text-fg-subtle">
-              Campaign
+              {t("Campaign", "Campaign")}
             </span>
             <h1
               className="truncate text-sm font-semibold text-fg sm:max-w-[28rem]"
               title={campaign?.name}
               aria-busy={isCampaignLoading}
             >
-              {campaign?.name ?? (isCampaignLoading ? "Memuat campaign..." : "Board")}
+              {campaign?.name ??
+                (isCampaignLoading
+                  ? t("Memuat campaign...", "Loading campaign...")
+                  : t("Board", "Board"))}
             </h1>
           </div>
         </div>
@@ -664,7 +685,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
             }`}
           >
             <Kanban size={14} />
-            <span>Kanban</span>
+            <span>{t("Kanban", "Kanban")}</span>
           </button>
 
           <button
@@ -678,7 +699,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
             }`}
           >
             <List size={14} />
-            <span>List</span>
+            <span>{t("List", "List")}</span>
           </button>
         </div>
 
@@ -689,14 +710,16 @@ const { campaignId } = useParams<{ campaignId: string }>();
             className="flex shrink-0 items-center gap-1.5 rounded-control bg-accent px-3.5 py-2 text-xs font-medium text-accent-fg transition-colors duration-150 hover:bg-accent-strong"
           >
             <Plus size={15} />
-            <span>Kolom</span>
+            <span>{t("Kolom", "Column")}</span>
           </button>
         </div>
       </div>
 
       {/* CARD SEARCH */}
       <label className="block w-full min-w-0 sm:max-w-md sm:flex-1">
-        <span className="sr-only">Cari card berdasarkan nama</span>
+        <span className="sr-only">
+          {t("Cari card berdasarkan nama", "Search cards by name")}
+        </span>
         <div className="relative">
           <Search
             aria-hidden="true"
@@ -709,7 +732,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
             onKeyDown={(event) => {
               if (event.key === "Escape") setCardSearch("");
             }}
-            placeholder="Cari nama card"
+            placeholder={t("Cari nama card", "Search card name")}
             autoComplete="off"
             className="h-10 w-full appearance-none rounded-control border border-line bg-surface pl-9 pr-9 text-sm font-normal text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
           />
@@ -717,7 +740,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
             <button
               type="button"
               onClick={() => setCardSearch("")}
-              aria-label="Hapus pencarian card"
+              aria-label={t("Hapus pencarian card", "Clear card search")}
               className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
             >
               <X aria-hidden="true" size={15} />
@@ -729,7 +752,11 @@ const { campaignId } = useParams<{ campaignId: string }>();
             className="mt-1 block text-[11px] text-fg-muted"
             aria-live="polite"
           >
-            {filteredCardCount} dari {totalCardCount} card ditemukan
+            {t(
+              "{shown} dari {total} card ditemukan",
+              "{shown} of {total} cards found",
+              { shown: filteredCardCount, total: totalCardCount },
+            )}
           </span>
         ) : null}
       </label>
@@ -737,7 +764,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
       {compactLayout && viewMode === "kanban" && boards.length > 0 ? (
         <label className="block w-full sm:w-auto">
           <span className="mb-1.5 block text-[11px] font-medium text-fg-subtle">
-            Status yang ditampilkan
+            {t("Status yang ditampilkan", "Displayed status")}
           </span>
           <select
             value={mobileBoardId}
@@ -751,7 +778,10 @@ const { campaignId } = useParams<{ campaignId: string }>();
             ))}
           </select>
           <span className="mt-1.5 block text-[11px] text-fg-muted">
-            Pindahkan task melalui pilihan status di setiap card.
+            {t(
+              "Pindahkan task melalui pilihan status di setiap card.",
+              "Move tasks using the status picker on each card.",
+            )}
           </span>
         </label>
       ) : null}
@@ -762,8 +792,16 @@ const { campaignId } = useParams<{ campaignId: string }>();
           <FolderKanban size={14} className="text-fg-subtle" />
           <span className="tabular-nums">
             {isSearchActive
-              ? `${filteredCardCount} dari ${totalCardCount} task`
-              : `${totalCardCount} task · ${boards.length} kolom`}
+              ? t(
+                  "{shown} dari {total} task",
+                  "{shown} of {total} tasks",
+                  { shown: filteredCardCount, total: totalCardCount },
+                )
+              : t(
+                  "{tasks} task · {columns} kolom",
+                  "{tasks} tasks · {columns} columns",
+                  { tasks: totalCardCount, columns: boards.length },
+                )}
           </span>
         </div>
       </div>
@@ -777,10 +815,13 @@ const { campaignId } = useParams<{ campaignId: string }>();
     {boards.length === 0 ? (
       <EmptyState
         icon={FolderKanban}
-        title="Belum ada kolom"
-        description="Buat kolom pertama seperti To do, In progress, atau Done untuk mulai mengatur alur kerja."
+        title={t("Belum ada kolom", "No columns yet")}
+        description={t(
+          "Buat kolom pertama seperti To do, In progress, atau Done untuk mulai mengatur alur kerja.",
+          "Create your first column, such as To do, In progress, or Done, to start organizing the workflow.",
+        )}
         action={{
-          label: "Tambah kolom",
+          label: t("Tambah kolom", "Add column"),
           onClick: () => setIsCreateOpen(true),
         }}
         className="py-16"
@@ -788,9 +829,16 @@ const { campaignId } = useParams<{ campaignId: string }>();
     ) : isSearchActive && filteredCardCount === 0 ? (
       <EmptyState
         icon={SearchX}
-        title="Tidak ada task yang cocok"
-        description={`Tidak ada hasil untuk “${cardSearch.trim()}”. Coba kata kunci lain atau hapus pencarian.`}
-        action={{ label: "Hapus pencarian", onClick: () => setCardSearch("") }}
+        title={t("Tidak ada task yang cocok", "No matching tasks")}
+        description={t(
+          "Tidak ada hasil untuk “{query}”. Coba kata kunci lain atau hapus pencarian.",
+          "No results for “{query}”. Try another keyword or clear the search.",
+          { query: cardSearch.trim() },
+        )}
+        action={{
+          label: t("Hapus pencarian", "Clear search"),
+          onClick: () => setCardSearch(""),
+        }}
       />
     ) : viewMode === "kanban" ? (
       /* KANBAN BOARD VIEW */
@@ -821,7 +869,11 @@ const { campaignId } = useParams<{ campaignId: string }>();
               onMoveCard={handleSelectMove}
               disableDrag={compactLayout}
               fullWidth={compactLayout}
-              emptyMessage={isSearchActive ? "Tidak ada task yang cocok" : undefined}
+              emptyMessage={
+                isSearchActive
+                  ? t("Tidak ada task yang cocok", "No matching tasks")
+                  : undefined
+              }
               suggestedAssignee={
                 campaign?.created_by && campaign.created_by.id !== user?.id
                   ? { id: campaign.created_by.id, name: campaign.created_by.name }
@@ -837,7 +889,11 @@ const { campaignId } = useParams<{ campaignId: string }>();
         <BoardListView
           boards={filteredBoards}
           onOpenCard={setSelectedCard}
-          emptyMessage={isSearchActive ? "Tidak ada card yang cocok" : undefined}
+          emptyMessage={
+            isSearchActive
+              ? t("Tidak ada card yang cocok", "No matching cards")
+              : undefined
+          }
         />
       </div>
     )}
@@ -920,7 +976,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
               <span>{activeBoard.name}</span>
             </div>
             <div className="mt-1 text-xs font-medium text-accent">
-              Memindahkan kolom
+              {t("Memindahkan kolom", "Moving column")}
             </div>
           </div>
         ) : activeCard ? (
@@ -929,7 +985,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
               {activeCard.title}
             </div>
             <div className="mt-1 text-xs font-medium text-accent">
-              Memindahkan task
+              {t("Memindahkan task", "Moving task")}
             </div>
           </div>
         ) : null}

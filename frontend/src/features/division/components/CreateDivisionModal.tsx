@@ -8,6 +8,7 @@ import {
 } from "@/features/user/hooks/useUsers";
 import UserPicker from "./UserPicker";
 import type { User } from "@/features/user/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Props {
   open: boolean;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function CreateDivisionModal({ open, onClose }: Props) {
+  const { t } = useLanguage();
   const createMutation = useCreateDivision();
   const { data: adminCandidates = [] } = useDivisionAdminCandidates(open);
   const {
@@ -74,7 +76,7 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
     setError(null);
 
     if (!name.trim()) {
-      setError("Nama divisi wajib diisi.");
+      setError(t("Nama divisi wajib diisi.", "Division name is required."));
       return;
     }
 
@@ -98,7 +100,13 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
         mutationError as { response?: { data?: { message?: string } } }
       ).response?.data?.message;
 
-      setError(message ?? "Divisi belum dapat dibuat. Coba lagi.");
+      setError(
+        message ??
+          t(
+            "Divisi belum dapat dibuat. Coba lagi.",
+            "The division could not be created. Try again.",
+          ),
+      );
     }
   };
 
@@ -126,10 +134,13 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
                 id="create-division-title"
                 className="truncate text-base font-semibold tracking-heading text-fg"
               >
-                Divisi baru
+                {t("Divisi baru", "New division")}
               </h2>
               <p className="mt-0.5 text-xs leading-5 text-fg-muted">
-                Buat divisi dan tetapkan admin serta anggotanya.
+                {t(
+                  "Buat divisi dan tetapkan admin serta anggotanya.",
+                  "Create a division and assign its admins and members.",
+                )}
               </p>
             </div>
           </div>
@@ -138,7 +149,7 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
             type="button"
             onClick={handleClose}
             disabled={createMutation.isPending}
-            aria-label="Tutup"
+            aria-label={t("Tutup", "Close")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
           >
             <X aria-hidden="true" className="h-4 w-4" />
@@ -152,7 +163,7 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
                 htmlFor="create-division-name"
                 className="block text-xs font-medium text-fg-muted"
               >
-                Nama divisi
+                {t("Nama divisi", "Division name")}
               </label>
               <input
                 id="create-division-name"
@@ -162,7 +173,10 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
                   setName(event.target.value);
                   setError(null);
                 }}
-                placeholder="Contoh: Digital Marketing"
+                placeholder={t(
+                  "Contoh: Digital Marketing",
+                  "e.g. Digital Marketing",
+                )}
                 className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15"
               />
             </div>
@@ -172,7 +186,7 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
                 htmlFor="create-division-code"
                 className="block text-xs font-medium text-fg-muted"
               >
-                Kode divisi
+                {t("Kode divisi", "Division code")}
               </label>
               <input
                 id="create-division-code"
@@ -182,7 +196,7 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
                   setError(null);
                 }}
                 maxLength={10}
-                placeholder="Contoh: DM"
+                placeholder={t("Contoh: DM", "e.g. DM")}
                 className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm uppercase text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:normal-case placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15"
               />
             </div>
@@ -193,21 +207,24 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
               htmlFor="create-division-description"
               className="block text-xs font-medium text-fg-muted"
             >
-              Deskripsi
+              {t("Deskripsi", "Description")}
             </label>
             <textarea
               id="create-division-description"
               rows={3}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Tujuan atau cakupan divisi ini (opsional)"
+              placeholder={t(
+                "Tujuan atau cakupan divisi ini (opsional)",
+                "Purpose or scope of this division (optional)",
+              )}
               className="w-full resize-none rounded-control border border-line bg-surface px-3 py-2.5 text-sm leading-6 text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15"
             />
           </div>
 
           {isUsersLoading ? (
             <div className="rounded-panel border border-line bg-surface-muted/40 px-4 py-8 text-center text-sm text-fg-muted">
-              Memuat kandidat anggota…
+              {t("Memuat kandidat anggota…", "Loading member candidates…")}
             </div>
           ) : isUsersError ? (
             <div
@@ -216,34 +233,37 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
             >
               <span className="flex items-center gap-2">
                 <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" />
-                Kandidat anggota gagal dimuat.
+                {t(
+                  "Kandidat anggota gagal dimuat.",
+                  "Failed to load member candidates.",
+                )}
               </span>
               <button
                 type="button"
                 onClick={() => void refetchUsers()}
                 className="h-8 shrink-0 rounded-control border border-danger/25 bg-surface px-3 text-xs font-medium text-danger transition-colors hover:bg-danger-soft"
               >
-                Coba lagi
+                {t("Coba lagi", "Try again")}
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <UserPicker
-                title="Admin divisi"
+                title={t("Admin divisi", "Division admins")}
                 users={adminUsers}
                 selectedUsers={selectedAdmins}
                 onAdd={addAdmin}
                 onRemove={removeAdmin}
-                placeholder="Cari admin"
+                placeholder={t("Cari admin", "Search admins")}
               />
 
               <UserPicker
-                title="Anggota divisi"
+                title={t("Anggota divisi", "Division members")}
                 users={availableMembers}
                 selectedUsers={selectedMembers}
                 onAdd={addMember}
                 onRemove={removeMember}
-                placeholder="Cari anggota"
+                placeholder={t("Cari anggota", "Search members")}
               />
             </div>
           )}
@@ -269,7 +289,7 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
             disabled={createMutation.isPending}
             className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Batal
+            {t("Batal", "Cancel")}
           </button>
 
           <button
@@ -285,10 +305,10 @@ export default function CreateDivisionModal({ open, onClose }: Props) {
                   aria-hidden="true"
                   className="h-4 w-4 animate-spin motion-reduce:animate-none"
                 />
-                Membuat divisi
+                {t("Membuat divisi", "Creating division")}
               </>
             ) : (
-              "Buat divisi"
+              t("Buat divisi", "Create division")
             )}
           </button>
         </div>

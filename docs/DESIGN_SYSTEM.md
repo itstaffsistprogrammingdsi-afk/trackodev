@@ -71,7 +71,7 @@ bukan shadow besar.
 
 ## Tipografi
 
-- Satu keluarga: **Outfit** (sudah dipakai). Tidak perlu font kedua.
+- Satu keluarga: **Plus Jakarta Sans** (dipakai lewat `--font-sans`). Tidak perlu font kedua.
 - Weight: 400 body, 500 UI/label, 600 judul. Hindari 700–900.
 - Skala: 10/11 (caption), 12/13 (meta), 14 (body), 16 (section), 20–28 (judul).
 - Angka memakai `tabular-nums`. Label section memakai sentence case, bukan
@@ -105,13 +105,17 @@ bukan shadow besar.
   label kecil. Grafik memakai warna kolom board yang memang punya arti.
 - **Form:** label 12px, input 40px, error di bawah field dengan `role="alert"`,
   tombol submit punya state loading dan disabled.
-- **Tabel:** header sentence case, baris hover `surface-muted`, aksi netral
-  (bukan merah/hijau/oranye) kecuali aksi destruktif.
+- **Tabel:** header sentence case dan bisa sticky, baris hover `surface-muted`,
+  aksi netral (bukan merah/hijau/oranye) kecuali aksi destruktif.
+- **Metrik ringkas:** angka workspace/campaign/task memakai `tabular-nums` dan
+  progress bar 6px dengan `success`; jangan jadikan kartu statistik terpisah.
+- **Dialog:** pakai `Modal` bersama (focus trap + Escape + return focus) atau
+  `confirmDialog` global; jangan membuat overlay baru dengan warna mentah.
 
 ## Aksesibilitas
 
 - Focus ring: `focus-visible:ring-2 ring-accent/40` + offset 2.
-- Target sentuh minimal 40×40 di mobile, 32×32 di desktop.
+- Target sentuh minimal 40×40 di mobile dan 36×36 di desktop.
 - Setiap ikon-only button punya `aria-label`.
 - Dialog: `role="dialog"`, `aria-modal`, focus trap, Escape untuk menutup.
 - Jangan mengandalkan warna saja: sertakan teks atau ikon untuk status.

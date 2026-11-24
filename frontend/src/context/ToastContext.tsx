@@ -15,6 +15,9 @@ import {
   X,
 } from "lucide-react";
 
+import { useLanguage } from "@/context/LanguageContext";
+import { translate } from "@/i18n/translate";
+
 export type ToastVariant = "success" | "error" | "warning" | "info";
 
 export type ToastInput = {
@@ -45,25 +48,36 @@ export const emitToast = (toast: ToastInput): void => {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const defaultTitles: Record<ToastVariant, string> = {
-  success: "Berhasil",
-  error: "Terjadi kesalahan",
-  warning: "Perlu perhatian",
-  info: "Informasi",
+const defaultTitles: Record<ToastVariant, { id: string; en: string }> = {
+  success: { id: "Berhasil", en: "Success" },
+  error: { id: "Terjadi kesalahan", en: "Something went wrong" },
+  warning: { id: "Perlu perhatian", en: "Needs attention" },
+  info: { id: "Informasi", en: "Information" },
 };
+
+const translateTitle = (variant: ToastVariant): string =>
+  translate(defaultTitles[variant].id, defaultTitles[variant].en);
 
 const inferVariant = (message: string): ToastVariant => {
   const normalized = message.toLowerCase();
 
-  if (/(berhasil|success|tersimpan|disalin|dikirim)/.test(normalized)) {
+  if (
+    /(berhasil|success|tersimpan|saved|disalin|copied|dikirim|sent)/.test(
+      normalized,
+    )
+  ) {
     return "success";
   }
 
-  if (/(peringatan|yakin|perlu perhatian)/.test(normalized)) {
+  if (/(peringatan|yakin|perlu perhatian|warning|are you sure)/.test(normalized)) {
     return "warning";
   }
 
-  if (/(gagal|error|ditolak|unauthorized|tidak diizinkan|password|wajib)/.test(normalized)) {
+  if (
+    /(gagal|error|failed|ditolak|denied|unauthorized|forbidden|tidak diizinkan|password|wajib|required)/.test(
+      normalized,
+    )
+  ) {
     return "error";
   }
 
@@ -75,20 +89,20 @@ const inferTitle = (message: string, variant: ToastVariant): string => {
   // sukses seperti "Level akses diperbarui." ikut berjudul "Akses ditolak"
   // hanya karena mengandung kata "akses".
   if (variant !== "error" && variant !== "warning") {
-    return defaultTitles[variant];
+    return translateTitle(variant);
   }
 
   const normalized = message.toLowerCase();
 
-  if (/(akses|izin|unauthorized|forbidden|403)/.test(normalized)) {
-    return "Akses ditolak";
+  if (/(akses|izin|unauthorized|forbidden|403|access denied)/.test(normalized)) {
+    return translate("Akses ditolak", "Access denied");
   }
 
-  if (/(password|email atau password|masuk)/.test(normalized)) {
-    return "Gagal masuk";
+  if (/(password|email atau password|masuk|sign in|login)/.test(normalized)) {
+    return translate("Gagal masuk", "Sign-in failed");
   }
 
-  return defaultTitles[variant];
+  return translateTitle(variant);
 };
 
 const variantStyles: Record<
@@ -132,6 +146,7 @@ const variantStyles: Record<
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useLanguage();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const sequenceRef = useRef(0);
   const recentRef = useRef<Map<string, number>>(new Map());
@@ -234,7 +249,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   type="button"
                   onClick={() => dismissToast(toast.id)}
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                  aria-label="Tutup pemberitahuan"
+                  aria-label={t("Tutup pemberitahuan", "Dismiss notification")}
                 >
                   <X size={16} aria-hidden="true" />
                 </button>

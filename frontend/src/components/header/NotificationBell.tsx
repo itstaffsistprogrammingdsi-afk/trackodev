@@ -19,6 +19,7 @@ import {
   type AppNotification,
 } from "@/features/notification/types";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { acquireEcho, releaseEcho } from "@/lib/echo";
 import { REALTIME_DATA_CHANGED_EVENT } from "@/lib/realtimeEvents";
 import {
@@ -27,7 +28,9 @@ import {
 } from "@/lib/mobileApp";
 
 export default function NotificationBell() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
+  const { t } = useLanguage();
+  const canViewNotifications = can("notification.view");
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState<
@@ -44,6 +47,11 @@ export default function NotificationBell() {
     useRef<HTMLDivElement>(null);
 
   const loadNotifications = useCallback(async () => {
+    if (!canViewNotifications) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -56,14 +64,14 @@ export default function NotificationBell() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canViewNotifications]);
 
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!user?.id || !canViewNotifications) {
       return;
     }
 
@@ -96,7 +104,7 @@ export default function NotificationBell() {
       echo.leave(channelName);
       releaseEcho(echo);
     };
-  }, [loadNotifications, user?.id]);
+  }, [canViewNotifications, loadNotifications, user?.id]);
 
   useEffect(() => {
     let refreshTimer: number | undefined;
@@ -180,24 +188,30 @@ export default function NotificationBell() {
       1000;
 
     if (diff < 60) {
-      return "Baru saja";
+      return t("Baru saja", "Just now");
     }
 
     if (diff < 3600) {
-      return `${Math.floor(
-        diff / 60
-      )} menit lalu`;
+      return t(
+        "{count} menit lalu",
+        "{count} minutes ago",
+        { count: Math.floor(diff / 60) },
+      );
     }
 
     if (diff < 86400) {
-      return `${Math.floor(
-        diff / 3600
-      )} jam lalu`;
+      return t(
+        "{count} jam lalu",
+        "{count} hours ago",
+        { count: Math.floor(diff / 3600) },
+      );
     }
 
-    return `${Math.floor(
-      diff / 86400
-    )} hari lalu`;
+    return t(
+      "{count} hari lalu",
+      "{count} days ago",
+      { count: Math.floor(diff / 86400) },
+    );
   };
 
   const handleMarkAllRead =
@@ -236,6 +250,8 @@ export default function NotificationBell() {
     navigate(target);
   };
 
+  if (!canViewNotifications) return null;
+
   return (
     <div
       ref={dropdownRef}
@@ -244,25 +260,23 @@ export default function NotificationBell() {
       {/* Bell */}
       <button
         type="button"
-        aria-label={`Notifikasi, ${unreadCount} belum dibaca`}
+        aria-label={`${t("Notifikasi", "Notifications")}, ${t("{count} belum dibaca", "{count} unread", { count: unreadCount })}`}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="relative flex items-center justify-center w-11 h-11 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-800"
+        className="relative flex h-10 w-10 items-center justify-center rounded-control transition-colors hover:bg-surface-muted"
       >
         <Bell
-          size={22}
+          size={20}
           className={
-            unreadCount > 0
-              ? "animate-pulse"
-              : ""
+            unreadCount > 0 ? "text-fg" : "text-fg-muted"
           }
         />
 
         {unreadCount > 0 && (
           <>
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
+            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-danger" />
 
-            <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 flex items-center justify-center text-[10px] font-semibold text-white bg-red-500 rounded-full">
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[9px] font-semibold tabular-nums text-white">
               {unreadCount > 99
                 ? "99+"
                 : unreadCount}
@@ -277,18 +291,20 @@ export default function NotificationBell() {
         <div
           ref={panelRef}
           role="dialog"
-          aria-label="Daftar notifikasi"
-          className="fixed inset-x-0 bottom-0 z-[100] flex max-h-[min(80dvh,34rem)] w-auto flex-col overflow-hidden rounded-t-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-20 sm:w-[26.25rem] sm:rounded-2xl"
+          aria-label={t("Daftar notifikasi", "Notification list")}
+          className="fixed inset-x-0 bottom-0 z-[100] flex max-h-[min(80dvh,34rem)] w-auto flex-col overflow-hidden rounded-t-modal border border-line bg-surface shadow-e3 sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-20 sm:w-[26.25rem] sm:rounded-panel"
         >
           {/* Header */}
-          <div className="flex items-start justify-between gap-3 border-b border-gray-200 px-4 py-4 dark:border-gray-800 sm:items-center sm:px-5">
+          <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3.5 sm:items-center sm:px-5">
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Notifications
+              <h3 className="text-sm font-semibold tracking-heading text-fg">
+                {t("Notifikasi", "Notifications")}
               </h3>
 
-              <p className="text-xs text-gray-500">
-                {unreadCount} unread
+              <p className="mt-0.5 text-2xs text-fg-subtle">
+                {t("{count} belum dibaca", "{count} unread", {
+                  count: unreadCount,
+                })}
               </p>
             </div>
 
@@ -298,7 +314,7 @@ export default function NotificationBell() {
                   handleMarkAllRead
                 }
                 disabled={markingAllRead}
-                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-60 dark:hover:bg-indigo-950/40 sm:gap-2 sm:text-sm"
+                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control px-2 py-1.5 text-2xs font-medium text-accent transition-colors hover:bg-accent-soft disabled:cursor-wait disabled:opacity-60 sm:gap-2"
               >
                 {markingAllRead ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -306,7 +322,9 @@ export default function NotificationBell() {
                   <CheckCheck size={16} />
                 )}
                 <span className="hidden xsm:inline">
-                  {markingAllRead ? "Memproses..." : "Tandai semua dibaca"}
+                  {markingAllRead
+                    ? t("Memproses...", "Processing...")
+                    : t("Tandai semua dibaca", "Mark all as read")}
                 </span>
               </button>
             )}
@@ -315,24 +333,25 @@ export default function NotificationBell() {
           {/* Content */}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {loading ? (
-              <div className="p-6 text-center text-sm text-gray-500">
-                Loading notifications...
+              <div className="p-6 text-center text-xs text-fg-muted">
+                {t("Memuat notifikasi…", "Loading notifications…")}
               </div>
             ) : notifications.length ===
               0 ? (
               <div className="flex flex-col items-center justify-center px-6 py-12">
-                <Inbox
-                  size={42}
-                  className="text-gray-300"
-                />
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted text-fg-subtle">
+                  <Inbox size={22} aria-hidden="true" />
+                </span>
 
-                <h4 className="mt-4 font-medium">
-                  No notifications
+                <h4 className="mt-3 text-sm font-medium text-fg">
+                  {t("Belum ada notifikasi", "No notifications yet")}
                 </h4>
 
-                <p className="mt-1 text-sm text-gray-500 text-center">
-                  Semua notifikasi akan
-                  muncul di sini.
+                <p className="mt-1 text-center text-xs text-fg-muted">
+                  {t(
+                    "Semua notifikasi baru akan muncul di sini.",
+                    "New notifications will appear here.",
+                  )}
                 </p>
               </div>
             ) : (
@@ -344,43 +363,41 @@ export default function NotificationBell() {
                     }
                     type="button"
                     onClick={() => handleOpenNotification(notification)}
-                    aria-label={`${notification.title}. ${notification.action_label ?? "Buka notifikasi"}`}
-                    className={`w-full border-b border-gray-100 px-4 py-4 text-left transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800 sm:px-5 ${
-                      !notification.is_read
-                        ? "bg-indigo-50/60 dark:bg-indigo-900/10"
-                        : ""
+                    aria-label={`${notification.title}. ${notification.action_label ?? t("Buka notifikasi", "Open notification")}`}
+                    className={`w-full border-b border-line px-4 py-3.5 text-left transition-colors hover:bg-surface-muted/60 sm:px-5 ${
+                      !notification.is_read ? "bg-accent-soft/40" : ""
                     }`}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-2.5">
                       {!notification.is_read && (
-                        <span className="mt-2 w-2 h-2 rounded-full bg-indigo-600 flex-shrink-0" />
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                       )}
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                          <h4 className="break-words text-sm font-medium text-gray-900 dark:text-white sm:truncate">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                          <h4 className="break-words text-xs font-medium text-fg sm:truncate">
                             {
                               notification.title
                             }
                           </h4>
 
-                          <span className="text-xs text-gray-400 whitespace-nowrap">
+                          <span className="whitespace-nowrap text-2xs text-fg-subtle">
                             {formatTime(
                               notification.created_at
                             )}
                           </span>
                         </div>
 
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-fg-muted">
                           {
                             notification.body
                           }
                         </p>
 
                         {notification.action_url ? (
-                          <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
-                            {notification.action_label ?? "Buka card"}
-                            <ExternalLink size={12} aria-hidden="true" />
+                          <span className="mt-1.5 inline-flex items-center gap-1 text-2xs font-medium text-accent">
+                            {notification.action_label ?? t("Buka card", "Open card")}
+                            <ExternalLink size={11} aria-hidden="true" />
                           </span>
                         ) : null}
                       </div>
@@ -392,16 +409,16 @@ export default function NotificationBell() {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-gray-200 px-5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 dark:border-gray-800 sm:py-3">
+          <div className="border-t border-line px-5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2.5 sm:py-2.5">
             <button
               type="button"
               onClick={() => {
                 setOpen(false);
                 navigate("/notifications");
               }}
-              className="w-full rounded-lg py-1.5 text-center text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/40"
+              className="w-full rounded-control py-1.5 text-center text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
             >
-              Lihat semua notifikasi
+              {t("Lihat semua notifikasi", "View all notifications")}
             </button>
           </div>
         </div>,

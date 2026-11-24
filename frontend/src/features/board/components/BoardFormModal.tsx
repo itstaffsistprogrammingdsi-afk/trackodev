@@ -3,6 +3,7 @@ import { useForm, Controller } from "react-hook-form";
 
 import { useCreateBoard, useUpdateBoard } from "../hooks/useBoards";
 import { Board } from "../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Mode = "create" | "edit";
 
@@ -35,6 +36,7 @@ export default function BoardFormModal({
   onClose,
   campaignId,
 }: Props) {
+  const { t } = useLanguage();
   const isEdit = mode === "edit";
 
   const {
@@ -120,12 +122,20 @@ export default function BoardFormModal({
         {/* header */}
         <div className="border-b border-line px-5 py-4">
           <h2 id="board-form-title" className="text-sm font-semibold text-fg">
-            {isEdit ? "Edit kolom" : "Buat kolom"}
+            {isEdit
+              ? t("Edit kolom", "Edit column")
+              : t("Buat kolom", "Create column")}
           </h2>
           <p className="mt-0.5 text-xs text-fg-muted">
             {isEdit
-              ? "Perbarui nama atau warna kolom ini."
-              : "Tambahkan kolom baru ke board campaign ini."}
+              ? t(
+                  "Perbarui nama atau warna kolom ini.",
+                  "Update this column's name or color.",
+                )
+              : t(
+                  "Tambahkan kolom baru ke board campaign ini.",
+                  "Add a new column to this campaign board.",
+                )}
           </p>
         </div>
 
@@ -133,19 +143,25 @@ export default function BoardFormModal({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-5 py-4">
           <div className="space-y-1.5">
             <label htmlFor="board-name" className="text-xs font-medium text-fg-muted">
-              Nama kolom
+              {t("Nama kolom", "Column name")}
             </label>
 
             <input
               id="board-name"
               {...register("name", {
-                required: "Nama kolom wajib diisi.",
+                required: t(
+                  "Nama kolom wajib diisi.",
+                  "Column name is required.",
+                ),
                 maxLength: {
                   value: 255,
-                  message: "Nama kolom maksimal 255 karakter.",
+                  message: t(
+                    "Nama kolom maksimal 255 karakter.",
+                    "Column name must be at most 255 characters.",
+                  ),
                 },
               })}
-              placeholder="Contoh: To do, In progress"
+              placeholder={t("Contoh: To do, In progress", "e.g. To do, In progress")}
               autoFocus
               aria-invalid={errors.name ? "true" : "false"}
               className={`h-10 w-full rounded-control border bg-surface px-3 text-sm text-fg outline-none transition-colors focus:ring-2 ${
@@ -161,7 +177,9 @@ export default function BoardFormModal({
           </div>
 
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-fg-muted">Warna</span>
+            <span className="text-xs font-medium text-fg-muted">
+              {t("Warna", "Color")}
+            </span>
 
             <Controller
               control={control}
@@ -192,8 +210,14 @@ export default function BoardFormModal({
           {mutation.isError && (
             <p role="alert" className="text-[11px] font-medium text-danger">
               {isEdit
-                ? "Gagal memperbarui kolom. Coba lagi."
-                : "Gagal membuat kolom. Coba lagi."}
+                ? t(
+                    "Gagal memperbarui kolom. Coba lagi.",
+                    "Failed to update the column. Try again.",
+                  )
+                : t(
+                    "Gagal membuat kolom. Coba lagi.",
+                    "Failed to create the column. Try again.",
+                  )}
             </p>
           )}
 
@@ -204,7 +228,7 @@ export default function BoardFormModal({
               onClick={handleClose}
               className="h-9 rounded-control px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
             >
-              Batal
+              {t("Batal", "Cancel")}
             </button>
 
             <button
@@ -214,11 +238,11 @@ export default function BoardFormModal({
             >
               {mutation.isPending
                 ? isEdit
-                  ? "Menyimpan..."
-                  : "Membuat..."
+                  ? t("Menyimpan...", "Saving...")
+                  : t("Membuat...", "Creating...")
                 : isEdit
-                  ? "Simpan perubahan"
-                  : "Buat kolom"}
+                  ? t("Simpan perubahan", "Save changes")
+                  : t("Buat kolom", "Create column")}
             </button>
           </div>
         </form>

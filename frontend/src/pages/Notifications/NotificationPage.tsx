@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bell, CheckCheck, ExternalLink, Inbox, Loader2, Trash2 } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  ExternalLink,
+  Inbox,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import { useNavigate } from "react-router";
 
 import {
@@ -13,14 +20,17 @@ import {
   getNotificationTargetPath,
   type AppNotification,
 } from "@/features/notification/types";
+import { useLanguage } from "@/context/LanguageContext";
+import { getLocale } from "@/i18n/translate";
 
 const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("id-ID", {
+  new Intl.DateTimeFormat(getLocale(), {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
 
 export default function NotificationPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const realtimeRevision = useRealtimeRevision(["Notification"]);
   const [items, setItems] = useState<AppNotification[]>([]);
@@ -85,99 +95,126 @@ export default function NotificationPage() {
   };
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
-      <header className="flex flex-col gap-4 border-b border-slate-200 px-4 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-5">
-        <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">
-            <Bell size={21} />
-          </span>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-              Notifications
-            </h1>
-            <p className="text-sm text-slate-500">{unreadCount} belum dibaca</p>
+    <div className="mx-auto w-full max-w-4xl">
+      <section className="overflow-hidden rounded-panel border border-line bg-surface shadow-e1">
+        <header className="flex flex-col gap-4 border-b border-line px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 place-items-center rounded-control bg-accent-soft text-accent">
+              <Bell size={17} aria-hidden="true" />
+            </span>
+            <div>
+              <h1 className="text-sm font-semibold tracking-heading text-fg">
+                {t("Notifikasi", "Notifications")}
+              </h1>
+              <p className="text-2xs text-fg-subtle">
+                {unreadCount > 0
+                  ? t("{count} belum dibaca", "{count} unread", {
+                      count: unreadCount,
+                    })
+                  : t("Semua sudah dibaca", "All read")}
+              </p>
+            </div>
           </div>
-        </div>
 
-        {unreadCount > 0 && (
-          <button
-            type="button"
-            onClick={() => void markAllRead()}
-            disabled={markingAllRead}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-70"
-          >
-            {markingAllRead ? (
-              <Loader2 size={17} className="animate-spin" />
-            ) : (
-              <CheckCheck size={17} />
-            )}
-            {markingAllRead ? "Memproses..." : "Tandai semua dibaca"}
-          </button>
-        )}
-      </header>
-
-      <div className="divide-y divide-slate-100 dark:divide-slate-800">
-        {loading ? (
-          <div className="p-10 text-center text-sm text-slate-500">
-            Memuat notifikasi...
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center px-6 py-16 text-center">
-            <Inbox className="text-slate-300" size={44} />
-            <h2 className="mt-4 font-semibold text-slate-800 dark:text-slate-100">
-              Belum ada notifikasi
-            </h2>
-          </div>
-        ) : (
-          items.map((item) => (
-            <article
-              key={item.id}
-              className={`flex min-w-0 items-start gap-2 px-4 py-4 transition sm:gap-3 sm:px-7 ${
-                item.is_read
-                  ? "bg-white dark:bg-slate-900"
-                  : "bg-indigo-50/60 dark:bg-indigo-950/20"
-              }`}
+          {unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => void markAllRead()}
+              disabled={markingAllRead}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-accent px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-wait disabled:opacity-70"
             >
-              <button
-                type="button"
-                onClick={() => openNotification(item)}
-                aria-label={`${item.title}. ${item.action_label ?? "Tandai sudah dibaca"}`}
-                className="min-w-0 flex-1 text-left"
-              >
-                <div className="flex items-center gap-2">
-                  {!item.is_read && (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-indigo-500" />
-                  )}
-                  <h2 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                    {item.title}
-                  </h2>
-                </div>
-                <p className="mt-1 break-words text-sm leading-6 text-slate-600 dark:text-slate-400">
-                  {item.body}
-                </p>
-                <time className="mt-2 block text-xs text-slate-400">
-                  {formatDate(item.created_at)}
-                </time>
-                {item.action_url ? (
-                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
-                    {item.action_label ?? "Buka card"}
-                    <ExternalLink size={12} aria-hidden="true" />
-                  </span>
-                ) : null}
-              </button>
+              {markingAllRead ? (
+                <Loader2
+                  size={14}
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <CheckCheck size={14} aria-hidden="true" />
+              )}
+              {markingAllRead
+                ? t("Memproses…", "Processing…")
+                : t("Tandai semua dibaca", "Mark all as read")}
+            </button>
+          ) : null}
+        </header>
 
-              <button
-                type="button"
-                onClick={() => void remove(item.id)}
-                aria-label={`Hapus notifikasi ${item.title}`}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
+        <div className="divide-y divide-line">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 p-10 text-xs text-fg-muted">
+              <Loader2
+                size={14}
+                className="animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+              {t("Memuat notifikasi…", "Loading notifications…")}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex flex-col items-center px-6 py-16 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted text-fg-subtle">
+                <Inbox size={22} aria-hidden="true" />
+              </span>
+              <h2 className="mt-3 text-sm font-medium text-fg">
+                {t("Belum ada notifikasi", "No notifications yet")}
+              </h2>
+              <p className="mt-1 max-w-sm text-xs text-fg-muted">
+                {t(
+                  "Pemberitahuan tentang task, komentar, dan campaign akan muncul di sini.",
+                  "Notifications about tasks, comments, and campaigns will appear here.",
+                )}
+              </p>
+            </div>
+          ) : (
+            items.map((item) => (
+              <article
+                key={item.id}
+                className={`flex min-w-0 items-start gap-2 px-4 py-3.5 transition-colors sm:gap-3 sm:px-5 ${
+                  item.is_read ? "bg-surface" : "bg-accent-soft/30"
+                }`}
               >
-                <Trash2 size={17} />
-              </button>
-            </article>
-          ))
-        )}
-      </div>
-    </section>
+                <button
+                  type="button"
+                  onClick={() => openNotification(item)}
+                  aria-label={`${item.title}. ${item.action_label ?? t("Tandai sudah dibaca", "Mark as read")}`}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    {!item.is_read ? (
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                    ) : null}
+                    <h2 className="truncate text-xs font-medium text-fg">
+                      {item.title}
+                    </h2>
+                  </div>
+                  <p className="mt-1 break-words text-xs leading-5 text-fg-muted">
+                    {item.body}
+                  </p>
+                  <time className="mt-1.5 block text-2xs text-fg-subtle">
+                    {formatDate(item.created_at)}
+                  </time>
+                  {item.action_url ? (
+                    <span className="mt-1.5 inline-flex items-center gap-1 text-2xs font-medium text-accent">
+                      {item.action_label ?? t("Buka card", "Open card")}
+                      <ExternalLink size={11} aria-hidden="true" />
+                    </span>
+                  ) : null}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void remove(item.id)}
+                  aria-label={t("Hapus notifikasi {title}", "Delete notification {title}", {
+                    title: item.title,
+                  })}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger"
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                </button>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
   );
 }

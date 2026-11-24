@@ -6,6 +6,7 @@ import api from '@/lib/axios';
 import { getDownloadFileName } from '@/lib/exportSecurity';
 import { useRealtimeRevision } from '@/hooks/useRealtimeRevision';
 import { toast, confirmDialog } from '@/lib/feedback';
+import { translate } from '@/i18n/translate';
 
 const readExportErrorMessage = async (error: unknown): Promise<string> => {
   const response = (error as {
@@ -40,10 +41,16 @@ const readExportErrorMessage = async (error: unknown): Promise<string> => {
   }
 
   if (response?.status === 404) {
-    return 'Tidak ada data yang cocok dengan filter untuk diexport.';
+    return translate(
+      'Tidak ada data yang cocok dengan filter untuk diexport.',
+      'No data matches the filter to export.',
+    );
   }
 
-  return 'Gagal mengunduh file laporan. Silakan coba lagi.';
+  return translate(
+    'Gagal mengunduh file laporan. Silakan coba lagi.',
+    'Failed to download the report file. Please try again.',
+  );
 };
 
 export const useReport = () => {
@@ -104,7 +111,9 @@ export const useReport = () => {
       setMasterData(response.data);
     } catch (error) {
       console.error('Gagal memuat opsi filter database', error);
-      setFilterOptionsError('Opsi filter gagal dimuat.');
+      setFilterOptionsError(
+        translate('Opsi filter gagal dimuat.', 'Filter options failed to load.'),
+      );
     }
   }, []);
 
@@ -151,14 +160,20 @@ export const useReport = () => {
       const err = error as { response?: { data?: { message?: string }; status?: number } };
       if (err.response?.status === 403 && filters.division_id) {
         toast.error(
-          'Divisi ini tidak dapat difilter dengan akun Anda. Filter divisi direset.',
+          translate(
+            'Divisi ini tidak dapat difilter dengan akun Anda. Filter divisi direset.',
+            'This division cannot be filtered with your account. The division filter was reset.',
+          ),
         );
         setFilters((prev) => ({ ...prev, division_id: '', page: 1 }));
         return;
       }
       const message =
         err.response?.data?.message ??
-        'Gagal memuat data user. Silakan coba lagi.';
+        translate(
+          'Gagal memuat data user. Silakan coba lagi.',
+          'Failed to load user data. Please try again.',
+        );
       console.error('Failed to fetch users', error);
       setUsers([]);
       setPagination({ current_page: 1, last_page: 1, total: 0 });
@@ -193,7 +208,11 @@ export const useReport = () => {
         console.error('Failed to fetch user cards', error);
         setCards([]);
         toast.error(
-          err.response?.data?.message ?? 'Gagal memuat detail card user.'
+          err.response?.data?.message ??
+            translate(
+              'Gagal memuat detail card user.',
+              'Failed to load the user card details.',
+            ),
         );
       } finally {
         if (requestId === cardsRequestId.current) {
@@ -258,12 +277,20 @@ export const useReport = () => {
         setPreviewData(response.data);
         return response.data;
       } else {
-        toast.error(response.message || 'Gagal generate preview');
+        toast.error(
+          response.message ||
+            translate('Gagal generate preview', 'Failed to generate preview'),
+        );
         return null;
       }
     } catch (error) {
       console.error('Gagal preview data', error);
-      toast.error('Gagal generate preview. Silakan coba lagi.');
+      toast.error(
+        translate(
+          'Gagal generate preview. Silakan coba lagi.',
+          'Failed to generate preview. Please try again.',
+        ),
+      );
       return null;
     } finally {
       setLoadingPreview(false);
@@ -298,7 +325,13 @@ export const useReport = () => {
         const text = await data.text();
         try {
           const error = JSON.parse(text);
-          toast.error(error.message || 'Terjadi kesalahan saat export');
+          toast.error(
+            error.message ||
+              translate(
+                'Terjadi kesalahan saat export',
+                'An error occurred during export',
+              ),
+          );
           return false;
         } catch {
           // Bukan JSON
@@ -312,7 +345,10 @@ export const useReport = () => {
 
       link.setAttribute(
         'download',
-        getDownloadFileName(response.headers['content-disposition'], `laporan-kinerja.${type === 'pdf' ? 'pdf' : 'xlsx'}`),
+        getDownloadFileName(
+          response.headers['content-disposition'],
+          `${translate('laporan-kinerja', 'performance-report')}.${type === 'pdf' ? 'pdf' : 'xlsx'}`,
+        ),
       );
 
       document.body.appendChild(link);
@@ -344,7 +380,10 @@ export const useReport = () => {
 // ===============================================
 const handleBypassUser = async (userId: string | number) => {
   const confirmBypass = await confirmDialog({
-    message: "Apakah Anda yakin ingin login sebagai user ini?",
+    message: translate(
+      "Apakah Anda yakin ingin login sebagai user ini?",
+      "Are you sure you want to sign in as this user?",
+    ),
   });
 
   if (!confirmBypass) return;
@@ -355,7 +394,12 @@ const handleBypassUser = async (userId: string | number) => {
     const { token, user, impersonated_by } = response.data;
 
     if (!token || !user) {
-      throw new Error("Response bypass tidak lengkap.");
+      throw new Error(
+        translate(
+          "Response bypass tidak lengkap.",
+          "The bypass response is incomplete.",
+        ),
+      );
     }
 
     /**
@@ -401,30 +445,42 @@ const handleBypassUser = async (userId: string | number) => {
 
     /**
      * ======================================================
-     * Redirect sesuai role
+     * Redirect ke halaman pertama yang memang boleh dibuka target
      * ======================================================
      */
 
-    const role =
-      Array.isArray(user.roles) && user.roles.length
-        ? typeof user.roles[0] === "string"
-          ? user.roles[0]
-          : user.roles[0]?.name
-        : typeof user.role === "string"
-          ? user.role
-          : user.role?.name;
+    const targetRoles: string[] = Array.isArray(user.roles)
+      ? user.roles
+          .map((item: unknown) =>
+            typeof item === "string"
+              ? item
+              : typeof item === "object" && item !== null && "name" in item
+                ? String((item as { name?: unknown }).name ?? "")
+                : "",
+          )
+          .filter(Boolean)
+      : [];
+    const targetPermissions: string[] = Array.isArray(user.permissions)
+      ? user.permissions.filter(
+          (permission: unknown): permission is string =>
+            typeof permission === "string",
+        )
+      : [];
+    const targetCan = (permission: string) =>
+      targetRoles.includes("super_admin") ||
+      targetPermissions.includes(permission);
 
-    // super_admin, admin, dan manager sama-sama mendarat di dashboard.
-    if (
-      role === "super_admin" ||
-      role === "admin" ||
-      role === "manager" ||
-      role === "hrd"
-    ) {
-      window.location.replace("/dashboard");
-    } else {
-      window.location.replace("/my-work");
-    }
+    const landingPath = targetCan("dashboard.view")
+      ? "/dashboard"
+      : targetCan("my_work.view")
+        ? "/my-work"
+        : targetCan("calendar.view")
+          ? "/calendar"
+          : targetCan("account.view")
+            ? "/account/edit"
+            : "/my-work";
+
+    window.location.replace(landingPath);
   } catch (error: unknown) {
     const err = error as {
       response?: { data?: { message?: string } };
@@ -435,7 +491,7 @@ const handleBypassUser = async (userId: string | number) => {
     toast.error(
       err.response?.data?.message ??
         err.message ??
-        "Gagal melakukan bypass."
+        translate("Gagal melakukan bypass.", "Failed to bypass into the user.")
     );
   }
 };
@@ -451,7 +507,9 @@ const handleLeaveImpersonation = async () => {
     const adminUser = localStorage.getItem("admin_user");
 
     if (!adminToken || !adminUser) {
-      toast.error("Session admin tidak ditemukan.");
+      toast.error(
+        translate("Session admin tidak ditemukan.", "Admin session not found."),
+      );
       return;
     }
 
@@ -563,7 +621,9 @@ const handleLeaveImpersonation = async () => {
       error
     );
 
-    toast.error("Gagal kembali ke akun admin.");
+    toast.error(
+      translate("Gagal kembali ke akun admin.", "Failed to return to the admin account."),
+    );
   }
 };
 

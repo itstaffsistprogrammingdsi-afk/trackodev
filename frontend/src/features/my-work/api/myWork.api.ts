@@ -1,5 +1,6 @@
 import axios from "@/lib/axios";
 import { getDownloadFileName } from "@/lib/exportSecurity";
+import { translate } from "@/i18n/translate";
 
 import type {
   ActivityResponse,
@@ -79,7 +80,7 @@ export const exportMyWorkLog = async (
 
   const filename = getDownloadFileName(
     disposition,
-    `laporan-kerja-individu.${params.format}`,
+    `${translate("laporan-kerja-individu", "individual-work-report")}.${params.format}`,
   );
 
   const contentType = res.headers["content-type"];
