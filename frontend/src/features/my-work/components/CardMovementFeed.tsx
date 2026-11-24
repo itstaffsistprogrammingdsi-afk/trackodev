@@ -26,40 +26,40 @@ export default function CardMovementFeed({
   const visibleActivities = expanded ? activities : activities.slice(0, MAX_VISIBLE);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-100 px-4 py-4 sm:px-5">
+    <section className="overflow-hidden rounded-panel border border-line bg-surface shadow-e1">
+      <div className="border-b border-line px-4 py-4 sm:px-5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
               <ArrowRightLeft size={19} aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-gray-900">Activity Feed</h2>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                <h2 className="text-base font-semibold text-fg">Activity Feed</h2>
+                <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
                   {total}
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-gray-500">Perpindahan card dan pekerjaan yang masih berjalan.</p>
+              <p className="mt-0.5 text-xs text-fg-subtle">Perpindahan card dan pekerjaan yang masih berjalan.</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="divide-y divide-gray-100 px-4 sm:px-5">
+      <div className="divide-y divide-line px-4 sm:px-5">
         {loading ? (
           <div className="space-y-3 py-5" aria-label="Memuat activity feed">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="h-14 animate-pulse rounded-xl bg-gray-100" />
+              <div key={item} className="h-14 animate-pulse rounded-control bg-surface-muted" />
             ))}
           </div>
         ) : activities.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-50 text-gray-400">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-muted/50 text-fg-subtle">
               <Inbox size={20} aria-hidden="true" />
             </div>
-            <p className="mt-3 text-sm font-medium text-gray-700">Belum ada perpindahan card</p>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-3 text-sm font-medium text-fg-muted">Belum ada perpindahan card</p>
+            <p className="mt-1 text-xs text-fg-subtle">
               Perpindahan antar-list pada periode ini akan tampil di sini.
             </p>
           </div>
@@ -71,11 +71,11 @@ export default function CardMovementFeed({
       </div>
 
       {!loading && activities.length > MAX_VISIBLE && (
-        <div className="border-t border-gray-100 px-5 py-3 text-center">
+        <div className="border-t border-line px-5 py-3 text-center">
           <button
             type="button"
             onClick={() => setExpanded((current) => !current)}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent transition-colors hover:text-accent-strong"
           >
             {expanded ? (
               <>Tampilkan lebih sedikit <ChevronUp size={15} /></>
@@ -98,31 +98,31 @@ function MovementRow({ activity }: { activity: ActivityItem }) {
 
   return (
     <article className="flex gap-3 py-4 sm:gap-4">
-      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 ring-4 ring-white">
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent ring-4 ring-surface">
         <ArrowRightLeft size={16} aria-hidden="true" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-gray-600">
-          <span className="font-semibold text-gray-900">{userName}</span>
+        <p className="text-sm text-fg-muted">
+          <span className="font-semibold text-fg">{userName}</span>
           {" memindahkan card "}
-          <span className="font-semibold text-gray-900">{movement.cardTitle}</span>
+          <span className="font-semibold text-fg">{movement.cardTitle}</span>
         </p>
 
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {movement.fromBoard && (
             <>
               <BoardBadge name={movement.fromBoard} tone="from" />
-              <ArrowRight size={14} className="text-gray-400" aria-hidden="true" />
+              <ArrowRight size={14} className="text-fg-subtle" aria-hidden="true" />
             </>
           )}
           {movement.toBoard ? (
             <BoardBadge name={movement.toBoard} tone="to" />
           ) : (
-            <span className="text-xs text-gray-400">Tujuan list tidak tersedia</span>
+            <span className="text-xs text-fg-subtle">Tujuan list tidak tersedia</span>
           )}
           {activity.is_ongoing && (
-            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+            <span className="rounded-full bg-success-soft px-2.5 py-1 text-xs font-semibold text-success ring-1 ring-success/15">
               Masih berjalan
             </span>
           )}
@@ -131,7 +131,7 @@ function MovementRow({ activity }: { activity: ActivityItem }) {
 
       <time
         dateTime={activity.created_at}
-        className="hidden shrink-0 pt-0.5 text-right text-xs text-gray-400 sm:block"
+        className="hidden shrink-0 pt-0.5 text-right text-xs text-fg-subtle sm:block"
       >
         {formatActivityTime(activity.created_at)}
       </time>
@@ -144,8 +144,8 @@ function BoardBadge({ name, tone }: { name: string; tone: "from" | "to" }) {
     <span
       className={`max-w-full truncate rounded-full px-2.5 py-1 text-xs font-medium ${
         tone === "to"
-          ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
-          : "bg-gray-100 text-gray-600"
+          ? "bg-accent-soft text-accent-strong ring-1 ring-accent/15"
+          : "bg-surface-muted text-fg-muted"
       }`}
       title={name}
     >

@@ -52,18 +52,18 @@ type DivisionRankingResponse = {
 const rankStyle = [
   {
     icon: Trophy,
-    badge: "bg-amber-100 text-amber-700 ring-amber-200",
-    avatar: "from-amber-400 to-orange-500",
+    badge: "bg-warning-soft text-warning ring-warning/20",
+    avatar: "from-warning to-priority-high",
   },
   {
     icon: Medal,
-    badge: "bg-slate-100 text-slate-600 ring-slate-200",
-    avatar: "from-slate-400 to-slate-600",
+    badge: "bg-surface-muted text-fg-muted ring-line",
+    avatar: "from-fg-subtle to-fg-muted",
   },
   {
     icon: Award,
-    badge: "bg-orange-100 text-orange-700 ring-orange-200",
-    avatar: "from-orange-400 to-amber-600",
+    badge: "bg-priority-high-soft text-priority-high ring-priority-high/20",
+    avatar: "from-priority-high to-warning",
   },
 ];
 

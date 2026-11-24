@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { AxiosError } from "axios";
+import { PanelLeftClose, Search } from "lucide-react";
 import api from "@/lib/axios";
 
 import UserDropdown from "../components/header/UserDropdown";
@@ -18,6 +19,8 @@ import {
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "@/context/AuthContext";
 import { useDivisions } from "@/features/division/hooks/useDivisions";
+import CommandPalette from "@/components/layout/CommandPalette";
+import type { CommandPaletteItem } from "@/components/layout/CommandPalette";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -44,9 +47,20 @@ type NavItem = {
   icon: React.ReactNode;
   path?: string;
   subItems?: SubItem[];
+  group?: string;
   /** Prefix route yang membuat menu parent tetap aktif (mis. /forms/*). */
   activePrefixes?: string[];
 };
+
+function navGroup(name: string): string {
+  if (["Dashboard", "My Work", "Virtual Office", "Task Management"].includes(name)) {
+    return "Utama";
+  }
+  if (["Calendar", "Form", "Chats", "Report"].includes(name)) {
+    return "Kolaborasi";
+  }
+  return "Lainnya";
+}
 
 /* -------------------------------------------------------------------------- */
 /*                                 UTILITIES                                  */
@@ -59,13 +73,13 @@ const DotIcon = memo(() => (
 DotIcon.displayName = "DotIcon";
 
 const menuItemBase =
-  "flex items-center gap-3 rounded-control transition-colors duration-150";
+  "relative flex items-center gap-3 rounded-control transition-colors duration-150";
 
 const menuItemInactive =
-  "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5";
+  "text-fg-muted hover:bg-surface-muted hover:text-fg";
 
 const menuItemActive =
-  "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300";
+  "bg-accent-soft text-accent-strong before:absolute before:left-0 before:top-1/2 before:h-4 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-accent";
 
 function normalizePath(path: string) {
   if (!path || path === "/") return "/";
@@ -218,8 +232,8 @@ const TreeLeaf = memo(function TreeLeaf({
         aria-current={active ? "page" : undefined}
         className={`flex items-center gap-2 rounded-control px-3 py-1.5 text-xs transition-colors duration-150 ${
           active
-            ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
-            : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+            ? "bg-accent-soft text-accent-strong"
+            : "text-fg-subtle hover:bg-surface-muted hover:text-fg"
         }`}
       >
         <DotIcon />
@@ -315,8 +329,8 @@ const TreeBranch = memo(function TreeBranch({
             onClick={() => setOpen((prev) => !prev)}
             className={`flex w-full items-center gap-2 rounded-control px-3 py-2 text-xs font-medium transition-colors duration-150 ${
               active
-                ? "text-brand-700 dark:text-brand-300"
-                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+                ? "text-accent-strong"
+                : "text-fg-muted hover:bg-surface-muted hover:text-fg"
             }`}
           >
             <span className="flex-1 truncate text-left">{subItem.name}</span>
@@ -332,7 +346,7 @@ const TreeBranch = memo(function TreeBranch({
             className="overflow-hidden transition-all duration-300"
             style={{ maxHeight: open ? `${height}px` : "0px" }}
           >
-            <ul className="ml-4 mt-1 space-y-1 border-l border-gray-200 pl-3 dark:border-gray-700">
+            <ul className="ml-4 mt-1 space-y-1 border-l border-line pl-3">
               {subItem.children?.map((child, index) => (
                 <TreeLeaf
                   key={child.name}
@@ -352,8 +366,8 @@ const TreeBranch = memo(function TreeBranch({
           aria-current={active ? "page" : undefined}
           className={`flex items-center gap-2 rounded-control px-3 py-2 text-xs font-medium transition-colors duration-150 ${
             active
-              ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
-              : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+              ? "bg-accent-soft text-accent-strong"
+              : "text-fg-muted hover:bg-surface-muted hover:text-fg"
           }`}
         >
           <DotIcon />
@@ -408,6 +422,7 @@ const AppSidebar: React.FC = () => {
     usePersistedRouteParams(canViewAllDivisions, accessibleDivisions);
 
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const slim = !isExpanded && !isHovered && !isMobileOpen;
 
@@ -436,11 +451,11 @@ const AppSidebar: React.FC = () => {
 
   const navItems = useMemo<NavItem[]>(() => {
     try {
-      return [
+      const items: NavItem[] = [
         ...(can("dashboard.view") || can("my_work.view")
           ? [{
               icon: <GridIcon />,
-              name: "Dashboard",
+              name: can("dashboard.view") ? "Dashboard" : "My Work",
               path: can("dashboard.view") ? "/dashboard" : "/my-work",
             }]
           : []),
@@ -561,17 +576,74 @@ const AppSidebar: React.FC = () => {
           path: "/assistant/preview",
         },
       ];
+
+      return items.map((item) => ({
+        ...item,
+        group: item.group ?? navGroup(item.name),
+      }));
     } catch (error) {
       console.error("Gagal membangun menu sidebar:", error);
       return [
         {
           icon: <GridIcon />,
-          name: "Dashboard",
+          name: can("dashboard.view") ? "Dashboard" : "My Work",
           path: can("dashboard.view") ? "/dashboard" : "/my-work",
         },
       ];
     }
   }, [divisionId, workspaceId, campaignId, can, canViewAllDivisions]);
+
+  const paletteItems = useMemo<CommandPaletteItem[]>(() => {
+    const result: CommandPaletteItem[] = [];
+
+    for (const item of navItems) {
+      if (item.path) {
+        result.push({
+          id: item.name,
+          label: item.name,
+          path: item.path,
+          group: item.group,
+          icon: item.icon,
+        });
+      }
+
+      for (const sub of item.subItems ?? []) {
+        result.push({
+          id: `${item.name}-${sub.name}`,
+          label: sub.name,
+          path: sub.path,
+          group: item.name,
+          icon: item.icon,
+        });
+
+        for (const child of sub.children ?? []) {
+          if (child.isFallback) continue;
+
+          result.push({
+            id: `${item.name}-${sub.name}-${child.name}`,
+            label: child.name,
+            path: child.path,
+            group: `${item.name} · ${sub.name}`,
+            icon: item.icon,
+          });
+        }
+      }
+    }
+
+    return result;
+  }, [navItems]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
 
   /* ---------------------------------------------------------------------- */
   /*                             ACTIVE MATCHER                             */
@@ -625,12 +697,12 @@ const AppSidebar: React.FC = () => {
           type="button"
           aria-label="Close sidebar"
           onClick={toggleMobileSidebar}
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-overlay lg:hidden"
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden rounded-r-panel border border-line bg-surface/95 shadow-e2 backdrop-blur-md transition-transform duration-200 ease-soft sm:bottom-4 sm:left-4 sm:top-4 sm:rounded-panel ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden rounded-r-panel border border-line bg-surface shadow-e2 transition-transform duration-200 ease-soft sm:bottom-4 sm:left-4 sm:top-4 sm:rounded-panel ${
           slim ? "w-[76px]" : "w-[min(88vw,300px)] sm:w-[270px]"
         } ${
           isMobileOpen
@@ -641,7 +713,7 @@ const AppSidebar: React.FC = () => {
         onMouseLeave={handleMouseLeave}
       >
         {/* HEADER */}
-        <div className="flex items-center justify-between border-b border-line px-4 py-5">
+        <div className="flex items-center justify-between border-b border-line px-4 py-4">
           <Link to="/" onClick={handleNavClick} className="flex shrink-0 items-center">
             {slim ? (
               <img
@@ -662,54 +734,82 @@ const AppSidebar: React.FC = () => {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-white/5"
-              aria-label="Toggle sidebar"
+              className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              aria-label="Ciutkan sidebar"
             >
-              ☰
+              <PanelLeftClose aria-hidden="true" className="h-4 w-4" />
             </button>
           )}
         </div>
 
         {/* CONTENT */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 space-y-4">
-          <UserDropdown compact={slim} />
-
-          <div className="border-t border-line" />
+        <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            title="Cari menu (Ctrl+K)"
+            aria-label="Cari menu"
+            className={
+              slim
+                ? "mx-auto flex h-9 w-9 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                : "flex h-9 w-full items-center gap-2 rounded-control border border-line bg-surface px-2.5 text-xs text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            }
+          >
+            <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {!slim ? (
+              <>
+                <span className="flex-1 text-left">Cari menu</span>
+                <kbd className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-2xs">
+                  ⌘K
+                </kbd>
+              </>
+            ) : null}
+          </button>
 
           {/* MENU */}
           <nav className="space-y-1">
-            {!slim ? (
-              <p className="mb-2 px-2 text-[11px] font-medium text-gray-400">
-                Menu
-              </p>
-            ) : (
+            {slim ? (
               <div className="mb-2 flex justify-center">
-                <HorizontaLDots className="h-5 w-5 text-gray-300 dark:text-gray-600" />
+                <HorizontaLDots className="h-5 w-5 text-fg-subtle" />
               </div>
-            )}
+            ) : null}
 
             <ul className="space-y-1">
               {navItems.map((item, index) => {
                 const isOpen = openSubmenu === index;
+                const previousGroup = navItems[index - 1]?.group;
+                const showGroup = !slim && item.group && item.group !== previousGroup;
 
                 if (item.subItems) {
                   return (
                     <li key={item.name}>
+                      {showGroup ? (
+                        <p
+                          className={`px-2 text-[11px] font-medium text-fg-subtle ${
+                            index === 0 ? "mb-2" : "mb-2 mt-4"
+                          }`}
+                        >
+                          {item.group}
+                        </p>
+                      ) : null}
                       <button
                         type="button"
                         aria-expanded={isOpen}
+                        title={slim ? item.name : undefined}
                         onClick={() =>
                           setOpenSubmenu((prev) =>
                             prev === index ? null : index,
                           )
                         }
-                        className={`${menuItemBase} w-full px-3 py-2.5 ${
+                        className={`${menuItemBase} w-full px-3 py-2 ${
                           routeActiveIndex === index
                             ? menuItemActive
                             : menuItemInactive
                         } ${slim ? "justify-center" : ""}`}
                       >
-                        <span className="shrink-0">{item.icon}</span>
+                        <span className="shrink-0 [&_svg]:h-5 [&_svg]:w-5">
+                          {item.icon}
+                        </span>
 
                         {!slim && (
                           <>
@@ -733,7 +833,7 @@ const AppSidebar: React.FC = () => {
                               : "max-h-0 opacity-0"
                           }`}
                         >
-                          <ul className="ml-4 mt-2 space-y-1 border-l border-gray-200 pl-3 dark:border-gray-700">
+                          <ul className="ml-4 mt-2 space-y-1 border-l border-line pl-3">
                             {item.subItems.map((subItem) => (
                               <TreeBranch
                                 key={`${item.name}-${subItem.name}`}
@@ -752,21 +852,33 @@ const AppSidebar: React.FC = () => {
 
                 return (
                   <li key={item.name}>
+                    {showGroup ? (
+                      <p
+                        className={`px-2 text-[11px] font-medium text-fg-subtle ${
+                          index === 0 ? "mb-2" : "mb-2 mt-4"
+                        }`}
+                      >
+                        {item.group}
+                      </p>
+                    ) : null}
                     <Link
                       to={item.path}
                       onClick={handleNavClick}
+                      title={slim ? item.name : undefined}
                       aria-current={
                         startsWithRoute(location.pathname, item.path)
                           ? "page"
                           : undefined
                       }
-                      className={`${menuItemBase} px-3 py-2.5 ${
+                      className={`${menuItemBase} px-3 py-2 ${
                         startsWithRoute(location.pathname, item.path)
                           ? menuItemActive
                           : menuItemInactive
                       }`}
                     >
-                      <span className="shrink-0">{item.icon}</span>
+                      <span className="shrink-0 [&_svg]:h-5 [&_svg]:w-5">
+                        {item.icon}
+                      </span>
 
                       {!slim && (
                         <span className="truncate text-sm font-medium">
@@ -780,7 +892,18 @@ const AppSidebar: React.FC = () => {
             </ul>
           </nav>
         </div>
+
+        <div className="border-t border-line p-3">
+          <UserDropdown compact={slim} />
+        </div>
       </aside>
+
+      <CommandPalette
+        open={paletteOpen}
+        items={paletteItems}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={handleNavClick}
+      />
     </>
   );
 };

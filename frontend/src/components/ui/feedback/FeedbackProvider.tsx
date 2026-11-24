@@ -19,20 +19,20 @@ function ConfirmDialog() {
   const isDanger = confirm.variant === "danger";
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-overlay p-4 backdrop-blur-sm">
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="ui-confirm-title"
         style={{ animation: "ui-scale-in 160ms ease-out" }}
-        className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-xl dark:border-gray-800 dark:bg-gray-900"
+        className="w-full max-w-md rounded-panel border border-line bg-surface p-5 shadow-e3"
       >
         <div className="flex items-start gap-3">
           <span
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
               isDanger
-                ? "bg-error-50 text-error-500 dark:bg-error-950/40"
-                : "bg-brand-50 text-brand-500 dark:bg-brand-950/40"
+                ? "bg-danger-soft text-danger"
+                : "bg-accent-soft text-accent"
             }`}
           >
             <AlertTriangle size={18} />
@@ -41,12 +41,12 @@ function ConfirmDialog() {
           <div className="min-w-0 flex-1">
             <h3
               id="ui-confirm-title"
-              className="text-base font-semibold text-gray-900 dark:text-white"
+              className="text-base font-semibold tracking-heading text-fg"
             >
               {confirm.title ?? "Konfirmasi"}
             </h3>
 
-            <p className="mt-1 text-sm leading-5 text-gray-600 dark:text-gray-400">
+            <p className="mt-1 text-sm leading-5 text-fg-muted">
               {confirm.message}
             </p>
           </div>
@@ -56,7 +56,7 @@ function ConfirmDialog() {
           <button
             type="button"
             onClick={() => resolveConfirm(false)}
-            className="h-10 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+            className="h-10 rounded-control border border-line bg-surface px-4 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             {confirm.cancelText ?? "Batal"}
           </button>
@@ -65,10 +65,10 @@ function ConfirmDialog() {
             type="button"
             autoFocus
             onClick={() => resolveConfirm(true)}
-            className={`h-10 rounded-xl px-4 text-sm font-semibold text-white transition ${
+            className={`h-10 rounded-control px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
               isDanger
-                ? "bg-error-500 hover:bg-error-600"
-                : "bg-brand-500 hover:bg-brand-600"
+                ? "bg-danger text-white hover:opacity-90 focus-visible:ring-danger/40 dark:text-[#2a1110]"
+                : "bg-accent text-accent-fg hover:bg-accent-strong focus-visible:ring-accent/40"
             }`}
           >
             {confirm.confirmText ?? "Lanjutkan"}

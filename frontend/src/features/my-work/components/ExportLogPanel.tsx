@@ -111,13 +111,13 @@ export default function ExportLogPanel() {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white">
+    <div className="rounded-panel border border-line bg-surface">
       {/* HEADER */}
-      <div className="border-b border-gray-100 p-5">
-        <h2 className="text-base font-semibold text-gray-900">
+      <div className="border-b border-line p-5">
+        <h2 className="text-base font-semibold text-fg">
           Laporan Kinerja Individu
         </h2>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-fg-subtle mt-1">
           Unduh ringkasan progres task dan attachment Anda
         </p>
       </div>
@@ -134,8 +134,8 @@ export default function ExportLogPanel() {
                 flex-1 rounded-full px-3 py-1.5 text-xs border transition
                 ${
                   type === opt.key
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    ? "bg-accent text-accent-fg border-accent shadow-e1"
+                    : "bg-surface text-fg-muted border-line hover:bg-surface-muted/50"
                 }
               `}
             >
@@ -154,7 +154,7 @@ export default function ExportLogPanel() {
         {type === "monthly" && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="report-start-date" className="mb-1 block text-xs text-gray-500">
+              <label htmlFor="report-start-date" className="mb-1 block text-xs text-fg-subtle">
                 Tanggal Awal
               </label>
               <DatePickerField
@@ -165,7 +165,7 @@ export default function ExportLogPanel() {
             </div>
 
             <div>
-              <label htmlFor="report-end-date" className="mb-1 block text-xs text-gray-500">
+              <label htmlFor="report-end-date" className="mb-1 block text-xs text-fg-subtle">
                 Tanggal Akhir
               </label>
               <DatePickerField
@@ -180,11 +180,11 @@ export default function ExportLogPanel() {
 
         {type === "yearly" && (
           <div>
-            <label className="text-xs text-gray-500 block mb-1">Pilih Tahun</label>
+            <label className="text-xs text-fg-subtle block mb-1">Pilih Tahun</label>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-control border border-line bg-surface px-3 py-2 text-sm cursor-pointer hover:border-accent/30 focus:outline-none focus:ring-2 focus:ring-accent/15"
             >
               {YEAR_OPTIONS.map((y) => (
                 <option key={y} value={y}>
@@ -196,16 +196,16 @@ export default function ExportLogPanel() {
         )}
 
         {monthlyRangeInvalid && (
-          <p className="text-xs text-red-600">
+          <p className="text-xs text-danger">
             Tanggal akhir tidak boleh lebih awal dari tanggal awal.
           </p>
         )}
 
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
 
         {/* FORMAT */}
         <div>
-          <label className="text-xs text-gray-500 block mb-1">Format File</label>
+          <label className="text-xs text-fg-subtle block mb-1">Format File</label>
           <div className="flex gap-2">
             {FORMAT_OPTIONS.map((opt) => {
               const Icon = opt.icon;
@@ -215,11 +215,11 @@ export default function ExportLogPanel() {
                   onClick={() => setFormat(opt.key)}
                   className={`
                     flex flex-1 items-center justify-center gap-1.5
-                    rounded-lg px-3 py-2 text-xs border transition
+                    rounded-control px-3 py-2 text-xs border transition
                     ${
                       format === opt.key
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                        ? "bg-accent-soft text-accent-strong border-accent/20"
+                        : "bg-surface text-fg-muted border-line hover:bg-surface-muted/50"
                     }
                   `}
                 >
@@ -233,18 +233,18 @@ export default function ExportLogPanel() {
 
         {/* EXPORT BUTTON */}
         {/* EXPORT SECURITY */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5">
+        <div className="rounded-control border border-success/20 bg-success-soft/70 p-3.5">
           <div className="mb-3 flex items-start gap-2.5">
-            <span className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
+            <span className="rounded-control bg-success-soft p-2 text-success">
               <ShieldCheck size={17} aria-hidden="true" />
             </span>
             <div>
-              <label htmlFor="my-work-export-password" className="text-xs font-semibold text-emerald-950">Password Enkripsi (Opsional)</label>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">Kosongkan agar file dapat langsung dibuka, atau isi password untuk mengenkripsinya.</p>
+              <label htmlFor="my-work-export-password" className="text-xs font-semibold text-fg">Password Enkripsi (Opsional)</label>
+              <p className="mt-0.5 text-2xs leading-relaxed text-success">Kosongkan agar file dapat langsung dibuka, atau isi password untuk mengenkripsinya.</p>
             </div>
           </div>
 
-          <div className="flex min-w-0 items-stretch overflow-hidden rounded-lg border border-emerald-200 bg-white focus-within:ring-2 focus-within:ring-emerald-500/20">
+          <div className="flex min-w-0 items-stretch overflow-hidden rounded-control border border-success/20 bg-surface focus-within:ring-2 focus-within:ring-success/20">
             <input
               id="my-work-export-password"
               type={showPassword ? "text" : "password"}
@@ -258,13 +258,13 @@ export default function ExportLogPanel() {
                 setExportPassword(event.target.value);
                 setPasswordCopied(false);
               }}
-              className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none"
+              className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-fg outline-none"
               aria-describedby="my-work-export-password-help"
             />
             <button
               type="button"
               onClick={() => setShowPassword((visible) => !visible)}
-              className="px-2 text-gray-500 transition hover:text-gray-800"
+              className="px-2 text-fg-subtle transition hover:text-fg"
               aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -272,7 +272,7 @@ export default function ExportLogPanel() {
             <button
               type="button"
               onClick={regeneratePassword}
-              className="border-l border-gray-100 px-2 text-gray-500 transition hover:text-emerald-700"
+              className="border-l border-line px-2 text-fg-subtle transition hover:text-success"
               aria-label="Buat password baru"
             >
               <RefreshCw size={16} />
@@ -281,13 +281,13 @@ export default function ExportLogPanel() {
               type="button"
               onClick={copyPassword}
               disabled={!exportPassword}
-              className="border-l border-gray-100 px-2.5 text-gray-500 transition hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="border-l border-line px-2.5 text-fg-subtle transition hover:text-success disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Salin password"
             >
               <Copy size={16} />
             </button>
           </div>
-          <p id="my-work-export-password-help" className="mt-2 text-[11px] text-emerald-800">
+          <p id="my-work-export-password-help" className="mt-2 text-2xs text-success">
             {passwordCopied
               ? "Password berhasil disalin."
               : exportPassword
@@ -301,9 +301,9 @@ export default function ExportLogPanel() {
           disabled={loading || monthlyRangeInvalid}
           className="
             flex w-full items-center justify-center gap-2
-            rounded-lg bg-blue-600 px-4 py-2.5 mt-2
-            text-sm font-medium text-white
-            hover:bg-blue-700 transition disabled:opacity-60
+            rounded-control bg-accent px-4 py-2.5 mt-2
+            text-sm font-medium text-accent-fg
+            hover:bg-accent-strong transition disabled:opacity-60
           "
         >
           {loading ? (

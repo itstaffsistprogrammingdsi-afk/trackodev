@@ -47,7 +47,7 @@ export default function CampaignListPage() {
   const hasCampaigns = campaignList.length > 0;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6">
+    <div className="w-full space-y-6">
       {/* HEADER PAGE */}
       <div className="flex flex-col justify-between gap-4 border-b border-line pb-4 sm:flex-row sm:items-center">
         <div>

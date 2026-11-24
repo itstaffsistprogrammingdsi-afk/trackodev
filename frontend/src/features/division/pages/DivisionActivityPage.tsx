@@ -11,7 +11,7 @@ export default function DivisionActivityPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto w-full max-w-7xl space-y-6">
+      <div className="w-full space-y-6">
         <div className="h-36 animate-pulse rounded-3xl bg-slate-200 dark:bg-slate-800" />
         <div className="h-[30rem] animate-pulse rounded-3xl bg-slate-200 dark:bg-slate-800" />
       </div>
@@ -43,7 +43,7 @@ export default function DivisionActivityPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6">
+    <div className="w-full space-y-6">
       <header className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <button
           type="button"

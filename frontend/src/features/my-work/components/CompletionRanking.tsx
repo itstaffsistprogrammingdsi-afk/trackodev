@@ -23,17 +23,17 @@ const PERIODS: { value: RankingPeriod; label: string }[] = [
 
 const RANK_STYLES = [
   {
-    badge: "bg-amber-100 text-amber-700 ring-amber-200",
+    badge: "bg-warning-soft text-warning ring-warning/20",
     accent: "from-amber-400 to-yellow-500",
     icon: Trophy,
   },
   {
-    badge: "bg-slate-100 text-slate-600 ring-slate-200",
+    badge: "bg-surface-muted text-fg-muted ring-line",
     accent: "from-slate-300 to-slate-500",
     icon: Medal,
   },
   {
-    badge: "bg-orange-100 text-orange-700 ring-orange-200",
+    badge: "bg-warning-soft text-warning ring-warning/20",
     accent: "from-orange-400 to-amber-600",
     icon: Award,
   },
@@ -195,7 +195,7 @@ function RankingCard({ item }: { item: CompletionRankingItem }) {
           <span className="block text-xl font-semibold tabular-nums text-fg">
             {item.completed_tasks}
           </span>
-          <span className="text-[10px] font-medium text-fg-subtle">
+          <span className="text-2xs font-medium text-fg-subtle">
             task selesai
           </span>
         </span>
@@ -209,7 +209,7 @@ function RankingCard({ item }: { item: CompletionRankingItem }) {
           <p className="truncate text-[13px] font-medium text-fg">
             {item.user.name}
           </p>
-          <p className="mt-0.5 text-[11px] text-fg-muted">
+          <p className="mt-0.5 text-2xs text-fg-muted">
             Peringkat {item.rank}
           </p>
         </div>

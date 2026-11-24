@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Plus, Search, X } from "lucide-react";
 
 interface User {
   id: string;
@@ -8,17 +9,11 @@ interface User {
 
 interface Props {
   title: string;
-
   users: User[];
-
   selectedUsers: User[];
-
   onAdd: (user: User) => void;
-
   onRemove: (userId: string) => void;
-
   placeholder?: string;
-
   maxHeight?: string;
 }
 
@@ -28,145 +23,152 @@ export default function UserPicker({
   selectedUsers,
   onAdd,
   onRemove,
-  placeholder = "Search user...",
+  placeholder = "Cari nama atau email",
   maxHeight = "max-h-[280px]",
 }: Props) {
   const [search, setSearch] = useState("");
 
   const selectedIds = useMemo(
-    () => new Set(selectedUsers.map((u) => u.id)),
-    [selectedUsers]
+    () => new Set(selectedUsers.map((user) => user.id)),
+    [selectedUsers],
   );
 
   const filteredUsers = useMemo(() => {
-    const keyword = search.toLowerCase();
+    const keyword = search.trim().toLowerCase();
 
-    return users.filter((user) => {
-      return (
+    return users.filter(
+      (user) =>
         user.name.toLowerCase().includes(keyword) ||
-        user.email.toLowerCase().includes(keyword)
-      );
-    });
+        user.email.toLowerCase().includes(keyword),
+    );
   }, [users, search]);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-4">
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-800">
-          {title}
-        </h3>
-
-        <span className="text-xs text-gray-500">
-          {selectedUsers.length} selected
+    <section className="space-y-3 rounded-panel border border-line bg-surface-muted/40 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-medium text-fg">{title}</h3>
+        <span className="text-2xs font-medium text-fg-subtle">
+          {selectedUsers.length} dipilih
         </span>
       </div>
 
-      {/* SEARCH */}
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <div className="relative">
+        <Search
+          aria-hidden="true"
+          className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle"
+        />
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={placeholder}
+          aria-label={`${title}: cari pengguna`}
+          className="h-9 w-full rounded-control border border-line bg-surface pl-9 pr-9 text-xs text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15 [&::-webkit-search-cancel-button]:hidden"
+        />
+        {search ? (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            aria-label="Hapus pencarian"
+            className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+          >
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+      </div>
 
-      {/* SELECTED */}
-      {selectedUsers.length > 0 && (
-        <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Selected
-          </div>
-
-          <div className="space-y-2">
+      {selectedUsers.length > 0 ? (
+        <div className="space-y-1.5">
+          <p className="text-2xs font-medium text-fg-subtle">Dipilih</p>
+          <div className="space-y-1.5">
             {selectedUsers.map((user) => (
               <div
                 key={user.id}
-                className="flex items-center justify-between rounded-xl border border-green-200 bg-white px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-control border border-accent/15 bg-accent-soft/50 px-2.5 py-2"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-600 text-white text-xs font-semibold">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-gray-800">
-                      {user.name}
-                    </p>
-
-                    <p className="truncate text-xs text-gray-500">
-                      {user.email}
-                    </p>
-                  </div>
-                </div>
-
+                <UserIdentity user={user} tone="accent" />
                 <button
                   type="button"
                   onClick={() => onRemove(user.id)}
-                  className="rounded-lg bg-red-50 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                  aria-label={`Hapus ${user.name}`}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/30"
                 >
-                  Remove
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* AVAILABLE */}
-      <div>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-          Available Users
-        </div>
+      <div className="space-y-1.5">
+        <p className="text-2xs font-medium text-fg-subtle">Tersedia</p>
 
-        <div className={`space-y-2 overflow-y-auto pr-1 ${maxHeight}`}>
+        <div className={`space-y-1.5 overflow-y-auto pr-0.5 ${maxHeight}`}>
           {filteredUsers.map((user) => {
             const selected = selectedIds.has(user.id);
 
             return (
               <div
                 key={user.id}
-                className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-control border border-line bg-surface px-2.5 py-2"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-700">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-gray-800">
-                      {user.name}
-                    </p>
-
-                    <p className="truncate text-xs text-gray-500">
-                      {user.email}
-                    </p>
-                  </div>
-                </div>
+                <UserIdentity user={user} />
 
                 {selected ? (
-                  <span className="rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-600">
-                    Selected
+                  <span className="shrink-0 rounded-full bg-success-soft px-2 py-0.5 text-2xs font-medium text-success">
+                    Dipilih
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => onAdd(user)}
-                    className="rounded-md bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100"
+                    className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[7px] border border-line bg-surface px-2 text-2xs font-medium text-fg-muted transition-colors hover:border-accent/30 hover:bg-accent-soft hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
-                    Add
+                    <Plus aria-hidden="true" className="h-3 w-3" />
+                    Tambah
                   </button>
                 )}
               </div>
             );
           })}
 
-          {filteredUsers.length === 0 && (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white py-6 text-center text-sm text-gray-500">
-              No users found
+          {filteredUsers.length === 0 ? (
+            <div className="rounded-control border border-dashed border-line bg-surface px-3 py-8 text-center">
+              <p className="text-xs font-medium text-fg">Pengguna tidak ditemukan</p>
+              <p className="mt-1 text-2xs text-fg-muted">
+                Coba kata kunci lain.
+              </p>
             </div>
-          )}
+          ) : null}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function UserIdentity({
+  user,
+  tone = "neutral",
+}: {
+  user: User;
+  tone?: "neutral" | "accent";
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <span
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-2xs font-semibold ${
+          tone === "accent"
+            ? "bg-accent-soft text-accent"
+            : "bg-surface-muted text-fg-muted"
+        }`}
+      >
+        {user.name.charAt(0).toUpperCase()}
+      </span>
+
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium text-fg">{user.name}</p>
+        <p className="truncate text-2xs text-fg-subtle">{user.email}</p>
       </div>
     </div>
   );

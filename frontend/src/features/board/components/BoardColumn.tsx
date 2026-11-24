@@ -45,20 +45,20 @@ type Props = {
 };
 
 const priorities = [
-  { value: "low", label: "Low", color: "bg-emerald-500" },
-  { value: "medium", label: "Medium", color: "bg-amber-500" },
-  { value: "high", label: "High", color: "bg-orange-500" },
-  { value: "urgent", label: "Urgent", color: "bg-rose-500" },
+  { value: "low", label: "Low", color: "bg-priority-low" },
+  { value: "medium", label: "Medium", color: "bg-priority-medium" },
+  { value: "high", label: "High", color: "bg-priority-high" },
+  { value: "urgent", label: "Urgent", color: "bg-priority-urgent" },
 ];
 
 const PRIORITY_CONFIG: Record<
   Priority,
-  { label: string; dot: string; bg: string }
+  { label: string; dot: string }
 > = {
-  low: { label: "Low", dot: "bg-emerald-500", bg: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  medium: { label: "Medium", dot: "bg-amber-500", bg: "bg-amber-50 text-amber-700 border-amber-200" },
-  high: { label: "High", dot: "bg-orange-500", bg: "bg-orange-50 text-orange-700 border-orange-200" },
-  urgent: { label: "Urgent", dot: "bg-rose-500", bg: "bg-rose-50 text-rose-700 border-rose-200" },
+  low: { label: "Low", dot: "bg-priority-low" },
+  medium: { label: "Medium", dot: "bg-priority-medium" },
+  high: { label: "High", dot: "bg-priority-high" },
+  urgent: { label: "Urgent", dot: "bg-priority-urgent" },
 };
 
 export default function BoardColumn({

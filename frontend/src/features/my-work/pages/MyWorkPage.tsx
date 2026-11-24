@@ -9,6 +9,7 @@ import ExportLogPanel from "../components/ExportLogPanel";
 import CompletionRanking from "../components/CompletionRanking";
 import MyAssignedTasks from "../components/MyAssignedTasks";
 import { useAuth } from "@/context/AuthContext";
+import PageHeader from "@/components/layout/PageHeader";
 
 export default function MyWorkPage() {
   const { can, hasRole, managesDivision } = useAuth();
@@ -59,22 +60,17 @@ export default function MyWorkPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">
-            My Work
-          </h1>
-          <p className="mt-1 text-sm text-fg-muted">
-            Pantau progres pekerjaan dan siapkan laporan kinerja Anda.
-          </p>
-        </div>
-
-        <MyWorkPeriodFilter
-          value={range}
-          onChange={setRange}
-          disabled={activityLoading}
-        />
-      </div>
+      <PageHeader
+        title="My Work"
+        description="Pantau progres pekerjaan dan siapkan laporan kinerja Anda."
+        actions={
+          <MyWorkPeriodFilter
+            value={range}
+            onChange={setRange}
+            disabled={activityLoading}
+          />
+        }
+      />
 
       <SummaryCards
         totalCards={activities.summary.tasks.total}

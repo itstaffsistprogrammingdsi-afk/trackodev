@@ -95,7 +95,7 @@ export const CalendarView: React.FC = () => {
   };
 
   return (
-    <div className="relative mx-auto w-full max-w-7xl select-none font-sans text-fg">
+    <div className="relative w-full select-none font-sans text-fg">
 
       {/* --- HEADER NAVBAR --- */}
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">

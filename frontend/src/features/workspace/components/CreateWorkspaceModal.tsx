@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { X, FolderKanban, Loader2 } from "lucide-react";
+import { AlertCircle, FolderKanban, Loader2, X } from "lucide-react";
 
 import { useCreateWorkspace, useUpdateWorkspace } from "../hooks/useWorkspaces";
 import { Workspace } from "../types";
@@ -9,7 +9,6 @@ type Props = {
   open: boolean;
   onClose: () => void;
   divisionId: string;
-  /** Pass a workspace to open the modal in edit mode, or null/undefined for create mode */
   workspace?: Workspace | null;
 };
 
@@ -28,7 +27,6 @@ export default function WorkspaceModal({
 
   const createMutation = useCreateWorkspace(divisionId);
   const updateMutation = useUpdateWorkspace(divisionId);
-
   const mutation = isEditMode ? updateMutation : createMutation;
 
   const {
@@ -40,7 +38,6 @@ export default function WorkspaceModal({
     defaultValues: { name: "", description: "" },
   });
 
-  // Reset the form every time the modal opens, prefilling data in edit mode
   useEffect(() => {
     if (open) {
       reset({
@@ -52,11 +49,16 @@ export default function WorkspaceModal({
 
   if (!open) return null;
 
+  const handleClose = () => {
+    if (mutation.isPending) return;
+    onClose();
+  };
+
   const onSubmit = (data: FormData) => {
     if (isEditMode && workspace) {
       updateMutation.mutate(
         { id: workspace.id, payload: data },
-        { onSuccess: () => onClose() }
+        { onSuccess: () => onClose() },
       );
       return;
     }
@@ -70,133 +72,153 @@ export default function WorkspaceModal({
   };
 
   const errorMessage = mutation.error
-    ? mutation.error.response?.data?.message ??
-      "Terjadi kesalahan. Silakan coba lagi."
+    ? (mutation.error.response?.data?.message ??
+      "Perubahan belum dapat disimpan. Coba lagi.")
     : null;
+
+  const title = isEditMode ? "Edit workspace" : "Workspace baru";
+  const description = isEditMode
+    ? "Perbarui nama dan deskripsi workspace."
+    : "Kelompokkan campaign dan board dalam satu ruang kerja.";
 
   return (
     <div
-      className="
-        fixed inset-0 z-50 flex items-center justify-center
-        bg-black/50 backdrop-blur-sm p-4
-      "
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-overlay p-0 sm:items-center sm:p-4"
+      onClick={handleClose}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="
-          w-full max-w-md max-h-[90vh] overflow-y-auto
-          rounded-2xl bg-white dark:bg-slate-900 shadow-2xl
-          border border-slate-200 dark:border-slate-800
-        "
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="workspace-modal-title"
+        onClick={(event) => event.stopPropagation()}
+        style={{ animation: "ui-scale-in 160ms ease-out" }}
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-panel border border-line bg-surface p-5 shadow-e3 sm:rounded-panel"
       >
-        {/* HEADER */}
-        <div className="flex items-center justify-between gap-3 p-5 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center">
-              <FolderKanban size={20} className="text-blue-600" />
-            </div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+              <FolderKanban aria-hidden="true" className="h-5 w-5" />
+            </span>
 
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
-                {isEditMode ? "Edit Workspace" : "Create Workspace"}
+              <h2
+                id="workspace-modal-title"
+                className="truncate text-base font-semibold tracking-heading text-fg"
+              >
+                {title}
               </h2>
-              <p className="text-sm text-slate-500 truncate">
-                {isEditMode
-                  ? "Perbarui informasi workspace"
-                  : "Buat workspace baru"}
+              <p className="mt-0.5 text-xs leading-5 text-fg-muted">
+                {description}
               </p>
             </div>
           </div>
 
           <button
             type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+            onClick={handleClose}
+            disabled={mutation.isPending}
             aria-label="Tutup"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
           >
-            <X size={18} />
+            <X aria-hidden="true" className="h-4 w-4" />
           </button>
         </div>
 
-        {/* FORM */}
-        <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
-              Workspace Name
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="workspace-name"
+              className="block text-xs font-medium text-fg-muted"
+            >
+              Nama workspace
             </label>
-
             <input
+              id="workspace-name"
+              autoFocus
               {...register("name", {
-                required: "Workspace name is required",
-                maxLength: { value: 255, message: "Maximum 255 characters" },
+                required: "Nama workspace wajib diisi.",
+                maxLength: {
+                  value: 255,
+                  message: "Nama workspace maksimal 255 karakter.",
+                },
               })}
-              placeholder="Marketing Workspace"
-              className="
-                w-full rounded-xl border border-slate-300 dark:border-slate-700
-                bg-white dark:bg-slate-950 px-4 py-3 outline-none
-                focus:ring-2 focus:ring-blue-500
-              "
+              placeholder="Contoh: Marketing Campaign"
+              aria-invalid={errors.name ? true : undefined}
+              aria-describedby={errors.name ? "workspace-name-error" : undefined}
+              className={`h-10 w-full rounded-control border bg-surface px-3 text-sm text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle focus:ring-4 ${
+                errors.name
+                  ? "border-danger focus:border-danger focus:ring-danger/15"
+                  : "border-line hover:border-line-strong focus:border-accent focus:ring-accent/15"
+              }`}
             />
-
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
-            )}
+            {errors.name ? (
+              <p
+                id="workspace-name-error"
+                className="text-[11px] leading-4 text-danger"
+              >
+                {errors.name.message}
+              </p>
+            ) : null}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
-              Description
+          <div className="space-y-1.5">
+            <label
+              htmlFor="workspace-description"
+              className="block text-xs font-medium text-fg-muted"
+            >
+              Deskripsi
             </label>
-
             <textarea
+              id="workspace-description"
               rows={4}
               {...register("description")}
-              placeholder="Workspace description..."
-              className="
-                w-full rounded-xl border border-slate-300 dark:border-slate-700
-                bg-white dark:bg-slate-950 px-4 py-3 outline-none resize-none
-                focus:ring-2 focus:ring-blue-500
-              "
+              placeholder="Tujuan atau cakupan workspace ini (opsional)"
+              className="w-full resize-none rounded-control border border-line bg-surface px-3 py-2.5 text-sm leading-6 text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15"
             />
           </div>
 
-          {errorMessage && (
-            <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 px-4 py-3 text-sm text-red-600 dark:text-red-400">
-              {errorMessage}
+          {errorMessage ? (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-control border border-danger/20 bg-danger-soft px-3 py-2.5 text-xs leading-5 text-danger"
+            >
+              <AlertCircle
+                aria-hidden="true"
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span>{errorMessage}</span>
             </div>
-          )}
+          ) : null}
 
-          {/* FOOTER */}
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={mutation.isPending}
-              className="
-                px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700
-                hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50
-              "
+              className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Cancel
+              Batal
             </button>
 
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="
-                inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl
-                bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50
-              "
+              aria-busy={mutation.isPending}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {mutation.isPending && <Loader2 size={16} className="animate-spin" />}
-              {mutation.isPending
-                ? isEditMode
-                  ? "Saving..."
-                  : "Creating..."
-                : isEditMode
-                ? "Save Changes"
-                : "Create Workspace"}
+              {mutation.isPending ? (
+                <>
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                  />
+                  Menyimpan
+                </>
+              ) : isEditMode ? (
+                "Simpan perubahan"
+              ) : (
+                "Buat workspace"
+              )}
             </button>
           </div>
         </form>

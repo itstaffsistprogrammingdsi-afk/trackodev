@@ -622,7 +622,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
         setActiveBoard(null);
       }}
     >
-<div className="w-full text-slate-800 transition-colors dark:text-slate-100">
+<div className="w-full text-fg transition-colors">
   {/* ===================================== */}
   {/* TOP NAV BAR (SAAS MODERN & CLEAN) */}
   {/* ===================================== */}
@@ -833,7 +833,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
       </SortableContext>
     ) : (
       /* LIST VIEW */
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-sm">
+      <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-e1">
         <BoardListView
           boards={filteredBoards}
           onOpenCard={setSelectedCard}
@@ -924,7 +924,7 @@ const { campaignId } = useParams<{ campaignId: string }>();
             </div>
           </div>
         ) : activeCard ? (
-          <div className="w-[300px] cursor-grabbing rounded-card border border-accent/30 bg-surface p-4 shadow-e3 ring-2 ring-accent/15">
+          <div className="w-[300px] rotate-1 cursor-grabbing rounded-card border border-accent/30 bg-surface p-4 shadow-e3 ring-2 ring-accent/15">
             <div className="text-sm font-medium text-fg">
               {activeCard.title}
             </div>

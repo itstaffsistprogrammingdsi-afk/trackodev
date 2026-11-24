@@ -15,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered } = useSidebar();
+  const { pathname } = useLocation();
 
   return (
     // Lock tinggi layar ke 100vh / h-screen dan matikan scroll window utama
@@ -43,7 +44,10 @@ const LayoutContent: React.FC = () => {
 
         {/* Dedicated Scroll Area untuk Isi Konten */}
         <main className="w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-3 py-4 xsm:px-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-          <div className="mx-auto w-full max-w-7xl 2xl:max-w-screen-2xl">
+          <div
+            key={pathname}
+            className="page-enter mx-auto w-full max-w-[1440px] 2xl:max-w-[1600px]"
+          >
             <Outlet />
           </div>
         </main>

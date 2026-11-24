@@ -69,7 +69,7 @@ export const ReportPage: React.FC = () => {
 
   return (
     <div className="w-full font-sans">
-      <div className="mx-auto w-full max-w-[1600px]">
+      <div className="w-full">
         
         <UserList
           users={users}

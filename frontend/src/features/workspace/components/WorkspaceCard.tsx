@@ -1,140 +1,259 @@
 import { useState } from "react";
-import type { MouseEvent } from "react";
 import { useNavigate } from "react-router";
-import { Trash2, FolderKanban, Pencil, Users } from "lucide-react";
+import {
+  ArrowRight,
+  FolderKanban,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Users,
+} from "lucide-react";
 
 import { Workspace } from "../types";
 import { useDeleteWorkspace } from "../hooks/useWorkspaces";
-import ConfirmDialog from "./ConfirmDialog";
+import { confirmDialog, toast } from "@/lib/feedback";
+import { Dropdown } from "@/components/ui/dropdown/Dropdown";
+import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import WorkspaceMembersModal from "./WorkspaceMembersModal";
 
 type Props = {
   workspace: Workspace;
   divisionId: string;
-  /** Whether the current user is allowed to edit/delete this workspace */
   canManage: boolean;
   onEdit: (workspace: Workspace) => void;
+  view?: "grid" | "list";
 };
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function WorkspaceCard({
   workspace,
   divisionId,
   canManage,
   onEdit,
+  view = "grid",
 }: Props) {
   const navigate = useNavigate();
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const deleteWorkspace = useDeleteWorkspace(divisionId);
+  const isList = view === "list";
 
   const handleOpen = () => {
     navigate(`/workspaces/${workspace.id}/campaigns`);
   };
 
-  const handleEditClick = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    onEdit(workspace);
-  };
+  const handleDelete = async () => {
+    setMenuOpen(false);
 
-  const handleDeleteClick = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setConfirmOpen(true);
-  };
-
-  const handleMembersClick = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setMembersOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    deleteWorkspace.mutate(workspace.id, {
-      onSuccess: () => setConfirmOpen(false),
+    const confirmed = await confirmDialog({
+      title: "Hapus workspace",
+      message: `Workspace "${workspace.name}" akan dihapus permanen beserta campaign dan board di dalamnya.`,
+      confirmText: "Hapus workspace",
+      cancelText: "Batal",
+      variant: "danger",
     });
+
+    if (!confirmed) return;
+
+    try {
+      await deleteWorkspace.mutateAsync(workspace.id);
+      toast.success("Workspace dihapus.");
+    } catch {
+      toast.error("Workspace gagal dihapus. Coba lagi.");
+    }
   };
+
+  const menu = canManage ? (
+    <WorkspaceMenu
+      workspace={workspace}
+      menuOpen={menuOpen}
+      setMenuOpen={setMenuOpen}
+      onShare={() => {
+        setMenuOpen(false);
+        setMembersOpen(true);
+      }}
+      onEdit={() => {
+        setMenuOpen(false);
+        onEdit(workspace);
+      }}
+      onDelete={() => void handleDelete()}
+      deleting={deleteWorkspace.isPending}
+    />
+  ) : null;
 
   return (
     <>
       <article
         onClick={handleOpen}
-        className="
-          group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800
-          rounded-2xl p-5 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1
-          flex flex-col
-        "
+        onKeyDown={(event) => {
+          if (
+            (event.key === "Enter" || event.key === " ") &&
+            event.target === event.currentTarget
+          ) {
+            event.preventDefault();
+            handleOpen();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label={`Buka workspace ${workspace.name}`}
+        className={`group relative flex cursor-pointer border border-line bg-surface shadow-e1 transition-[transform,border-color,box-shadow] duration-200 ease-soft hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:translate-y-0 active:shadow-e1 ${
+          isList
+            ? "items-center gap-4 rounded-card p-4"
+            : "h-full flex-col rounded-panel p-5"
+        } ${menuOpen ? "z-20" : ""}`}
       >
-        {/* Header */}
-        <div className="flex items-start gap-3">
-          <div className="flex items-center justify-center h-11 w-11 rounded-xl bg-blue-50 dark:bg-blue-950/40 shrink-0">
-            <FolderKanban size={22} className="text-blue-600" />
-          </div>
+        <div
+          className={`flex min-w-0 gap-3 ${
+            isList ? "flex-1 items-center" : "items-start justify-between"
+          }`}
+        >
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+              <FolderKanban aria-hidden="true" className="h-5 w-5" />
+            </span>
 
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white truncate">
-              {workspace.name}
-            </h3>
-
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
-              {workspace.description || "Tidak ada deskripsi workspace"}
-            </p>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
-          <span className="text-xs font-medium text-slate-400">Workspace</span>
-
-          {canManage && (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleMembersClick}
-                title="Bagikan workspace ini ke user lain (termasuk lintas divisi) dan atur level aksesnya"
-                className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 transition"
+            <div className="min-w-0 flex-1">
+              <h3 className={`text-base font-semibold leading-6 tracking-heading text-fg ${isList ? "truncate" : "line-clamp-2 break-words"}`}>
+                {workspace.name}
+              </h3>
+              <p
+                className={`mt-1 text-sm leading-5 text-fg-muted ${
+                  isList ? "line-clamp-1" : "line-clamp-2"
+                }`}
               >
-                <Users size={14} />
-                Share
-              </button>
-
-              <button
-                type="button"
-                onClick={handleEditClick}
-                className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 transition"
-              >
-                <Pencil size={14} />
-                Edit
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDeleteClick}
-                disabled={deleteWorkspace.isPending}
-                className="flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-600 disabled:opacity-50 transition"
-              >
-                <Trash2 size={14} />
-                Delete
-              </button>
+                {workspace.description || "Belum ada deskripsi workspace."}
+              </p>
             </div>
-          )}
-        </div>
-      </article>
+          </div>
 
-      <ConfirmDialog
-        open={confirmOpen}
-        title={`Hapus workspace "${workspace.name}"?`}
-        description="Tindakan ini tidak dapat dibatalkan. Semua data terkait workspace ini akan ikut terhapus."
-        confirmLabel="Hapus"
-        cancelLabel="Batal"
-        isLoading={deleteWorkspace.isPending}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setConfirmOpen(false)}
-      />
+          {!isList && menu ? (
+            <div
+              className="relative shrink-0"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {menu}
+            </div>
+          ) : null}
+        </div>
+
+        {isList ? (
+          <div
+            className="ml-auto flex shrink-0 items-center gap-3"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span className="hidden text-2xs text-fg-subtle sm:block">
+              Dibuat {formatDate(workspace.created_at)}
+            </span>
+
+            <ArrowRight
+              aria-hidden="true"
+              className="h-4 w-4 text-fg-subtle transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-accent"
+            />
+
+            {menu ? <div className="relative">{menu}</div> : null}
+          </div>
+        ) : (
+          <>
+            <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-fg-muted transition-colors group-hover:text-accent">
+              Buka workspace
+              <ArrowRight
+                aria-hidden="true"
+                className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+              />
+            </div>
+
+            <div className="mt-auto pt-4">
+              <div className="border-t border-line pt-3">
+                <span className="text-2xs text-fg-subtle">
+                  Dibuat {formatDate(workspace.created_at)}
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+      </article>
 
       <WorkspaceMembersModal
         open={membersOpen}
         onClose={() => setMembersOpen(false)}
         workspace={workspace}
       />
+    </>
+  );
+}
+
+function WorkspaceMenu({
+  workspace,
+  menuOpen,
+  setMenuOpen,
+  onEdit,
+  onShare,
+  onDelete,
+  deleting,
+}: {
+  workspace: Workspace;
+  menuOpen: boolean;
+  setMenuOpen: (value: boolean) => void;
+  onEdit: () => void;
+  onShare: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`Aksi workspace ${workspace.name}`}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen(!menuOpen)}
+        className="dropdown-toggle flex h-9 w-9 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      >
+        <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
+      </button>
+
+      <Dropdown
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        className="w-52"
+      >
+        <DropdownItem
+          icon={<Users className="h-4 w-4" />}
+          onClick={onShare}
+          onItemClick={() => setMenuOpen(false)}
+        >
+          Bagikan akses
+        </DropdownItem>
+
+        <DropdownItem
+          icon={<Pencil className="h-4 w-4" />}
+          onClick={onEdit}
+          onItemClick={() => setMenuOpen(false)}
+        >
+          Edit workspace
+        </DropdownItem>
+
+        <DropdownItem
+          icon={<Trash2 className="h-4 w-4" />}
+          danger
+          disabled={deleting}
+          onClick={onDelete}
+          onItemClick={() => setMenuOpen(false)}
+        >
+          Hapus workspace
+        </DropdownItem>
+      </Dropdown>
     </>
   );
 }

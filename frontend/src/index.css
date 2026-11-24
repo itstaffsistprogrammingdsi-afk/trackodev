@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap")
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap")
 layer(base);
 
 @import "tailwindcss";
@@ -21,7 +21,10 @@ body {
 
 @theme {
   --font-*: initial;
-  --font-outfit: Outfit, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  /* Alias lama agar class font-outfit yang tersisa tetap satu keluarga font. */
+  --font-outfit: "Plus Jakarta Sans", sans-serif;
 
   --breakpoint-*: initial;
   --breakpoint-2xsm: 375px;
@@ -49,6 +52,10 @@ body {
   --text-theme-sm--line-height: 20px;
   --text-theme-xs: 12px;
   --text-theme-xs--line-height: 18px;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
+
+  --tracking-heading: -0.02em;
 
   --color-current: currentColor;
   --color-transparent: transparent;
@@ -232,6 +239,27 @@ body {
   --tracko-info: #0b6a94;
   --tracko-info-soft: #e8f3f8;
   --tracko-overlay: rgb(31 31 28 / 0.44);
+
+  --tracko-priority-low: #0f7a55;
+  --tracko-priority-low-soft: #e9f6f0;
+  --tracko-priority-medium: #a4570a;
+  --tracko-priority-medium-soft: #fdf3e2;
+  --tracko-priority-high: #b45309;
+  --tracko-priority-high-soft: #fdf0e7;
+  --tracko-priority-urgent: #b93832;
+  --tracko-priority-urgent-soft: #fceceb;
+
+  --tracko-chart-1: #3f51f5;
+  --tracko-chart-2: #0b6a94;
+  --tracko-chart-3: #0f7a55;
+  --tracko-chart-4: #a4570a;
+  --tracko-chart-5: #b93832;
+  --tracko-chart-6: #7c5cd6;
+
+  --tracko-focus-ring: 0 0 0 4px rgb(63 81 245 / 0.14);
+  --tracko-duration-fast: 150ms;
+  --tracko-duration-base: 200ms;
+  --tracko-duration-slow: 250ms;
 }
 
 html.dark {
@@ -257,6 +285,24 @@ html.dark {
   --tracko-info: #74c8e8;
   --tracko-info-soft: rgb(11 165 236 / 0.14);
   --tracko-overlay: rgb(0 0 0 / 0.6);
+
+  --tracko-priority-low: #5fd0a3;
+  --tracko-priority-low-soft: rgb(18 183 106 / 0.14);
+  --tracko-priority-medium: #f0b45c;
+  --tracko-priority-medium-soft: rgb(247 144 9 / 0.14);
+  --tracko-priority-high: #f6a96b;
+  --tracko-priority-high-soft: rgb(249 115 22 / 0.16);
+  --tracko-priority-urgent: #ff8c84;
+  --tracko-priority-urgent-soft: rgb(240 68 56 / 0.15);
+
+  --tracko-chart-1: #8a9bff;
+  --tracko-chart-2: #74c8e8;
+  --tracko-chart-3: #5fd0a3;
+  --tracko-chart-4: #f0b45c;
+  --tracko-chart-5: #ff8c84;
+  --tracko-chart-6: #b9a6ff;
+
+  --tracko-focus-ring: 0 0 0 4px rgb(138 155 255 / 0.22);
 }
 
 @theme inline {
@@ -282,6 +328,20 @@ html.dark {
   --color-info: var(--tracko-info);
   --color-info-soft: var(--tracko-info-soft);
   --color-overlay: var(--tracko-overlay);
+  --color-priority-low: var(--tracko-priority-low);
+  --color-priority-low-soft: var(--tracko-priority-low-soft);
+  --color-priority-medium: var(--tracko-priority-medium);
+  --color-priority-medium-soft: var(--tracko-priority-medium-soft);
+  --color-priority-high: var(--tracko-priority-high);
+  --color-priority-high-soft: var(--tracko-priority-high-soft);
+  --color-priority-urgent: var(--tracko-priority-urgent);
+  --color-priority-urgent-soft: var(--tracko-priority-urgent-soft);
+  --color-chart-1: var(--tracko-chart-1);
+  --color-chart-2: var(--tracko-chart-2);
+  --color-chart-3: var(--tracko-chart-3);
+  --color-chart-4: var(--tracko-chart-4);
+  --color-chart-5: var(--tracko-chart-5);
+  --color-chart-6: var(--tracko-chart-6);
 
   --radius-control: 0.625rem;
   --radius-card: 0.75rem;
@@ -291,6 +351,7 @@ html.dark {
   --shadow-e1: 0 1px 2px rgb(31 31 28 / 0.04), 0 1px 3px rgb(31 31 28 / 0.04);
   --shadow-e2: 0 4px 10px -4px rgb(31 31 28 / 0.1), 0 2px 4px -2px rgb(31 31 28 / 0.05);
   --shadow-e3: 0 24px 48px -16px rgb(31 31 28 / 0.22), 0 8px 16px -8px rgb(31 31 28 / 0.1);
+  --shadow-focus: var(--tracko-focus-ring);
 
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -367,7 +428,7 @@ html.dark {
   html.dark { color-scheme: dark; }
   html, body, #root { min-height: 100%; width: 100%; }
   body {
-    @apply relative z-1 overflow-x-hidden bg-canvas font-outfit font-normal antialiased text-fg;
+    @apply relative z-1 overflow-x-hidden bg-canvas font-sans font-normal antialiased text-fg;
     text-rendering: optimizeLegibility;
   }
   ::selection {
@@ -378,7 +439,7 @@ html.dark {
     color: var(--tracko-accent);
   }
   img, svg, video, canvas { max-width: 100%; }
-  :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--tracko-accent); outline-offset: 2px; }
   @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -1013,4 +1074,34 @@ span.flatpickr-weekday,
     opacity: 1;
     transform: scale(1);
   }
+}
+
+@keyframes ui-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility page-enter {
+  animation: ui-page-in 180ms var(--ease-soft);
+}
+
+@keyframes ui-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@utility card-enter {
+  animation: ui-card-in 220ms var(--ease-soft);
 }

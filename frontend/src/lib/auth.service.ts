@@ -15,10 +15,14 @@ export const login = async (
   email: string,
   password: string
 ): Promise<{ user: User; token: string }> => {
-  const res = await api.post("/auth/login", {
-    email,
-    password,
-  });
+  const res = await api.post(
+    "/auth/login",
+    {
+      email,
+      password,
+    },
+    { skipErrorToast: true },
+  );
 
   const token = res.data?.token;
   const user = res.data?.user;

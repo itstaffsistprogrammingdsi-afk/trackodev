@@ -159,10 +159,10 @@ export default function DatePickerField({
         aria-expanded={open}
         type="button"
         onClick={openPicker}
-        className={`w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-left hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${clearable && selected ? "pr-10" : ""}`}
+        className={`w-full flex items-center justify-between gap-2 rounded-control border border-line bg-surface px-3 py-2 text-sm text-left hover:border-accent/30 focus:outline-none focus:ring-2 focus:ring-accent/15 ${clearable && selected ? "pr-10" : ""}`}
       >
-        <span className={selected ? "text-gray-900" : "text-gray-400"}>{displayLabel}</span>
-        <Calendar size={15} className="shrink-0 text-gray-400" />
+        <span className={selected ? "text-fg" : "text-fg-subtle"}>{displayLabel}</span>
+        <Calendar size={15} className="shrink-0 text-fg-subtle" />
       </button>
 
       {clearable && selected && (
@@ -173,7 +173,7 @@ export default function DatePickerField({
             onChange("");
             setOpen(false);
           }}
-          className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-fg-subtle hover:bg-surface-muted hover:text-fg-muted"
         >
           <X size={13} />
         </button>
@@ -183,7 +183,7 @@ export default function DatePickerField({
         <div
           role="dialog"
           aria-label="Pilih tanggal"
-          className={`absolute z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white p-3 shadow-xl ${
+          className={`absolute z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-control border border-line bg-surface p-3 shadow-xl ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
@@ -193,19 +193,19 @@ export default function DatePickerField({
             <button
               type="button"
               onClick={goPrevMonth}
-              className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+              className="rounded-control p-1.5 text-fg-subtle hover:bg-surface-muted"
             >
               <ChevronLeft size={16} />
             </button>
 
-            <span className="text-sm font-medium text-gray-900">
+            <span className="text-sm font-medium text-fg">
               {MONTHS[viewMonth]} {viewYear}
             </span>
 
             <button
               type="button"
               onClick={goNextMonth}
-              className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+              className="rounded-control p-1.5 text-fg-subtle hover:bg-surface-muted"
             >
               <ChevronRight size={16} />
             </button>
@@ -214,7 +214,7 @@ export default function DatePickerField({
           {/* WEEKDAYS */}
           <div className="grid grid-cols-7 gap-1 mb-1">
             {WEEKDAYS.map((w) => (
-              <div key={w} className="text-center text-[11px] text-gray-400 py-1">
+              <div key={w} className="text-center text-2xs text-fg-subtle py-1">
                 {w}
               </div>
             ))}
@@ -240,15 +240,15 @@ export default function DatePickerField({
                   onClick={() => pickDay(day)}
                   disabled={isDisabled}
                   className={`
-                    h-8 rounded-lg text-sm transition
+                    h-8 rounded-control text-sm transition
                     ${
                       isSelected
-                        ? "bg-blue-600 text-white font-semibold"
+                        ? "bg-accent text-accent-fg font-semibold"
                         : isDisabled
-                        ? "cursor-not-allowed text-gray-300"
+                        ? "cursor-not-allowed text-fg-subtle"
                         : isToday
-                        ? "border border-blue-300 text-blue-600 font-medium hover:bg-blue-50"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "border border-accent/30 text-accent font-medium hover:bg-accent-soft"
+                        : "text-fg-muted hover:bg-surface-muted"
                     }
                   `}
                 >
@@ -259,11 +259,11 @@ export default function DatePickerField({
           </div>
 
           {/* FOOTER */}
-          <div className="mt-2 pt-2 border-t border-gray-100 text-center">
+          <div className="mt-2 pt-2 border-t border-line text-center">
             <button
               type="button"
               onClick={goToToday}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700"
+              className="text-xs font-medium text-accent hover:text-accent-strong"
             >
               Hari ini
             </button>

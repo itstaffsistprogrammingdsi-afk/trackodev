@@ -399,7 +399,7 @@ export default function CreateFormBuilderPage() {
 
   return (
     <div className="w-full pb-28">
-      <div className="mx-auto w-full max-w-7xl">
+      <div className="w-full">
         {/* ================================================= */}
         {/* PAGE HEADER */}
         {/* ================================================= */}

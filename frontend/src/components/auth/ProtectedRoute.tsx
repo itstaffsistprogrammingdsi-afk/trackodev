@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 
 export default function ProtectedRoute({
   children,
@@ -7,9 +7,16 @@ export default function ProtectedRoute({
   children: React.ReactNode;
 }) {
   const token = localStorage.getItem("token");
+  const location = useLocation();
 
   if (!token) {
-    return <Navigate to="/signin" replace />;
+    const redirect = `${location.pathname}${location.search}`;
+    return (
+      <Navigate
+        to={`/signin?redirect=${encodeURIComponent(redirect)}`}
+        replace
+      />
+    );
   }
 
   return children;

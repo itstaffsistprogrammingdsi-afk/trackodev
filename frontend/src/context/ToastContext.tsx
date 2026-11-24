@@ -103,31 +103,31 @@ const variantStyles: Record<
 > = {
   success: {
     icon: CheckCircle2,
-    iconClass: "text-emerald-600 dark:text-emerald-300",
-    iconBackground: "bg-emerald-50 dark:bg-emerald-500/15",
-    border: "border-emerald-200/80 dark:border-emerald-500/25",
-    progress: "bg-emerald-500",
+    iconClass: "text-success",
+    iconBackground: "bg-success-soft",
+    border: "border-success/20",
+    progress: "bg-success",
   },
   error: {
     icon: AlertCircle,
-    iconClass: "text-rose-600 dark:text-rose-300",
-    iconBackground: "bg-rose-50 dark:bg-rose-500/15",
-    border: "border-rose-200/80 dark:border-rose-500/25",
-    progress: "bg-rose-500",
+    iconClass: "text-danger",
+    iconBackground: "bg-danger-soft",
+    border: "border-danger/20",
+    progress: "bg-danger",
   },
   warning: {
     icon: TriangleAlert,
-    iconClass: "text-amber-600 dark:text-amber-300",
-    iconBackground: "bg-amber-50 dark:bg-amber-500/15",
-    border: "border-amber-200/80 dark:border-amber-500/25",
-    progress: "bg-amber-500",
+    iconClass: "text-warning",
+    iconBackground: "bg-warning-soft",
+    border: "border-warning/20",
+    progress: "bg-warning",
   },
   info: {
     icon: Info,
-    iconClass: "text-blue-600 dark:text-blue-300",
-    iconBackground: "bg-blue-50 dark:bg-blue-500/15",
-    border: "border-blue-200/80 dark:border-blue-500/25",
-    progress: "bg-blue-500",
+    iconClass: "text-info",
+    iconBackground: "bg-info-soft",
+    border: "border-info/20",
+    progress: "bg-info",
   },
 };
 
@@ -213,33 +213,34 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={toast.id}
               role="alert"
-              className={`pointer-events-auto relative w-full overflow-hidden rounded-2xl border bg-white/95 p-4 shadow-xl shadow-slate-900/10 backdrop-blur-xl animate-in slide-in-from-right-4 fade-in duration-300 dark:bg-slate-900/95 ${style.border}`}
+              style={{ animation: "ui-toast-in 180ms ease-out" }}
+              className={`pointer-events-auto relative w-full overflow-hidden rounded-card border bg-surface/95 p-4 shadow-e3 backdrop-blur-sm ${style.border}`}
             >
               <div className="flex items-start gap-3">
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${style.iconBackground}`}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-control ${style.iconBackground}`}
                 >
                   <Icon size={19} className={style.iconClass} aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                  <p className="text-sm font-medium text-fg">
                     {toast.title}
                   </p>
-                  <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                  <p className="mt-1 text-sm leading-5 text-fg-muted">
                     {toast.message}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => dismissToast(toast.id)}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   aria-label="Tutup pemberitahuan"
                 >
                   <X size={16} aria-hidden="true" />
                 </button>
               </div>
               <div
-                className={`absolute inset-x-0 bottom-0 h-0.5 ${style.progress}`}
+                className={`absolute inset-x-0 bottom-0 h-0.5 opacity-70 ${style.progress}`}
                 aria-hidden="true"
               />
             </div>
