@@ -7,6 +7,7 @@ import ProfileCard from "../components/ProfileCard";
 import PasswordCard from "../components/PasswordCard";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/Skeleton";
+import PageHeader from "@/components/layout/PageHeader";
 
 export default function EditAccountPage() {
   const { can } = useAuth();
@@ -23,12 +24,11 @@ export default function EditAccountPage() {
           Kembali
         </Link>
 
-        <h1 className="mt-3 text-2xl font-semibold tracking-[-0.02em] text-fg">
-          Pengaturan akun
-        </h1>
-        <p className="mt-1 text-sm text-fg-muted">
-          Kelola foto profil, informasi pribadi, dan kata sandi Anda.
-        </p>
+        <PageHeader
+          className="mt-3"
+          title="Pengaturan akun"
+          description="Kelola foto profil, informasi pribadi, dan kata sandi Anda."
+        />
       </div>
 
       {isLoading && (

@@ -121,15 +121,15 @@ export default function AttachmentPanel() {
     : attachments.slice(0, MAX_VISIBLE);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white">
+    <div className="rounded-panel border border-line bg-surface">
 
       {/* HEADER */}
-      <div className="border-b border-gray-100 p-5">
-        <h2 className="text-base font-semibold text-gray-900">
+      <div className="border-b border-line p-5">
+        <h2 className="text-base font-semibold text-fg">
           Attachments
         </h2>
 
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-fg-subtle mt-1">
           {periodLabel ? `Periode: ${periodLabel}` : "Files, links, uploads tracking"}
         </p>
 
@@ -143,8 +143,8 @@ export default function AttachmentPanel() {
                 flex-1 rounded-full px-3 py-1.5 text-xs border transition
                 ${
                   type === opt.key
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    ? "bg-accent text-accent-fg border-accent shadow-e1"
+                    : "bg-surface text-fg-muted border-line hover:bg-surface-muted/50"
                 }
               `}
             >
@@ -163,7 +163,7 @@ export default function AttachmentPanel() {
         {type === "monthly" && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="attachment-start-date" className="mb-1 block text-xs text-gray-500">
+              <label htmlFor="attachment-start-date" className="mb-1 block text-xs text-fg-subtle">
                 Tanggal Awal
               </label>
               <DatePickerField
@@ -174,7 +174,7 @@ export default function AttachmentPanel() {
             </div>
 
             <div>
-              <label htmlFor="attachment-end-date" className="mb-1 block text-xs text-gray-500">
+              <label htmlFor="attachment-end-date" className="mb-1 block text-xs text-fg-subtle">
                 Tanggal Akhir
               </label>
               <DatePickerField
@@ -188,7 +188,7 @@ export default function AttachmentPanel() {
         )}
 
         {monthlyRangeInvalid && (
-          <p className="mt-2 text-xs text-red-600">
+          <p className="mt-2 text-xs text-danger">
             Tanggal akhir tidak boleh lebih awal dari tanggal awal.
           </p>
         )}
@@ -198,7 +198,7 @@ export default function AttachmentPanel() {
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-control border border-line bg-surface px-3 py-2 text-sm cursor-pointer hover:border-accent/30 focus:outline-none focus:ring-2 focus:ring-accent/15"
             >
               {YEAR_OPTIONS.map((y) => (
                 <option key={y} value={y}>
@@ -221,19 +221,19 @@ export default function AttachmentPanel() {
       <div className="p-5 space-y-3">
 
         {monthlyRangeInvalid ? (
-          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-6 text-center">
-            <p className="text-sm font-medium text-red-700">Rentang tanggal belum valid</p>
-            <p className="mt-1 text-xs text-red-500">Perbaiki tanggal untuk menampilkan attachment.</p>
+          <div className="rounded-control border border-danger/20 bg-danger-soft px-4 py-6 text-center">
+            <p className="text-sm font-medium text-danger">Rentang tanggal belum valid</p>
+            <p className="mt-1 text-xs text-danger">Perbaiki tanggal untuk menampilkan attachment.</p>
           </div>
         ) : loading ? (
-          <div className="flex items-center justify-center gap-2 py-10 text-sm text-gray-400">
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-fg-subtle">
             <Loader2 size={16} className="animate-spin" />
             Memuat attachment...
           </div>
         ) : error ? (
-          <p className="text-sm text-red-500">{error}</p>
+          <p className="text-sm text-danger">{error}</p>
         ) : attachments.length === 0 ? (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-fg-subtle">
             Tidak ada attachment untuk periode ini
           </p>
         ) : (
@@ -246,9 +246,9 @@ export default function AttachmentPanel() {
                 rel="noreferrer"
                 className="
                   flex items-center justify-between gap-4
-                  rounded-xl border border-gray-100
+                  rounded-control border border-line
                   p-3 min-h-[92px]
-                  hover:bg-gray-50 transition
+                  hover:bg-surface-muted/50 transition
                 "
               >
 
@@ -261,15 +261,15 @@ export default function AttachmentPanel() {
                   />
 
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-gray-900">
+                    <p className="truncate text-sm font-medium text-fg">
                       {attachment.file_name ?? "Untitled file"}
                     </p>
 
-                    <p className="truncate text-xs text-gray-500">
+                    <p className="truncate text-xs text-fg-subtle">
                       {attachment.card_title ?? "No related card"}
                     </p>
 
-                    <p className="text-[11px] text-gray-400 leading-none mt-1">
+                    <p className="text-2xs text-fg-subtle leading-none mt-1">
                       Uploaded: {formatDate(attachment.created_at)}
                     </p>
                   </div>
@@ -278,11 +278,11 @@ export default function AttachmentPanel() {
 
                 {/* RIGHT */}
                 <div className="flex shrink-0 flex-col items-end leading-tight">
-                  <p className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                  <p className="text-sm font-medium text-fg-muted whitespace-nowrap">
                     {(attachment.file_size_kb ?? 0).toFixed(1)} KB
                   </p>
 
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-fg-subtle">
                     {attachment.attachment_type}
                   </span>
                 </div>
@@ -295,7 +295,7 @@ export default function AttachmentPanel() {
               <div className="text-center pt-2">
                 <button
                   onClick={() => setExpanded(!expanded)}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                  className="text-sm font-medium text-accent hover:text-accent-strong"
                 >
                   {expanded
                     ? "Show Less"
@@ -316,9 +316,9 @@ export default function AttachmentPanel() {
 ========================= */
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-gray-100 p-2 text-center min-h-[54px] flex flex-col justify-center">
-      <p className="text-[11px] text-gray-500">{label}</p>
-      <p className="text-base font-bold text-gray-900">{value}</p>
+    <div className="rounded-control border border-line p-2 text-center min-h-[54px] flex flex-col justify-center">
+      <p className="text-2xs text-fg-subtle">{label}</p>
+      <p className="text-base font-semibold text-fg">{value}</p>
     </div>
   );
 }
@@ -342,13 +342,13 @@ function FilePreview({
       <img
         src={url}
         alt="preview"
-        className="h-10 w-10 rounded-lg object-cover border border-gray-200 shrink-0"
+        className="h-10 w-10 rounded-control object-cover border border-line shrink-0"
       />
     );
   }
 
   return (
-    <div className="h-10 w-10 flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-500 text-xs shrink-0">
+    <div className="h-10 w-10 flex items-center justify-center rounded-control border border-line bg-surface-muted/50 text-fg-subtle text-xs shrink-0">
       📎
     </div>
   );

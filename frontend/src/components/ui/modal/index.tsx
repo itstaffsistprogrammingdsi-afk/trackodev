@@ -38,38 +38,46 @@ export const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
+      const timer = window.setTimeout(() => modalRef.current?.focus(), 20);
+      return () => {
+        window.clearTimeout(timer);
+        document.body.style.overflow = "unset";
+      };
     }
 
-    return () => {
-      document.body.style.overflow = "unset";
-    };
+    document.body.style.overflow = "unset";
+    return undefined;
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const contentClasses = isFullscreen
     ? "w-full h-full"
-    : "relative max-h-[100dvh] w-full overflow-y-auto rounded-t-3xl bg-white dark:bg-gray-900 sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl";
+    : "relative max-h-[100dvh] w-full overflow-y-auto rounded-t-modal border border-line bg-surface shadow-e3 sm:max-h-[calc(100dvh-2rem)] sm:rounded-modal";
 
   return (
     <div className="modal fixed inset-0 z-99999 flex items-end justify-center overflow-y-auto overscroll-contain p-0 sm:items-center sm:p-4">
       {!isFullscreen && (
         <div
-          className="fixed inset-0 h-full w-full bg-gray-400/50 backdrop-blur-[32px]"
+          className="fixed inset-0 h-full w-full bg-overlay backdrop-blur-sm"
           onClick={onClose}
+          aria-hidden="true"
         ></div>
       )}
       <div
         ref={modalRef}
-        className={`${contentClasses}  ${className}`}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+        style={{ animation: "ui-scale-in 160ms ease-out" }}
+        className={`${contentClasses} ${className ?? ""}`}
         onClick={(e) => e.stopPropagation()}
       >
         {showCloseButton && (
           <button
             onClick={onClose}
-            className="absolute right-3 top-3 z-999 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white sm:right-6 sm:top-6 sm:h-11 sm:w-11"
+            aria-label="Tutup"
+            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:right-4 sm:top-4"
           >
             <svg
               width="24"

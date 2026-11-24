@@ -72,7 +72,7 @@ export default function FormResponsesPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-[1600px] space-y-6" role="status" aria-busy="true">
+      <div className="w-full space-y-6" role="status" aria-busy="true">
         <span className="sr-only">Memuat respons form</span>
         <Skeleton className="h-4 w-28" />
         <div className="space-y-4 rounded-panel border border-line bg-surface p-5 sm:p-6">
@@ -95,7 +95,7 @@ export default function FormResponsesPage() {
 
   if (error) {
     return (
-      <div className="mx-auto w-full max-w-[1600px]">
+      <div className="w-full">
         <EmptyState
           icon={FileX2}
           title="Gagal memuat respons"
@@ -108,7 +108,7 @@ export default function FormResponsesPage() {
 
   if (!form) {
     return (
-      <div className="mx-auto w-full max-w-[1600px]">
+      <div className="w-full">
         <EmptyState
           icon={FileX2}
           title="Form tidak ditemukan"
@@ -120,7 +120,7 @@ export default function FormResponsesPage() {
 
   return (
     <div className="w-full">
-      <div className="mx-auto max-w-[1600px] space-y-6">
+      <div className="w-full space-y-6">
         <ResponseHeader form={form} total={submissions.length} />
 
         {submissions.length === 0 ? (

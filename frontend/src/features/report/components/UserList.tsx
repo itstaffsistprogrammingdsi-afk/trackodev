@@ -2,10 +2,45 @@ import React from 'react';
 import { User, FilterParams } from '../types';
 import { useAuth } from '@/context/AuthContext';
 import EmptyState from '@/components/ui/EmptyState';
-import { Eye,
-  // FileText,
-   Download, FileSpreadsheet,
-   User as UserIcon} from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronDown,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  Search,
+  User as UserIcon,
+  X,
+} from 'lucide-react';
+
+const filterControlClass =
+  'h-10 w-full rounded-control border border-line bg-surface text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15';
+
+const filterSelectClass = `${filterControlClass} cursor-pointer appearance-none pl-3 pr-9`;
+const filterDateClass = `${filterControlClass} cursor-pointer pl-10 pr-3`;
+const filterSearchClass = `${filterControlClass} pl-10 pr-10`;
+
+function FilterField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label
+        htmlFor={htmlFor}
+        className="block text-[11px] font-medium text-fg-muted"
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 interface UserListProps {
   users: User[];
@@ -121,113 +156,235 @@ export const UserList: React.FC<UserListProps> = ({
           </div>
         ) : null}
 
-        {/* Filter Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          <input
-            type="search"
-            placeholder="Cari nama atau email"
-            aria-label="Cari nama atau email anggota"
-            value={filters.search || ''}
-            onChange={(e) => onFilterChange({ search: e.target.value })}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
-          />
-
-          <div className="relative flex items-center group">
-            <div className="absolute left-3.5 pointer-events-none text-fg-subtle group-focus-within:text-accent transition-colors z-10">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+        {/* PENCARIAN ANGGOTA */}
+        <div role="search" className="mt-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="w-full max-w-xl">
+              <label
+                htmlFor="report-user-search"
+                className="mb-1.5 block text-xs font-medium text-fg"
+              >
+                Cari anggota
+              </label>
+              <div className="relative">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+                <input
+                  id="report-user-search"
+                  type="search"
+                  autoComplete="off"
+                  placeholder="Nama atau email anggota"
+                  value={filters.search || ''}
+                  onChange={(e) => onFilterChange({ search: e.target.value })}
+                  aria-describedby="report-user-search-hint"
+                  className="h-11 w-full rounded-control border border-line bg-surface pl-10 pr-10 text-sm text-fg shadow-e1 outline-none transition-colors placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15 [&::-webkit-search-cancel-button]:hidden"
+                />
+                {filters.search ? (
+                  <button
+                    type="button"
+                    onClick={() => onFilterChange({ search: '' })}
+                    aria-label="Hapus pencarian anggota"
+                    className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[8px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  >
+                    <X aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+              <p
+                id="report-user-search-hint"
+                className="mt-1.5 text-[11px] text-fg-subtle"
+              >
+                Nama atau email. Daftar diperbarui otomatis saat Anda mengetik.
+              </p>
             </div>
-            <input
-              type="date"
-              aria-label="Tanggal mulai periode hasil kerja"
-              title="Tanggal mulai periode hasil kerja"
-              aria-invalid={dateRangeInvalid ? "true" : "false"}
-              max={filters.end_date || undefined}
-              value={filters.start_date || ''}
-              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              onChange={(e) => onFilterChange({ start_date: e.target.value })}
-              className="h-10 w-full cursor-pointer rounded-control border border-line bg-surface pl-10 pr-3 text-sm text-fg outline-none transition-colors focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
-            />
+
+            <p aria-live="polite" className="text-xs text-fg-subtle">
+              {pagination.total.toLocaleString('id-ID')} anggota
+            </p>
+          </div>
+        </div>
+
+        {/* FILTER LAINNYA */}
+        <div className="mt-5 border-t border-line pt-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-xs font-medium text-fg">Filter laporan</h2>
+            <span className="text-[11px] text-fg-subtle">Opsional</span>
           </div>
 
-          <div className="relative flex items-center group">
-            <div className="absolute left-3.5 pointer-events-none text-fg-subtle group-focus-within:text-accent transition-colors z-10">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <input
-              type="date"
-              aria-label="Tanggal akhir periode hasil kerja"
-              title="Tanggal akhir periode hasil kerja"
-              aria-invalid={dateRangeInvalid ? "true" : "false"}
-              min={filters.start_date || undefined}
-              value={filters.end_date || ''}
-              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              onChange={(e) => onFilterChange({ end_date: e.target.value })}
-              className="h-10 w-full cursor-pointer rounded-control border border-line bg-surface pl-10 pr-3 text-sm text-fg outline-none transition-colors focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <FilterField label="Tanggal mulai" htmlFor="report-start-date">
+              <div className="relative">
+                <CalendarDays
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+                <input
+                  id="report-start-date"
+                  type="date"
+                  aria-label="Tanggal mulai periode hasil kerja"
+                  title="Tanggal mulai periode hasil kerja"
+                  aria-invalid={dateRangeInvalid}
+                  max={filters.end_date || undefined}
+                  value={filters.start_date || ''}
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                  onChange={(e) => onFilterChange({ start_date: e.target.value })}
+                  className={filterDateClass}
+                />
+              </div>
+            </FilterField>
+
+            <FilterField label="Tanggal selesai" htmlFor="report-end-date">
+              <div className="relative">
+                <CalendarDays
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+                <input
+                  id="report-end-date"
+                  type="date"
+                  aria-label="Tanggal akhir periode hasil kerja"
+                  title="Tanggal akhir periode hasil kerja"
+                  aria-invalid={dateRangeInvalid}
+                  min={filters.start_date || undefined}
+                  value={filters.end_date || ''}
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                  onChange={(e) => onFilterChange({ end_date: e.target.value })}
+                  className={filterDateClass}
+                />
+              </div>
+            </FilterField>
+
+            <FilterField label="Divisi" htmlFor="report-division">
+              <div className="relative">
+                <select
+                  id="report-division"
+                  value={filters.division_id || ''}
+                  onChange={(e) => onFilterChange({ division_id: e.target.value })}
+                  className={filterSelectClass}
+                >
+                  <option value="">Semua divisi</option>
+                  {masterData.divisions.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+              </div>
+            </FilterField>
+
+            <FilterField label="Workspace" htmlFor="report-workspace">
+              <div className="relative">
+                <select
+                  id="report-workspace"
+                  value={filters.workspace_id || ''}
+                  onChange={(e) => onFilterChange({ workspace_id: e.target.value })}
+                  className={filterSelectClass}
+                >
+                  <option value="">Semua workspace</option>
+                  {masterData.workspaces.map((w) => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+              </div>
+            </FilterField>
+
+            <FilterField label="Campaign" htmlFor="report-campaign">
+              <div className="relative">
+                <select
+                  id="report-campaign"
+                  value={filters.campaign_id || ''}
+                  onChange={(e) => onFilterChange({ campaign_id: e.target.value })}
+                  className={filterSelectClass}
+                >
+                  <option value="">Semua campaign</option>
+                  {masterData.campaigns.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+              </div>
+            </FilterField>
+
+            <FilterField label="Brand" htmlFor="report-brand">
+              <div className="relative">
+                <select
+                  id="report-brand"
+                  value={filters.brand_id || ''}
+                  onChange={(e) => onFilterChange({ brand_id: e.target.value })}
+                  className={filterSelectClass}
+                >
+                  <option value="">Semua brand</option>
+                  {masterData.brands.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+              </div>
+            </FilterField>
+
+            <FilterField label="Label" htmlFor="report-label">
+              <div className="relative">
+                <select
+                  id="report-label"
+                  value={filters.label_id || ''}
+                  onChange={(e) => onFilterChange({ label_id: e.target.value })}
+                  className={filterSelectClass}
+                >
+                  <option value="">Semua label</option>
+                  {masterData.labels.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+              </div>
+            </FilterField>
+
+            <FilterField label="Judul card" htmlFor="report-card-search">
+              <div className="relative">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                />
+                <input
+                  id="report-card-search"
+                  type="search"
+                  autoComplete="off"
+                  placeholder="Cari judul card"
+                  aria-label="Cari judul card"
+                  value={filters.search_card || ''}
+                  onChange={(e) => onFilterChange({ search_card: e.target.value })}
+                  className={`${filterSearchClass} [&::-webkit-search-cancel-button]:hidden`}
+                />
+                {filters.search_card ? (
+                  <button
+                    type="button"
+                    onClick={() => onFilterChange({ search_card: '' })}
+                    aria-label="Hapus pencarian judul card"
+                    className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  >
+                    <X aria-hidden="true" className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
+            </FilterField>
           </div>
-
-          <select
-            aria-label="Filter divisi"
-            value={filters.division_id || ''}
-            onChange={(e) => onFilterChange({ division_id: e.target.value })}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15 bg-white cursor-pointer"
-          >
-            <option value="">Semua Divisi</option>
-            {masterData.divisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-
-          <select
-            aria-label="Filter workspace"
-            value={filters.workspace_id || ''}
-            onChange={(e) => onFilterChange({ workspace_id: e.target.value })}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15 bg-white cursor-pointer"
-          >
-            <option value="">Semua Workspace</option>
-            {masterData.workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-          </select>
-
-          <select
-            aria-label="Filter campaign"
-            value={filters.campaign_id || ''}
-            onChange={(e) => onFilterChange({ campaign_id: e.target.value })}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15 bg-white cursor-pointer"
-          >
-            <option value="">Semua Campaign</option>
-            {masterData.campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-
-          <select
-            aria-label="Filter brand"
-            value={filters.brand_id || ''}
-            onChange={(e) => onFilterChange({ brand_id: e.target.value })}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15 bg-white cursor-pointer"
-          >
-            <option value="">Semua Brand</option>
-            {masterData.brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-
-          <select
-            aria-label="Filter label"
-            value={filters.label_id || ''}
-            onChange={(e) => onFilterChange({ label_id: e.target.value })}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15 bg-white cursor-pointer"
-          >
-            <option value="">Semua Label</option>
-            {masterData.labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-
-          <input
-            type="search"
-            placeholder="Cari judul card"
-            aria-label="Cari judul card"
-            value={filters.search_card || ''}
-            onChange={(e) => onFilterChange({ search_card: e.target.value })}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
-          />
         </div>
 
         {dateRangeInvalid ? (
@@ -271,7 +428,7 @@ export const UserList: React.FC<UserListProps> = ({
                   <th scope="col" className="px-6 py-4 text-right rounded-tr-2xl">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="block space-y-3 p-3 sm:table-row-group sm:space-y-0 sm:divide-y sm:divide-gray-100 sm:p-0">
+              <tbody className="block space-y-3 p-3 sm:table-row-group sm:space-y-0 sm:divide-y sm:divide-line sm:p-0">
                 {users.map((user) => (
                   <tr
                     key={user.id}
@@ -286,7 +443,14 @@ export const UserList: React.FC<UserListProps> = ({
                           <p className="font-medium text-fg">
                             {user.name}
                           </p>
-                          <p className="mt-0.5 text-[11px] text-fg-muted">Lihat Laporan Pekerjaan</p>
+                          <p className="mt-0.5 truncate text-2xs text-fg-muted">
+                            {user.email}
+                          </p>
+                          {user.divisions?.length ? (
+                            <p className="mt-0.5 truncate text-2xs text-fg-subtle">
+                              {user.divisions.map((division) => division.name).join(" · ")}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -375,17 +539,17 @@ export const UserList: React.FC<UserListProps> = ({
           <button
             disabled={pagination.current_page <= 1}
             onClick={() => onFilterChange({ page: pagination.current_page - 1 })}
-            className="h-8 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
+            className="h-9 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
           >
             Sebelumnya
           </button>
-          <span className="inline-flex h-8 items-center rounded-control bg-accent-soft px-3 text-xs font-medium text-accent">
+          <span className="inline-flex h-9 items-center rounded-control bg-accent-soft px-3 text-xs font-medium text-accent">
             {pagination.current_page} / {pagination.last_page}
           </span>
           <button
             disabled={pagination.current_page >= pagination.last_page}
             onClick={() => onFilterChange({ page: pagination.current_page + 1 })}
-            className="h-8 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
+            className="h-9 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
           >
             Selanjutnya
           </button>

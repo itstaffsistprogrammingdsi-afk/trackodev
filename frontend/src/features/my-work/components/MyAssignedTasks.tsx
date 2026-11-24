@@ -137,7 +137,7 @@ function DivisionLabel({ card }: { card: Card }) {
   if (!label) return null;
 
   return (
-    <div className="flex items-center gap-1.5 px-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+    <div className="flex items-center gap-1.5 px-1 text-2xs font-semibold text-fg-subtle dark:text-fg-muted">
       <Building2 size={12} aria-hidden="true" />
       <span className="truncate">{label}</span>
     </div>
@@ -157,7 +157,7 @@ function OwnerClaimRow({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-1">
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+      <span className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning-soft px-2 py-0.5 text-2xs font-semibold text-warning dark:border-warning/30 dark:bg-warning-soft dark:text-warning">
         <UserRound size={11} aria-hidden="true" />
         Belum ada pemilik
         {card.created_by?.name ? ` · dibuat oleh ${card.created_by.name}` : ""}
@@ -166,7 +166,7 @@ function OwnerClaimRow({
         type="button"
         disabled={claimingCardId === card.id}
         onClick={() => void onClaimCard(card)}
-        className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
+        className="rounded-full border border-accent/20 bg-accent-soft px-2 py-0.5 text-2xs font-semibold text-accent transition hover:bg-accent-soft disabled:opacity-50 dark:border-accent/30 dark:bg-accent-soft dark:text-accent"
       >
         {claimingCardId === card.id ? "Mengambil..." : "Ambil"}
       </button>
@@ -231,12 +231,12 @@ function MyTaskGroupRow({
     <div className="space-y-1.5">
       <DivisionLabel card={representative} />
 
-      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-2 dark:border-slate-800 dark:bg-slate-950/30">
+      <div className="rounded-panel border border-line bg-surface-muted/50 p-2 dark:border-line dark:bg-surface-muted/30">
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          className="mb-2 flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1 text-left text-[10px] font-semibold text-violet-600 transition hover:bg-slate-100 dark:text-violet-300 dark:hover:bg-slate-800/60"
+          className="mb-2 flex w-full items-center gap-1.5 rounded-control px-1.5 py-1 text-left text-2xs font-semibold text-accent transition hover:bg-surface-muted dark:text-accent dark:hover:bg-surface-muted/60"
         >
           <ArrowRightLeft size={12} aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate">
@@ -266,7 +266,7 @@ function MyTaskGroupRow({
           ? siblings.map((card) => (
               <div
                 key={card.id}
-                className="mt-2 space-y-1.5 border-t border-slate-200/80 pt-2 dark:border-slate-800"
+                className="mt-2 space-y-1.5 border-t border-line pt-2 dark:border-line"
               >
                 <DivisionLabel card={card} />
                 <OwnerClaimRow
@@ -309,21 +309,21 @@ function MyTaskColumn({
   return (
     <section
       ref={setNodeRef}
-      className={`flex max-h-[min(50vh,460px)] w-[85vw] max-w-[340px] shrink-0 flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-3 shadow-theme-sm transition-all duration-200 hover:shadow-theme-md sm:w-[340px] sm:max-w-none dark:border-slate-800 dark:bg-slate-900 ${
-        isOver ? "border-indigo-300 shadow-theme-md ring-2 ring-indigo-400/30 dark:border-indigo-700" : ""
+      className={`flex max-h-[min(50vh,460px)] w-[85vw] max-w-[340px] shrink-0 flex-col overflow-hidden rounded-panel border border-line bg-surface p-3 shadow-e1 transition-all duration-200 hover:shadow-e2 sm:w-[340px] sm:max-w-none dark:border-line dark:bg-surface ${
+        isOver ? "border-accent/30 shadow-e2 ring-2 ring-accent/30 dark:border-accent/30" : ""
       }`}
     >
       <header className="mb-3 flex items-center justify-between gap-3 px-1">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-control bg-surface-muted text-fg-subtle dark:bg-surface-muted dark:text-fg-muted">
             <Icon size={16} aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h3 className="text-sm font-bold">{column.label}</h3>
-            <p className="text-[11px] font-medium opacity-75">{column.description}</p>
+            <h3 className="text-sm font-semibold">{column.label}</h3>
+            <p className="text-2xs font-medium opacity-75">{column.description}</p>
           </div>
         </div>
-        <span className="grid h-6 min-w-6 place-items-center rounded-full bg-slate-100 px-1.5 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        <span className="grid h-6 min-w-6 place-items-center rounded-full bg-surface-muted px-1.5 text-xs font-semibold text-fg-muted dark:bg-surface-muted dark:text-fg">
           {groups.length}
         </span>
       </header>
@@ -332,7 +332,7 @@ function MyTaskColumn({
         items={groups.map((group) => group.representative.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="min-h-24 flex-1 space-y-3 overflow-y-auto rounded-xl pr-1 custom-scrollbar">
+        <div className="min-h-24 flex-1 space-y-3 overflow-y-auto rounded-control pr-1 custom-scrollbar">
           {groups.map((group) => (
             <MyTaskGroupRow
               key={group.key}
@@ -345,7 +345,7 @@ function MyTaskColumn({
           ))}
 
           {groups.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-current/25 bg-white/35 px-3 py-8 text-center text-xs font-medium opacity-70 dark:bg-slate-950/20">
+            <div className="rounded-control border border-dashed border-current/25 bg-surface/35 px-3 py-8 text-center text-xs font-medium opacity-70 dark:bg-surface-muted/20">
               Tidak ada tugas
             </div>
           ) : null}
@@ -585,7 +585,7 @@ export default function MyAssignedTasks() {
             Semua card yang ditugaskan langsung kepada Anda, termasuk dari divisi lain. Card tanpa pemilik di campaign Anda juga tampil agar bisa diambil.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 self-start rounded-control bg-surface-muted px-2.5 py-1.5 text-[11px] font-medium text-fg-muted sm:self-auto">
+        <div className="inline-flex items-center gap-2 self-start rounded-control bg-surface-muted px-2.5 py-1.5 text-2xs font-medium text-fg-muted sm:self-auto">
           {isFetching && !isLoading ? (
             <Loader2 className="animate-spin motion-reduce:animate-none" size={13} aria-hidden="true" />
           ) : null}
@@ -593,7 +593,7 @@ export default function MyAssignedTasks() {
         </div>
       </header>
 
-      <div className="border-b border-line bg-surface-muted/50 px-5 py-3 text-[11px] leading-5 text-fg-muted sm:px-6">
+      <div className="border-b border-line bg-surface-muted/50 px-5 py-3 text-2xs leading-5 text-fg-muted sm:px-6">
         Tampilan ini adalah pintasan ke card asli, bukan salinan. Saat status dipindahkan di sini, board pemilik campaign juga langsung ikut berubah. Kartu lintas divisi digabung menjadi satu grup (asli + salinan); tekan grupnya untuk melihat semua.
       </div>
 
@@ -651,12 +651,12 @@ export default function MyAssignedTasks() {
                     {activeDragCard.title}
                   </span>
                   {activeDragCard.priority ? (
-                    <span className="shrink-0 rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-medium capitalize text-warning">
+                    <span className="shrink-0 rounded-full bg-warning-soft px-2 py-0.5 text-2xs font-medium capitalize text-warning">
                       {activeDragCard.priority}
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-1.5 text-[11px] font-medium text-accent">
+                <div className="mt-1.5 text-2xs font-medium text-accent">
                   Memindahkan tugas
                 </div>
               </div>

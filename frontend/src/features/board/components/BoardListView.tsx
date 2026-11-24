@@ -17,8 +17,8 @@ interface Props {
 
 const priorityDot: Record<string, string> = {
   low: "bg-success",
-  medium: "bg-amber-500",
-  high: "bg-orange-500",
+  medium: "bg-priority-medium",
+  high: "bg-priority-high",
   urgent: "bg-danger",
 };
 

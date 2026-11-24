@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 
@@ -23,6 +23,7 @@ export default function PermissionRoute({
     hasRole,
   } = useAuth();
   const { showToast } = useToast();
+  const location = useLocation();
 
   const fallbackPath = can("dashboard.view") ? "/dashboard" : "/my-work";
   const accessDenied = Boolean(
@@ -50,9 +51,10 @@ export default function PermissionRoute({
 
   // belum login
   if (!user) {
+    const redirect = `${location.pathname}${location.search}`;
     return (
       <Navigate
-        to="/signin"
+        to={`/signin?redirect=${encodeURIComponent(redirect)}`}
         replace
       />
     );

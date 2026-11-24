@@ -1,4 +1,4 @@
-import { X, Users } from "lucide-react";
+import { Users, X } from "lucide-react";
 
 import DivisionMembers from "../members/DivisionMembers";
 import type { Division } from "../../types";
@@ -14,83 +14,35 @@ export default function ManageDivisionMembersModal({
   division,
   onClose,
 }: Props) {
-  if (!open || !division) {
-    return null;
-  }
+  if (!open || !division) return null;
 
   return (
     <div
-      className="
-        fixed
-        inset-0
-        z-50
-        flex
-        items-center
-        justify-center
-        bg-black/60
-        backdrop-blur-sm
-        p-4
-      "
+      className="fixed inset-0 z-50 flex items-end justify-center bg-overlay p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="
-          bg-white
-          rounded-2xl
-          shadow-2xl
-          w-full
-          max-w-5xl
-          max-h-[90vh]
-          overflow-hidden
-          flex
-          flex-col
-        "
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manage-members-title"
+        onClick={(event) => event.stopPropagation()}
+        style={{ animation: "ui-scale-in 160ms ease-out" }}
+        className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-panel border border-line bg-surface shadow-e3 sm:rounded-panel"
       >
-        {/* Header */}
-        <div
-          className="
-            flex
-            items-center
-            justify-between
-            px-6
-            py-5
-            border-b
-            bg-gray-50
-          "
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="
-                h-11
-                w-11
-                rounded-xl
-                bg-blue-100
-                flex
-                items-center
-                justify-center
-              "
-            >
-              <Users className="h-5 w-5" />
-            </div>
+        <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+              <Users aria-hidden="true" className="h-5 w-5" />
+            </span>
 
-            <div>
+            <div className="min-w-0">
               <h2
-                className="
-                  text-xl
-                  font-semibold
-                  text-gray-900
-                "
+                id="manage-members-title"
+                className="truncate text-base font-semibold tracking-heading text-fg"
               >
-                Manage Team Members
+                Kelola anggota divisi
               </h2>
-
-              <p
-                className="
-                  text-sm
-                  text-gray-500
-                "
-              >
+              <p className="mt-0.5 truncate text-xs leading-5 text-fg-muted">
                 {division.name}
               </p>
             </div>
@@ -99,61 +51,24 @@ export default function ManageDivisionMembersModal({
           <button
             type="button"
             onClick={onClose}
-            className="
-              h-10
-              w-10
-              rounded-lg
-              border
-              flex
-              items-center
-              justify-center
-              hover:bg-gray-100
-              transition
-            "
+            aria-label="Tutup"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            <X size={18} />
+            <X aria-hidden="true" className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Content */}
-        <div
-          className="
-            flex-1
-            overflow-y-auto
-            p-6
-          "
-        >
-
-          <DivisionMembers
-            divisionId={division.id}
-          />
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <DivisionMembers divisionId={division.id} />
         </div>
 
-        {/* Footer */}
-        <div
-          className="
-            border-t
-            bg-gray-50
-            px-6
-            py-4
-            flex
-            justify-end
-          "
-        >
+        <div className="flex justify-end border-t border-line p-4">
           <button
             type="button"
             onClick={onClose}
-            className="
-              px-4
-              py-2
-              rounded-lg
-              border
-              font-medium
-              hover:bg-gray-100
-              transition
-            "
+            className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Close
+            Tutup
           </button>
         </div>
       </div>

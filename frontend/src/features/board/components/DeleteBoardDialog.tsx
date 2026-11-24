@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { useDeleteBoard } from "../hooks/useBoards";
 import { Board } from "../types";
@@ -9,23 +10,19 @@ type Props = {
   onClose: () => void;
 };
 
-export default function DeleteBoardDialog({
-  board,
-  campaignId,
-  onClose,
-}: Props) {
+export default function DeleteBoardDialog({ board, campaignId, onClose }: Props) {
   const mutation = useDeleteBoard(campaignId);
 
   useEffect(() => {
     if (!board) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !mutation.isPending) onClose();
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [board, onClose]);
+  }, [board, onClose, mutation.isPending]);
 
   if (!board) return null;
 
@@ -38,66 +35,74 @@ export default function DeleteBoardDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
+      onClick={() => {
+        if (!mutation.isPending) onClose();
+      }}
+    >
       <div
-        className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-board-title"
+        onClick={(event) => event.stopPropagation()}
+        style={{ animation: "ui-scale-in 160ms ease-out" }}
+        className="w-full max-w-sm rounded-panel border border-line bg-surface p-5 shadow-e3"
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
+            <AlertTriangle aria-hidden="true" className="h-5 w-5" />
+          </span>
 
-      <div className="relative w-full max-w-sm rounded-2xl border border-gray-100 bg-white shadow-2xl">
-        <div className="px-5 py-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v4m0 4h.01M10.29 3.86l-8.2 14.2A1.5 1.5 0 003.32 20h17.36a1.5 1.5 0 001.23-2.36l-8.2-14.2a1.5 1.5 0 00-2.42 0z"
-                />
-              </svg>
-            </div>
-
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">
-                Delete &ldquo;{board.name}&rdquo;?
-              </h2>
-              <p className="mt-1 text-xs text-gray-500">
-                {cardCount > 0
-                  ? `Column ini punya ${cardCount} task. Semua task di dalamnya akan ikut terhapus dan tidak bisa dikembalikan.`
-                  : "Aksi ini tidak bisa dibatalkan."}
-              </p>
-            </div>
-          </div>
-
-          {mutation.isError && (
-            <p className="mt-3 text-[11px] text-red-500">
-              Gagal menghapus column. Coba lagi.
+          <div className="min-w-0">
+            <h2
+              id="delete-board-title"
+              className="text-base font-semibold tracking-heading text-fg"
+            >
+              Hapus kolom “{board.name}”?
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-fg-muted">
+              {cardCount > 0
+                ? `Kolom ini punya ${cardCount} task. Semua task di dalamnya ikut terhapus dan tidak bisa dikembalikan.`
+                : "Tindakan ini tidak bisa dibatalkan."}
             </p>
-          )}
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-3">
+        {mutation.isError ? (
+          <p role="alert" className="mt-3 text-xs font-medium text-danger">
+            Kolom gagal dihapus. Coba lagi.
+          </p>
+        ) : null}
+
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl px-4 py-2 text-sm text-gray-500 transition hover:bg-gray-100"
+            disabled={mutation.isPending}
+            className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-60"
           >
-            Cancel
+            Batal
           </button>
 
           <button
             type="button"
             onClick={handleConfirm}
             disabled={mutation.isPending}
-            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-busy={mutation.isPending}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-danger px-3.5 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-60 dark:text-[#2a1110]"
           >
-            {mutation.isPending ? "Deleting..." : "Delete Column"}
+            {mutation.isPending ? (
+              <>
+                <Loader2
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                />
+                Menghapus
+              </>
+            ) : (
+              "Hapus kolom"
+            )}
           </button>
         </div>
       </div>

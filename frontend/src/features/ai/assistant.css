@@ -1,5 +1,8 @@
 .jelly-mascot { width: 100%; height: 100%; overflow: visible; }
 .jelly-float, .jelly-body, .jelly-shadow, .jelly-eyes, .jelly-antenna, .jelly-hand-right, .jelly-hand-left { transform-box: fill-box; transform-origin: center; }
+.jelly-gaze { transform-box: fill-box; transition: transform .2s ease; }
+.jelly-gaze[data-gaze="left"] { transform: translateX(-4px); }
+.jelly-gaze[data-gaze="right"] { transform: translateX(4px); }
 .jelly-float { animation: jelly-float 5.2s ease-in-out infinite; }
 .jelly-shadow { animation: jelly-shadow 5.2s ease-in-out infinite; }
 .jelly-eyes { animation: jelly-blink 5.4s infinite; }
@@ -41,6 +44,7 @@
 @keyframes assistant-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .jelly-mascot *, .assistant-mini-dot, .assistant-drawer, .assistant-backdrop { animation: none !important; }
+  .jelly-gaze { transition: none; }
   .assistant-launcher { transition: none; }
   .assistant-launcher:hover, .assistant-launcher:focus-visible { transform: none; }
 }

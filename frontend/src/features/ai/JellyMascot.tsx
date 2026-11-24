@@ -2,8 +2,17 @@ import { useId } from "react";
 import "./assistant.css";
 
 export type MascotState = "idle" | "greeting" | "open" | "thinking" | "success" | "error";
+export type MascotGaze = "center" | "left" | "right";
 
-export default function JellyMascot({ state = "idle", className = "" }: { state?: MascotState; className?: string }) {
+export default function JellyMascot({
+  state = "idle",
+  gaze = "center",
+  className = "",
+}: {
+  state?: MascotState;
+  gaze?: MascotGaze;
+  className?: string;
+}) {
   const id = useId().replace(/:/g, "");
   const happy = state === "success" || state === "open" || state === "greeting";
 
@@ -40,7 +49,7 @@ export default function JellyMascot({ state = "idle", className = "" }: { state?
           <path d="M57 82Q80 76 111 81" stroke="white" strokeOpacity=".1" strokeWidth="3" strokeLinecap="round" fill="none" />
           <g className="jelly-face" fill="none" stroke="#79EDFF" strokeWidth="5" strokeLinecap="round">
             {state === "thinking" ? <g className="jelly-thinking-dots" fill="#79EDFF" stroke="none"><circle cx="69" cy="99" r="4" /><circle cx="90" cy="99" r="4" /><circle cx="111" cy="99" r="4" /></g> : state === "error" ? <><path d="M64 93L74 98M106 98L116 93" strokeWidth="3" /><path d="M69 101V106M111 101V106" /><path d="M81 115Q90 108 99 115" strokeWidth="2.5" /></> : <>
-              <g className={happy ? "jelly-happy-eyes" : "jelly-eyes"}>{happy ? <><path d="M61 99Q69 86 77 99" /><path d="M103 99Q111 86 119 99" /></> : <><path d="M69 92V102" /><path d="M111 92V102" /></>}</g>
+              <g className="jelly-gaze" data-gaze={gaze}><g className={happy ? "jelly-happy-eyes" : "jelly-eyes"}>{happy ? <><path d="M61 99Q69 86 77 99" /><path d="M103 99Q111 86 119 99" /></> : <><path d="M69 92V102" /><path d="M111 92V102" /></>}</g></g>
               <path d={happy ? "M79 109Q90 122 101 109" : "M82 111Q90 117 98 111"} strokeWidth="2.5" />
               {happy && <g stroke="none" fill="#F3A7EA" opacity=".65"><ellipse cx="60" cy="109" rx="4" ry="2" /><ellipse cx="120" cy="109" rx="4" ry="2" /></g>}
             </>}

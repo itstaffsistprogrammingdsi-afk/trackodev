@@ -43,7 +43,7 @@ export default function CampaignDetailPage() {
 
   if (!campaign) {
     return (
-      <div className="mx-auto w-full max-w-[1600px] space-y-6" role="status" aria-busy="true">
+      <div className="w-full space-y-6" role="status" aria-busy="true">
         <span className="sr-only">Memuat detail campaign</span>
         <div className="space-y-3 rounded-panel border border-line bg-surface p-5 sm:p-6 lg:p-8">
           <Skeleton className="h-8 w-72 max-w-full" />
@@ -88,7 +88,7 @@ export default function CampaignDetailPage() {
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="w-full space-y-6">
       {/* =========================================
           HERO
       ========================================= */}

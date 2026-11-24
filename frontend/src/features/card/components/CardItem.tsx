@@ -69,14 +69,6 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
   // DATE FORMAT
   // =========================================
   const createdDate = card.created_at ? new Date(card.created_at) : null;
-  const formattedCreatedDate =
-    createdDate && !Number.isNaN(createdDate.getTime())
-      ? createdDate.toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-      : null;
   const createdDateTitle =
     createdDate && !Number.isNaN(createdDate.getTime())
       ? createdDate.toLocaleString("id-ID", {
@@ -165,6 +157,7 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
       }}
       role="button"
       tabIndex={0}
+      title={createdDateTitle ? `Dibuat ${createdDateTitle}` : undefined}
       aria-label={`Buka detail ${card.title}${
         dueStatus === "overdue" ? ", sudah melewati deadline" : ""
       }`}
@@ -196,12 +189,12 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
               aria-hidden="true"
               className={`h-1.5 w-1.5 rounded-full ${
                 card.priority === "urgent"
-                  ? "bg-danger"
+                  ? "bg-priority-urgent"
                   : card.priority === "high"
-                    ? "bg-orange-500"
+                    ? "bg-priority-high"
                     : card.priority === "medium"
-                      ? "bg-amber-500"
-                      : "bg-success"
+                      ? "bg-priority-medium"
+                      : "bg-priority-low"
               }`}
             />
             <span className="capitalize">{card.priority}</span>
@@ -322,15 +315,6 @@ export default function CardItem({ card, onOpen, moveTargets = [], onMove }: Pro
           </span>
         ) : null}
       </div>
-
-      {formattedCreatedDate ? (
-        <p
-          className="mt-0.5 text-[10px] text-fg-subtle"
-          title={createdDateTitle ? `Dibuat ${createdDateTitle}` : undefined}
-        >
-          Dibuat {formattedCreatedDate}
-        </p>
-      ) : null}
     </article>
   );
 }
