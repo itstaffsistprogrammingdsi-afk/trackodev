@@ -125,10 +125,11 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
               <button
                 type="button"
                 onClick={onExportExcel}
-                aria-label={t("Ekspor Excel", "Export Excel")}
+                aria-label={t("Unduh Excel", "Download Excel")}
+                title={t("Unduh Excel", "Download Excel")}
                 className={`${canExportExcel ? "inline-flex" : "hidden"} h-11 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg active:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:h-8`}
               >
-                <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
                 Excel
               </button>
 
@@ -136,10 +137,11 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
                 type="button"
                 onClick={onDownload}
                 aria-label={t("Unduh PDF", "Download PDF")}
-                className={`${canExportPdf ? "inline-flex" : "hidden"} h-11 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-control bg-accent px-2.5 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:h-8`}
+                title={t("Unduh PDF", "Download PDF")}
+                className={`${canExportPdf ? "inline-flex" : "hidden"} h-11 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg active:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:h-8`}
               >
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                {t("Unduh PDF", "Download PDF")}
+                PDF
               </button>
 
               <button
@@ -290,8 +292,8 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
           <footer className="shrink-0 border-t border-line bg-surface px-4 py-2.5 sm:px-5">
             <p className="text-2xs text-fg-subtle">
               {t(
-                "Data mengikuti sheet Excel. Gunakan tombol Excel atau Unduh PDF untuk mengunduh.",
-                "Data mirrors the Excel sheet. Use the Excel or Download PDF buttons to download.",
+                "Data mengikuti sheet Excel. Gunakan tombol Excel atau PDF untuk mengunduh.",
+                "Data mirrors the Excel sheet. Use the Excel or PDF buttons to download.",
               )}
             </p>
           </footer>
