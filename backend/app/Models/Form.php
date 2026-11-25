@@ -18,6 +18,7 @@ class Form extends Model
 
     protected $fillable = [
         'workspace_id',
+        'division_id',
         'name',
         'slug',
         'description',
@@ -60,5 +61,10 @@ class Form extends Model
 public function workspace()
 {
     return $this->belongsTo(Workspace::class, 'workspace_id');
+}
+
+public function division()
+{
+    return $this->belongsTo(Division::class, 'division_id');
 }
 }

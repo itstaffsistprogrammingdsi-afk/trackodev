@@ -19,7 +19,8 @@ class PublicFormController extends Controller
     {
         try {
             // Mengambil form yang aktif saja untuk kebutuhan publik
-            $forms = Form::where('is_active', true)
+            $forms = Form::with('division')
+                ->where('is_active', true)
                 ->orderBy('created_at', 'desc')
                 ->get();
 

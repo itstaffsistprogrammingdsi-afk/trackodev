@@ -43,6 +43,19 @@ class CardAttachment extends Model
         return Storage::disk('public')->url($this->file_path);
     }
 
+    public function isPdf(): bool
+    {
+        return str_contains(strtolower((string) $this->file_type), 'pdf')
+            || str_ends_with(strtolower((string) $this->file_name), '.pdf');
+    }
+
+    public function isDownloadLocked(): bool
+    {
+        return $this->isPdf()
+            && $this->created_at !== null
+            && $this->created_at->lt(now()->subMonth());
+    }
+
     public function card(): BelongsTo
     {
         return $this->belongsTo(Card::class);

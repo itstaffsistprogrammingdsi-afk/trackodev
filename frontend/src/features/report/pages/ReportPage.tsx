@@ -3,12 +3,15 @@ import { useReport } from '../hooks/useReport';
 import { UserList } from '../components/UserList';
 import { CardDetail } from '../components/CardDetail';
 import { ReportPreviewModal } from '../components/ReportPreviewModal';
+import { ReportDownloadHistoryModal } from '../components/ReportDownloadHistoryModal';
 import { SecureExportDialog } from '../components/SecureExportDialog';
 import { generateExportPassword } from '@/lib/exportSecurity';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 
 export const ReportPage: React.FC = () => {
   const { t } = useLanguage();
+  const { can } = useAuth();
   const {
     users,
     pagination,
@@ -33,16 +36,46 @@ export const ReportPage: React.FC = () => {
   } = useReport();
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewUser, setPreviewUser] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [pendingExport, setPendingExport] = useState<{ format: 'pdf' | 'excel'; userId?: string | number } | null>(null);
   const [exportPassword, setExportPassword] = useState("");
+  const [isDownloadHistoryOpen, setIsDownloadHistoryOpen] = useState(false);
+  const canViewDownloadHistory = can("report.activity.view");
 
 
   const handlePreviewClick = async (userId?: string | number) => {
+    if (userId === undefined || userId === null || userId === '') {
+      setPreviewUser(null);
+      return;
+    }
+
+    const matchingUser = users.find(
+      (user) => String(user.id) === String(userId),
+    );
+    const fallbackUser =
+      selectedUser && String(selectedUser.id) === String(userId)
+        ? selectedUser
+        : null;
+    const resolvedUser = matchingUser ?? fallbackUser;
+
+    setPreviewUser(
+      resolvedUser
+        ? { id: String(resolvedUser.id), name: resolvedUser.name }
+        : { id: String(userId), name: t("User", "User") },
+    );
+    setIsPreviewOpen(true);
+
     const result = await handlePreview(userId);
-    if (result) {
-      setIsPreviewOpen(true);
+    if (!result) {
+      setIsPreviewOpen(false);
+      setPreviewUser(null);
     }
   };
+
+  const previewUserId = previewUser?.id ?? selectedUser?.id;
 
   const requestSecureExport = (format: 'pdf' | 'excel', userId?: string | number) => {
     setExportPassword("");
@@ -61,12 +94,12 @@ export const ReportPage: React.FC = () => {
   };
   const handleDownloadFromPreview = () => {
     if (previewData) {
-      requestSecureExport('pdf', selectedUser?.id);
+      requestSecureExport('pdf', previewUserId);
     }
   };
 
   const handleExportExcelFromPreview = () => {
-    requestSecureExport('excel', selectedUser?.id);
+    requestSecureExport('excel', previewUserId);
   };
 
   return (
@@ -89,6 +122,11 @@ export const ReportPage: React.FC = () => {
           previewLoading={loadingPreview}
           exporting={exporting}
           onImpersonate={handleBypassUser} // Kirim props onImpersonate ke UserList
+          onOpenDownloadHistory={
+            canViewDownloadHistory
+              ? () => setIsDownloadHistoryOpen(true)
+              : undefined
+          }
         />
 
         {/* Preview Modal */}
@@ -96,13 +134,20 @@ export const ReportPage: React.FC = () => {
           isOpen={isPreviewOpen}
           onClose={() => {
             setIsPreviewOpen(false);
+            setPreviewUser(null);
             clearPreview();
           }}
           onDownload={handleDownloadFromPreview}
           onExportExcel={handleExportExcelFromPreview}
           previewData={previewData}
           loading={loadingPreview}
-          title={selectedUser ? t("Preview Laporan - {name}", "Report preview - {name}", { name: selectedUser.name }) : t("Preview Laporan Batch", "Batch report preview")}
+          title={
+            previewUser
+              ? t("Preview Laporan - {name}", "Report preview - {name}", {
+                  name: previewUser.name,
+                })
+              : t("Preview Laporan", "Report preview")
+          }
         />
 
         {/* Card Detail Modal */}
@@ -130,6 +175,13 @@ export const ReportPage: React.FC = () => {
           onClose={() => setPendingExport(null)}
           onConfirm={confirmSecureExport}
         />
+
+        {canViewDownloadHistory ? (
+          <ReportDownloadHistoryModal
+            isOpen={isDownloadHistoryOpen}
+            onClose={() => setIsDownloadHistoryOpen(false)}
+          />
+        ) : null}
 
       </div>
     </div>

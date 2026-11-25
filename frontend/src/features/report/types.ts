@@ -48,6 +48,8 @@ export interface Attachment {
   qc_at: string | null;
   uploader: { id: string; name: string } | null;
   archived_at?: string | null;
+  created_at?: string | null;
+  is_download_locked?: boolean;
 }
 
 export interface Card {
@@ -86,6 +88,53 @@ export interface FilterParams {
   page?: number;
   user_id?: string | number; // <--- Tambahkan ini
   search_card?: string; // <--- Tambahkan ini
+}
+
+export interface ReportPreviewData {
+  table?: {
+    columns: string[];
+    rows: Array<Array<string | number>>;
+  };
+  html: string | null;
+  pdf_base64: string | null;
+  users_count: number;
+  total_cards: number;
+  total_attachments?: number;
+  total_qc?: number;
+  period_label?: string;
+}
+
+export interface ReportDownloadHistoryItem {
+  id: string;
+  created_at: string | null;
+  format: 'pdf' | 'xlsx' | null;
+  file_name: string | null;
+  period_label: string | null;
+  total_cards: number | null;
+  target_user_id: string | null;
+  target_user_name: string | null;
+  ip_address: string | null;
+  user: { id: string; name: string } | null;
+}
+
+export interface ReportDownloadHistoryParams {
+  page?: number;
+  limit?: number;
+  format?: 'pdf' | 'xlsx' | '';
+  search?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface ReportDownloadHistoryResponse {
+  success: boolean;
+  data: ReportDownloadHistoryItem[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 export interface PaginatedResponse<T> {

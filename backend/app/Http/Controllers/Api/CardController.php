@@ -19,6 +19,7 @@ use App\Models\Notification;
 use App\Services\ActivityLogService;
 use App\Services\RichTextService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 // use Illuminate\Support\Facades\Mail;
@@ -2045,10 +2046,15 @@ class CardController extends Controller
     }
 
     public function download(
+        Request $request,
         CardAttachment $attachment
     ) {
         $card = Card::findOrFail($attachment->card_id);
         $this->authorizeCard($card);
+
+        if ($attachment->isDownloadLocked()) {
+            return $this->downloadLockedResponse($request);
+        }
 
         if (!$attachment->file_path) {
             return response()->json([
@@ -2080,15 +2086,36 @@ class CardController extends Controller
         );
     }
 
+    private function downloadLockedResponse(Request $request): JsonResponse|RedirectResponse
+    {
+        if (! $request->expectsJson()) {
+            $frontendUrl = rtrim(
+                (string) config('app.frontend_url', config('app.url')),
+                '/'
+            );
+
+            return redirect($frontendUrl.'/file-locked');
+        }
+
+        return response()->json([
+            'message' => 'File PDF lebih dari 1 bulan tidak dapat dibuka.',
+            'code' => 'attachment_download_locked',
+        ], 403);
+    }
+
     /**
      * Download an attachment through a signed link embedded in an export.
      */
-    public function downloadSigned(CardAttachment $attachment)
+    public function downloadSigned(Request $request, CardAttachment $attachment)
     {
         if ($attachment->archived_at) {
             return response()->json([
                 'message' => 'Versi arsip tidak dapat diunduh. Gunakan hasil aktif terbaru.',
             ], 422);
+        }
+
+        if ($attachment->isDownloadLocked()) {
+            return $this->downloadLockedResponse($request);
         }
 
         if (

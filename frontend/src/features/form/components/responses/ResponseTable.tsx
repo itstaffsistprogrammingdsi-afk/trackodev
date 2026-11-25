@@ -57,7 +57,7 @@ export default function ResponseTable({
     <div
       className="
         hidden
-        overflow-hidden
+        overflow-x-auto
         rounded-card
         border
         border-line
@@ -65,7 +65,7 @@ export default function ResponseTable({
         xl:block
       "
     >
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[1080px] text-sm">
         <thead className="bg-surface-muted/40">
           <tr className="border-b border-line">
             <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500">
@@ -91,7 +91,7 @@ export default function ResponseTable({
               {t("Tanggal", "Date")}
             </th>
 
-            <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500">
+            <th className="sticky right-0 z-20 min-w-[210px] border-l border-line bg-surface-muted/40 px-4 py-3 text-center text-xs font-medium text-zinc-500">
               {t("Aksi", "Action")}
             </th>
           </tr>
@@ -107,6 +107,10 @@ export default function ResponseTable({
                 expandedRows.includes(
                   String(s.id)
                 );
+              const isAssigned =
+                Boolean(s.assignment) ||
+                s.status === "assigned" ||
+                s.status === "forwarded";
 
               return (
                 <Fragment key={s.id}>
@@ -210,8 +214,8 @@ export default function ResponseTable({
                     </td>
 
                     {/* ACTION */}
-                    <td className="px-4 py-4">
-                      <div className="flex justify-end gap-2">
+                    <td className="sticky right-0 z-10 min-w-[210px] border-l border-line bg-surface px-4 py-4">
+                      <div className="flex justify-center gap-2">
                         <button
                           type="button"
                           onClick={() =>
@@ -221,8 +225,10 @@ export default function ResponseTable({
                           }
                           className="
                             flex
+                            shrink-0
                             items-center
                             gap-1
+                            whitespace-nowrap
                             rounded-control
                             border
                             border-line
@@ -256,13 +262,14 @@ export default function ResponseTable({
                             onAssign(s)
                           }
                           disabled={
-                            s.status ===
-                            "assigned"
+                            isAssigned
                           }
                           className="
                             flex
+                            shrink-0
                             items-center
                             gap-1.5
+                            whitespace-nowrap
                             rounded-control
                             bg-accent
                             px-3
@@ -280,9 +287,8 @@ export default function ResponseTable({
                             size={14}
                           />
 
-                          {s.status ===
-                          "assigned"
-                            ? t("Ditugaskan", "Assigned")
+                          {isAssigned
+                            ? t("Sudah ditugaskan", "Assigned")
                             : t("Tugaskan", "Assign")}
                         </button>
                       </div>

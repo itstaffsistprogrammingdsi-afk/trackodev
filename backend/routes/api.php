@@ -1372,6 +1372,8 @@ Route::middleware([
             ->middleware('permission:report.preview.pdf|report.preview');
         Route::get('/users/{user}/activity-logs', [ReportController::class, 'getUserActivityLogs'])
             ->middleware('permission:report.activity.view');
+        Route::get('/download-history', [ReportController::class, 'downloadHistory'])
+            ->middleware('permission:report.activity.view');
     });
 
     Route::post(

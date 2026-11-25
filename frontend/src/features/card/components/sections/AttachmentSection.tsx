@@ -8,6 +8,7 @@ import CreatableSelect from "react-select/creatable";
 
 import api from "@/lib/axios";
 import { resolveStorageUrl } from "@/lib/storageUrl";
+import { saveBlobFile } from "@/lib/nativeDownload";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { toast, confirmDialog } from "@/lib/feedback";
@@ -364,23 +365,19 @@ export default function AttachmentSection({
 
       const blob = new Blob([response.data]);
 
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-
-      link.href = url;
-
-      link.download = attachment.file_name || "download";
-
-      document.body.appendChild(link);
-
-      link.click();
-
-      link.remove();
-
-      window.URL.revokeObjectURL(url);
+      await saveBlobFile(
+        blob,
+        attachment.file_name || "attachment",
+        "attachment",
+      );
     } catch (error) {
       console.error("Download gagal:", error);
+      toast.error(
+        t(
+          "Gagal mengunduh file. Silakan coba lagi.",
+          "Failed to download the file. Please try again.",
+        ),
+      );
     }
   };
 

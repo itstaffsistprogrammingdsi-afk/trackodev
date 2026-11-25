@@ -147,6 +147,8 @@ class CardResource extends JsonResource
                                               ] 
                                             : null,
                     'qc_at'              => $att->qc_at ? $att->qc_at->toDateTimeString() : null,
+                    'created_at'         => $att->created_at?->toDateTimeString(),
+                    'is_download_locked' => $att->isDownloadLocked(),
                     
                     'uploader'           => $att->relationLoaded('uploader') && $att->uploader 
                                             ? [

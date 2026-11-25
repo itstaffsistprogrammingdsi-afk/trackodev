@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   FileSpreadsheet,
+  History,
   Search,
   User as UserIcon,
   X,
@@ -58,6 +59,7 @@ interface UserListProps {
   exporting?: boolean;
   filterOptionsError?: string | null;
   onReloadFilterOptions?: () => void;
+  onOpenDownloadHistory?: () => void;
 
   masterData?: {
     divisions: { id: string; name: string }[];
@@ -80,6 +82,7 @@ export const UserList: React.FC<UserListProps> = ({
   exporting = false,
   filterOptionsError = null,
   onReloadFilterOptions,
+  onOpenDownloadHistory,
   masterData = { divisions: [], workspaces: [], campaigns: [], labels: [], brands: [] },
   onSelectUser,
   onImpersonate,
@@ -90,6 +93,7 @@ export const UserList: React.FC<UserListProps> = ({
   const canExportPdf = can('report.export') || can('report.export.pdf');
   const canExportExcel = can('report.export') || can('report.export.excel');
   const canBypass = can('user.bypass');
+  const canViewDownloadHistory = can('report.activity.view');
   const activeFilterCount = [
     filters.search,
     filters.division_id,
@@ -117,6 +121,16 @@ export const UserList: React.FC<UserListProps> = ({
             <p className="mt-1 text-sm text-fg-muted">{t("Tinjau hasil pekerjaan dan lakukan verifikasi kualitas.", "Review work results and perform quality verification.")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {canViewDownloadHistory && onOpenDownloadHistory ? (
+              <button
+                type="button"
+                onClick={onOpenDownloadHistory}
+                className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              >
+                <History className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("Riwayat download", "Download history")}
+              </button>
+            ) : null}
             {activeFilterCount > 0 ? (
               <span className="rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-fg-muted">
                 {t("{count} filter aktif", "{count} active filters", { count: activeFilterCount })}

@@ -2,6 +2,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "rea
 import { useNavigate } from "react-router";
 import {
   CheckCircle2,
+  ChevronDown,
   CircleSlash,
   Copy,
   ExternalLink,
@@ -50,7 +51,20 @@ export default function FormPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [divisionFilter, setDivisionFilter] = useState("all");
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const deferredSearch = useDeferredValue(search);
+
+  const toggleGroup = useCallback((key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const fetchForms = useCallback(async (manual = false) => {
     try {
@@ -130,7 +144,7 @@ export default function FormPage() {
     [forms],
   );
 
-  const filteredForms = useMemo(() => {
+  const baseFilteredForms = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
 
     return forms.filter((form) => {
@@ -145,6 +159,72 @@ export default function FormPage() {
       return matchesStatus && matchesSearch;
     });
   }, [forms, status, deferredSearch]);
+
+  // Opsi chip divisi dibangun dari seluruh form supaya pilihan tetap stabil
+  // saat pencarian/filter status berubah; angkanya mengikuti filter aktif.
+  const divisionOptions = useMemo(() => {
+    const labels = new Map<string, string>();
+
+    for (const form of forms) {
+      const key = form.division_id ?? "";
+      if (!labels.has(key)) {
+        labels.set(key, form.division?.name ?? t("Umum", "General"));
+      }
+    }
+
+    return [...labels.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => {
+        if (a.value === "") return -1;
+        if (b.value === "") return 1;
+        return a.label.localeCompare(b.label);
+      });
+  }, [forms, t]);
+
+  const divisionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const form of baseFilteredForms) {
+      const key = form.division_id ?? "";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    return counts;
+  }, [baseFilteredForms]);
+
+  const filteredForms = useMemo(() => {
+    if (divisionFilter === "all") return baseFilteredForms;
+
+    return baseFilteredForms.filter(
+      (form) => (form.division_id ?? "") === divisionFilter,
+    );
+  }, [baseFilteredForms, divisionFilter]);
+
+  const divisionGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; label: string; forms: Form[] }>();
+
+    for (const form of filteredForms) {
+      const key = form.division_id ?? "";
+      let group = groups.get(key);
+
+      if (!group) {
+        group = {
+          key,
+          label: form.division?.name ?? t("Umum", "General"),
+          forms: [],
+        };
+        groups.set(key, group);
+      }
+
+      group.forms.push(form);
+    }
+
+    return [...groups.values()].sort((a, b) => {
+      if (a.key === "") return -1;
+      if (b.key === "") return 1;
+      return a.label.localeCompare(b.label);
+    });
+  }, [filteredForms, t]);
 
   const canCreate = can("form.create");
 
@@ -287,6 +367,39 @@ export default function FormPage() {
               <span className="shrink-0 px-1 text-[11px] font-medium tabular-nums text-fg-muted">
                 {t("{count} form", "{count} forms", { count: filteredForms.length })}
               </span>
+
+              <div
+                role="group"
+                aria-label={t("Filter divisi", "Filter by division")}
+                className="flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5 lg:basis-full"
+              >
+                <button
+                  type="button"
+                  onClick={() => setDivisionFilter("all")}
+                  aria-pressed={divisionFilter === "all"}
+                  className={divisionChipClass(divisionFilter === "all")}
+                >
+                  {t("Semua divisi", "All divisions")}
+                  <span className="tabular-nums text-[10px] opacity-80">
+                    {baseFilteredForms.length}
+                  </span>
+                </button>
+
+                {divisionOptions.map((option) => (
+                  <button
+                    key={option.value || "umum"}
+                    type="button"
+                    onClick={() => setDivisionFilter(option.value)}
+                    aria-pressed={divisionFilter === option.value}
+                    className={divisionChipClass(divisionFilter === option.value)}
+                  >
+                    {option.label}
+                    <span className="tabular-nums text-[10px] opacity-80">
+                      {divisionCounts.get(option.value) ?? 0}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
 
@@ -320,12 +433,44 @@ export default function FormPage() {
                 onClick: () => {
                   setSearch("");
                   setStatus("all");
+                  setDivisionFilter("all");
                 },
               }}
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredForms.map((form) => (
+            <div className="space-y-8">
+              {divisionGroups.map((group) => {
+                const collapsed = collapsedGroups.has(group.key);
+
+                return (
+                  <section key={group.key} aria-label={group.label}>
+                    <div className="mb-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.key)}
+                        aria-expanded={!collapsed}
+                        className="inline-flex items-center gap-2 rounded-control px-1.5 py-1 transition-colors hover:bg-surface-muted"
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 text-fg-subtle transition-transform ${
+                            collapsed ? "-rotate-90" : ""
+                          }`}
+                          aria-hidden="true"
+                        />
+                        <h3 className="text-sm font-semibold text-fg">
+                          {group.label}
+                        </h3>
+                        <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium tabular-nums text-fg-muted">
+                          {t("{count} form", "{count} forms", {
+                            count: group.forms.length,
+                          })}
+                        </span>
+                      </button>
+                    </div>
+
+                    {!collapsed ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {group.forms.map((form) => (
                 <article
                   key={form.id}
                   className="group flex flex-col rounded-panel border border-line bg-surface p-5 transition-colors hover:border-line-strong"
@@ -449,13 +594,26 @@ export default function FormPage() {
                     </div>
                   </div>
                 </article>
-              ))}
+                        ))}
+                      </div>
+                    ) : null}
+                  </section>
+                );
+              })}
             </div>
           )}
         </>
       )}
     </div>
   );
+}
+
+function divisionChipClass(active: boolean): string {
+  return `inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-[11px] font-medium transition-colors ${
+    active
+      ? "border-accent/40 bg-accent-soft text-accent"
+      : "border-line bg-surface text-fg-muted hover:bg-surface-muted hover:text-fg"
+  }`;
 }
 
 function SummaryCell({

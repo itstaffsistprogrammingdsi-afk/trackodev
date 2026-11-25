@@ -1,9 +1,16 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { reportApi } from '../api/report.api';
-import { User, Card, FilterParams, MasterFilterOptions } from '../types';
+import {
+  User,
+  Card,
+  FilterParams,
+  MasterFilterOptions,
+  ReportPreviewData,
+} from '../types';
 import api from '@/lib/axios';
 
 import { getDownloadFileName } from '@/lib/exportSecurity';
+import { saveBlobFile } from '@/lib/nativeDownload';
 import { useRealtimeRevision } from '@/hooks/useRealtimeRevision';
 import { toast, confirmDialog } from '@/lib/feedback';
 import { translate } from '@/i18n/translate';
@@ -91,17 +98,13 @@ export const useReport = () => {
   const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
   const usersRequestId = useRef(0);
   const cardsRequestId = useRef(0);
+  const previewRequestId = useRef(0);
   const dateRangeInvalid = Boolean(
     filters.start_date &&
       filters.end_date &&
       filters.start_date > filters.end_date,
   );
-  const [previewData, setPreviewData] = useState<{
-    html: string;
-    pdf_base64: string;
-    users_count: number;
-    total_cards: number;
-  } | null>(null);
+  const [previewData, setPreviewData] = useState<ReportPreviewData | null>(null);
 
   // 1. Fetch Master Data
   const fetchFilterOptions = useCallback(async () => {
@@ -260,22 +263,39 @@ export const useReport = () => {
     }
   };
 
-  // Preview PDF
+  // Preview table data
   const handlePreview = async (userId?: string | number) => {
+    if (userId === undefined || userId === null || userId === '') {
+      toast.error(
+        translate(
+          'Pilih satu user untuk melihat preview laporan.',
+          'Select one user to preview the report.',
+        ),
+      );
+      return null;
+    }
+
+    const requestId = ++previewRequestId.current;
+    setPreviewData(null);
     setLoadingPreview(true);
     try {
       const exportParams: FilterParams = { ...filters };
       delete exportParams.page;
+      exportParams.user_id = userId;
 
-      if (userId) {
-        exportParams.user_id = userId;
-      }
+      const response = await reportApi.previewPdf({
+        ...exportParams,
+        include_pdf: false,
+      });
 
-      const response = await reportApi.previewPdf(exportParams);
-
+      if (requestId !== previewRequestId.current) return null;
       if (response.success) {
-        setPreviewData(response.data);
-        return response.data;
+        const data: ReportPreviewData = {
+          ...response.data,
+          pdf_base64: null,
+        };
+        setPreviewData(data);
+        return data;
       } else {
         toast.error(
           response.message ||
@@ -284,6 +304,7 @@ export const useReport = () => {
         return null;
       }
     } catch (error) {
+      if (requestId !== previewRequestId.current) return null;
       console.error('Gagal preview data', error);
       toast.error(
         translate(
@@ -293,7 +314,9 @@ export const useReport = () => {
       );
       return null;
     } finally {
-      setLoadingPreview(false);
+      if (requestId === previewRequestId.current) {
+        setLoadingPreview(false);
+      }
     }
   };
 
@@ -339,23 +362,12 @@ export const useReport = () => {
       }
 
       const blob = new Blob([data]);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-
-      link.setAttribute(
-        'download',
-        getDownloadFileName(
-          response.headers['content-disposition'],
-          `${translate('laporan-kinerja', 'performance-report')}.${type === 'pdf' ? 'pdf' : 'xlsx'}`,
-        ),
+      const fileName = getDownloadFileName(
+        response.headers['content-disposition'],
+        `${translate('laporan-kinerja', 'performance-report')}.${type === 'pdf' ? 'pdf' : 'xlsx'}`,
       );
 
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+      await saveBlobFile(blob, fileName, 'laporan-kinerja');
       return true;
     } catch (error: unknown) {
       console.error('Gagal export data:', error);
@@ -367,6 +379,8 @@ export const useReport = () => {
   };
 
   const clearPreview = () => {
+    previewRequestId.current += 1;
+    setLoadingPreview(false);
     setPreviewData(null);
   };
 

@@ -20,8 +20,12 @@ use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
 use App\Services\ReportPdfService;
 use App\Services\ReportDataLoader;
+use App\Services\ReportPreviewTableService;
 use App\Services\ReportScopeService;
+use App\Services\ReportTotalsService;
 use App\Support\ResourceAccess;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -36,6 +40,8 @@ class ReportController extends Controller
     public function __construct(
         private readonly ReportDataLoader $reportDataLoader,
         private readonly ReportScopeService $reportScope,
+        private readonly ReportTotalsService $reportTotalsService,
+        private readonly ReportPreviewTableService $reportPreviewTable,
     ) {
     }
 
@@ -539,6 +545,63 @@ class ReportController extends Controller
     }
 
     /**
+     * Metadata audit yang disimpan bersama setiap download report.
+     *
+     * @param  array{cards?: int, attachments?: int, qc?: int}  $totals
+     * @param  array{period_label?: string}  $meta
+     */
+    private function reportDownloadLogMeta(
+        Request $request,
+        string $format,
+        string $fileName,
+        array $totals,
+        array $meta
+    ): array {
+        $targetUserId = $request->input('user_id');
+        $targetUser = $targetUserId
+            ? User::query()->whereKey($targetUserId)->first(['id', 'name'])
+            : null;
+
+        return [
+            'source' => 'performance_report',
+            'format' => $format,
+            'target_user_id' => $targetUser?->id,
+            'target_user_name' => $targetUser?->name,
+            'period_label' => $meta['period_label'] ?? null,
+            'total_cards' => (int) ($totals['cards'] ?? 0),
+            'file_name' => $fileName,
+        ];
+    }
+
+    /**
+     * @return array{period_label: string, generated_at: string, total_cards?: int, total_attachments?: int, total_qc?: int}
+     */
+    private function reportMeta(Request $request): array
+    {
+        $start = $request->filled('start_date')
+            ? Carbon::parse($request->string('start_date')->toString())->format('d M Y')
+            : null;
+        $end = $request->filled('end_date')
+            ? Carbon::parse($request->string('end_date')->toString())->format('d M Y')
+            : null;
+
+        if ($start && $end) {
+            $periodLabel = "{$start} – {$end}";
+        } elseif ($start) {
+            $periodLabel = "Sejak {$start}";
+        } elseif ($end) {
+            $periodLabel = "Sampai {$end}";
+        } else {
+            $periodLabel = 'Semua periode';
+        }
+
+        return [
+            'period_label' => $periodLabel,
+            'generated_at' => now()->format('d M Y H:i'),
+        ];
+    }
+
+    /**
      * PREVIEW PDF
      */
     public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonResponse
@@ -557,35 +620,59 @@ class ReportController extends Controller
             }
 
             $totalUsers = $users->count();
-            $totalCards = $users->sum(fn ($user) => $user->cards->count());
-            $html = view('exports.report_pdf', [
-                'users' => $users,
-                'totalUsers' => $totalUsers,
-            ])->render();
+            $totals = $this->reportTotalsService->totalsFromUsers($users);
+            $totalCards = $totals['cards'];
+            $totalAttachments = $totals['attachments'];
+            $totalQc = $totals['qc'];
 
-            // HTML preview still needs the complete document, but PDF
-            // generation must use the bounded loader. Rendering all users in
-            // one DomPDF instance makes the batch preview exceed memory on
-            // large reports.
-            unset($users);
-            gc_collect_cycles();
+            $meta = array_merge($this->reportMeta($request), [
+                'total_cards' => $totalCards,
+                'total_attachments' => $totalAttachments,
+                'total_qc' => $totalQc,
+            ]);
 
-            $pdfContent = $reportPdf->renderChunks(
-                $this->reportDataLoader->pdfChunks(
-                    $request,
-                    (int) config('report.pdf_cards_per_chunk', 30),
-                ),
-                $totalUsers,
-            );
-            $base64Pdf = base64_encode($pdfContent);
+            $previewTable = $this->reportPreviewTable->build($users);
+            $includePdf = $request->boolean('include_pdf', true);
+
+            // The document HTML was only used by the old preview modal. It is
+            // still returned with the PDF payload for compatibility, but the
+            // table-only request skips it so opening the preview does not
+            // render the entire report document first.
+            $html = null;
+            $base64Pdf = null;
+
+            if ($includePdf) {
+                $html = view('exports.report_pdf', [
+                    'users' => $users,
+                    'totalUsers' => $totalUsers,
+                    'meta' => $meta,
+                ])->render();
+
+                unset($users);
+                gc_collect_cycles();
+
+                $pdfContent = $reportPdf->renderChunks(
+                    $this->reportDataLoader->pdfChunks(
+                        $request,
+                        (int) config('report.pdf_cards_per_chunk', 30),
+                    ),
+                    $totalUsers,
+                    $meta,
+                );
+                $base64Pdf = base64_encode($pdfContent);
+            }
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'html'         => $html,
-                    'pdf_base64'   => $base64Pdf,
-                    'users_count'  => $totalUsers,
-                    'total_cards'  => $totalCards,
+                    'html'              => $html,
+                    'table'             => $previewTable,
+                    'pdf_base64'        => $base64Pdf,
+                    'users_count'       => $totalUsers,
+                    'total_cards'       => $totalCards,
+                    'total_attachments' => $totalAttachments,
+                    'total_qc'          => $totalQc,
+                    'period_label'      => $meta['period_label'],
                 ]
             ]);
         } catch (\Exception $e) {
@@ -595,6 +682,93 @@ class ReportController extends Controller
                 'message' => 'Gagal membuat preview laporan. Silakan coba lagi.'
             ], 500);
         }
+    }
+
+    /**
+     * RIWAYAT DOWNLOAD REPORT
+     */
+    public function downloadHistory(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'format' => ['sometimes', 'nullable', 'in:pdf,xlsx'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'start_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            'end_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $query = ActivityLog::query()
+            ->with('user:id,name')
+            ->where('entity_type', 'report')
+            ->where('action', 'report_downloaded');
+
+        if (! empty($validated['format'])) {
+            $query->where('meta->format', $validated['format']);
+        }
+
+        if (! empty($validated['search'])) {
+            $search = '%'.$validated['search'].'%';
+            $query->where(function (Builder $logQuery) use ($search): void {
+                $logQuery
+                    ->whereHas('user', fn (Builder $userQuery) => $userQuery->where('name', 'like', $search))
+                    ->orWhere('meta->target_user_name', 'like', $search);
+            });
+        }
+
+        if (! empty($validated['start_date'])) {
+            $query->where('created_at', '>=', $validated['start_date'].' 00:00:00');
+        }
+
+        if (! empty($validated['end_date'])) {
+            $query->where('created_at', '<=', $validated['end_date'].' 23:59:59');
+        }
+
+        $logs = $query->latest()->paginate($validated['limit'] ?? 20);
+
+        $targetIds = collect($logs->items())
+            ->map(fn (ActivityLog $log) => data_get($log->meta, 'target_user_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $targetNames = User::query()
+            ->whereIn('id', $targetIds)
+            ->pluck('name', 'id');
+
+        return response()->json([
+            'success' => true,
+            'data' => collect($logs->items())
+                ->map(function (ActivityLog $log) use ($targetNames): array {
+                    $meta = $log->meta ?? [];
+                    $targetId = $meta['target_user_id'] ?? null;
+
+                    return [
+                        'id' => $log->id,
+                        'created_at' => $log->created_at?->toIso8601String(),
+                        'format' => $meta['format'] ?? null,
+                        'file_name' => $meta['file_name'] ?? null,
+                        'period_label' => $meta['period_label'] ?? null,
+                        'total_cards' => $meta['total_cards'] ?? null,
+                        'target_user_id' => $targetId,
+                        'target_user_name' => $targetId
+                            ? ($targetNames[$targetId] ?? $meta['target_user_name'] ?? null)
+                            : null,
+                        'ip_address' => $log->ip_address,
+                        'user' => $log->user ? [
+                            'id' => $log->user->id,
+                            'name' => $log->user->name,
+                        ] : null,
+                    ];
+                })
+                ->values(),
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+            ],
+        ]);
     }
 
     /**
@@ -625,6 +799,13 @@ class ReportController extends Controller
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
+            $totals = $this->reportTotalsService->totals($request);
+            $meta = array_merge($this->reportMeta($request), [
+                'total_cards' => $totals['cards'],
+                'total_attachments' => $totals['attachments'],
+                'total_qc' => $totals['qc'],
+            ]);
+
             $prefix = $request->filled('user_id') ? 'Report_User_' . $request->user_id : 'Report_Kinerja_Batch';
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.pdf';
@@ -636,6 +817,7 @@ class ReportController extends Controller
                         (int) config('report.pdf_cards_per_chunk', 30),
                     ),
                     $totalUsers,
+                    $meta,
                 ),
                 $fileName,
                 $validated['export_password'] ?? null
@@ -647,11 +829,7 @@ class ReportController extends Controller
                 null,
                 'report_downloaded',
                 'Mengunduh laporan kinerja dalam format PDF.',
-                [
-                    'source' => 'performance_report',
-                    'format' => 'pdf',
-                    'target_user_id' => $request->input('user_id'),
-                ],
+                $this->reportDownloadLogMeta($request, 'pdf', $fileName, $totals, $meta),
             );
 
             return $download;
@@ -687,6 +865,13 @@ class ReportController extends Controller
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
+            $totals = $this->reportTotalsService->totals($request);
+            $meta = array_merge($this->reportMeta($request), [
+                'total_cards' => $totals['cards'],
+                'total_attachments' => $totals['attachments'],
+                'total_qc' => $totals['qc'],
+            ]);
+
             $prefix = $request->filled('user_id') ? 'Report_User_' . $request->user_id : 'Report_Kinerja_Batch';
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.xlsx';
@@ -697,6 +882,7 @@ class ReportController extends Controller
                     fn () => $this->reportDataLoader->chunks($request),
                     $totalUsers,
                     true,
+                    $meta,
                 ),
                 $temporaryName,
                 'local',
@@ -716,11 +902,7 @@ class ReportController extends Controller
                 null,
                 'report_downloaded',
                 'Mengunduh laporan kinerja dalam format Excel.',
-                [
-                    'source' => 'performance_report',
-                    'format' => 'xlsx',
-                    'target_user_id' => $request->input('user_id'),
-                ],
+                $this->reportDownloadLogMeta($request, 'xlsx', $fileName, $totals, $meta),
             );
 
             return $download;

@@ -1,13 +1,25 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { getForm, updateForm } from "../api/form.api";
 import { toast } from "@/lib/feedback";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { useDivisions } from "@/features/division/hooks/useDivisions";
 
 export default function EditFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const auth = useAuth();
+
+  const canViewAllDivisions = useMemo(
+    () => auth.hasRole("super_admin") || auth.can("division.view_all"),
+    [auth],
+  );
+
+  const { data: myDivisions } = useDivisions(true, !canViewAllDivisions);
+  const { data: allDivisions } = useDivisions(false, canViewAllDivisions);
+  const divisions = canViewAllDivisions ? allDivisions : myDivisions;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,6 +31,8 @@ export default function EditFormPage() {
     show_note: false,
     note_content: "",
   });
+
+  const [divisionId, setDivisionId] = useState("");
 
   const [headerImage, setHeaderImage] = useState<File | null>(null);
 
@@ -37,6 +51,7 @@ export default function EditFormPage() {
         show_note: data.show_note,
         note_content: data.note_content || "",
       });
+      setDivisionId(data.division_id ?? "");
     } catch (error) {
       console.error(error);
       toast.error(t("Gagal load form", "Failed to load form"));
@@ -57,6 +72,7 @@ export default function EditFormPage() {
       payload.append("is_active", formData.is_active ? "1" : "0");
       payload.append("show_note", formData.show_note ? "1" : "0");
       payload.append("note_content", formData.note_content);
+      payload.append("division_id", divisionId);
 
       if (headerImage) {
         payload.append("header_image", headerImage);
@@ -120,6 +136,31 @@ export default function EditFormPage() {
                 })
               }
             />
+          </div>
+
+          <div>
+            <label htmlFor="form-division" className="mb-2 block text-sm font-medium">
+              {t("Divisi", "Division")}
+            </label>
+            <select
+              id="form-division"
+              className="w-full rounded-lg border px-4 py-2"
+              value={divisionId}
+              onChange={(e) => setDivisionId(e.target.value)}
+            >
+              <option value="">{t("Umum", "General")}</option>
+              {(divisions ?? []).map((division) => (
+                <option key={division.id} value={division.id}>
+                  {division.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-fg-muted">
+              {t(
+                "Form akan dikelompokkan di bawah divisi ini.",
+                "This form will be grouped under this division.",
+              )}
+            </p>
           </div>
 
           <div>

@@ -7,6 +7,7 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
+  Lock,
   X,
 } from "lucide-react";
 
@@ -82,7 +83,7 @@ export const CardDetail: React.FC<CardDetailProps> = ({
   }, [onClose]);
 
   const openPreview = async (attachment: Attachment) => {
-    if (attachment.attachment_type !== "file") return;
+    if (attachment.attachment_type !== "file" || attachment.is_download_locked) return;
 
     setPreviewLoadingId(attachment.id);
     try {
@@ -238,6 +239,13 @@ export const CardDetail: React.FC<CardDetailProps> = ({
             </div>
           ) : (
             <div className="space-y-4">
+              <p className="flex items-center gap-1.5 text-2xs text-fg-subtle">
+                <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                {t(
+                  "File PDF hanya dapat dibuka dalam 1 bulan sejak diunggah.",
+                  "PDF files can only be opened within 1 month of upload.",
+                )}
+              </p>
               {cards.map((card) => {
                 const activeAttachments =
                   card.attachments?.filter(
@@ -366,29 +374,47 @@ export const CardDetail: React.FC<CardDetailProps> = ({
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0 flex-1">
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void openPreview(attachment)
-                                      }
-                                      disabled={
-                                        attachment.attachment_type !==
-                                          "file" ||
-                                        previewLoadingId === attachment.id
-                                      }
-                                      className="max-w-full truncate text-left text-xs font-medium text-accent transition-colors hover:text-accent-strong disabled:cursor-default disabled:text-fg"
-                                      title={
-                                        attachment.attachment_type ===
-                                        "file"
-                                          ? t("Preview {file}", "Preview {file}", { file: attachment.file_name })
-                                          : attachment.file_name
-                                      }
-                                    >
-                                      {attachment.file_name}
-                                      {previewLoadingId === attachment.id
-                                        ? t(" (memuat…)", " (loading…)")
-                                        : ""}
-                                    </button>
+                                    {attachment.is_download_locked ? (
+                                      <span
+                                        className="inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-fg-subtle"
+                                        title={t(
+                                          "File PDF lebih dari 1 bulan tidak dapat dibuka.",
+                                          "PDF files older than 1 month can no longer be opened.",
+                                        )}
+                                      >
+                                        <Lock
+                                          className="h-3 w-3 shrink-0"
+                                          aria-hidden="true"
+                                        />
+                                        <span className="truncate">
+                                          {attachment.file_name}
+                                        </span>
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void openPreview(attachment)
+                                        }
+                                        disabled={
+                                          attachment.attachment_type !==
+                                            "file" ||
+                                          previewLoadingId === attachment.id
+                                        }
+                                        className="max-w-full truncate text-left text-xs font-medium text-accent transition-colors hover:text-accent-strong disabled:cursor-default disabled:text-fg"
+                                        title={
+                                          attachment.attachment_type ===
+                                          "file"
+                                            ? t("Preview {file}", "Preview {file}", { file: attachment.file_name })
+                                            : attachment.file_name
+                                        }
+                                      >
+                                        {attachment.file_name}
+                                        {previewLoadingId === attachment.id
+                                          ? t(" (memuat…)", " (loading…)")
+                                          : ""}
+                                      </button>
+                                    )}
 
                                     <p className="mt-1 text-2xs text-fg-subtle">
                                       {t("Jumlah {count}", "Quantity {count}", { count: maxQty })}

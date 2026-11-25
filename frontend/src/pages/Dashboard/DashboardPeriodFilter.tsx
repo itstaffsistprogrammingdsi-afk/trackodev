@@ -40,8 +40,8 @@ export default function DashboardPeriodFilter({ value, onChange, loading }: Prop
             <h2 className="text-sm font-medium text-fg">{t("Filter seluruh dashboard", "Dashboard-wide filter")}</h2>
             <p className="mt-0.5 text-xs text-fg-muted">
               {t(
-                "KPI, status task, dan ranking divisi menggunakan periode yang sama.",
-                "KPIs, task status, and division ranking use the same period.",
+                "Status task dan ranking divisi menggunakan periode yang sama.",
+                "Task status and division ranking use the same period.",
               )}
             </p>
           </div>

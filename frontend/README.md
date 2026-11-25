@@ -4,9 +4,11 @@ Frontend Tracko menggunakan React/Vite. Aplikasi Android dan iOS dibungkus
 dengan Capacitor sehingga fitur yang sama dapat dijalankan sebagai APK/AAB
 atau aplikasi iPhone/iPad.
 
-Web dan aplikasi native memakai source yang sama, tetapi runtime tetap dipisahkan
-melalui `Capacitor.isNativePlatform()`. Komponen mobile tidak dirender di browser,
-sementara Android dan iOS memakai tampilan card serta navigasi mobile yang sama.
+Web dan aplikasi native memakai source yang sama. Perilaku khusus native
+(notifikasi lokal, OTA, dan tombol back) hanya aktif melalui
+`Capacitor.isNativePlatform()`. Layout kompak untuk board, calendar, dan card
+juga dipakai di browser pada viewport kecil melalui `useIsCompactViewport()`,
+sehingga Android, iOS, dan browser HP memakai pola tampilan yang konsisten.
 
 ## Menjalankan web
 
@@ -28,24 +30,32 @@ manifest ke `dist/mobile-updates/latest.json` dijalankan terpisah dengan
 - Android dan iOS memakai `https://dev.tracko.dsicorp.id/api` secara default.
 - Transport HTTP native Capacitor diaktifkan agar request API mobile tidak
   bergantung pada pembatasan CORS WebView.
-- Alamat server dapat diubah dari layar login. Android Emulator dapat memakai
-  `http://10.0.2.2:8000/api`; HP fisik dapat memakai IP LAN komputer, misalnya
-  `http://192.168.1.10:8000/api`. iOS Simulator memakai `http://localhost:8000/api`
-  bila Laravel berjalan pada Mac yang sama.
-- Build produksi hanya menerima HTTPS. Untuk pengujian lokal HTTP di PowerShell,
-  set `$env:CAPACITOR_ENV='development'` sebelum menjalankan `npm run android:sync`.
+- Alamat server ditentukan saat build melalui `.env.android` atau `.env.ios`.
+  Tidak ada pengaturan alamat server di layar login saat ini; ubah
+  `VITE_API_URL` lalu jalankan `npm run android:sync` atau `npm run ios:sync`.
+- Android Emulator dapat memakai `http://10.0.2.2:8000/api`; HP fisik dapat
+  memakai IP LAN komputer, misalnya `http://192.168.1.10:8000/api`. iOS
+  Simulator memakai `http://localhost:8000/api` bila Laravel berjalan pada Mac
+  yang sama.
+- Build release memblokir HTTP cleartext. Untuk pengujian lokal HTTP di
+  PowerShell, set `$env:CAPACITOR_ENV='development'` sebelum menjalankan
+  `npm run android:sync`.
 - Jalankan Laravel agar dapat diakses jaringan:
 
 ```bash
 php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-- Pastikan firewall mengizinkan port 8000 dan origin Android tercantum pada
-  `CORS_ALLOWED_ORIGINS` di `.env` backend.
+- Pastikan firewall mengizinkan port 8000 bila memakai HP fisik.
+- `CORS_ALLOWED_ORIGINS` default sudah memuat `https://localhost`; nilai itu
+  tetap diperlukan bila CapacitorHttp dimatikan atau ada request dari WebView
+  biasa.
 
 ## Build APK development
 
-Prasyarat: JDK 17 serta Android SDK (platform 34 dan build-tools 34.0.0) tersedia.
+Prasyarat: JDK 21, Gradle 8.13 (wrapper sudah disertakan), serta Android SDK
+platform 36 dan build-tools 36.0.0. Nilai ini mengikuti `android/variables.gradle`
+(minSdk 24, compileSdk/targetSdk 36).
 
 ```bash
 npm run android:apk
@@ -73,7 +83,10 @@ npm run ios:open
 Di Xcode, pilih target `App`, isi `Signing & Capabilities` dengan Apple Developer
 Team perusahaan, pastikan bundle identifier `id.dsicorp.tracko` tersedia, pilih
 iPhone/Simulator, lalu jalankan aplikasi. Versi iOS saat ini `1.0.0` dengan build
-number `7`, sama dengan Android agar pemeriksaan kompatibilitas OTA konsisten.
+number `7`. Android saat ini `1.0.4` dengan `versionCode 11`; keduanya tidak
+harus sama. OTA membandingkan build number native masing-masing platform dengan
+`MOBILE_UPDATE_MIN_NATIVE_VERSION_CODE`, jadi naikkan build iOS juga bila ingin
+memaksa update di kedua platform.
 
 Untuk perangkat fisik, HTTPS wajib digunakan. HTTP lokal hanya untuk development
 dan memerlukan pengecualian App Transport Security yang sengaja tidak disertakan
@@ -100,10 +113,12 @@ lebih tinggi.
 
 ### Kunci signing OTA
 
-Public key `mobile-update-public.pem` disertakan dalam aplikasi Android dan iOS. Private key berada di
-`.mobile-update-keys/private.pem`, diabaikan Git, dan wajib dicadangkan ke secret
-manager perusahaan. Kehilangan private key berarti APK yang sudah beredar tidak
-dapat menerima bundle OTA baru.
+Public key `mobile-update-public.pem` disertakan dalam aplikasi Android dan iOS
+melalui `capacitor.config.ts`. Private key default berada di
+`.mobile-update-keys/private.pem`, diabaikan Git, dan wajib dicadangkan ke
+secret manager perusahaan. Kehilangan private key berarti APK yang sudah
+beredar tidak dapat menerima bundle OTA baru. Script build memverifikasi bahwa
+public key di file sama dengan yang tertanam di `capacitor.config.ts`.
 
 Untuk membuat pasangan kunci baru sebelum APK publik pertama dirilis:
 
@@ -135,10 +150,16 @@ npm ci
 npm run build:ota
 ```
 
-`build:ota` membangun aplikasi web, lalu membuat bundle dan manifest yang telah
-ditandatangani. Perintah ini wajib menerima `MOBILE_UPDATE_PRIVATE_KEY` atau
-`MOBILE_UPDATE_PRIVATE_KEY_PATH`; kegagalan karena kunci tidak tersedia memang
-disengaja agar paket OTA tanpa signature tidak pernah terpublikasi.
+`build:ota` membangun bundle Android web (mode `android`, memakai
+`.env.android`), lalu membuat bundle dan manifest yang telah ditandatangani.
+Private key diambil dari `MOBILE_UPDATE_PRIVATE_KEY`,
+`MOBILE_UPDATE_PRIVATE_KEY_PATH`, atau file default
+`.mobile-update-keys/private.pem`. Build gagal jika tidak ada key, sehingga
+paket OTA tanpa signature tidak pernah terpublikasi.
+
+Setelah ZIP OTA dibuat, script mengembalikan `public/downloads` ke
+`dist/downloads`. Tujuannya agar halaman download APK tetap tersedia saat
+`dist` di-deploy; ZIP OTA sendiri tidak memuat file APK.
 
 Deploy seluruh isi `dist` secara atomik. File
 `/mobile-updates/latest.json` harus memakai `Cache-Control: no-store`, sedangkan
@@ -147,15 +168,20 @@ immutable`. Jangan pernah mempublikasikan `latest.json` sebelum file ZIP selesai
 diunggah.
 
 Untuk membatasi update pada binary tertentu, set
-`MOBILE_UPDATE_MIN_NATIVE_VERSION_CODE` saat build. Nilai default saat ini `7`.
-Operator juga dapat mengubah `enabled`, `maintenance`, dan `maintenanceMessage`
-pada manifest untuk menghentikan rollout atau menampilkan maintenance mode.
+`MOBILE_UPDATE_MIN_NATIVE_VERSION_CODE` saat build. Nilai default saat ini `7`
+(Android `versionCode 11`, iOS build `7`). Jika nilainya dinaikkan di atas build
+iOS, perangkat iOS juga akan diblokir; gunakan manifest terpisah per platform
+atau naikkan build iOS terlebih dahulu. Operator juga dapat mengubah `enabled`,
+`maintenance`, dan `maintenanceMessage` pada manifest untuk menghentikan
+rollout atau menampilkan maintenance mode.
 
 ## Build publik Android
 
-Rilis Android berikutnya adalah `1.0.4` dengan `versionCode 11`. Untuk release,
-simpan Android upload keystore di secret manager dan sediakan seluruh environment
-berikut pada mesin build:
+Rilis publik terakhir adalah `1.1.0` dengan `versionCode 12`. Untuk rilis
+berikutnya, naikkan `versionName` dan `versionCode` di `package.json` dan
+`android/app/build.gradle` (misalnya `1.1.1` / `13`). Simpan Android upload
+keystore di secret manager dan sediakan seluruh environment berikut pada mesin
+build:
 
 ```text
 TRACKO_ANDROID_KEYSTORE_PATH=C:\secure\tracko-upload.jks
@@ -174,6 +200,12 @@ npm run android:apk:release
 AAB digunakan untuk Google Play. APK release digunakan untuk distribusi langsung.
 Script akan berhenti sebelum Gradle dijalankan bila salah satu secret signing tidak
 tersedia, sehingga binary publik tidak mungkin terbuat tanpa tanda tangan resmi.
+
+> Catatan status: APK `1.1.0` yang saat ini ada di `public/downloads`
+> ditandatangani dengan sertifikat **Android Debug**, bukan upload keystore.
+> APK `1.0.4` memakai sertifikat debug berbeda, jadi update dari 1.0.4 ke 1.1.0
+> memerlukan uninstall sekali. Untuk rilis berikutnya, gunakan upload keystore
+> resmi yang sama agar update berikutnya tidak perlu uninstall.
 
 ## Distribusi iOS
 
