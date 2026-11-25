@@ -91,7 +91,7 @@ export default function ResponseTable({
               {t("Tanggal", "Date")}
             </th>
 
-            <th className="sticky right-0 z-20 min-w-[210px] border-l border-line bg-surface-muted px-4 py-3 text-right text-xs font-medium text-fg-muted shadow-[-10px_0_12px_-12px_rgba(15,23,42,0.25)]">
+            <th className="sticky right-0 z-20 min-w-[210px] border-l border-line bg-surface-muted/40 px-4 py-3 text-center text-xs font-medium text-zinc-500">
               {t("Aksi", "Action")}
             </th>
           </tr>
@@ -214,8 +214,8 @@ export default function ResponseTable({
                     </td>
 
                     {/* ACTION */}
-                    <td className="sticky right-0 z-10 min-w-[210px] border-l border-line bg-surface px-4 py-4 shadow-[-10px_0_12px_-12px_rgba(15,23,42,0.18)]">
-                      <div className="flex justify-end gap-2">
+                    <td className="sticky right-0 z-10 min-w-[210px] border-l border-line bg-surface px-4 py-4">
+                      <div className="flex justify-center gap-2">
                         <button
                           type="button"
                           onClick={() =>
