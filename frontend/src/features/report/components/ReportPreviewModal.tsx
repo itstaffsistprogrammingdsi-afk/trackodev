@@ -1,12 +1,5 @@
-import React, { useEffect, useState } from "react";
-import {
-  Download,
-  Eye,
-  FileSpreadsheet,
-  FileText,
-  Loader2,
-  X,
-} from "lucide-react";
+import React, { useEffect } from "react";
+import { Download, FileSpreadsheet, FileText, Loader2, X } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -17,10 +10,8 @@ interface ReportPreviewModalProps {
   onClose: () => void;
   onDownload: () => void;
   onExportExcel: () => void;
-  onRequestPdf: () => void | Promise<void>;
   previewData: ReportPreviewData | null;
   loading: boolean;
-  pdfLoading: boolean;
   title?: string;
 }
 
@@ -42,10 +33,8 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   onClose,
   onDownload,
   onExportExcel,
-  onRequestPdf,
   previewData,
   loading,
-  pdfLoading,
   title,
 }) => {
   const { can } = useAuth();
@@ -81,11 +70,6 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   const tableCaption = [resolvedTitle, periodLabel, summary]
     .filter(Boolean)
     .join(" · ");
-  const [viewMode, setViewMode] = useState<"data" | "pdf">("data");
-
-  useEffect(() => {
-    if (isOpen) setViewMode("data");
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -99,13 +83,6 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  const requestPdf = () => {
-    setViewMode("pdf");
-    if (!previewData?.pdf_base64 && !pdfLoading && !loading) {
-      void onRequestPdf();
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden">
@@ -145,38 +122,6 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
               role="group"
               className="ml-auto flex w-full max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:gap-2"
             >
-              <div className="flex shrink-0 items-center gap-0.5 rounded-control border border-line bg-surface-muted/50 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("data")}
-                  aria-pressed={viewMode === "data"}
-                  aria-label={t("Tampilkan data laporan", "Show report data")}
-                  className={`inline-flex h-11 shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-[7px] px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:h-8 ${
-                    viewMode === "data"
-                      ? "bg-surface text-fg shadow-e1"
-                      : "text-fg-muted hover:text-fg"
-                  }`}
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
-                  {t("Data", "Data")}
-                </button>
-                <button
-                  type="button"
-                  onClick={requestPdf}
-                  disabled={loading}
-                  aria-pressed={viewMode === "pdf"}
-                  aria-label={t("Tampilkan PDF", "Show PDF")}
-                  className={`inline-flex h-11 shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-[7px] px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 ${
-                    viewMode === "pdf"
-                      ? "bg-surface text-fg shadow-e1"
-                      : "text-fg-muted hover:text-fg"
-                  }`}
-                >
-                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                  PDF
-                </button>
-              </div>
-
               <button
                 type="button"
                 onClick={onExportExcel}
@@ -224,57 +169,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
                 </p>
               </div>
             ) : previewData ? (
-              viewMode === "pdf" ? (
-                previewData.pdf_base64 ? (
-                  <iframe
-                    width="1200"
-                    height="800"
-                    className="h-full w-full border-0 bg-white"
-                    src={`data:application/pdf;base64,${previewData.pdf_base64}`}
-                    title={t("Pratinjau dokumen PDF", "PDF report preview")}
-                    aria-label={t("Pratinjau dokumen PDF", "PDF report preview")}
-                  />
-                ) : pdfLoading ? (
-                  <div
-                    role="status"
-                    aria-live="polite"
-                    className="flex h-full flex-col items-center justify-center gap-2"
-                  >
-                    <Loader2
-                      className="h-5 w-5 animate-spin text-accent motion-reduce:animate-none"
-                      aria-hidden="true"
-                    />
-                    <p className="text-xs text-fg-muted">
-                      {t("Menyiapkan PDF…", "Preparing PDF…")}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center px-4">
-                    <div className="max-w-sm text-center">
-                      <FileText
-                        className="mx-auto mb-3 h-5 w-5 text-fg-subtle"
-                        aria-hidden="true"
-                      />
-                      <p className="text-sm font-medium text-fg">
-                        {t("PDF belum tersedia", "PDF is not available yet")}
-                      </p>
-                      <p className="mt-1 text-xs text-fg-muted">
-                        {t(
-                          "Coba muat PDF lagi.",
-                          "Try loading the PDF again.",
-                        )}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => void onRequestPdf()}
-                        className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:min-h-9"
-                      >
-                        {t("Muat ulang PDF", "Reload PDF")}
-                      </button>
-                    </div>
-                  </div>
-                )
-              ) : previewData.table ? (
+              previewData.table ? (
                 <div className="h-full min-w-0 overflow-auto bg-surface-muted/40 p-3 sm:p-5">
                   <div className="w-max min-w-full overflow-hidden rounded-control border border-line bg-surface">
                     <table className="min-w-[1500px] w-full border-collapse text-xs tabular-nums text-fg">
@@ -395,8 +290,8 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
           <footer className="shrink-0 border-t border-line bg-surface px-4 py-2.5 sm:px-5">
             <p className="text-2xs text-fg-subtle">
               {t(
-                "Data mengikuti sheet Excel. PDF dibuat saat tab PDF dibuka.",
-                "Data mirrors the Excel sheet. PDF is generated when the PDF tab is opened.",
+                "Data mengikuti sheet Excel. Gunakan tombol Excel atau Unduh PDF untuk mengunduh.",
+                "Data mirrors the Excel sheet. Use the Excel or Download PDF buttons to download.",
               )}
             </p>
           </footer>

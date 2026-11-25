@@ -22,14 +22,12 @@ export const ReportPage: React.FC = () => {
     loadingUsers,
     loadingCards,
     loadingPreview,
-    loadingPreviewPdf,
     exporting,
     previewData,
     updateFilter,
     handleQcSubmit,
     handleExport,
     handlePreview,
-    loadPreviewPdf,
     clearPreview,
     handleBypassUser, // Ekstrak fungsi bypass dari useReport
   } = useReport();
@@ -133,10 +131,6 @@ export const ReportPage: React.FC = () => {
           onExportExcel={handleExportExcelFromPreview}
           previewData={previewData}
           loading={loadingPreview}
-          onRequestPdf={() =>
-            previewUserId ? loadPreviewPdf(previewUserId) : undefined
-          }
-          pdfLoading={loadingPreviewPdf}
           title={
             previewUser
               ? t("Preview Laporan - {name}", "Report preview - {name}", {

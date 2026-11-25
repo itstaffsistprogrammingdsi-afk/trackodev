@@ -93,15 +93,11 @@ export const useReport = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingCards, setLoadingCards] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
-  const [loadingPreviewPdf, setLoadingPreviewPdf] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
   const usersRequestId = useRef(0);
   const cardsRequestId = useRef(0);
   const previewRequestId = useRef(0);
-  const previewPdfRequestId = useRef(0);
-  const previewUserIdRef = useRef<string | null>(null);
-  const previewPdfLoadingRef = useRef(false);
   const dateRangeInvalid = Boolean(
     filters.start_date &&
       filters.end_date &&
@@ -279,10 +275,6 @@ export const useReport = () => {
     }
 
     const requestId = ++previewRequestId.current;
-    previewPdfRequestId.current += 1;
-    previewUserIdRef.current = String(userId);
-    previewPdfLoadingRef.current = false;
-    setLoadingPreviewPdf(false);
     setPreviewData(null);
     setLoadingPreview(true);
     try {
@@ -323,69 +315,6 @@ export const useReport = () => {
     } finally {
       if (requestId === previewRequestId.current) {
         setLoadingPreview(false);
-      }
-    }
-  };
-
-  const loadPreviewPdf = async (userId: string | number) => {
-    const userKey = String(userId);
-    if (
-      previewUserIdRef.current !== userKey ||
-      previewPdfLoadingRef.current ||
-      previewData?.pdf_base64
-    ) {
-      return;
-    }
-
-    const requestId = ++previewPdfRequestId.current;
-    previewPdfLoadingRef.current = true;
-    setLoadingPreviewPdf(true);
-
-    try {
-      const exportParams: FilterParams = { ...filters };
-      delete exportParams.page;
-      exportParams.user_id = userId;
-
-      const response = await reportApi.previewPdf({
-        ...exportParams,
-        include_pdf: true,
-      });
-
-      if (
-        requestId !== previewPdfRequestId.current ||
-        previewUserIdRef.current !== userKey
-      ) {
-        return;
-      }
-
-      if (response.success) {
-        setPreviewData((current) =>
-          current ? { ...current, pdf_base64: response.data?.pdf_base64 ?? null } : current,
-        );
-      } else {
-        toast.error(
-          response.message ||
-            translate('Gagal memuat PDF preview', 'Failed to load the PDF preview'),
-        );
-      }
-    } catch (error) {
-      if (
-        requestId !== previewPdfRequestId.current ||
-        previewUserIdRef.current !== userKey
-      ) {
-        return;
-      }
-      console.error('Gagal memuat PDF preview', error);
-      toast.error(
-        translate(
-          'Gagal memuat PDF preview. Silakan coba lagi.',
-          'Failed to load the PDF preview. Please try again.',
-        ),
-      );
-    } finally {
-      if (requestId === previewPdfRequestId.current) {
-        previewPdfLoadingRef.current = false;
-        setLoadingPreviewPdf(false);
       }
     }
   };
@@ -461,11 +390,7 @@ export const useReport = () => {
 
   const clearPreview = () => {
     previewRequestId.current += 1;
-    previewPdfRequestId.current += 1;
-    previewUserIdRef.current = null;
-    previewPdfLoadingRef.current = false;
     setLoadingPreview(false);
-    setLoadingPreviewPdf(false);
     setPreviewData(null);
   };
 
@@ -739,14 +664,12 @@ const handleLeaveImpersonation = async () => {
     loadingUsers,
     loadingCards,
     loadingPreview,
-    loadingPreviewPdf,
     exporting,
     previewData,
     updateFilter,
     handleQcSubmit,
     handleExport,
     handlePreview,
-    loadPreviewPdf,
     clearPreview,
     handleBypassUser, // Diekstrak dan direturn dari hook ini
     handleLeaveImpersonation, // Diekstrak dan direturn dari hook ini
