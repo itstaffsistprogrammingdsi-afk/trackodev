@@ -75,7 +75,13 @@ rmSync(temporaryPath, { force: true, recursive: true });
 mkdirSync(temporaryPath, { recursive: true });
 
 const zip = new AdmZip();
-zip.addLocalFolder(distPath);
+zip.addLocalFolder(distPath, "", (entry) => {
+  const normalized = entry.replace(/\\/g, "/");
+  return (
+    !normalized.startsWith("downloads/") &&
+    !normalized.startsWith("mobile-updates/")
+  );
+});
 zip.writeZip(temporaryBundlePath);
 
 const bundle = readFileSync(temporaryBundlePath);
