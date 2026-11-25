@@ -38,9 +38,23 @@ export const ReportPage: React.FC = () => {
 
 
   const handlePreviewClick = async (userId?: string | number) => {
+    // Preview from a user row must also select that user. Without this,
+    // the modal title and its PDF/Excel actions still point at the previous
+    // selection (or the whole batch) even though the HTML is per user.
+    const previewUser =
+      userId !== undefined
+        ? users.find((user) => String(user.id) === String(userId)) ?? null
+        : null;
+
+    if (previewUser) {
+      setSelectedUser(previewUser);
+    }
+
+    setIsPreviewOpen(true);
     const result = await handlePreview(userId);
-    if (result) {
-      setIsPreviewOpen(true);
+
+    if (!result) {
+      setIsPreviewOpen(false);
     }
   };
 

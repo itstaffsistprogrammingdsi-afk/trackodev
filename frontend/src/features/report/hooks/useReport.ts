@@ -262,14 +262,21 @@ export const useReport = () => {
 
   // Preview PDF
   const handlePreview = async (userId?: string | number) => {
+    if (userId === undefined || userId === null || userId === '') {
+      toast.error(
+        translate(
+          'Pilih satu user untuk melihat preview laporan.',
+          'Select one user to preview the report.',
+        ),
+      );
+      return null;
+    }
+
     setLoadingPreview(true);
     try {
       const exportParams: FilterParams = { ...filters };
       delete exportParams.page;
-
-      if (userId) {
-        exportParams.user_id = userId;
-      }
+      exportParams.user_id = userId;
 
       const response = await reportApi.previewPdf(exportParams);
 
