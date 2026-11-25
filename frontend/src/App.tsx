@@ -17,6 +17,7 @@ const SignUp = lazy(() => import("./pages/AuthPages/SignUp"));
 const ForgotPassword = lazy(() => import("./pages/AuthPages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/AuthPages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
+const FileLocked = lazy(() => import("./pages/OtherPage/FileLocked"));
 const UserProfiles = lazy(() => import("./pages/UserProfiles"));
 const Videos = lazy(() => import("./pages/UiElements/Videos"));
 const Images = lazy(() => import("./pages/UiElements/Images"));
@@ -130,6 +131,7 @@ export default function App() {
         {/* ================= PUBLIC ================= */}
         <Route path="/" element={<RootRoute />} />
         <Route path="/landing" element={<LandingPage />} />
+        <Route path="/file-locked" element={<FileLocked />} />
 
         <Route
           path="/public/forms/:slug"

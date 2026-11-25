@@ -38,6 +38,9 @@ api.interceptors.response.use(
     const isLoginRequest = /(?:^|\/)auth\/login(?:\?|$)/.test(requestUrl);
     const skipToast = err.config?.skipErrorToast === true;
     const isImpersonating = Boolean(localStorage.getItem("impersonated_by"));
+    const isPublicLockedPage =
+      typeof window !== "undefined" &&
+      window.location.pathname === "/file-locked";
 
     if (skipToast) {
       // Blob/export callers read the error body themselves so the user gets
@@ -67,7 +70,7 @@ api.interceptors.response.use(
       });
     }
 
-    if (status === 401 && !isLoginRequest) {
+    if (status === 401 && !isLoginRequest && !isPublicLockedPage) {
       emitToast({
         variant: "warning",
         title: translate("Sesi berakhir", "Session expired"),
