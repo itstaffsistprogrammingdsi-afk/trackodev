@@ -280,7 +280,8 @@ class ReportDataLoader
             'assignees:id,name',
             'attachments' => fn ($attachmentQuery) => $attachmentQuery
                 ->with(['uploader:id,name', 'qcBy:id,name'])
-                ->whereNull('archived_at'),
+                ->whereNull('archived_at')
+                ->orderBy('created_at'),
         ])
             ->where(function (Builder $cardQuery) use ($targetIds): void {
                 $cardQuery
@@ -295,8 +296,8 @@ class ReportDataLoader
         $this->scope->applyCardFilters($cards, $request);
 
         return $cards
-            ->orderByRaw('COALESCE(cards.completed_at, cards.created_at) DESC')
-            ->orderByDesc('cards.id');
+            ->orderBy('cards.created_at')
+            ->orderBy('cards.id');
     }
 
     private function cardIsVisibleForReport(

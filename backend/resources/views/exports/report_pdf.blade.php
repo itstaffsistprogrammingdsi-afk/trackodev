@@ -256,11 +256,23 @@
         /* Status Chips */
         .report-document .chip {
             display: inline-block;
-            padding: 1.5px 4px;
-            border-radius: 3px;
-            font-size: 6.5px;
+            padding: 2px 5px;
+            border-radius: 999px;
+            font-size: 6.2px;
             font-weight: bold;
+            line-height: 1.2;
             white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .report-document .chip-dot {
+            display: inline-block;
+            width: 3px;
+            height: 3px;
+            margin-right: 2.5px;
+            border-radius: 50%;
+            background: currentColor;
+            vertical-align: middle;
         }
 
         .report-document .chip-green {
@@ -344,6 +356,41 @@
             color: #475569;
             margin-top: 1.5px;
             line-height: 1.35;
+        }
+
+        .report-document .attachment-meta-table {
+            width: 100%;
+            margin-top: 3px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .report-document .attachment-meta-table td {
+            border: none;
+            padding: 1.5px 2px 1.5px 0;
+            vertical-align: top;
+        }
+
+        .report-document .attachment-meta-label {
+            display: block;
+            font-size: 5.8px;
+            font-weight: bold;
+            letter-spacing: 0.35px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            line-height: 1.2;
+        }
+
+        .report-document .attachment-meta-value {
+            display: block;
+            margin-top: 0.5px;
+            font-size: 7px;
+            color: #334155;
+            line-height: 1.3;
+        }
+
+        .report-document .attachment-head {
+            margin-bottom: 1px;
         }
 
         .report-document .attachment-note {
@@ -640,10 +687,10 @@
                                                 $qcNote = ! empty($attachment->qc_note) ? Str::limit((string) $attachment->qc_note, 90) : null;
                                             @endphp
                                             <div class="attachment-item">
-                                                <div>
+                                                <div class="attachment-head">
                                                     @if ($isLocked)
                                                         <span class="attachment-plain">{{ $displayName }}</span>
-                                                        <span class="chip chip-gray" style="margin-left:2px;">Terkunci</span>
+                                                        <span class="chip chip-gray" style="margin-left:2px;"><span class="chip-dot"></span>Terkunci</span>
                                                     @elseif ($isExport && $attachmentType === 'file' && ! empty($attachment->file_path))
                                                         <a
                                                             href="{{ app(\App\Services\AttachmentSignedUrlService::class)->for($attachment) }}"
@@ -671,9 +718,38 @@
                                                         <span class="chip chip-gray" style="margin-left:2px;">{{ $attachmentType }}</span>
                                                     @endif
                                                 </div>
-                                                <div class="attachment-meta">
-                                                    Upload: {{ $uploadDateFormatted }} &middot; QC: {{ $qcDateFormatted }} &middot; Qty: <strong>{{ $qtyDisplay }}</strong> &middot; Status: <span class="chip {{ $statusQcClass }}">{{ $statusQcLabel }}</span> &middot; QC oleh: {{ $qcByName }}
-                                                </div>
+
+                                                <table class="attachment-meta-table">
+                                                    <tr>
+                                                        <td>
+                                                            <span class="attachment-meta-label">Upload</span>
+                                                            <span class="attachment-meta-value">{{ $uploadDateFormatted }}</span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="attachment-meta-label">QC</span>
+                                                            <span class="attachment-meta-value">{{ $qcDateFormatted }}</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>
+                                                            <span class="attachment-meta-label">Qty</span>
+                                                            <span class="attachment-meta-value">{{ $qtyDisplay }}</span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="attachment-meta-label">Status</span>
+                                                            <span class="attachment-meta-value">
+                                                                <span class="chip {{ $statusQcClass }}"><span class="chip-dot"></span>{{ $statusQcLabel }}</span>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan="2">
+                                                            <span class="attachment-meta-label">QC oleh</span>
+                                                            <span class="attachment-meta-value">{{ $qcByName }}</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+
                                                 @if ($qcNote)
                                                     <div class="attachment-note">Catatan: {{ $qcNote }}</div>
                                                 @endif

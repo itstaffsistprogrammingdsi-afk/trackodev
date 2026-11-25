@@ -171,8 +171,10 @@ class ReportTotalsServiceTest extends TestCase
         $this->assertStringContainsString('Detail Kinerja &amp; Quality Control', $html);
         $this->assertStringContainsString('Lampiran &amp; Quality Control', $html);
         $this->assertStringContainsString('Tanggal Dibuat', $html);
-        $this->assertStringContainsString('Upload: 10/09/2026', $html);
-        $this->assertStringContainsString('QC: 12/09/2026', $html);
+        $this->assertStringContainsString('attachment-meta-label">Upload', $html);
+        $this->assertStringContainsString('10/09/2026', $html);
+        $this->assertStringContainsString('attachment-meta-label">QC', $html);
+        $this->assertStringContainsString('12/09/2026', $html);
 
         $pdfBytes = app(ReportPdfService::class)->render($users, $meta);
         $this->assertStringStartsWith('%PDF-', $pdfBytes);
