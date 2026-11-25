@@ -36,6 +36,8 @@ class ReportSummarySheet implements FromGenerator, ShouldAutoSize, WithTitle, Wi
             'G' => 'dd/mm/yyyy',
             'H' => 'dd/mm/yyyy',
             'I' => 'dd/mm/yyyy',
+            'L' => 'dd/mm/yyyy',
+            'M' => 'dd/mm/yyyy',
         ];
     }
 
@@ -49,41 +51,31 @@ class ReportSummarySheet implements FromGenerator, ShouldAutoSize, WithTitle, Wi
                 $cards = collect($user->cards ?? []);
 
                 if ($cards->isEmpty()) {
-                    yield [
-                        'No' => $rowNumber,
-                        'Nama User' => $user->name ?? '-',
-                        'Divisi' => collect($user->divisions ?? [])->pluck('name')->implode(', ') ?: '-',
-                        'Judul Card' => 'Tidak ada data',
-                        'Campaign' => '-',
-                        'Board' => '-',
-                        'Tanggal Dibuat' => '-',
-                        'Due Date' => '-',
-                        'Tanggal Selesai' => '-',
-                        'Label & Brand' => '-',
-                        'Attachment & QC' => 'Tidak ada data',
-                        'Jumlah Akhir QC' => '-',
-                        'Catatan QC' => '-',
-                    ];
+                    yield $this->formatter->summaryRow($user, null, null, $rowNumber);
                     $rowNumber++;
                     continue;
                 }
 
                 foreach ($cards as $card) {
-                    $row = $this->formatter->summaryRow($user, $card, $rowNumber, $this->signedLinks);
-                    $attachment = collect($card->attachments ?? [])->first(
-                        fn ($item) => ! $this->formatter->isLocked($item)
-                            && (
-                                (($item->attachment_type ?? null) === 'file' && ! empty($item->file_path))
-                                || (($item->attachment_type ?? null) === 'link' && ! empty($item->link_url))
-                            )
-                    );
+                    $attachments = collect($card->attachments ?? [])
+                        ->filter(fn ($attachment) => empty($attachment->archived_at))
+                        ->values();
 
-                    if ($attachment) {
-                        $this->attachmentHyperlinks[$rowNumber] = $this->formatter->attachmentUrl($attachment, $this->signedLinks);
+                    if ($attachments->isEmpty()) {
+                        yield $this->formatter->summaryRow($user, $card, null, $rowNumber);
+                        $rowNumber++;
+                        continue;
                     }
 
-                    yield $row;
-                    $rowNumber++;
+                    foreach ($attachments as $attachment) {
+                        $url = $this->formatter->attachmentUrl($attachment, $this->signedLinks);
+                        if ($url) {
+                            $this->attachmentHyperlinks[$rowNumber] = $url;
+                        }
+
+                        yield $this->formatter->summaryRow($user, $card, $attachment, $rowNumber);
+                        $rowNumber++;
+                    }
                 }
             }
         }
@@ -91,7 +83,7 @@ class ReportSummarySheet implements FromGenerator, ShouldAutoSize, WithTitle, Wi
 
     public function title(): string
     {
-        return 'Kinerja';
+        return 'Kinerja & QC';
     }
 
     public function registerEvents(): array
@@ -105,52 +97,53 @@ class ReportSummarySheet implements FromGenerator, ShouldAutoSize, WithTitle, Wi
 
             $sheet->insertNewRowBefore(1, 3);
             $sheet->setCellValue('A1', 'LAPORAN KINERJA & QUALITY CONTROL');
-            $sheet->mergeCells('A1:M1');
+            $sheet->mergeCells('A1:R1');
             $sheet->setCellValue(
                 'A2',
                 "Periode: {$periodLabel} | Generated: {$generatedAt} | Total User: {$this->totalUsers}"
             );
-            $sheet->mergeCells('A2:M2');
+            $sheet->mergeCells('A2:R2');
 
-            $sheet->getStyle('A1:M1')->applyFromArray([
+            $sheet->getStyle('A1:R1')->applyFromArray([
                 'font' => ['bold' => true, 'size' => 15, 'color' => ['rgb' => '1A237E']],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
-            $sheet->getStyle('A2:M2')->applyFromArray([
+            $sheet->getStyle('A2:R2')->applyFromArray([
                 'font' => ['size' => 10, 'color' => ['rgb' => '4B5563']],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
 
             $lastRow = max(4, $sheet->getHighestRow());
-            $sheet->getStyle('A4:M' . $lastRow)->applyFromArray([
+            $sheet->getStyle('A4:R' . $lastRow)->applyFromArray([
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
             ]);
-            $sheet->getStyle('A4:M4')->applyFromArray([
+            $sheet->getStyle('A4:R4')->applyFromArray([
                 'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1A237E']],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
 
             if ($lastRow >= 5) {
-                $sheet->getStyle('A5:M' . $lastRow)->getAlignment()
+                $sheet->getStyle('A5:R' . $lastRow)->getAlignment()
                     ->setWrapText(true)
                     ->setVertical(Alignment::VERTICAL_TOP);
                 $sheet->getStyle('A5:A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle('G5:I' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle('L5:L' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('K5:O' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle('G5:I' . $lastRow)->getNumberFormat()->setFormatCode('dd/mm/yyyy');
+                $sheet->getStyle('L5:M' . $lastRow)->getNumberFormat()->setFormatCode('dd/mm/yyyy');
 
                 for ($row = 5; $row <= $lastRow; $row++) {
                     if ($row % 2 === 0) {
-                        $sheet->getStyle("A{$row}:M{$row}")->applyFromArray([
+                        $sheet->getStyle("A{$row}:R{$row}")->applyFromArray([
                             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8FAFC']],
                         ]);
                     }
 
                     $url = $this->attachmentHyperlinks[$row - 4] ?? null;
                     if ($url) {
-                        $sheet->getCell('K' . $row)->getHyperlink()->setUrl($url);
-                        $sheet->getStyle('K' . $row)->applyFromArray([
+                        $sheet->getCell('J' . $row)->getHyperlink()->setUrl($url);
+                        $sheet->getStyle('J' . $row)->applyFromArray([
                             'font' => ['color' => ['rgb' => '1D4ED8'], 'underline' => true],
                         ]);
                     }
@@ -158,7 +151,7 @@ class ReportSummarySheet implements FromGenerator, ShouldAutoSize, WithTitle, Wi
             }
 
             $delegate->freezePane('A5');
-            $delegate->setAutoFilter('A4:M' . $lastRow);
+            $delegate->setAutoFilter('A4:R' . $lastRow);
             $delegate->getPageSetup()
                 ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
                 ->setFitToWidth(1)
@@ -170,8 +163,8 @@ class ReportSummarySheet implements FromGenerator, ShouldAutoSize, WithTitle, Wi
                 'A' . $footerRow,
                 'Laporan ini dihasilkan secara otomatis oleh sistem TRACKO | Generated: ' . $generatedAt
             );
-            $sheet->mergeCells('A' . $footerRow . ':M' . $footerRow);
-            $sheet->getStyle('A' . $footerRow . ':M' . $footerRow)->applyFromArray([
+            $sheet->mergeCells('A' . $footerRow . ':R' . $footerRow);
+            $sheet->getStyle('A' . $footerRow . ':R' . $footerRow)->applyFromArray([
                 'font' => ['size' => 9, 'color' => ['rgb' => '94A3B8']],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
@@ -180,16 +173,21 @@ class ReportSummarySheet implements FromGenerator, ShouldAutoSize, WithTitle, Wi
                 'A' => 6,
                 'B' => 22,
                 'C' => 18,
-                'D' => 34,
+                'D' => 32,
                 'E' => 22,
                 'F' => 15,
                 'G' => 15,
                 'H' => 15,
                 'I' => 15,
-                'J' => 26,
-                'K' => 52,
-                'L' => 16,
-                'M' => 30,
+                'J' => 42,
+                'K' => 12,
+                'L' => 15,
+                'M' => 15,
+                'N' => 12,
+                'O' => 16,
+                'P' => 18,
+                'Q' => 28,
+                'R' => 26,
             ];
             foreach ($widths as $column => $width) {
                 $sheet->getColumnDimension($column)->setWidth($width);

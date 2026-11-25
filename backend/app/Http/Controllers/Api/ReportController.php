@@ -18,10 +18,10 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
-use App\Services\ReportDateSummaryService;
 use App\Services\ReportPdfService;
 use App\Services\ReportDataLoader;
 use App\Services\ReportScopeService;
+use App\Services\ReportTotalsService;
 use App\Support\ResourceAccess;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -38,7 +38,7 @@ class ReportController extends Controller
     public function __construct(
         private readonly ReportDataLoader $reportDataLoader,
         private readonly ReportScopeService $reportScope,
-        private readonly ReportDateSummaryService $dateSummaryService,
+        private readonly ReportTotalsService $reportTotalsService,
     ) {
     }
 
@@ -588,14 +588,11 @@ class ReportController extends Controller
             }
 
             $totalUsers = $users->count();
-            $totalCards = $users->sum(fn ($user) => ($user->cards ?? collect())->count());
-            $allAttachments = $users->flatMap(
-                fn ($user) => ($user->cards ?? collect())->flatMap(fn ($card) => $card->attachments ?? collect())
-            );
-            $totalAttachments = $allAttachments->count();
-            $totalQc = (int) $allAttachments->sum(fn ($attachment) => (int) ($attachment->qc_quantity ?? 0));
+            $totals = $this->reportTotalsService->totalsFromUsers($users);
+            $totalCards = $totals['cards'];
+            $totalAttachments = $totals['attachments'];
+            $totalQc = $totals['qc'];
 
-            $dateSummary = $this->dateSummaryService->fromUsers($users, $request);
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totalCards,
                 'total_attachments' => $totalAttachments,
@@ -605,16 +602,14 @@ class ReportController extends Controller
             $html = view('exports.report_pdf', [
                 'users' => $users,
                 'totalUsers' => $totalUsers,
-                'dateSummary' => $dateSummary,
                 'meta' => $meta,
-                'showDateSummary' => true,
             ])->render();
 
             // HTML preview still needs the complete document, but PDF
             // generation must use the bounded loader. Rendering all users in
             // one DomPDF instance makes the batch preview exceed memory on
             // large reports.
-            unset($users, $allAttachments);
+            unset($users);
             gc_collect_cycles();
 
             $pdfContent = $reportPdf->renderChunks(
@@ -623,7 +618,6 @@ class ReportController extends Controller
                     (int) config('report.pdf_cards_per_chunk', 30),
                 ),
                 $totalUsers,
-                $dateSummary,
                 $meta,
             );
             $base64Pdf = base64_encode($pdfContent);
@@ -677,12 +671,11 @@ class ReportController extends Controller
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
-            $analysis = $this->dateSummaryService->analyze($request);
-            $dateSummary = $analysis['rows'];
+            $totals = $this->reportTotalsService->totals($request);
             $meta = array_merge($this->reportMeta($request), [
-                'total_cards' => $analysis['totals']['cards'],
-                'total_attachments' => $analysis['totals']['attachments'],
-                'total_qc' => $analysis['totals']['qc'],
+                'total_cards' => $totals['cards'],
+                'total_attachments' => $totals['attachments'],
+                'total_qc' => $totals['qc'],
             ]);
 
             $prefix = $request->filled('user_id') ? 'Report_User_' . $request->user_id : 'Report_Kinerja_Batch';
@@ -696,7 +689,6 @@ class ReportController extends Controller
                         (int) config('report.pdf_cards_per_chunk', 30),
                     ),
                     $totalUsers,
-                    $dateSummary,
                     $meta,
                 ),
                 $fileName,
@@ -749,12 +741,11 @@ class ReportController extends Controller
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
-            $analysis = $this->dateSummaryService->analyze($request);
-            $dateSummary = $analysis['rows'];
+            $totals = $this->reportTotalsService->totals($request);
             $meta = array_merge($this->reportMeta($request), [
-                'total_cards' => $analysis['totals']['cards'],
-                'total_attachments' => $analysis['totals']['attachments'],
-                'total_qc' => $analysis['totals']['qc'],
+                'total_cards' => $totals['cards'],
+                'total_attachments' => $totals['attachments'],
+                'total_qc' => $totals['qc'],
             ]);
 
             $prefix = $request->filled('user_id') ? 'Report_User_' . $request->user_id : 'Report_Kinerja_Batch';
@@ -767,7 +758,6 @@ class ReportController extends Controller
                     fn () => $this->reportDataLoader->chunks($request),
                     $totalUsers,
                     true,
-                    $dateSummary,
                     $meta,
                 ),
                 $temporaryName,

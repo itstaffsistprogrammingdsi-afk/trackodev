@@ -11,9 +11,9 @@ class ReportPdfService
 {
     private const USERS_PER_CHUNK = 100;
 
-    public function render(Collection $users, array $dateSummary = [], array $meta = []): string
+    public function render(Collection $users, array $meta = []): string
     {
-        return $this->renderChunks([$users], $users->count(), $dateSummary, $meta);
+        return $this->renderChunks([$users], $users->count(), $meta);
     }
 
     /**
@@ -24,7 +24,6 @@ class ReportPdfService
     public function renderChunks(
         iterable $chunks,
         int $totalUsers,
-        array $dateSummary = [],
         array $meta = [],
     ): string {
         $merged = new Fpdi('L', 'mm');
@@ -37,8 +36,6 @@ class ReportPdfService
 
         try {
             $userOffset = 0;
-            $qcOffset = 0;
-            $hasShownDateSummary = false;
 
             foreach ($chunks as $chunk) {
                 $chunk = $chunk instanceof Collection ? $chunk->values() : collect($chunk);
@@ -46,9 +43,6 @@ class ReportPdfService
                 if ($chunk->isEmpty()) {
                     continue;
                 }
-
-                $showDateSummary = ! $hasShownDateSummary;
-                $hasShownDateSummary = true;
 
                 $sourcePath = tempnam(sys_get_temp_dir(), 'tracko-report-chunk-');
 
@@ -61,10 +55,7 @@ class ReportPdfService
                     $chunk,
                     $totalUsers,
                     $userOffset,
-                    $showDateSummary,
-                    $dateSummary,
                     $meta,
-                    $qcOffset,
                 );
 
                 if (file_put_contents($sourcePath, $contents) === false) {
@@ -80,21 +71,9 @@ class ReportPdfService
                     $merged->useTemplate($template, 0, 0, $size['width'], $size['height'], true);
                 }
 
-                $chunkQcCount = 0;
-                foreach ($chunk as $user) {
-                    foreach (collect($user->cards ?? []) as $card) {
-                        foreach (collect($card->attachments ?? []) as $attachment) {
-                            if (empty($attachment->archived_at)) {
-                                $chunkQcCount++;
-                            }
-                        }
-                    }
-                }
-
                 unset($contents);
                 gc_collect_cycles();
                 $userOffset += $chunk->count();
-                $qcOffset += $chunkQcCount;
             }
 
             $contents = $merged->Output('report.pdf', 'S');
@@ -115,19 +94,13 @@ class ReportPdfService
         Collection $users,
         int $totalUsers,
         int $userOffset = 0,
-        bool $showDateSummary = true,
-        array $dateSummary = [],
         array $meta = [],
-        int $qcOffset = 0,
     ): string {
         $contents = Pdf::loadView('exports.report_pdf', [
             'users' => $users,
             'totalUsers' => $totalUsers,
             'userOffset' => $userOffset,
-            'qcOffset' => $qcOffset,
             'signedLinks' => true,
-            'showDateSummary' => $showDateSummary,
-            'dateSummary' => $dateSummary,
             'meta' => $meta,
         ])
             ->setPaper('a4', 'landscape')

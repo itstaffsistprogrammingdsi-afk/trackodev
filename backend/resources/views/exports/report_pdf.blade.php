@@ -156,7 +156,7 @@
             margin-left: 6px;
         }
 
-        /* Data Tables */
+        /* Data Table */
         .report-document table.data-table {
             width: 100%;
             border-collapse: collapse;
@@ -177,7 +177,7 @@
             background-color: #1a237e;
             color: #ffffff;
             font-weight: bold;
-            padding: 4px 4px;
+            padding: 4px 3.5px;
             border: 1px solid #1a237e;
             text-align: left;
             font-size: 7.5px;
@@ -185,7 +185,7 @@
         }
 
         .report-document table.data-table td {
-            padding: 3.5px 4px;
+            padding: 3.5px 3.5px;
             border: 1px solid #cbd5e1;
             vertical-align: top;
             font-size: 7.5px;
@@ -201,45 +201,23 @@
             background-color: #ffffff;
         }
 
-        .report-document .row-total td {
-            background-color: #e8eaf6;
-            color: #1a237e;
-            font-weight: bold;
-            border-top: 1.5px solid #1a237e;
-        }
-
         /* Utilities */
         .report-document .text-center { text-align: center; }
         .report-document .text-right { text-align: right; }
         .report-document .text-muted { color: #94a3b8; font-style: italic; }
         .report-document .font-bold { font-weight: bold; }
 
-        /* Section 01 columns */
-        .report-document .col-date-recap { width: 20%; }
-        .report-document .col-metric-recap { width: 16%; text-align: center; }
-
-        /* Section 02 columns (11 cols = 100%) */
-        .report-document .col-no { width: 3.5%; text-align: center; }
-        .report-document .col-user { width: 10%; }
-        .report-document .col-divisi { width: 8.5%; }
-        .report-document .col-card { width: 17%; }
-        .report-document .col-campaign { width: 11%; }
-        .report-document .col-board { width: 8%; }
-        .report-document .col-date { width: 7.5%; text-align: center; }
-        .report-document .col-status { width: 7.5%; text-align: center; }
-        .report-document .col-labels { width: 12%; }
-
-        /* Section 03 columns (11 cols = 100%) */
-        .report-document .col-qc-no { width: 3.5%; text-align: center; }
-        .report-document .col-qc-user { width: 9.5%; }
-        .report-document .col-qc-card { width: 14%; }
-        .report-document .col-qc-file { width: 17%; }
-        .report-document .col-qc-type { width: 5.5%; text-align: center; }
-        .report-document .col-qc-date { width: 7.5%; text-align: center; }
-        .report-document .col-qc-qty { width: 6%; text-align: center; }
-        .report-document .col-qc-status { width: 7.5%; text-align: center; }
-        .report-document .col-qc-by { width: 8.5%; }
-        .report-document .col-qc-note { width: 13.5%; }
+        /* 12 Columns = 100% */
+        .report-document .col-no { width: 3%; text-align: center; }
+        .report-document .col-user { width: 8.5%; }
+        .report-document .col-divisi { width: 7%; }
+        .report-document .col-card { width: 13.5%; }
+        .report-document .col-campaign { width: 9%; }
+        .report-document .col-board { width: 6.5%; }
+        .report-document .col-date { width: 6.5%; text-align: center; }
+        .report-document .col-status { width: 6.5%; text-align: center; }
+        .report-document .col-attachment { width: 20%; }
+        .report-document .col-labels { width: 6.5%; }
 
         /* Content Styling */
         .report-document .user-name {
@@ -278,7 +256,7 @@
         /* Status Chips */
         .report-document .chip {
             display: inline-block;
-            padding: 1.5px 5px;
+            padding: 1.5px 4px;
             border-radius: 3px;
             font-size: 6.5px;
             font-weight: bold;
@@ -335,6 +313,19 @@
             white-space: nowrap;
         }
 
+        /* Attachment Stack */
+        .report-document .attachment-item {
+            margin-bottom: 4px;
+            padding-bottom: 3.5px;
+            border-bottom: 1px dashed #cbd5e1;
+        }
+
+        .report-document .attachment-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
         .report-document .attachment-link {
             color: #1a237e;
             text-decoration: underline;
@@ -348,11 +339,25 @@
             word-break: break-all;
         }
 
+        .report-document .attachment-meta {
+            font-size: 6.5px;
+            color: #475569;
+            margin-top: 1.5px;
+            line-height: 1.35;
+        }
+
+        .report-document .attachment-note {
+            font-size: 6.5px;
+            color: #334155;
+            margin-top: 1px;
+            font-style: italic;
+        }
+
         .report-document .empty-state {
             text-align: center;
             color: #64748b;
             font-style: italic;
-            padding: 8px;
+            padding: 10px;
             background-color: #f8fafc;
         }
 
@@ -389,29 +394,20 @@
         $metaData = is_array($meta ?? null) ? $meta : [];
         $periodLabel = $metaData['period_label'] ?? 'Semua periode';
         $generatedAt = $metaData['generated_at'] ?? now()->format('d M Y H:i');
-        $shouldShowDateSummary = array_key_exists('showDateSummary', get_defined_vars())
-            ? (bool) $showDateSummary
-            : true;
-        $dateSummaryRows = is_array($dateSummary ?? null) ? $dateSummary : [];
 
         $chunkCardsCount = $usersCollection->sum(fn ($u) => collect($u->cards ?? [])->count());
         $chunkAttachments = $usersCollection->flatMap(
-            fn ($u) => collect($u->cards ?? [])->flatMap(fn ($c) => collect($c->attachments ?? []))
+            fn ($u) => collect($u->cards ?? [])->flatMap(
+                fn ($c) => collect($c->attachments ?? [])->filter(fn ($a) => empty($a->archived_at))
+            )
         );
         $chunkAttachmentsCount = $chunkAttachments->count();
         $chunkQcTotal = (int) $chunkAttachments->sum(fn ($a) => (int) ($a->qc_quantity ?? 0));
 
-        $recapCreatedTotal = (int) collect($dateSummaryRows)->sum(fn ($r) => (int) ($r['created'] ?? 0));
-        $recapCompletedTotal = (int) collect($dateSummaryRows)->sum(fn ($r) => (int) ($r['completed'] ?? 0));
-        $recapUploadedTotal = (int) collect($dateSummaryRows)->sum(fn ($r) => (int) ($r['uploaded'] ?? 0));
-        $recapQcCountTotal = (int) collect($dateSummaryRows)->sum(fn ($r) => (int) ($r['qc'] ?? 0));
-        $recapQcQtyTotal = (int) collect($dateSummaryRows)->sum(fn ($r) => (int) ($r['qc_quantity'] ?? 0));
-
         $kpiUsers = (int) ($totalUsers ?? $usersCollection->count());
-        $kpiCards = (int) ($metaData['total_cards'] ?? (! empty($dateSummaryRows) ? $recapCreatedTotal : $chunkCardsCount));
-        $kpiAttachments = (int) ($metaData['total_attachments'] ?? (! empty($dateSummaryRows) ? $recapUploadedTotal : $chunkAttachmentsCount));
-        $kpiQc = (int) ($metaData['total_qc'] ?? (! empty($dateSummaryRows) ? $recapQcQtyTotal : $chunkQcTotal));
-        $qcNumberOffset = (int) ($qcOffset ?? 0);
+        $kpiCards = (int) ($metaData['total_cards'] ?? $chunkCardsCount);
+        $kpiAttachments = (int) ($metaData['total_attachments'] ?? $chunkAttachmentsCount);
+        $kpiQc = (int) ($metaData['total_qc'] ?? $chunkQcTotal);
 
         $formatDate = function ($value, string $format = 'd/m/Y'): string {
             if (empty($value)) {
@@ -425,6 +421,7 @@
         };
 
         $todayStart = \Carbon\Carbon::today();
+        $isExport = isset($signedLinks) && $signedLinks;
     @endphp
 
     <!-- HEADER -->
@@ -434,7 +431,7 @@
                 <div class="doc-wordmark">TRACKO</div>
                 <div class="doc-title">Laporan Kinerja &amp; Quality Control</div>
                 <div class="doc-subtitle">
-                    Ringkasan aktivitas tanggal, detail penyelesaian card, dan verifikasi quality control lampiran
+                    Detail penyelesaian card, tenggat waktu, dan verifikasi quality control lampiran
                     @if(isset($workspace))
                         &bull; Workspace: {{ $workspace->name ?? 'Semua' }}
                     @endif
@@ -465,7 +462,7 @@
                 <div class="kpi-value">{{ $kpiCards }}</div>
             </td>
             <td class="kpi-attachment">
-                <div class="kpi-label">Total Attachment</div>
+                <div class="kpi-label">Total Lampiran</div>
                 <div class="kpi-value">{{ $kpiAttachments }}</div>
             </td>
             <td class="kpi-qc">
@@ -475,64 +472,12 @@
         </tr>
     </table>
 
-    <!-- SECTION 01: REKAP TANGGAL -->
-    @if ($shouldShowDateSummary)
-        <div class="section-block">
-            <div class="section-header">
-                <span class="section-number">01</span>
-                <span class="section-title">Rekap Tanggal</span>
-                <span class="section-note">Agregasi aktivitas harian berdasarkan periode laporan</span>
-            </div>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th class="col-date-recap">Tanggal</th>
-                        <th class="col-metric-recap text-center">Card Dibuat</th>
-                        <th class="col-metric-recap text-center">Card Selesai</th>
-                        <th class="col-metric-recap text-center">Attachment Diunggah</th>
-                        <th class="col-metric-recap text-center">Attachment Di-QC</th>
-                        <th class="col-metric-recap text-center">Jumlah QC</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($dateSummaryRows as $recapIndex => $recap)
-                        @php
-                            $recapRowClass = $recapIndex % 2 === 0 ? 'row-even' : 'row-odd';
-                        @endphp
-                        <tr class="{{ $recapRowClass }}">
-                            <td class="font-bold">{{ $formatDate($recap['date'] ?? null, 'd/m/Y') }}</td>
-                            <td class="text-center">{{ (int) ($recap['created'] ?? 0) }}</td>
-                            <td class="text-center">{{ (int) ($recap['completed'] ?? 0) }}</td>
-                            <td class="text-center">{{ (int) ($recap['uploaded'] ?? 0) }}</td>
-                            <td class="text-center">{{ (int) ($recap['qc'] ?? 0) }}</td>
-                            <td class="text-center font-bold">{{ (int) ($recap['qc_quantity'] ?? 0) }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="empty-state">Tidak ada aktivitas tanggal yang tercatat pada periode ini.</td>
-                        </tr>
-                    @endforelse
-                    @if (! empty($dateSummaryRows))
-                        <tr class="row-total">
-                            <td>TOTAL</td>
-                            <td class="text-center">{{ $recapCreatedTotal }}</td>
-                            <td class="text-center">{{ $recapCompletedTotal }}</td>
-                            <td class="text-center">{{ $recapUploadedTotal }}</td>
-                            <td class="text-center">{{ $recapQcCountTotal }}</td>
-                            <td class="text-center">{{ $recapQcQtyTotal }}</td>
-                        </tr>
-                    @endif
-                </tbody>
-            </table>
-        </div>
-    @endif
-
-    <!-- SECTION 02: DETAIL KINERJA -->
+    <!-- SECTION 01: DETAIL KINERJA & QUALITY CONTROL -->
     <div class="section-block">
         <div class="section-header">
-            <span class="section-number">02</span>
-            <span class="section-title">Detail Kinerja</span>
-            <span class="section-note">Daftar card per user beserta tanggal pembuatan, tenggat waktu, dan tanggal selesai</span>
+            <span class="section-number">01</span>
+            <span class="section-title">Detail Kinerja &amp; Quality Control</span>
+            <span class="section-note">Daftar card per user beserta tanggal pengerjaan, lampiran hasil, dan status quality control</span>
         </div>
         <table class="data-table">
             <thead>
@@ -547,6 +492,7 @@
                     <th class="col-date text-center">Due Date</th>
                     <th class="col-date text-center">Tanggal Selesai</th>
                     <th class="col-status text-center">Status</th>
+                    <th class="col-attachment">Lampiran &amp; Quality Control</th>
                     <th class="col-labels">Label &amp; Brand</th>
                 </tr>
             </thead>
@@ -605,6 +551,7 @@
                                     ?? data_get($card, 'workspace.name');
                                 $labels = collect($card->labels ?? []);
                                 $brands = collect($card->brands ?? []);
+                                $attachments = collect($card->attachments ?? [])->filter(fn ($a) => empty($a->archived_at))->values();
                             @endphp
                             <tr class="{{ $rowClass }}">
                                 @if ($cardIndex === 0)
@@ -659,6 +606,84 @@
                                     <span class="chip {{ $statusChipClass }}">{{ $statusText }}</span>
                                 </td>
 
+                                <td class="col-attachment">
+                                    @if ($attachments->isNotEmpty())
+                                        @foreach ($attachments as $attachment)
+                                            @php
+                                                $rawName = $attachment->file_name
+                                                    ?? ($attachment->link_url
+                                                    ?? ($attachment->result_description ?? 'Attachment'));
+                                                $displayName = Str::limit((string) $rawName, 36);
+                                                $attachmentType = $attachment->attachment_type ?? '-';
+                                                $isLocked = method_exists($attachment, 'isDownloadLocked') && $attachment->isDownloadLocked();
+
+                                                $hasUrl = false;
+                                                $url = null;
+                                                if ($attachmentType === 'link' && ! empty($attachment->link_url)) {
+                                                    $hasUrl = true;
+                                                    $url = $attachment->link_url;
+                                                } elseif (! empty($attachment->file_url)) {
+                                                    $hasUrl = true;
+                                                    $url = $attachment->file_url;
+                                                }
+
+                                                $hasQc = ($attachment->qc_quantity ?? null) !== null;
+                                                $totalQty = (int) ($attachment->quantity ?? 0);
+                                                $qtyDisplay = $hasQc
+                                                    ? ((int) $attachment->qc_quantity) . '/' . $totalQty
+                                                    : '0/' . $totalQty;
+                                                $statusQcLabel = $hasQc ? 'ACC' : 'Belum QC';
+                                                $statusQcClass = $hasQc ? 'chip-green' : 'chip-amber';
+                                                $qcByName = data_get($attachment, 'qcBy.name') ?? '-';
+                                                $uploadDateFormatted = $formatDate($attachment->created_at ?? null);
+                                                $qcDateFormatted = $formatDate($attachment->qc_at ?? null);
+                                                $qcNote = ! empty($attachment->qc_note) ? Str::limit((string) $attachment->qc_note, 90) : null;
+                                            @endphp
+                                            <div class="attachment-item">
+                                                <div>
+                                                    @if ($isLocked)
+                                                        <span class="attachment-plain">{{ $displayName }}</span>
+                                                        <span class="chip chip-gray" style="margin-left:2px;">Terkunci</span>
+                                                    @elseif ($isExport && $attachmentType === 'file' && ! empty($attachment->file_path))
+                                                        <a
+                                                            href="{{ app(\App\Services\AttachmentSignedUrlService::class)->for($attachment) }}"
+                                                            class="attachment-link"
+                                                        >{{ $displayName }}</a>
+                                                    @elseif ($isExport && $hasUrl && $url)
+                                                        <a
+                                                            href="{{ $url }}"
+                                                            class="attachment-link"
+                                                        >{{ $displayName }}</a>
+                                                    @elseif ($hasUrl && $url && $attachmentType === 'file')
+                                                        <a
+                                                            href="#attachment-preview"
+                                                            class="attachment-link"
+                                                            data-attachment-preview="true"
+                                                            data-attachment-url="{{ $url }}"
+                                                            data-attachment-name="{{ $attachment->file_name ?? $displayName }}"
+                                                            data-attachment-file-type="{{ $attachment->file_type ?? '' }}"
+                                                            title="Preview {{ $attachment->file_name ?? $displayName }}"
+                                                        >{{ $displayName }}</a>
+                                                    @else
+                                                        <span class="attachment-plain">{{ $displayName }}</span>
+                                                    @endif
+                                                    @if ($attachmentType !== '-')
+                                                        <span class="chip chip-gray" style="margin-left:2px;">{{ $attachmentType }}</span>
+                                                    @endif
+                                                </div>
+                                                <div class="attachment-meta">
+                                                    Upload: {{ $uploadDateFormatted }} &middot; QC: {{ $qcDateFormatted }} &middot; Qty: <strong>{{ $qtyDisplay }}</strong> &middot; Status: <span class="chip {{ $statusQcClass }}">{{ $statusQcLabel }}</span> &middot; QC oleh: {{ $qcByName }}
+                                                </div>
+                                                @if ($qcNote)
+                                                    <div class="attachment-note">Catatan: {{ $qcNote }}</div>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <span class="text-muted">Tidak ada lampiran</span>
+                                    @endif
+                                </td>
+
                                 <td class="col-labels">
                                     @if ($labels->isNotEmpty())
                                         <div style="margin-bottom:2px;">
@@ -697,162 +722,12 @@
                                     <span class="text-muted">-</span>
                                 @endif
                             </td>
-                            <td colspan="8" class="no-data-card">Tidak ada data task/card yang sesuai filter</td>
+                            <td colspan="9" class="no-data-card">Tidak ada data task/card yang sesuai filter</td>
                         </tr>
                     @endif
                 @empty
                     <tr>
-                        <td colspan="11" class="empty-state"><strong>Tidak ada data user yang ditemukan.</strong></td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    <!-- SECTION 03: QUALITY CONTROL -->
-    @php
-        $qcRows = [];
-        foreach ($usersCollection as $user) {
-            foreach (collect($user->cards ?? []) as $card) {
-                foreach (collect($card->attachments ?? []) as $attachment) {
-                    if (! empty($attachment->archived_at)) {
-                        continue;
-                    }
-                    $qcRows[] = [
-                        'user' => $user,
-                        'card' => $card,
-                        'attachment' => $attachment,
-                    ];
-                }
-            }
-        }
-        $isExport = isset($signedLinks) && $signedLinks;
-    @endphp
-
-    <div class="section-block">
-        <div class="section-header">
-            <span class="section-number">03</span>
-            <span class="section-title">Quality Control</span>
-            <span class="section-note">Rincian lampiran kerja, tanggal unggah, tanggal verifikasi QC, dan catatan hasil</span>
-        </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th class="col-qc-no text-center">No</th>
-                    <th class="col-qc-user">User</th>
-                    <th class="col-qc-card">Card</th>
-                    <th class="col-qc-file">Lampiran</th>
-                    <th class="col-qc-type text-center">Tipe</th>
-                    <th class="col-qc-date text-center">Tanggal Upload</th>
-                    <th class="col-qc-date text-center">Tanggal QC</th>
-                    <th class="col-qc-qty text-center">Qty</th>
-                    <th class="col-qc-status text-center">Status</th>
-                    <th class="col-qc-by">QC Oleh</th>
-                    <th class="col-qc-note">Catatan</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($qcRows as $qcIndex => $item)
-                    @php
-                        $qcUser = $item['user'];
-                        $qcCard = $item['card'];
-                        $attachment = $item['attachment'];
-                        $qcRowClass = $qcIndex % 2 === 0 ? 'row-even' : 'row-odd';
-
-                        $rawName = $attachment->file_name
-                            ?? ($attachment->link_url
-                            ?? ($attachment->result_description ?? 'Attachment'));
-                        $displayName = Str::limit((string) $rawName, 36);
-                        $attachmentType = $attachment->attachment_type ?? '-';
-
-                        $isLocked = method_exists($attachment, 'isDownloadLocked') && $attachment->isDownloadLocked();
-
-                        $hasUrl = false;
-                        $url = null;
-                        if ($attachmentType === 'link' && ! empty($attachment->link_url)) {
-                            $hasUrl = true;
-                            $url = $attachment->link_url;
-                        } elseif (! empty($attachment->file_url)) {
-                            $hasUrl = true;
-                            $url = $attachment->file_url;
-                        }
-
-                        $hasQc = ($attachment->qc_quantity ?? null) !== null;
-                        $qtyDisplay = $hasQc
-                            ? ((int) $attachment->qc_quantity) . ' / ' . ((int) ($attachment->quantity ?? 0))
-                            : (string) ((int) ($attachment->quantity ?? 0));
-                        $qcByName = data_get($attachment, 'qcBy.name') ?? '-';
-                        $qcNote = ! empty($attachment->qc_note) ? Str::limit((string) $attachment->qc_note, 80) : '-';
-                    @endphp
-                    <tr class="{{ $qcRowClass }}">
-                        <td class="col-qc-no text-center">{{ $qcNumberOffset + $qcIndex + 1 }}</td>
-                        <td class="col-qc-user">
-                            <span class="user-name">{{ $qcUser->name ?? '-' }}</span>
-                        </td>
-                        <td class="col-qc-card">
-                            <span class="card-title">{{ $qcCard->title ?? '-' }}</span>
-                        </td>
-                        <td class="col-qc-file">
-                            @if ($isLocked)
-                                <span class="attachment-plain">{{ $displayName }}</span>
-                                <span class="chip chip-gray" style="margin-left:2px;">Terkunci</span>
-                            @elseif ($isExport && $attachmentType === 'file' && ! empty($attachment->file_path))
-                                <a
-                                    href="{{ app(\App\Services\AttachmentSignedUrlService::class)->for($attachment) }}"
-                                    class="attachment-link"
-                                >{{ $displayName }}</a>
-                            @elseif ($isExport && $hasUrl && $url)
-                                <a
-                                    href="{{ $url }}"
-                                    class="attachment-link"
-                                >{{ $displayName }}</a>
-                            @elseif ($hasUrl && $url && $attachmentType === 'file')
-                                <a
-                                    href="#attachment-preview"
-                                    class="attachment-link"
-                                    data-attachment-preview="true"
-                                    data-attachment-url="{{ $url }}"
-                                    data-attachment-name="{{ $attachment->file_name ?? $displayName }}"
-                                    data-attachment-file-type="{{ $attachment->file_type ?? '' }}"
-                                    title="Preview {{ $attachment->file_name ?? $displayName }}"
-                                >{{ $displayName }}</a>
-                            @else
-                                <span class="attachment-plain">{{ $displayName }}</span>
-                            @endif
-                        </td>
-                        <td class="col-qc-type text-center">
-                            <span class="chip chip-gray">{{ $attachmentType }}</span>
-                        </td>
-                        <td class="col-qc-date text-center">
-                            {{ $formatDate($attachment->created_at ?? null) }}
-                        </td>
-                        <td class="col-qc-date text-center">
-                            {{ $formatDate($attachment->qc_at ?? null) }}
-                        </td>
-                        <td class="col-qc-qty text-center font-bold">
-                            {{ $qtyDisplay }}
-                        </td>
-                        <td class="col-qc-status text-center">
-                            @if ($hasQc)
-                                <span class="chip chip-green">ACC</span>
-                            @else
-                                <span class="chip chip-amber">Belum QC</span>
-                            @endif
-                        </td>
-                        <td class="col-qc-by">
-                            {{ $qcByName }}
-                        </td>
-                        <td class="col-qc-note">
-                            @if ($qcNote !== '-')
-                                {{ $qcNote }}
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="11" class="empty-state">Tidak ada lampiran quality control pada data ini.</td>
+                        <td colspan="12" class="empty-state"><strong>Tidak ada data user yang ditemukan.</strong></td>
                     </tr>
                 @endforelse
             </tbody>

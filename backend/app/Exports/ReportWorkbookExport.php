@@ -11,7 +11,6 @@ class ReportWorkbookExport implements WithMultipleSheets
         private readonly Closure $chunkFactory,
         private readonly int $totalUsers,
         private readonly bool $signedLinks = true,
-        private readonly array $dateSummary = [],
         private readonly array $meta = [],
     ) {
     }
@@ -20,8 +19,6 @@ class ReportWorkbookExport implements WithMultipleSheets
     {
         return [
             new ReportSummarySheet($this->chunkFactory, $this->totalUsers, $this->signedLinks, $this->meta),
-            new ReportDateSummarySheet($this->dateSummary, $this->meta),
-            new ReportAttachmentSheet($this->chunkFactory, $this->signedLinks, $this->meta),
         ];
     }
 }

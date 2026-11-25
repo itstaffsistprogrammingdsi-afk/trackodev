@@ -168,15 +168,11 @@ class ReportSignedAttachmentTest extends TestCase
             ));
 
             $workbook = IOFactory::load($path);
-            $this->assertSame(['Kinerja', 'Rekap Tanggal', 'Quality Control'], $workbook->getSheetNames());
-            $summarySheet = $workbook->getSheetByName('Kinerja');
-            $summaryUrl = $summarySheet->getCell('K5')->getHyperlink()->getUrl();
-            $this->assertStringContainsString('signature=', $summaryUrl);
-
-            $attachmentSheet = $workbook->getSheetByName('Quality Control');
-            $firstUrl = $attachmentSheet->getCell('H5')->getHyperlink()->getUrl();
-            $secondUrl = $attachmentSheet->getCell('H6')->getHyperlink()->getUrl();
-            $externalUrl = $attachmentSheet->getCell('H7')->getHyperlink()->getUrl();
+            $this->assertSame(['Kinerja & QC'], $workbook->getSheetNames());
+            $sheet = $workbook->getSheetByName('Kinerja & QC');
+            $firstUrl = $sheet->getCell('J5')->getHyperlink()->getUrl();
+            $secondUrl = $sheet->getCell('J6')->getHyperlink()->getUrl();
+            $externalUrl = $sheet->getCell('J7')->getHyperlink()->getUrl();
 
             $this->assertNotSame($firstUrl, $secondUrl);
             $this->assertStringContainsString('signature=', $firstUrl);

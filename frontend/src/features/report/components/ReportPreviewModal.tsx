@@ -328,8 +328,8 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
           <footer className="hidden items-center justify-between gap-2 border-t border-line bg-surface px-5 py-2.5 sm:flex">
             <p className="text-2xs text-fg-subtle">
               {t(
-                "Excel memuat Kinerja, Rekap Tanggal, dan Quality Control. Pilih lampiran di Detail untuk melihat preview.",
-                "Excel includes Kinerja, Rekap Tanggal, and Quality Control. Select an attachment in Detail to preview it.",
+                "Excel memuat Kinerja & Quality Control. Pilih lampiran di Detail untuk melihat preview.",
+                "Excel includes Kinerja & Quality Control. Select an attachment in Detail to preview it.",
               )}
             </p>
           </footer>
