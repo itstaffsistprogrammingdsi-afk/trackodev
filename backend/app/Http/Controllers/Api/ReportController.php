@@ -18,10 +18,12 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
+use App\Services\ReportDateSummaryService;
 use App\Services\ReportPdfService;
 use App\Services\ReportDataLoader;
 use App\Services\ReportScopeService;
 use App\Support\ResourceAccess;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -36,6 +38,7 @@ class ReportController extends Controller
     public function __construct(
         private readonly ReportDataLoader $reportDataLoader,
         private readonly ReportScopeService $reportScope,
+        private readonly ReportDateSummaryService $dateSummaryService,
     ) {
     }
 
@@ -539,6 +542,34 @@ class ReportController extends Controller
     }
 
     /**
+     * @return array{period_label: string, generated_at: string, total_cards?: int, total_attachments?: int, total_qc?: int}
+     */
+    private function reportMeta(Request $request): array
+    {
+        $start = $request->filled('start_date')
+            ? Carbon::parse($request->string('start_date')->toString())->format('d M Y')
+            : null;
+        $end = $request->filled('end_date')
+            ? Carbon::parse($request->string('end_date')->toString())->format('d M Y')
+            : null;
+
+        if ($start && $end) {
+            $periodLabel = "{$start} – {$end}";
+        } elseif ($start) {
+            $periodLabel = "Sejak {$start}";
+        } elseif ($end) {
+            $periodLabel = "Sampai {$end}";
+        } else {
+            $periodLabel = 'Semua periode';
+        }
+
+        return [
+            'period_label' => $periodLabel,
+            'generated_at' => now()->format('d M Y H:i'),
+        ];
+    }
+
+    /**
      * PREVIEW PDF
      */
     public function previewPdf(Request $request, ReportPdfService $reportPdf): JsonResponse
@@ -557,17 +588,33 @@ class ReportController extends Controller
             }
 
             $totalUsers = $users->count();
-            $totalCards = $users->sum(fn ($user) => $user->cards->count());
+            $totalCards = $users->sum(fn ($user) => ($user->cards ?? collect())->count());
+            $allAttachments = $users->flatMap(
+                fn ($user) => ($user->cards ?? collect())->flatMap(fn ($card) => $card->attachments ?? collect())
+            );
+            $totalAttachments = $allAttachments->count();
+            $totalQc = (int) $allAttachments->sum(fn ($attachment) => (int) ($attachment->qc_quantity ?? 0));
+
+            $dateSummary = $this->dateSummaryService->fromUsers($users, $request);
+            $meta = array_merge($this->reportMeta($request), [
+                'total_cards' => $totalCards,
+                'total_attachments' => $totalAttachments,
+                'total_qc' => $totalQc,
+            ]);
+
             $html = view('exports.report_pdf', [
                 'users' => $users,
                 'totalUsers' => $totalUsers,
+                'dateSummary' => $dateSummary,
+                'meta' => $meta,
+                'showDateSummary' => true,
             ])->render();
 
             // HTML preview still needs the complete document, but PDF
             // generation must use the bounded loader. Rendering all users in
             // one DomPDF instance makes the batch preview exceed memory on
             // large reports.
-            unset($users);
+            unset($users, $allAttachments);
             gc_collect_cycles();
 
             $pdfContent = $reportPdf->renderChunks(
@@ -576,16 +623,21 @@ class ReportController extends Controller
                     (int) config('report.pdf_cards_per_chunk', 30),
                 ),
                 $totalUsers,
+                $dateSummary,
+                $meta,
             );
             $base64Pdf = base64_encode($pdfContent);
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'html'         => $html,
-                    'pdf_base64'   => $base64Pdf,
-                    'users_count'  => $totalUsers,
-                    'total_cards'  => $totalCards,
+                    'html'              => $html,
+                    'pdf_base64'        => $base64Pdf,
+                    'users_count'       => $totalUsers,
+                    'total_cards'       => $totalCards,
+                    'total_attachments' => $totalAttachments,
+                    'total_qc'          => $totalQc,
+                    'period_label'      => $meta['period_label'],
                 ]
             ]);
         } catch (\Exception $e) {
@@ -625,6 +677,14 @@ class ReportController extends Controller
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
+            $analysis = $this->dateSummaryService->analyze($request);
+            $dateSummary = $analysis['rows'];
+            $meta = array_merge($this->reportMeta($request), [
+                'total_cards' => $analysis['totals']['cards'],
+                'total_attachments' => $analysis['totals']['attachments'],
+                'total_qc' => $analysis['totals']['qc'],
+            ]);
+
             $prefix = $request->filled('user_id') ? 'Report_User_' . $request->user_id : 'Report_Kinerja_Batch';
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.pdf';
@@ -636,6 +696,8 @@ class ReportController extends Controller
                         (int) config('report.pdf_cards_per_chunk', 30),
                     ),
                     $totalUsers,
+                    $dateSummary,
+                    $meta,
                 ),
                 $fileName,
                 $validated['export_password'] ?? null
@@ -687,6 +749,14 @@ class ReportController extends Controller
                 return response()->json(['message' => 'Tidak ada data untuk diexport'], 404);
             }
 
+            $analysis = $this->dateSummaryService->analyze($request);
+            $dateSummary = $analysis['rows'];
+            $meta = array_merge($this->reportMeta($request), [
+                'total_cards' => $analysis['totals']['cards'],
+                'total_attachments' => $analysis['totals']['attachments'],
+                'total_qc' => $analysis['totals']['qc'],
+            ]);
+
             $prefix = $request->filled('user_id') ? 'Report_User_' . $request->user_id : 'Report_Kinerja_Batch';
             $prefix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $prefix);
             $fileName = $prefix . '_' . date('Ymd_His') . '.xlsx';
@@ -697,6 +767,8 @@ class ReportController extends Controller
                     fn () => $this->reportDataLoader->chunks($request),
                     $totalUsers,
                     true,
+                    $dateSummary,
+                    $meta,
                 ),
                 $temporaryName,
                 'local',

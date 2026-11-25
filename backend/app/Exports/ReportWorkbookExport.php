@@ -11,14 +11,17 @@ class ReportWorkbookExport implements WithMultipleSheets
         private readonly Closure $chunkFactory,
         private readonly int $totalUsers,
         private readonly bool $signedLinks = true,
+        private readonly array $dateSummary = [],
+        private readonly array $meta = [],
     ) {
     }
 
     public function sheets(): array
     {
         return [
-            new ReportSummarySheet($this->chunkFactory, $this->totalUsers, $this->signedLinks),
-            new ReportAttachmentSheet($this->chunkFactory, $this->signedLinks),
+            new ReportSummarySheet($this->chunkFactory, $this->totalUsers, $this->signedLinks, $this->meta),
+            new ReportDateSummarySheet($this->dateSummary, $this->meta),
+            new ReportAttachmentSheet($this->chunkFactory, $this->signedLinks, $this->meta),
         ];
     }
 }
