@@ -70,7 +70,8 @@ export interface Form {
 
   workspace_id: string;
 
-  division_id?: string;
+  division_id?: string | null;
+  division?: { id: string; name: string } | null;
 }
 
 export interface FormSubmission {

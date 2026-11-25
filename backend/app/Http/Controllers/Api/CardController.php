@@ -2050,6 +2050,10 @@ class CardController extends Controller
         $card = Card::findOrFail($attachment->card_id);
         $this->authorizeCard($card);
 
+        if ($attachment->isDownloadLocked()) {
+            return $this->downloadLockedResponse();
+        }
+
         if (!$attachment->file_path) {
             return response()->json([
                 'message' => 'File tidak ditemukan.',
@@ -2080,6 +2084,14 @@ class CardController extends Controller
         );
     }
 
+    private function downloadLockedResponse(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'File PDF lebih dari 1 bulan tidak dapat dibuka.',
+            'code' => 'attachment_download_locked',
+        ], 403);
+    }
+
     /**
      * Download an attachment through a signed link embedded in an export.
      */
@@ -2089,6 +2101,10 @@ class CardController extends Controller
             return response()->json([
                 'message' => 'Versi arsip tidak dapat diunduh. Gunakan hasil aktif terbaru.',
             ], 422);
+        }
+
+        if ($attachment->isDownloadLocked()) {
+            return $this->downloadLockedResponse();
         }
 
         if (

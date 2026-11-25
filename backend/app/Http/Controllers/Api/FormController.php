@@ -15,7 +15,7 @@ class FormController extends Controller
 {
     public function index(Request $request)
     {
-        $forms = Form::with(['creator.divisions', 'workspace'])
+        $forms = Form::with(['creator.divisions', 'workspace', 'division'])
             ->latest()
             ->get()
             ->filter(fn (Form $form) => ResourceAccess::form($request->user(), $form))
@@ -26,8 +26,17 @@ class FormController extends Controller
 
     public function store(Request $request)
     {
+        // Pilihan divisi yang dikirim eksplisit (termasuk kosong = "Umum")
+        // dihormati apa adanya; yang tidak dikirim sama sekali diinferensi.
+        $explicitDivision = $request->has('division_id');
+
+        if ($request->input('division_id') === '') {
+            $request->merge(['division_id' => null]);
+        }
+
         $validated = $request->validate([
             'workspace_id' => 'nullable|uuid|exists:workspaces,id',
+            'division_id' => 'nullable|uuid|exists:divisions,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'header_image' => 'nullable|image|max:2048',
@@ -41,6 +50,19 @@ class FormController extends Controller
             abort_unless($workspace->canBeAccessedBy($request->user()), 403, 'Unauthorized');
         }
 
+        $divisionId = null;
+
+        if ($explicitDivision) {
+            $divisionId = $validated['division_id'] ?? null;
+            $this->assertDivisionChoiceAllowed($request, $divisionId);
+        } else {
+            $memberDivisionIds = $request->user()->divisions()->pluck('divisions.id');
+
+            if ($memberDivisionIds->count() === 1) {
+                $divisionId = (string) $memberDivisionIds->first();
+            }
+        }
+
         $imagePath = null;
 
         if ($request->hasFile('header_image')) {
@@ -50,6 +72,7 @@ class FormController extends Controller
 
         $form = Form::create([
             'workspace_id' => $validated['workspace_id'] ?? null,
+            'division_id' => $divisionId,
             'name' => $validated['name'],
             'slug' => Str::slug($validated['name'].'-'.uniqid()),
             'description' => $validated['description'] ?? null,
@@ -79,6 +102,7 @@ class FormController extends Controller
         $form = Form::with([
             'fields',
             'submissions',
+            'division',
         ])->findOrFail($id);
         abort_unless(ResourceAccess::form($request->user(), $form), 403, 'Unauthorized');
 
@@ -90,8 +114,13 @@ class FormController extends Controller
         $form = Form::findOrFail($id);
         abort_unless(ResourceAccess::form($request->user(), $form), 403, 'Unauthorized');
 
+        if ($request->input('division_id') === '') {
+            $request->merge(['division_id' => null]);
+        }
+
         $data = $request->validate([
             'workspace_id' => 'sometimes|nullable|uuid|exists:workspaces,id',
+            'division_id' => 'sometimes|nullable|uuid|exists:divisions,id',
             'name' => 'sometimes|required|string|max:255',
             'description' => 'sometimes|nullable|string',
             'show_note' => 'sometimes|boolean',
@@ -104,6 +133,10 @@ class FormController extends Controller
         if (array_key_exists('workspace_id', $data) && $data['workspace_id'] !== null) {
             $workspace = Workspace::findOrFail($data['workspace_id']);
             abort_unless($workspace->canBeAccessedBy($request->user()), 403, 'Unauthorized');
+        }
+
+        if (array_key_exists('division_id', $data)) {
+            $this->assertDivisionChoiceAllowed($request, $data['division_id'] ?? null);
         }
 
         unset($data['header_image']);
@@ -156,5 +189,28 @@ class FormController extends Controller
         return response()->json([
             'message' => 'Form deleted successfully',
         ]);
+    }
+
+    /**
+     * Super admin / pemegang `division.view_all` boleh memilih divisi mana pun.
+     * Selain itu, user hanya boleh memilih divisi tempat dia terdaftar.
+     */
+    private function assertDivisionChoiceAllowed(Request $request, ?string $divisionId): void
+    {
+        if ($divisionId === null) {
+            return;
+        }
+
+        $user = $request->user();
+
+        if ($user->isSuperAdmin() || $user->canViewAllDivisions()) {
+            return;
+        }
+
+        abort_unless(
+            $user->divisions()->where('divisions.id', $divisionId)->exists(),
+            403,
+            'Unauthorized'
+        );
     }
 }

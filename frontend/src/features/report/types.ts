@@ -48,6 +48,8 @@ export interface Attachment {
   qc_at: string | null;
   uploader: { id: string; name: string } | null;
   archived_at?: string | null;
+  created_at?: string | null;
+  is_download_locked?: boolean;
 }
 
 export interface Card {

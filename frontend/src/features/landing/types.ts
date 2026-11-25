@@ -6,6 +6,11 @@ export interface FormItem {
   creator?: {
   name: string;
   };
+  division_id?: string | null;
+  division?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export interface FormField {

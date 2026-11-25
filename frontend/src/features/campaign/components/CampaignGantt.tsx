@@ -542,7 +542,10 @@ export default function CampaignGantt({ campaignId }: Props) {
                 const width = (task.length / totalDays) * 100;
                 const status = statusStyles[task.status] ?? statusStyles.todo;
                 const endDay = task.start + task.length - 1;
-                const showBarLabel = task.length * dayWidth >= 60;
+                const barWidth = Math.max(width, 3);
+                const barWidthPx = (barWidth / 100) * totalDays * dayWidth;
+                const showStatusDot = barWidthPx >= 60;
+                const compactBar = barWidthPx < 32;
                 const taskStartDate = startDate
                   ? addDays(startDate, task.start - 1)
                   : null;
@@ -599,51 +602,24 @@ export default function CampaignGantt({ campaignId }: Props) {
 
                       <div
                         role="img"
-                        className={`absolute top-0 flex h-full items-center gap-1.5 rounded-[5px] border px-2 text-[10px] font-medium ${status.bar}`}
+                        className={`absolute top-0 flex h-full min-w-0 items-center overflow-hidden rounded-[5px] border text-[10px] font-medium ${compactBar ? "gap-0 px-0.5" : "gap-1.5 px-2"} ${status.bar}`}
                         style={{
                           left: `${Math.max(left, 0)}%`,
-                          width: `${Math.max(width, 3)}%`,
+                          width: `${barWidth}%`,
                         }}
                         title={`${task.name} — ${t(status.label, status.labelEn)} · ${taskRange}`}
                         aria-label={`${task.name}, ${t(status.label, status.labelEn)}, ${taskRange}`}
                       >
-                        {showBarLabel ? (
-                          <>
-                            <span
-                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`}
-                              aria-hidden="true"
-                            />
-                            <span className="truncate">
-                              {task.name.length > 20
-                                ? `${task.name.slice(0, 20)}…`
-                                : task.name}
-                            </span>
-                          </>
+                        {showStatusDot ? (
+                          <span
+                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`}
+                            aria-hidden="true"
+                          />
                         ) : null}
-                      </div>
-
-                      {!showBarLabel ? (
-                        <span
-                          title={task.name}
-                          className={`pointer-events-none absolute top-1/2 z-20 max-w-[200px] -translate-y-1/2 truncate whitespace-nowrap rounded-[4px] border border-line bg-surface px-1.5 py-0.5 text-[10px] font-medium text-fg-muted shadow-e1 ${
-                            left + width > 76
-                              ? "pr-1.5 text-right"
-                              : "pl-1.5"
-                          }`}
-                          style={
-                            left + width > 76
-                              ? { right: `${100 - Math.max(left, 0)}%` }
-                              : {
-                                  left: `${Math.min(
-                                    Math.max(left, 0) + Math.max(width, 3),
-                                    99,
-                                  )}%`,
-                                }
-                          }
-                        >
+                        <span className="min-w-0 flex-1 truncate overflow-hidden">
                           {task.name}
                         </span>
-                      ) : null}
+                      </div>
                     </div>
                   </div>
                 );

@@ -212,9 +212,7 @@ export default function Home() {
     return <SkeletonLoader />;
   }
 
-  const { stats, task_status: taskStatus } = data;
-  const isAllTime = dashboardFilter.period === "all" && dashboardFilter.all_year === null;
-
+  const { task_status: taskStatus } = data;
 
   return (
     <div className="space-y-6 font-sans sm:space-y-8">
@@ -293,36 +291,6 @@ export default function Home() {
         </div>
       ) : null}
 
-
-      {/* RINGKASAN SISTEM - satu permukaan, angka yang tenang */}
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        <KpiCard
-          label={isAllTime ? t("Total pengguna", "Total users") : t("Pengguna terdaftar", "Registered users")}
-          value={stats.users}
-        />
-        <KpiCard
-          label={isAllTime ? t("Total divisi", "Total divisions") : t("Divisi dibuat", "Divisions created")}
-          value={stats.divisions}
-        />
-        <KpiCard
-          label={isAllTime ? t("Total workspace", "Total workspaces") : t("Workspace dibuat", "Workspaces created")}
-          value={stats.workspaces}
-        />
-        <KpiCard
-          label={isAllTime ? t("Total campaign", "Total campaigns") : t("Campaign dibuat", "Campaigns created")}
-          value={stats.campaigns}
-        />
-        <KpiCard
-          label={isAllTime ? t("Total board", "Total boards") : t("Board dibuat", "Boards created")}
-          value={stats.boards}
-        />
-        <KpiCard
-          label={isAllTime ? t("Total card", "Total cards") : t("Card dibuat", "Cards created")}
-          value={stats.cards}
-        />
-        <KpiCard label={t("Task terlambat", "Overdue tasks")} value={taskStatus.overdue} tone="danger" />
-      </div>
-
       {/* LEADERBOARD KHUSUS PEMILIK PERMISSION */}
       {can("dashboard.division_ranking.view") ? (
         <DivisionRankingSection filter={dashboardFilter} refreshKey={refreshKey} />
@@ -340,46 +308,12 @@ export default function Home() {
   );
 }
 
-// ============================================
-// KOMPONEN PEMBANTU
-// ============================================
-
-type KpiCardProps = {
-  label: string;
-  value: number;
-  tone?: "default" | "danger";
-};
-
-function KpiCard({ label, value, tone = "default" }: KpiCardProps) {
-  const { locale } = useLanguage();
-
-  return (
-    <div className="bg-surface px-4 py-4 sm:px-5">
-      <p
-        className={`text-[22px] font-semibold leading-none tracking-[-0.02em] tabular-nums ${
-          tone === "danger" && value > 0 ? "text-danger" : "text-fg"
-        }`}
-      >
-        {value.toLocaleString(locale)}
-      </p>
-      <p className="mt-2 truncate text-[11px] font-medium text-fg-muted">
-        {label}
-      </p>
-    </div>
-  );
-}
-
 function SkeletonLoader() {
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="space-y-3">
         <div className="h-8 w-56 animate-pulse rounded-md bg-surface-muted motion-reduce:animate-none" />
         <div className="h-4 w-72 max-w-full animate-pulse rounded-md bg-surface-muted motion-reduce:animate-none" />
-      </div>
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse bg-surface-muted motion-reduce:animate-none" />
-        ))}
       </div>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="h-[340px] animate-pulse rounded-panel border border-line bg-surface-muted motion-reduce:animate-none xl:col-span-2" />

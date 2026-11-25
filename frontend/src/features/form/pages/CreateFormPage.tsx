@@ -34,6 +34,8 @@ import type { FormField } from "../types";
 import { FORM_THEMES, readableTextColor } from "../utils/theme";
 import RequiredToggle from "../components/RequiredToggle";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { useDivisions } from "@/features/division/hooks/useDivisions";
 
 // ======================================================
 // TYPES
@@ -81,6 +83,16 @@ const FIELD_TYPES: Array<{
 export default function CreateFormBuilderPage() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const auth = useAuth();
+
+  const canViewAllDivisions = useMemo(
+    () => auth.hasRole("super_admin") || auth.can("division.view_all"),
+    [auth],
+  );
+
+  const { data: myDivisions } = useDivisions(true, !canViewAllDivisions);
+  const { data: allDivisions } = useDivisions(false, canViewAllDivisions);
+  const divisions = canViewAllDivisions ? allDivisions : myDivisions;
 
   // ======================================================
   // FORM STATE
@@ -103,6 +115,8 @@ export default function CreateFormBuilderPage() {
     show_note: false,
     note_content: "",
   });
+
+  const [divisionId, setDivisionId] = useState("");
 
   const [headerImage, setHeaderImage] =
     useState<File | null>(null);
@@ -203,6 +217,8 @@ export default function CreateFormBuilderPage() {
       );
 
       payload.append("theme_color", themeColor);
+
+      payload.append("division_id", divisionId);
 
       if (headerImage) {
         payload.append(
@@ -572,6 +588,32 @@ export default function CreateFormBuilderPage() {
                 </span>
               </span>
             </label>
+
+            <div className="sm:col-span-2">
+              <label htmlFor="form-division" className="mb-1.5 block text-[11px] font-medium text-fg-muted">
+                {t("Divisi", "Division")}
+              </label>
+              <select
+                id="form-division"
+                value={divisionId}
+                disabled={!!createdForm}
+                onChange={(event) => setDivisionId(event.target.value)}
+                className="h-9 w-full max-w-xs rounded-control border border-line bg-surface px-2.5 text-sm text-fg outline-none transition-colors focus:border-accent/40 focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">{t("Umum", "General")}</option>
+                {(divisions ?? []).map((division) => (
+                  <option key={division.id} value={division.id}>
+                    {division.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[10px] leading-4 text-fg-subtle">
+                {t(
+                  "Form akan dikelompokkan di bawah divisi ini.",
+                  "This form will be grouped under this division.",
+                )}
+              </p>
+            </div>
 
             <div className="sm:col-span-2">
               <label htmlFor="form-header-image" className="mb-1.5 block text-[11px] font-medium text-fg-muted">
