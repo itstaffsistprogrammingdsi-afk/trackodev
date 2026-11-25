@@ -434,7 +434,9 @@
 
 <body>
 <div class="report-document">
-    @include('exports.partials.ownership-watermark')
+    @if (! isset($showOwnershipWatermark) || $showOwnershipWatermark)
+        @include('exports.partials.ownership-watermark')
+    @endif
 
     @php
         $usersCollection = collect($users ?? []);

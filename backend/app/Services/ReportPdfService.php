@@ -76,6 +76,8 @@ class ReportPdfService
                 $userOffset += $chunk->count();
             }
 
+            $this->stampOwnershipWatermark($merged);
+
             $contents = $merged->Output('report.pdf', 'S');
 
             if (! is_string($contents) || ! str_starts_with($contents, '%PDF-')) {
@@ -102,19 +104,62 @@ class ReportPdfService
             'userOffset' => $userOffset,
             'signedLinks' => true,
             'meta' => $meta,
+            'showOwnershipWatermark' => false,
         ])
             ->setPaper('a4', 'landscape')
             ->setOptions([
                 'defaultFont' => 'DejaVu Sans',
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => false,
-            ])
-            ->output();
+            ]);
 
-        if (! str_starts_with($contents, '%PDF-')) {
+        $output = $contents->output();
+
+        if (! str_starts_with($output, '%PDF-')) {
             throw new RuntimeException('PDF laporan yang dihasilkan tidak valid.');
         }
 
-        return $contents;
+        return $output;
+    }
+
+    private function stampOwnershipWatermark(Fpdi $pdf): void
+    {
+        $imagePath = app(ReportWatermarkService::class)->imagePath();
+        $pageCount = $pdf->getNumPages();
+
+        for ($page = 1; $page <= $pageCount; $page++) {
+            $pdf->setPage($page);
+
+            $pageWidth = $pdf->getPageWidth();
+            $pageHeight = $pdf->getPageHeight();
+            $imageWidth = min($pageWidth * 0.86, 700.0);
+            $imageHeight = $imageWidth * (560 / 1400);
+            $x = ($pageWidth - $imageWidth) / 2;
+            $y = ($pageHeight - $imageHeight) / 2;
+
+            // PNG watermark sudah transparan; alpha tambahan menjaga teks
+            // dan badge tetap tajam saat dokumen dibaca atau dicetak.
+            $pdf->SetAlpha(0.55);
+            $pdf->Image(
+                $imagePath,
+                $x,
+                $y,
+                $imageWidth,
+                $imageHeight,
+                '',
+                '',
+                '',
+                true,
+                300,
+                '',
+                false,
+                false,
+                0,
+                false,
+                false,
+                false,
+            );
+            $pdf->SetAlpha(1);
+        }
     }
 }
