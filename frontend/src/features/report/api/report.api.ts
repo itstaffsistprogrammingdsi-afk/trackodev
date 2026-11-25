@@ -2,6 +2,7 @@ import api from '@/lib/axios';
 import { User, Card, PaginatedResponse, FilterParams, MasterFilterOptions } from '../types';
 
 type SecureExportParams = FilterParams & { export_password?: string };
+type PreviewParams = FilterParams & { include_pdf?: boolean };
 
 export const reportApi = {
   // Ambil opsi filter dinamis dari database
@@ -38,7 +39,7 @@ export const reportApi = {
   },
 
   // Preview PDF
-  previewPdf: async (params: FilterParams) => {
+  previewPdf: async (params: PreviewParams) => {
     const response = await api.get('/reports/preview/pdf', {
       params: params,
     });

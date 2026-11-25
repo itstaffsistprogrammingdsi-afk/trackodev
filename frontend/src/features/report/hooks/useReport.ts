@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { reportApi } from '../api/report.api';
-import { User, Card, FilterParams, MasterFilterOptions } from '../types';
+import {
+  User,
+  Card,
+  FilterParams,
+  MasterFilterOptions,
+  ReportPreviewData,
+} from '../types';
 import api from '@/lib/axios';
 
 import { getDownloadFileName } from '@/lib/exportSecurity';
@@ -87,21 +93,21 @@ export const useReport = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingCards, setLoadingCards] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingPreviewPdf, setLoadingPreviewPdf] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
   const usersRequestId = useRef(0);
   const cardsRequestId = useRef(0);
+  const previewRequestId = useRef(0);
+  const previewPdfRequestId = useRef(0);
+  const previewUserIdRef = useRef<string | null>(null);
+  const previewPdfLoadingRef = useRef(false);
   const dateRangeInvalid = Boolean(
     filters.start_date &&
       filters.end_date &&
       filters.start_date > filters.end_date,
   );
-  const [previewData, setPreviewData] = useState<{
-    html: string;
-    pdf_base64: string;
-    users_count: number;
-    total_cards: number;
-  } | null>(null);
+  const [previewData, setPreviewData] = useState<ReportPreviewData | null>(null);
 
   // 1. Fetch Master Data
   const fetchFilterOptions = useCallback(async () => {
@@ -260,7 +266,7 @@ export const useReport = () => {
     }
   };
 
-  // Preview PDF
+  // Preview table data
   const handlePreview = async (userId?: string | number) => {
     if (userId === undefined || userId === null || userId === '') {
       toast.error(
@@ -272,17 +278,31 @@ export const useReport = () => {
       return null;
     }
 
+    const requestId = ++previewRequestId.current;
+    previewPdfRequestId.current += 1;
+    previewUserIdRef.current = String(userId);
+    previewPdfLoadingRef.current = false;
+    setLoadingPreviewPdf(false);
+    setPreviewData(null);
     setLoadingPreview(true);
     try {
       const exportParams: FilterParams = { ...filters };
       delete exportParams.page;
       exportParams.user_id = userId;
 
-      const response = await reportApi.previewPdf(exportParams);
+      const response = await reportApi.previewPdf({
+        ...exportParams,
+        include_pdf: false,
+      });
 
+      if (requestId !== previewRequestId.current) return null;
       if (response.success) {
-        setPreviewData(response.data);
-        return response.data;
+        const data: ReportPreviewData = {
+          ...response.data,
+          pdf_base64: null,
+        };
+        setPreviewData(data);
+        return data;
       } else {
         toast.error(
           response.message ||
@@ -291,6 +311,7 @@ export const useReport = () => {
         return null;
       }
     } catch (error) {
+      if (requestId !== previewRequestId.current) return null;
       console.error('Gagal preview data', error);
       toast.error(
         translate(
@@ -300,7 +321,72 @@ export const useReport = () => {
       );
       return null;
     } finally {
-      setLoadingPreview(false);
+      if (requestId === previewRequestId.current) {
+        setLoadingPreview(false);
+      }
+    }
+  };
+
+  const loadPreviewPdf = async (userId: string | number) => {
+    const userKey = String(userId);
+    if (
+      previewUserIdRef.current !== userKey ||
+      previewPdfLoadingRef.current ||
+      previewData?.pdf_base64
+    ) {
+      return;
+    }
+
+    const requestId = ++previewPdfRequestId.current;
+    previewPdfLoadingRef.current = true;
+    setLoadingPreviewPdf(true);
+
+    try {
+      const exportParams: FilterParams = { ...filters };
+      delete exportParams.page;
+      exportParams.user_id = userId;
+
+      const response = await reportApi.previewPdf({
+        ...exportParams,
+        include_pdf: true,
+      });
+
+      if (
+        requestId !== previewPdfRequestId.current ||
+        previewUserIdRef.current !== userKey
+      ) {
+        return;
+      }
+
+      if (response.success) {
+        setPreviewData((current) =>
+          current ? { ...current, pdf_base64: response.data?.pdf_base64 ?? null } : current,
+        );
+      } else {
+        toast.error(
+          response.message ||
+            translate('Gagal memuat PDF preview', 'Failed to load the PDF preview'),
+        );
+      }
+    } catch (error) {
+      if (
+        requestId !== previewPdfRequestId.current ||
+        previewUserIdRef.current !== userKey
+      ) {
+        return;
+      }
+      console.error('Gagal memuat PDF preview', error);
+      toast.error(
+        translate(
+          'Gagal memuat PDF preview. Silakan coba lagi.',
+          'Failed to load the PDF preview. Please try again.',
+        ),
+      );
+    } finally {
+      if (requestId === previewPdfRequestId.current) {
+        previewPdfLoadingRef.current = false;
+        setLoadingPreviewPdf(false);
+      }
     }
   };
 
@@ -374,6 +460,12 @@ export const useReport = () => {
   };
 
   const clearPreview = () => {
+    previewRequestId.current += 1;
+    previewPdfRequestId.current += 1;
+    previewUserIdRef.current = null;
+    previewPdfLoadingRef.current = false;
+    setLoadingPreview(false);
+    setLoadingPreviewPdf(false);
     setPreviewData(null);
   };
 
@@ -647,12 +739,14 @@ const handleLeaveImpersonation = async () => {
     loadingUsers,
     loadingCards,
     loadingPreview,
+    loadingPreviewPdf,
     exporting,
     previewData,
     updateFilter,
     handleQcSubmit,
     handleExport,
     handlePreview,
+    loadPreviewPdf,
     clearPreview,
     handleBypassUser, // Diekstrak dan direturn dari hook ini
     handleLeaveImpersonation, // Diekstrak dan direturn dari hook ini

@@ -90,6 +90,20 @@ export interface FilterParams {
   search_card?: string; // <--- Tambahkan ini
 }
 
+export interface ReportPreviewData {
+  table?: {
+    columns: string[];
+    rows: Array<Array<string | number>>;
+  };
+  html: string | null;
+  pdf_base64: string | null;
+  users_count: number;
+  total_cards: number;
+  total_attachments?: number;
+  total_qc?: number;
+  period_label?: string;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   meta: {

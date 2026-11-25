@@ -20,6 +20,7 @@ use App\Services\ActivityLogService;
 use App\Services\EncryptedExportService;
 use App\Services\ReportPdfService;
 use App\Services\ReportDataLoader;
+use App\Services\ReportPreviewTableService;
 use App\Services\ReportScopeService;
 use App\Services\ReportTotalsService;
 use App\Support\ResourceAccess;
@@ -39,6 +40,7 @@ class ReportController extends Controller
         private readonly ReportDataLoader $reportDataLoader,
         private readonly ReportScopeService $reportScope,
         private readonly ReportTotalsService $reportTotalsService,
+        private readonly ReportPreviewTableService $reportPreviewTable,
     ) {
     }
 
@@ -599,33 +601,42 @@ class ReportController extends Controller
                 'total_qc' => $totalQc,
             ]);
 
-            $html = view('exports.report_pdf', [
-                'users' => $users,
-                'totalUsers' => $totalUsers,
-                'meta' => $meta,
-            ])->render();
+            $previewTable = $this->reportPreviewTable->build($users);
+            $includePdf = $request->boolean('include_pdf', true);
 
-            // HTML preview still needs the complete document, but PDF
-            // generation must use the bounded loader. Rendering all users in
-            // one DomPDF instance makes the batch preview exceed memory on
-            // large reports.
-            unset($users);
-            gc_collect_cycles();
+            // The document HTML was only used by the old preview modal. It is
+            // still returned with the PDF payload for compatibility, but the
+            // table-only request skips it so opening the preview does not
+            // render the entire report document first.
+            $html = null;
+            $base64Pdf = null;
 
-            $pdfContent = $reportPdf->renderChunks(
-                $this->reportDataLoader->pdfChunks(
-                    $request,
-                    (int) config('report.pdf_cards_per_chunk', 30),
-                ),
-                $totalUsers,
-                $meta,
-            );
-            $base64Pdf = base64_encode($pdfContent);
+            if ($includePdf) {
+                $html = view('exports.report_pdf', [
+                    'users' => $users,
+                    'totalUsers' => $totalUsers,
+                    'meta' => $meta,
+                ])->render();
+
+                unset($users);
+                gc_collect_cycles();
+
+                $pdfContent = $reportPdf->renderChunks(
+                    $this->reportDataLoader->pdfChunks(
+                        $request,
+                        (int) config('report.pdf_cards_per_chunk', 30),
+                    ),
+                    $totalUsers,
+                    $meta,
+                );
+                $base64Pdf = base64_encode($pdfContent);
+            }
 
             return response()->json([
                 'success' => true,
                 'data' => [
                     'html'              => $html,
+                    'table'             => $previewTable,
                     'pdf_base64'        => $base64Pdf,
                     'users_count'       => $totalUsers,
                     'total_cards'       => $totalCards,
