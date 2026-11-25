@@ -6,6 +6,7 @@ import { isAxiosError } from "axios";
 import { FlaskConical, Search, X } from "lucide-react";
 import api from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import type { AssistantCard } from "./assistant";
 import AssistantDrawer from "./AssistantDrawer";
 import type { AssistantMessage, AssistantProposal, AssistantServiceState } from "./AssistantDrawer";
@@ -13,6 +14,7 @@ import JellyMascot from "./JellyMascot";
 
 export default function AiAssistant() {
   const { user, can } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -104,10 +106,10 @@ export default function AiAssistant() {
     const timer = window.setTimeout(() => {
       api.get("/ai/cards", { params: { query }, signal: controller.signal })
         .then(({ data }) => { setCards(data.data); setSearchError(""); })
-        .catch(() => { if (!controller.signal.aborted) setSearchError("Pencarian card gagal. Coba lagi."); });
+        .catch(() => { if (!controller.signal.aborted) setSearchError(t("Pencarian card gagal. Coba lagi.", "Card search failed. Try again.")); });
     }, 300);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [open, query, canReadCards, card]);
+  }, [open, query, canReadCards, card, t]);
 
   useEffect(() => {
     if (!success) return;
@@ -138,7 +140,7 @@ export default function AiAssistant() {
       setInput("");
       setSuccess(true);
     } catch (failure) {
-      setError(isAxiosError(failure) ? failure.response?.data?.message ?? "Koneksi AI gagal. Silakan coba lagi." : "Koneksi AI gagal.");
+      setError(isAxiosError(failure) ? failure.response?.data?.message ?? t("Koneksi AI gagal. Silakan coba lagi.", "AI connection failed. Please try again.") : t("Koneksi AI gagal.", "AI connection failed."));
       setServiceState("error");
     } finally {
       inFlight.current = false;
@@ -158,7 +160,7 @@ export default function AiAssistant() {
       setSuccess(true);
       await queryClient.invalidateQueries();
     } catch (failure) {
-      setProposalError(isAxiosError(failure) ? failure.response?.data?.message ?? "Proposal gagal dijalankan." : "Proposal gagal dijalankan.");
+      setProposalError(isAxiosError(failure) ? failure.response?.data?.message ?? t("Proposal gagal dijalankan.", "Failed to execute proposal.") : t("Proposal gagal dijalankan.", "Failed to execute proposal."));
     } finally {
       setProposalBusyId(undefined);
     }
@@ -174,7 +176,7 @@ export default function AiAssistant() {
         message.proposal?.id === proposalId ? { ...message, proposal: data.data as AssistantProposal } : message
       )));
     } catch (failure) {
-      setProposalError(isAxiosError(failure) ? failure.response?.data?.message ?? "Proposal gagal ditolak." : "Proposal gagal ditolak.");
+      setProposalError(isAxiosError(failure) ? failure.response?.data?.message ?? t("Proposal gagal ditolak.", "Failed to reject proposal.") : t("Proposal gagal ditolak.", "Failed to reject proposal."));
     } finally {
       setProposalBusyId(undefined);
     }
@@ -184,12 +186,12 @@ export default function AiAssistant() {
   if (!user) return null;
 
   return <>
-    {!open && <button type="button" onClick={() => setOpen(true)} className="assistant-launcher" aria-label="Buka asisten AI Tracko" aria-haspopup="dialog" aria-expanded={false} title="Tanya asisten Tracko">
-      <span className="assistant-launcher-label">{busy ? "Sedang berpikir…" : error ? "Periksa koneksi" : success ? "Jawaban siap" : "Tanya Tracko"}</span><JellyMascot state={state} />
+    {!open && <button type="button" onClick={() => setOpen(true)} className="assistant-launcher" aria-label={t("Buka asisten AI Tracko", "Open the Tracko AI assistant")} aria-haspopup="dialog" aria-expanded={false} title={t("Tanya asisten Tracko", "Ask the Tracko assistant")}>
+      <span className="assistant-launcher-label">{busy ? t("Sedang berpikir…", "Thinking…") : error ? t("Periksa koneksi", "Check connection") : success ? t("Jawaban siap", "Answer ready") : t("Tanya Tracko", "Ask Tracko")}</span><JellyMascot state={state} />
     </button>}
     <AssistantDrawer open={open} onClose={() => setOpen(false)} state={state} serviceState={serviceState} messages={messages} input={input} onInputChange={setInput} onSubmit={send} busy={busy} canSend={available && serviceState !== "checking"} error={error} onReset={() => reset()}
-      context={card ? <div className="flex items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2.5 dark:border-indigo-900 dark:bg-indigo-950/40"><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-300">Konteks card</p><p className="mt-1 truncate text-xs font-medium">{card.title}</p></div><button type="button" aria-label="Lepas konteks card" disabled={busy} onClick={() => reset(null)} className="flex h-9 w-9 items-center justify-center rounded-lg text-indigo-400 hover:bg-indigo-100 disabled:opacity-40 dark:hover:bg-indigo-900"><X size={14} /></button></div> : canReadCards ? <details className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-800 dark:bg-slate-900/50"><summary className="cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-300">Tambahkan konteks card (opsional)</summary><div className="relative mt-3"><Search size={14} className="absolute left-3 top-3 text-slate-400" /><label htmlFor="ai-card-search" className="sr-only">Cari judul card</label><input id="ai-card-search" value={query} disabled={busy} onChange={(event) => setQuery(event.target.value)} placeholder="Cari judul card…" maxLength={150} className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-950" /></div>{searchError && <p className="mt-2 text-xs text-rose-600">{searchError}</p>}<div className="mt-2 max-h-28 overflow-y-auto">{cards.map((item) => <button type="button" key={item.id} disabled={busy} onClick={() => reset(item)} className="block w-full rounded-lg p-2 text-left text-xs hover:bg-white disabled:opacity-40 dark:hover:bg-slate-800"><span className="block truncate font-medium">{item.title}</span><span className="text-[10px] text-slate-400">{item.campaign}</span></button>)}</div></details> : undefined}
-      footer={<><p>Pesan dan konteks terpilih dikirim ke AI. Riwayat sementara, 30 menit.</p><Link onClick={() => setOpen(false)} to="/assistant/preview" className="mt-2 inline-flex min-h-8 items-center gap-1 text-indigo-500 underline underline-offset-2 dark:text-indigo-300"><FlaskConical size={11} /> Coba demo animasi</Link></>}
+      context={card ? <div className="flex items-center gap-2 rounded-control border border-accent/15 bg-accent-soft/60 px-3 py-2.5 dark:border-accent/20 dark:bg-accent-soft/40"><div className="min-w-0 flex-1"><p className="text-2xs font-medium text-accent">{t("Konteks card", "Card context")}</p><p className="mt-1 truncate text-xs font-medium">{card.title}</p></div><button type="button" aria-label={t("Lepas konteks card", "Remove card context")} disabled={busy} onClick={() => reset(null)} className="flex h-9 w-9 items-center justify-center rounded-[7px] text-accent hover:bg-accent-soft disabled:opacity-40 dark:hover:bg-accent-soft"><X size={14} /></button></div> : canReadCards ? <details className="rounded-control border border-line bg-surface-muted/50 p-3 dark:border-line dark:bg-surface-muted/50"><summary className="cursor-pointer text-xs font-medium text-fg-muted">{t("Tambahkan konteks card (opsional)", "Add card context (optional)")}</summary><div className="relative mt-3"><Search size={14} className="absolute left-3 top-3 text-fg-subtle" /><label htmlFor="ai-card-search" className="sr-only">{t("Cari judul card", "Search card titles")}</label><input id="ai-card-search" value={query} disabled={busy} onChange={(event) => setQuery(event.target.value)} placeholder={t("Cari judul card…", "Search card titles…")} maxLength={150} className="w-full rounded-[7px] border border-line bg-surface py-2 pl-9 pr-3 text-xs outline-none focus:border-accent dark:border-line-strong dark:bg-surface" /></div>{searchError && <p className="mt-2 text-xs text-danger">{searchError}</p>}<div className="mt-2 max-h-28 overflow-y-auto">{cards.map((item) => <button type="button" key={item.id} disabled={busy} onClick={() => reset(item)} className="block w-full rounded-[7px] p-2 text-left text-xs hover:bg-surface disabled:opacity-40 dark:hover:bg-surface-muted"><span className="block truncate font-medium">{item.title}</span><span className="text-2xs text-fg-subtle">{item.campaign}</span></button>)}</div></details> : undefined}
+      footer={<><p>{t("Pesan dan konteks terpilih dikirim ke AI. Riwayat sementara, 30 menit.", "Messages and selected context are sent to the AI. Temporary history, 30 minutes.")}</p><Link onClick={() => setOpen(false)} to="/assistant/preview" className="mt-2 inline-flex min-h-8 items-center gap-1 text-accent underline underline-offset-2"><FlaskConical size={11} /> {t("Coba demo animasi", "Try the animation demo")}</Link></>}
       onApproveProposal={approveProposal}
       onRejectProposal={rejectProposal}
       proposalBusyId={proposalBusyId}

@@ -6,6 +6,7 @@ import {
   Building2,
   MoreHorizontal,
   Pencil,
+  ShieldCheck,
   Trash2,
   UserCog,
 } from "lucide-react";
@@ -15,6 +16,8 @@ import EditDivisionModal from "../modals/EditDivisionModal";
 import { useDeleteDivision } from "../../hooks/useDivisions";
 import { confirmDialog, toast } from "@/lib/feedback";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { getLocale } from "@/i18n/translate";
 import AvatarStack from "@/components/ui/AvatarStack";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
@@ -47,7 +50,7 @@ function accentTile(id: string): string {
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("id-ID", {
+  return date.toLocaleDateString(getLocale(), {
     month: "short",
     year: "numeric",
   });
@@ -55,6 +58,7 @@ function formatDate(value: string): string {
 
 export default function DivisionCard({ division, onManageMembers }: Props) {
   const navigate = useNavigate();
+  const { language, t } = useLanguage();
   const { hasRole, managesDivision } = useAuth();
   const canManageDivision = hasRole("super_admin") || managesDivision();
 
@@ -62,11 +66,25 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const membersLoaded = Array.isArray(division.users);
   const users: User[] = division.users ?? [];
   const adminCount = users.filter(
     (user) => user.division_role === "admin",
   ).length;
-  const hasMembers = users.length > 0;
+  const hasMembers = membersLoaded && users.length > 0;
+  // User lintas divisi bisa melihat divisi lewat workspace/campaign tanpa
+  // menerima roster anggota. Jangan tampilkan itu sebagai "0 anggota".
+  const accessViaWorkspace = !membersLoaded;
+
+  const memberLabel =
+    language === "en"
+      ? `${users.length} ${users.length === 1 ? "member" : "members"}`
+      : `${users.length} anggota`;
+  const adminLabel =
+    language === "en"
+      ? `${adminCount} ${adminCount === 1 ? "admin" : "admins"}`
+      : `${adminCount} admin`;
+
   const destination = `/divisions/${division.id}`;
 
   const handleOpen = () => navigate(destination);
@@ -75,10 +93,14 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
     setMenuOpen(false);
 
     const confirmed = await confirmDialog({
-      title: "Hapus divisi",
-      message: `Divisi "${division.name}" akan dihapus permanen beserta data yang terkait.`,
-      confirmText: "Hapus divisi",
-      cancelText: "Batal",
+      title: t("Hapus divisi", "Delete division"),
+      message: t(
+        'Divisi "{name}" akan dihapus permanen beserta data yang terkait.',
+        'Division "{name}" will be permanently deleted along with its related data.',
+        { name: division.name },
+      ),
+      confirmText: t("Hapus divisi", "Delete division"),
+      cancelText: t("Batal", "Cancel"),
       variant: "danger",
     });
 
@@ -86,9 +108,11 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
 
     try {
       await deleteMutation.mutateAsync(division.id);
-      toast.success("Divisi dihapus.");
+      toast.success(t("Divisi dihapus.", "Division deleted."));
     } catch {
-      toast.error("Divisi gagal dihapus. Coba lagi.");
+      toast.error(
+        t("Divisi gagal dihapus. Coba lagi.", "Failed to delete the division. Try again."),
+      );
     }
   };
 
@@ -107,7 +131,9 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
         }}
         role="button"
         tabIndex={0}
-        aria-label={`Buka divisi ${division.name}`}
+        aria-label={t("Buka divisi {name}", "Open division {name}", {
+          name: division.name,
+        })}
         className={`group relative flex h-full cursor-pointer flex-col rounded-panel border border-line bg-surface p-5 shadow-e1 transition-[transform,border-color,box-shadow] duration-200 ease-soft hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:translate-y-0 active:shadow-e1 ${
           menuOpen ? "z-20" : ""
         }`}
@@ -121,7 +147,7 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
             </span>
 
             <div className="min-w-0">
-              <h2 className="line-clamp-2 break-words text-base font-semibold leading-6 tracking-heading text-fg">
+              <h2 className="line-clamp-2 min-h-12 break-words text-base font-semibold leading-6 tracking-heading text-fg">
                 {division.name}
               </h2>
 
@@ -132,21 +158,33 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
                   </span>
                 ) : null}
 
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium ${
-                    hasMembers
-                      ? "bg-success-soft text-success"
-                      : "bg-warning-soft text-warning"
-                  }`}
-                >
+                {accessViaWorkspace ? (
                   <span
-                    aria-hidden="true"
-                    className={`h-1 w-1 rounded-full ${
-                      hasMembers ? "bg-success" : "bg-warning"
-                    }`}
-                  />
-                  {hasMembers ? "Aktif" : "Perlu anggota"}
-                </span>
+                    className="inline-flex items-center gap-1 rounded-full bg-info-soft px-2 py-0.5 text-2xs font-medium text-info"
+                    title={t(
+                      "Bergabung sebagai kolaborator melalui workspace/campaign. Roster anggota tidak ditampilkan.",
+                      "Joined as a collaborator through a workspace/campaign. Member roster is hidden.",
+                    )}
+                  >
+                    <ShieldCheck
+                      aria-hidden="true"
+                      className="h-3 w-3 shrink-0"
+                    />
+                    {t("Kolaborator", "Collaborator")}
+                  </span>
+                ) : !hasMembers && canManageDivision ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 text-2xs font-medium text-warning">
+                    <span
+                      aria-hidden="true"
+                      className="h-1 w-1 rounded-full bg-warning"
+                    />
+                    {t("Perlu anggota", "Needs members")}
+                  </span>
+                ) : !hasMembers ? (
+                  <span className="inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted">
+                    {t("Belum ada anggota", "No members yet")}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -157,7 +195,9 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
           >
             <button
               type="button"
-              aria-label={`Aksi divisi ${division.name}`}
+              aria-label={t("Aksi divisi {name}", "Division actions for {name}", {
+                name: division.name,
+              })}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((current) => !current)}
@@ -177,7 +217,7 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
                   onClick={() => onManageMembers?.(division)}
                   onItemClick={() => setMenuOpen(false)}
                 >
-                  Kelola anggota
+                  {t("Kelola anggota", "Manage members")}
                 </DropdownItem>
               ) : null}
 
@@ -187,7 +227,7 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
                   onClick={() => setShowEditModal(true)}
                   onItemClick={() => setMenuOpen(false)}
                 >
-                  Edit divisi
+                  {t("Edit divisi", "Edit division")}
                 </DropdownItem>
               ) : null}
 
@@ -196,7 +236,7 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
                 onClick={() => navigate(`/divisions/${division.id}/detail`)}
                 onItemClick={() => setMenuOpen(false)}
               >
-                Detail aktivitas
+                {t("Detail aktivitas", "Activity details")}
               </DropdownItem>
 
               {canManageDivision ? (
@@ -207,7 +247,7 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
                   onClick={() => void handleDelete()}
                   onItemClick={() => setMenuOpen(false)}
                 >
-                  Hapus divisi
+                  {t("Hapus divisi", "Delete division")}
                 </DropdownItem>
               ) : null}
             </Dropdown>
@@ -215,38 +255,64 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
         </div>
 
         <p className="mt-4 line-clamp-2 min-h-10 text-sm leading-5 text-fg-muted">
-          {division.description || "Belum ada deskripsi divisi."}
+          {division.description ||
+            t("Belum ada deskripsi divisi.", "No division description yet.")}
         </p>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          {hasMembers ? (
-            <AvatarStack
-              users={users}
-              max={4}
-              size="sm"
-              label={`${users.length} anggota divisi ${division.name}`}
+        {accessViaWorkspace ? (
+          <div
+            className="mt-4 flex min-h-7 items-center gap-2 text-2xs text-fg-subtle"
+            title={t(
+              "Bergabung sebagai kolaborator melalui workspace/campaign. Roster anggota tidak ditampilkan.",
+              "Joined as a collaborator through a workspace/campaign. Member roster is hidden.",
+            )}
+          >
+            <ShieldCheck
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0"
             />
-          ) : (
-            <span className="text-xs text-fg-subtle">Belum ada anggota</span>
-          )}
+            <span>{t("Roster anggota tidak ditampilkan", "Member roster is hidden")}</span>
+          </div>
+        ) : (
+          <div className="mt-4 flex items-center justify-between gap-3">
+            {hasMembers ? (
+              <AvatarStack
+                users={users}
+                max={4}
+                size="sm"
+                label={
+                  language === "en"
+                    ? `${users.length} ${users.length === 1 ? "member" : "members"} of division ${division.name}`
+                    : `${users.length} anggota divisi ${division.name}`
+                }
+              />
+            ) : (
+              <span className="text-xs text-fg-subtle">
+                {t("Belum ada anggota", "No members yet")}
+              </span>
+            )}
 
-          <span className="shrink-0 text-xs text-fg-muted">
-            {users.length} anggota · {adminCount} admin
-          </span>
-        </div>
+            <span className="shrink-0 whitespace-nowrap text-xs text-fg-muted">
+              {memberLabel}
+              {canManageDivision ? ` · ${adminLabel}` : ""}
+            </span>
+          </div>
+        )}
 
         <div className="mt-auto pt-4">
           <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted transition-colors group-hover:text-accent">
-              Lihat workspace
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-fg-muted transition-colors group-hover:text-accent">
+              {t("Lihat workspace", "View workspace")}
               <ArrowRight
                 aria-hidden="true"
                 className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
               />
             </span>
 
-            <span className="text-2xs text-fg-subtle">
-              Dibuat {formatDate(division.created_at)}
+            <span className="whitespace-nowrap text-2xs text-fg-subtle">
+              {t("Dibuat {date}", "Created {date}", {
+                date: formatDate(division.created_at),
+              })}
             </span>
           </div>
         </div>

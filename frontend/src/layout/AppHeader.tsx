@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { ArrowLeft, ChevronRight, Menu } from "lucide-react";
+import { ArrowLeft, ChevronRight, Languages, Menu } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import NotificationBell from "../components/header/NotificationBell";
+import ThemeTogglerTwo from "../components/common/ThemeTogglerTwo";
 import { useSidebar } from "../context/SidebarContext";
 import { toast } from "@/lib/feedback";
 
@@ -19,6 +21,29 @@ type BreadcrumbRoute = {
 type BreadcrumbItem = {
   label: string;
   href?: string;
+};
+
+const breadcrumbEnglish: Record<string, string> = {
+  Divisi: "Divisions",
+  Workspace: "Workspace",
+  Campaign: "Campaign",
+  "Detail campaign": "Campaign detail",
+  "Detail divisi": "Division detail",
+  Board: "Board",
+  Form: "Forms",
+  "Buat form": "Create form",
+  "Builder form": "Form builder",
+  "Edit form": "Edit form",
+  Responses: "Responses",
+  Chat: "Chat",
+  Notifikasi: "Notifications",
+  Kalender: "Calendar",
+  "Virtual office": "Virtual office",
+  Laporan: "Reports",
+  Profil: "Profile",
+  "Pengaturan akun": "Account settings",
+  Integrasi: "Integrations",
+  "Studio Maskot": "Mascot studio",
 };
 
 /* -------------------------------------------------------------------------- */
@@ -183,6 +208,7 @@ const AppHeader: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const auth = useAuth();
+  const { language, toggleLanguage, t } = useLanguage();
   const { toggleMobileSidebar } = useSidebar();
 
   const canViewAllDivisions = useMemo(() => {
@@ -193,6 +219,19 @@ const AppHeader: React.FC = () => {
 
       return typeof auth?.can === "function"
         ? !!auth.can("division.view_all")
+        : false;
+    } catch {
+      return false;
+    }
+  }, [auth]);
+
+  const breadcrumbLabel = (label: string) =>
+    t(label, breadcrumbEnglish[label] ?? label);
+
+  const canViewNotifications = useMemo(() => {
+    try {
+      return typeof auth?.can === "function"
+        ? !!auth.can("notification.view")
         : false;
     } catch {
       return false;
@@ -210,6 +249,21 @@ const AppHeader: React.FC = () => {
     }
   }, []);
 
+  const [divisionContextRevision, setDivisionContextRevision] = useState(0);
+
+  useEffect(() => {
+    const handleDivisionContext = () => {
+      setDivisionContextRevision((value) => value + 1);
+    };
+
+    window.addEventListener("tracko:division-context", handleDivisionContext);
+    return () =>
+      window.removeEventListener(
+        "tracko:division-context",
+        handleDivisionContext,
+      );
+  }, []);
+
   const breadcrumbs = useMemo(() => {
     const raw = buildBreadcrumbs(location.pathname);
 
@@ -218,7 +272,7 @@ const AppHeader: React.FC = () => {
     if (canViewAllDivisions) return raw;
 
     return raw.filter((crumb) => crumb.href !== "/divisions");
-  }, [location.pathname, canViewAllDivisions]);
+  }, [location.pathname, canViewAllDivisions, divisionContextRevision]);
 
   const showBack = !["/", "/dashboard", "/my-work"].includes(location.pathname);
 
@@ -234,7 +288,9 @@ const AppHeader: React.FC = () => {
   const handleBackToAdmin = (): void => {
     const adminToken = localStorage.getItem("admin_token");
     if (!adminToken) {
-      toast.error("Admin token tidak ditemukan");
+      toast.error(
+        t("Admin token tidak ditemukan", "Admin token not found"),
+      );
       return;
     }
 
@@ -276,7 +332,7 @@ const AppHeader: React.FC = () => {
           type="button"
           onClick={toggleMobileSidebar}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-line bg-surface text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg lg:hidden"
-          aria-label="Buka menu navigasi"
+          aria-label={t("Buka menu navigasi", "Open navigation menu")}
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -286,11 +342,14 @@ const AppHeader: React.FC = () => {
             type="button"
             onClick={handleBack}
             className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-            aria-label="Kembali ke halaman sebelumnya"
-            title="Kembali"
+            aria-label={t(
+              "Kembali ke halaman sebelumnya",
+              "Back to previous page",
+            )}
+            title={t("Kembali", "Back")}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Kembali</span>
+            <span className="hidden sm:inline">{t("Kembali", "Back")}</span>
           </button>
         ) : null}
 
@@ -307,7 +366,7 @@ const AppHeader: React.FC = () => {
                   : "text-fg-muted hover:text-fg"
               }`}
             >
-              Beranda
+              {t("Beranda", "Home")}
             </Link>
 
             {breadcrumbs.map((breadcrumb, index) => {
@@ -325,18 +384,18 @@ const AppHeader: React.FC = () => {
                       aria-current="page"
                       className="text-sm font-medium text-fg"
                     >
-                      {breadcrumb.label}
+                      {breadcrumbLabel(breadcrumb.label)}
                     </span>
                   ) : breadcrumb.href ? (
                     <Link
                       to={breadcrumb.href}
                       className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
                     >
-                      {breadcrumb.label}
+                      {breadcrumbLabel(breadcrumb.label)}
                     </Link>
                   ) : (
                     <span className="text-sm font-medium text-fg-subtle">
-                      {breadcrumb.label}
+                      {breadcrumbLabel(breadcrumb.label)}
                     </span>
                   )}
                 </div>
@@ -354,7 +413,7 @@ const AppHeader: React.FC = () => {
               <span className="h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
 
               <span className="text-xs font-medium text-warning">
-                Visitor
+                {t("Visitor", "Visitor")}
               </span>
             </div>
 
@@ -363,14 +422,29 @@ const AppHeader: React.FC = () => {
               onClick={handleBackToAdmin}
               className="rounded-full bg-danger px-3 py-1 text-xs font-medium text-white transition-colors hover:opacity-90"
             >
-              Kembali
+              {t("Kembali", "Back")}
             </button>
           </div>
         )}
 
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface transition-colors hover:bg-surface-muted">
-          <NotificationBell />
-        </div>
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          title={t("Ganti bahasa", "Switch language")}
+          aria-label={t("Ganti bahasa", "Switch language")}
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-2xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          <Languages size={14} aria-hidden="true" />
+          <span className="uppercase">{language}</span>
+        </button>
+
+        <ThemeTogglerTwo />
+
+        {canViewNotifications ? (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface transition-colors hover:bg-surface-muted">
+            <NotificationBell />
+          </div>
+        ) : null}
       </div>
     </header>
   );

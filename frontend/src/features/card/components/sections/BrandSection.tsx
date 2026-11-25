@@ -1,6 +1,7 @@
 import { Card } from "../../types";
 import { useCardBrand } from "../../hooks/useCardBrand";
 import { useAuth } from '../../../../context/AuthContext';
+import { useLanguage } from "@/context/LanguageContext";
 import TaxonomyPickerSection from "./TaxonomyPickerSection";
 
 interface Props {
@@ -17,6 +18,7 @@ export default function BrandSection({
   setDetail,
 }: Props) {
   const { can } = useAuth();
+  const { t } = useLanguage();
   const {
     brands,
     attachBrand,
@@ -63,12 +65,12 @@ export default function BrandSection({
       attachedIds={card.brands?.map((b) => b.id) ?? []}
       loading={loading}
       error={error}
-      searchPlaceholder="Cari brand..."
-      createPlaceholder="Nama brand baru..."
-      attachedTitle="Brand terpasang"
-      attachedEmptyText="Belum ada brand terpasang pada card ini."
-      listTitle="Daftar brand"
-      duplicateHint="Brand sudah ada pada campaign ini. Pilih brand tersebut dari daftar untuk memasangnya."
+      searchPlaceholder={t("Cari brand...", "Search brands...")}
+      createPlaceholder={t("Nama brand baru...", "New brand name...")}
+      attachedTitle={t("Brand terpasang", "Attached brands")}
+      attachedEmptyText={t("Belum ada brand terpasang pada card ini.", "No brands attached to this card yet.")}
+      listTitle={t("Daftar brand", "Brand list")}
+      duplicateHint={t("Brand sudah ada pada campaign ini. Pilih brand tersebut dari daftar untuk memasangnya.", "This brand already exists in this campaign. Select it from the list to attach it.")}
       canCreate={can('brand.create')}
       canAttach={can('brand.attach')}
       canDetach={can('brand.detach')}

@@ -9,6 +9,7 @@ import {
 
 import { updateCard } from "../api/card.api";
 import type { Card, UpdateCardRequest } from "../types";
+import { translate } from "@/i18n/translate";
 
 interface UseCardDescriptionResult {
   description: string;
@@ -111,7 +112,12 @@ export default function useCardDescription(
         }
         console.error("FAILED SAVE CARD DETAILS", error);
         if (mountedRef.current) {
-          setSaveError("Perubahan belum tersimpan. Periksa koneksi lalu coba lagi.");
+          setSaveError(
+            translate(
+              "Perubahan belum tersimpan. Periksa koneksi lalu coba lagi.",
+              "Changes were not saved. Check your connection and try again.",
+            ),
+          );
         }
         return false;
       } finally {

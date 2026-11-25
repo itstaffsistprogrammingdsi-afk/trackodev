@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+
+import {
+  PeopleSearchInput,
+  PersonRow,
+} from "@/components/ui/people-picker/PeoplePicker";
 import { AssignTarget, User, ReceivingCampaign } from "../../types";
 import { getBoardReceivingCampaigns, getReceivingCampaigns } from "../../api/card.api";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Props {
   cardId?: string;
@@ -68,6 +74,7 @@ export default function MemberSection({
   onTargetChange,
 }: Props) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [destPicker, setDestPicker] = useState<DestPicker | null>(null);
   const [createPanel, setCreatePanel] = useState<CreatePanel | null>(null);
   const [pickerLoading, setPickerLoading] = useState(false);
@@ -190,37 +197,46 @@ const filteredUsers = users
   };
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 shadow-sm space-y-5">
+    <div className="space-y-4">
       {/* =========================================
           SEARCH
       ========================================= */}
       <div>
-        <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
-          Member dapat ditugaskan lintas divisi. Copy otomatis masuk campaign miliknya yang cocok nama, atau ke Inbox Lintas Divisi bila tidak ada yang cocok.
+        <div className="mb-2.5 rounded-control border border-info/15 bg-info-soft px-2.5 py-2 text-[11px] leading-4 text-info">
+          {t(
+            "Anggota bisa ditugaskan lintas divisi. Salinan otomatis masuk ke campaign yang cocok namanya, atau ke Inbox Lintas Divisi.",
+            "Members can be assigned across divisions. A copy automatically goes to the campaign with a matching name, or to the Cross-division Inbox.",
+          )}
         </div>
-        <input
-          type="text"
+        <PeopleSearchInput
           value={memberSearch}
-          onChange={(e) => setMemberSearch(e.target.value)}
-          placeholder="Search member..."
-          className="w-full h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={setMemberSearch}
+          placeholder={t("Cari nama atau email", "Search name or email")}
+          ariaLabel={t("Cari anggota", "Search members")}
         />
       </div>
 
       {destInfo ? (
-        <div className="rounded-xl border border-green-100 bg-green-50 px-3 py-2.5 space-y-2">
-          <p className="text-xs leading-5 text-green-700">
+        <div className="space-y-2 rounded-control border border-success/15 bg-success-soft px-2.5 py-2">
+          <p className="text-[11px] leading-4 text-success">
             {destInfo.isInbox
-              ? "Copy dibuat di Inbox Lintas Divisi (tidak ada campaign yang cocok nama)."
-              : `Copy dibuat di campaign ${destInfo.name}.`}
+              ? t(
+                  "Salinan dibuat di Inbox Lintas Divisi karena tidak ada campaign yang cocok.",
+                  "The copy was created in the Cross-division Inbox because no matching campaign was found.",
+                )
+              : t(
+                  "Salinan dibuat di campaign {name}.",
+                  "The copy was created in campaign {name}.",
+                  { name: destInfo.name },
+                )}
           </p>
           {destInfo.workspaceId ? (
             <button
               type="button"
               onClick={goToDestCampaign}
-              className="h-9 w-full rounded-xl bg-green-600 px-3 text-xs font-semibold text-white transition hover:bg-green-700"
+              className="inline-flex h-8 items-center rounded-[7px] bg-success px-2.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
             >
-              Lihat campaign →
+              {t("Lihat campaign", "View campaign")}
             </button>
           ) : null}
         </div>
@@ -230,20 +246,25 @@ const filteredUsers = users
           PILIH CAMPAIGN TUJUAN (lintas divisi)
       ========================================= */}
       {destPicker ? (
-        <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-violet-800">
-            Pilih campaign tujuan untuk {destPicker.userName}
+        <div className="space-y-2 rounded-control border border-accent/20 bg-accent-soft/60 p-2.5">
+          <p className="text-[11px] font-medium text-accent-strong">
+            {t(
+              "Pilih campaign tujuan untuk {name}",
+              "Select a destination campaign for {name}",
+              { name: destPicker.userName },
+            )}
           </p>
           <select
             value={destPicker.selectedId}
             onChange={(e) => setDestPicker({ ...destPicker, selectedId: e.target.value })}
-            className="w-full h-10 rounded-xl border border-violet-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            aria-label={t("Campaign tujuan", "Destination campaign")}
+            className="h-9 w-full rounded-[7px] border border-accent/20 bg-surface px-2.5 text-xs text-fg outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
           >
-            <option value="__inbox__">Inbox Lintas Divisi</option>
+            <option value="__inbox__">{t("Inbox Lintas Divisi", "Cross-division Inbox")}</option>
             {destPicker.options.map((opt) => (
               <option key={opt.id} value={opt.id}>
                 {opt.name}
-                {opt.is_name_match ? " (cocok nama)" : ""}
+                {opt.is_name_match ? t(" (cocok nama)", " (name match)") : ""}
                 {opt.division ? ` · ${opt.division.name}` : ""}
               </option>
             ))}
@@ -262,16 +283,16 @@ const filteredUsers = users
                   campaignName: selected?.name,
                 });
               }}
-              className="h-9 flex-1 rounded-xl bg-violet-600 px-3 text-xs font-semibold text-white transition hover:bg-violet-700 disabled:opacity-50"
+              className="h-8 flex-1 rounded-[7px] bg-accent px-2.5 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:opacity-50"
             >
-              {assigning ? "Menugaskan..." : "Assign ke campaign ini"}
+              {assigning ? t("Menugaskan…", "Assigning…") : t("Tugaskan ke campaign ini", "Assign to this campaign")}
             </button>
             <button
               disabled={assigning}
               onClick={() => setDestPicker(null)}
-              className="h-9 rounded-xl border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+              className="h-8 rounded-[7px] border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted disabled:opacity-50"
             >
-              Batal
+              {t("Batal", "Cancel")}
             </button>
           </div>
         </div>
@@ -281,20 +302,33 @@ const filteredUsers = users
           BUATKAN CAMPAIGN (belum punya campaign)
       ========================================= */}
       {createPanel ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-emerald-800">
-            {createPanel.userName} belum punya campaign
-            {createPanel.divisionName ? ` di ${createPanel.divisionName}` : ""}.
+        <div className="space-y-2 rounded-control border border-warning/20 bg-warning-soft p-2.5">
+          <p className="text-[11px] font-medium text-warning">
+            {createPanel.divisionName
+              ? t(
+                  "{name} belum punya campaign di {division}.",
+                  "{name} has no campaign in {division} yet.",
+                  { name: createPanel.userName, division: createPanel.divisionName },
+                )
+              : t(
+                  "{name} belum punya campaign.",
+                  "{name} has no campaign yet.",
+                  { name: createPanel.userName },
+                )}
           </p>
-          <p className="text-[11px] leading-4 text-emerald-700">
-            Buatkan campaign personal agar copy langsung masuk ke sana?
+          <p className="text-[11px] leading-4 text-fg-muted">
+            {t(
+              "Buat campaign personal agar salinan langsung masuk ke sana.",
+              "Create a personal campaign so the copy goes straight there.",
+            )}
           </p>
           <input
             type="text"
             value={createPanel.campaignName}
             onChange={(e) => setCreatePanel({ ...createPanel, campaignName: e.target.value })}
             placeholder={createPanel.suggestedName}
-            className="w-full h-10 rounded-xl border border-emerald-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            aria-label={t("Nama campaign baru", "New campaign name")}
+            className="h-9 w-full rounded-[7px] border border-warning/25 bg-surface px-2.5 text-xs text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/15"
           />
           <div className="flex gap-2">
             <button
@@ -304,24 +338,24 @@ const filteredUsers = users
                   createName: createPanel.campaignName.trim(),
                 });
               }}
-              className="h-9 flex-1 rounded-xl bg-emerald-600 px-3 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              className="h-8 flex-1 rounded-[7px] bg-accent px-2.5 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:opacity-50"
             >
-              {assigning ? "Membuat..." : "Buatkan & Assign"}
+              {assigning ? t("Membuat…", "Creating…") : t("Buat & tugaskan", "Create & assign")}
             </button>
             <button
               disabled={assigning}
               onClick={() => void doAssign(createPanel.userId)}
-              className="h-9 rounded-xl border border-emerald-200 bg-white px-3 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
-              title="Masuk ke Inbox Lintas Divisi"
+              className="h-8 rounded-[7px] border border-warning/25 bg-surface px-2.5 text-xs font-medium text-warning transition-colors hover:bg-warning-soft disabled:opacity-50"
+              title={t("Masuk ke Inbox Lintas Divisi", "Go to Cross-division Inbox")}
             >
-              Inbox saja
+              {t("Inbox")}
             </button>
             <button
               disabled={assigning}
               onClick={() => setCreatePanel(null)}
-              className="h-9 rounded-xl border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+              className="h-8 rounded-[7px] border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted disabled:opacity-50"
             >
-              Batal
+              {t("Batal", "Cancel")}
             </button>
           </div>
         </div>
@@ -332,54 +366,32 @@ const filteredUsers = users
       ========================================= */}
       {assignees.length > 0 && (
         <div>
-          {/* HEADER */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-[11px] font-medium text-fg-subtle">
-              Assigned Members
+              {t("Ditugaskan", "Assigned")}
             </p>
-
-            <span className="text-xs text-gray-400">
-              {assignees.length} members
+            <span className="text-2xs tabular-nums text-fg-subtle">
+              {t("{count} anggota", "{count} members", { count: assignees.length })}
             </span>
           </div>
 
-          {/* LIST */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {assignees.map((user) => (
-              <div
+              <PersonRow
                 key={user.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-3"
-              >
-                {/* LEFT */}
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* AVATAR */}
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-
-                  {/* USER INFO */}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-800">
-                      {user.name}
-                    </p>
-
-                    <p className="truncate text-xs text-gray-500">
-                      {user.email}
-                    </p>
-                  </div>
-                </div>
-
-                {/* ACTION */}
-                <button
-                  onClick={() => {
-                    handleUnassign(user.id);
-                    onTargetChange?.(user.id, null);
-                  }}
-                  className="h-8 shrink-0 rounded-lg bg-red-50 px-3 text-xs font-medium text-red-600 transition hover:bg-red-100"
-                >
-                  Remove
-                </button>
-              </div>
+                person={user}
+                action={
+                  <button
+                    onClick={() => {
+                      handleUnassign(user.id);
+                      onTargetChange?.(user.id, null);
+                    }}
+                    className="h-7 shrink-0 rounded-[7px] px-2 text-2xs font-medium text-danger transition-colors hover:bg-danger-soft"
+                  >
+                    {t("Lepas", "Remove")}
+                  </button>
+                }
+              />
             ))}
           </div>
         </div>
@@ -389,106 +401,92 @@ const filteredUsers = users
           AVAILABLE USERS
       ========================================= */}
       <div>
-        {/* HEADER */}
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-[11px] font-medium text-fg-subtle">
-            Members (semua divisi)
+            {t("Anggota dari semua divisi", "Members from all divisions")}
           </p>
 
-<span className="text-xs text-gray-400">
-  Showing {filteredUsers.length} of {users.length} users
-</span>
+          <span className="text-2xs tabular-nums text-fg-subtle">
+            {t("{shown} dari {total}", "{shown} of {total}", {
+              shown: filteredUsers.length,
+              total: users.length,
+            })}
+          </span>
         </div>
 
-        {/* LIST */}
-        <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+        <div className="custom-scrollbar max-h-[320px] space-y-1.5 overflow-y-auto pr-1">
           {filteredUsers.map((user) => {
             const assigned = assignees.some(
               (assignee) => assignee.id === user.id,
             );
+            const saved = assigneeTargets?.[user.id];
+            const divisionMeta = user.division_names?.length
+              ? `${user.division_names.join(" · ")}${
+                  user.is_cross_division
+                    ? ` · ${t("lintas divisi", "cross-division")}`
+                    : ""
+                }`
+              : t("Belum terdaftar di divisi mana pun", "Not registered in any division");
+            const savedMeta =
+              saved && (saved.campaignId || saved.createName || saved.forceInbox)
+                ? saved.forceInbox
+                  ? ` → ${t("Inbox Lintas Divisi", "Cross-division Inbox")}`
+                  : saved.createName
+                    ? ` → ${t("buatkan: {name}", "create: {name}", {
+                        name: saved.createName,
+                      })}`
+                    : ` → ${
+                        saved.campaignName ??
+                        t("campaign terpilih", "selected campaign")
+                      }`
+                : "";
 
             return (
-              <div
+              <PersonRow
                 key={user.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 transition hover:border-gray-300"
-              >
-                {/* LEFT */}
-                <div className="flex flex-1 items-center gap-3 min-w-0">
-                  {/* AVATAR */}
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-700">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-
-                  {/* USER INFO */}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-800">
-                      {user.name}
-                    </p>
-
-                    <p className="truncate text-[11px] text-gray-500">
-                      {user.email}
-                    </p>
-
-                    {user.division_names?.length ? (
-                      <p className="truncate text-[11px] text-gray-400">
-                        {user.division_names.join(" · ")}
-                        {user.is_cross_division ? " · lintas divisi" : ""}
-                      </p>
-                    ) : (
-                      <p className="truncate text-[11px] text-amber-500">
-                        Belum terdaftar di division mana pun
-                      </p>
-                    )}
-
-                    {(() => {
-                      const saved = assigneeTargets?.[user.id];
-                      if (!saved || (!saved.campaignId && !saved.createName && !saved.forceInbox)) return null;
-                      return (
-                        <p className="truncate text-[11px] font-medium text-violet-600">
-                          → {saved.forceInbox
-                            ? "Inbox Lintas Divisi"
-                            : saved.createName
-                              ? `buatkan: ${saved.createName}`
-                              : saved.campaignName ?? "campaign terpilih"}
-                        </p>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* RIGHT */}
-                {assigned ? (
-                  <div className="flex h-7 items-center rounded-md border border-green-100 bg-green-50 px-2.5 text-[11px] font-medium text-green-600">
-                    Assigned
-                  </div>
-                ) : user.can_assign === false ? (
-                  <span
-                    className="text-[11px] font-medium text-gray-400"
-                    title={
-                      user.has_division === false
-                        ? "User ini belum terdaftar pada division mana pun. Minta admin division untuk menambahkannya ke division lebih dulu."
-                        : "User ini tidak dapat di-assign. Minta Super Admin untuk memeriksa izin assign Anda."
-                    }
-                  >
-                    Hanya lihat
-                  </span>
-                ) : (
-                  <button
-                    disabled={pickerLoading || assigning}
-                    onClick={() => void handleAssignClick(user)}
-                    className="h-7 rounded-md border border-blue-100 bg-blue-50 px-2.5 text-[11px] font-medium text-blue-600 transition hover:bg-blue-100 disabled:opacity-50"
-                  >
-                    {pickerLoading ? "..." : "Assign"}
-                  </button>
-                )}
-              </div>
+                person={user}
+                meta={`${divisionMeta}${savedMeta}`}
+                disabled={user.can_assign === false}
+                action={
+                  assigned ? (
+                    <span className="flex h-7 shrink-0 items-center rounded-full bg-success-soft px-2.5 text-2xs font-medium text-success">
+                      {t("Ditugaskan", "Assigned")}
+                    </span>
+                  ) : user.can_assign === false ? (
+                    <span
+                      className="shrink-0 text-2xs font-medium text-fg-subtle"
+                      title={
+                        user.has_division === false
+                          ? t(
+                              "User ini belum terdaftar pada divisi mana pun. Minta admin divisi untuk menambahkannya lebih dulu.",
+                              "This user is not registered in any division yet. Ask the division admin to add them first.",
+                            )
+                          : t(
+                              "User ini tidak dapat ditugaskan. Minta Super Admin untuk memeriksa izin assign Anda.",
+                              "This user cannot be assigned. Ask a Super Admin to check your assign permission.",
+                            )
+                      }
+                    >
+                      {t("Hanya lihat", "View only")}
+                    </span>
+                  ) : (
+                    <button
+                      disabled={pickerLoading || assigning}
+                      onClick={() => void handleAssignClick(user)}
+                      className="h-7 shrink-0 rounded-[7px] bg-accent-soft px-2.5 text-2xs font-medium text-accent transition-colors hover:bg-accent/15 disabled:opacity-50"
+                    >
+                      {pickerLoading ? "…" : t("Tugaskan", "Assign")}
+                    </button>
+                  )
+                }
+              />
             );
           })}
 
           {/* EMPTY */}
           {filteredUsers.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white py-8 text-center text-sm text-gray-500">
-              Member tidak ditemukan
+            <div className="rounded-control border border-dashed border-line py-6 text-center text-xs text-fg-subtle">
+              {t("Anggota tidak ditemukan", "No members found")}
             </div>
           ) : null}
         </div>

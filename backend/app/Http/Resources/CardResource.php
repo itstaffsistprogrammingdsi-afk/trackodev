@@ -29,6 +29,19 @@ class CardResource extends JsonResource
 
             /*
             |------------------------------------------------
+            | RINGKASAN UNTUK KARTU BOARD
+            |------------------------------------------------
+            | withCount dipakai supaya kartu Kanban bisa menampilkan
+            | jumlah lampiran, komentar, dan subtask tanpa memuat
+            | seluruh relasinya.
+            */
+            'attachments_count' => $this->whenCounted('attachments'),
+            'comments_count' => $this->whenCounted('comments'),
+            'tasks_count' => $this->whenCounted('tasks'),
+            'completed_tasks_count' => $this->whenCounted('completed_tasks'),
+
+            /*
+            |------------------------------------------------
             | CROSS-DIVISION MIRROR
             |------------------------------------------------
             | Badge "copy dari division X, ditugaskan oleh Y" di frontend

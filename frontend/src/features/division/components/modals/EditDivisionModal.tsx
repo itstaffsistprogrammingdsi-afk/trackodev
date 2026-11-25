@@ -4,6 +4,7 @@ import { AlertCircle, Building2, Loader2, X } from "lucide-react";
 
 import { Division } from "../../types";
 import { useUpdateDivision } from "../../hooks/useDivisions";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   open: boolean;
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export default function EditDivisionModal({ open, onClose, division }: Props) {
+  const { t } = useLanguage();
   const updateMutation = useUpdateDivision();
 
   const [name, setName] = useState(division.name);
@@ -39,7 +41,7 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
     setError(null);
 
     if (!name.trim()) {
-      setError("Nama divisi wajib diisi.");
+      setError(t("Nama divisi wajib diisi.", "Division name is required."));
       return;
     }
 
@@ -54,7 +56,13 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
         mutationError as { response?: { data?: { message?: string } } }
       ).response?.data?.message;
 
-      setError(message ?? "Perubahan belum dapat disimpan. Coba lagi.");
+      setError(
+        message ??
+          t(
+            "Perubahan belum dapat disimpan. Coba lagi.",
+            "Changes could not be saved. Try again.",
+          ),
+      );
     }
   };
 
@@ -82,10 +90,13 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
                 id="edit-division-title"
                 className="truncate text-base font-semibold tracking-heading text-fg"
               >
-                Edit divisi
+                {t("Edit divisi", "Edit division")}
               </h2>
               <p className="mt-0.5 text-xs leading-5 text-fg-muted">
-                Perbarui nama dan kode divisi.
+                {t(
+                  "Perbarui nama dan kode divisi.",
+                  "Update the division name and code.",
+                )}
               </p>
             </div>
           </div>
@@ -94,7 +105,7 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
             type="button"
             onClick={handleClose}
             disabled={updateMutation.isPending}
-            aria-label="Tutup"
+            aria-label={t("Tutup", "Close")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
           >
             <X aria-hidden="true" className="h-4 w-4" />
@@ -107,7 +118,7 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
               htmlFor="edit-division-name"
               className="block text-xs font-medium text-fg-muted"
             >
-              Nama divisi
+              {t("Nama divisi", "Division name")}
             </label>
             <input
               id="edit-division-name"
@@ -126,7 +137,7 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
               htmlFor="edit-division-code"
               className="block text-xs font-medium text-fg-muted"
             >
-              Kode divisi
+              {t("Kode divisi", "Division code")}
             </label>
             <input
               id="edit-division-code"
@@ -136,7 +147,7 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
                 setError(null);
               }}
               maxLength={10}
-              placeholder="Contoh: DKV"
+              placeholder={t("Contoh: DKV", "e.g. DKV")}
               className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm uppercase text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:normal-case placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15"
             />
           </div>
@@ -146,14 +157,17 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
               htmlFor="edit-division-description"
               className="block text-xs font-medium text-fg-muted"
             >
-              Deskripsi
+              {t("Deskripsi", "Description")}
             </label>
             <textarea
               id="edit-division-description"
               rows={3}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Tujuan atau cakupan divisi ini (opsional)"
+              placeholder={t(
+                "Tujuan atau cakupan divisi ini (opsional)",
+                "Purpose or scope of this division (optional)",
+              )}
               className="w-full resize-none rounded-control border border-line bg-surface px-3 py-2.5 text-sm leading-6 text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/15"
             />
           </div>
@@ -178,7 +192,7 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
               disabled={updateMutation.isPending}
               className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Batal
+              {t("Batal", "Cancel")}
             </button>
 
             <button
@@ -193,10 +207,10 @@ export default function EditDivisionModal({ open, onClose, division }: Props) {
                     aria-hidden="true"
                     className="h-4 w-4 animate-spin motion-reduce:animate-none"
                   />
-                  Menyimpan
+                  {t("Menyimpan", "Saving")}
                 </>
               ) : (
-                "Simpan perubahan"
+                t("Simpan perubahan", "Save changes")
               )}
             </button>
           </div>

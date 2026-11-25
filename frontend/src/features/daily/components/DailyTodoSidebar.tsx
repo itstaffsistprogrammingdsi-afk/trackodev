@@ -1,7 +1,9 @@
 import { useEffect } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 import { useDailyTodo } from "../hooks/useDailyTodo";
 
 export default function DailyTodoSidebar() {
+  const { t } = useLanguage();
   const { data } = useDailyTodo();
 
   useEffect(() => {
@@ -12,7 +14,7 @@ export default function DailyTodoSidebar() {
 
   return (
     <div>
-      Daily Todo
+      {t("Daily Todo")}
     </div>
   );
 }

@@ -33,9 +33,9 @@ const LayoutContent: React.FC = () => {
           flex-1
           flex-col
           overflow-hidden
-          transition-all
-          duration-300
-          ease-in-out
+          transition-[margin]
+          duration-200
+          ease-soft
           ${isExpanded || isHovered ? "lg:ml-[290px]" : "lg:ml-[96px]"}
         `}
       >

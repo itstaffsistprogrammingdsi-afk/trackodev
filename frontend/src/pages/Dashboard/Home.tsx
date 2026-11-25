@@ -13,6 +13,8 @@ import {
 import { RefreshCcw } from "lucide-react";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { translateScopeLabel } from "./dashboardLabels";
 
 // ============================================
 // TYPES (Sesuai dengan JSON Laravel)
@@ -109,6 +111,7 @@ function readStoredScope(): DashboardScope {
 export default function Home() {
   const realtimeRevision = useRealtimeRevision();
   const { can, hasRole } = useAuth();
+  const { t } = useLanguage();
   const canViewAllDivisions = hasRole("super_admin") || can("division.view_all");
   const [data, setData] = useState<DashboardResponse>({
     filter: initialFilterPayload,
@@ -182,7 +185,7 @@ export default function Home() {
     } catch (error) {
       if (requestId !== dashboardRequestId.current) return;
       console.error("Gagal load dashboard", error);
-      setDashboardError("Data dashboard gagal dimuat. Angka yang tampil mungkin belum sesuai filter.");
+      setDashboardError("load_failed");
     } finally {
       if (requestId === dashboardRequestId.current) {
         setLoading(false);
@@ -220,13 +223,22 @@ export default function Home() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg sm:text-[28px]">
             {scope === "global"
-              ? (canViewAllDivisions ? "Global Dashboard" : "Division Dashboard")
-              : "My Dashboard"}
+              ? (canViewAllDivisions ? t("Global Dashboard") : t("Division Dashboard"))
+              : t("My Dashboard")}
           </h1>
           <p className="text-sm text-fg-muted">
-            Pantau dan kelola statistik dari {scope === "global"
-              ? (canViewAllDivisions ? "seluruh sistem" : data.insight_scope.label)
-              : "ruang kerja Anda"}.
+            {t(
+              "Pantau dan kelola statistik dari {scope}.",
+              "Monitor and manage statistics from {scope}.",
+              {
+                scope:
+                  scope === "global"
+                    ? (canViewAllDivisions
+                        ? t("seluruh sistem", "the entire system")
+                        : translateScopeLabel(data.insight_scope.label))
+                    : t("ruang kerja Anda", "your workspace"),
+              },
+            )}
           </p>
         </div>
 
@@ -249,7 +261,7 @@ export default function Home() {
               className={`h-4 w-4 ${isRefreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
               aria-hidden="true"
             />
-            {isRefreshing ? "Memuat..." : "Refresh"}
+            {isRefreshing ? t("Memuat...", "Loading…") : t("Refresh")}
           </button>
         </div>
       </div>
@@ -265,13 +277,18 @@ export default function Home() {
           role="alert"
           className="flex flex-col gap-2 rounded-card border border-danger/20 bg-danger-soft px-4 py-3 text-xs text-danger sm:flex-row sm:items-center sm:justify-between"
         >
-          <span>{dashboardError}</span>
+          <span>
+            {t(
+              "Data dashboard gagal dimuat. Angka yang tampil mungkin belum sesuai filter.",
+              "Failed to load dashboard data. The numbers shown may not match the filter.",
+            )}
+          </span>
           <button
             type="button"
             onClick={() => void loadDashboard(true)}
             className="h-8 shrink-0 rounded-control border border-danger/25 bg-surface px-3 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
           >
-            Coba lagi
+            {t("Coba lagi", "Try again")}
           </button>
         </div>
       ) : null}
@@ -280,30 +297,30 @@ export default function Home() {
       {/* RINGKASAN SISTEM - satu permukaan, angka yang tenang */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <KpiCard
-          label={isAllTime ? "Total pengguna" : "Pengguna terdaftar"}
+          label={isAllTime ? t("Total pengguna", "Total users") : t("Pengguna terdaftar", "Registered users")}
           value={stats.users}
         />
         <KpiCard
-          label={isAllTime ? "Total divisi" : "Divisi dibuat"}
+          label={isAllTime ? t("Total divisi", "Total divisions") : t("Divisi dibuat", "Divisions created")}
           value={stats.divisions}
         />
         <KpiCard
-          label={isAllTime ? "Total workspace" : "Workspace dibuat"}
+          label={isAllTime ? t("Total workspace", "Total workspaces") : t("Workspace dibuat", "Workspaces created")}
           value={stats.workspaces}
         />
         <KpiCard
-          label={isAllTime ? "Total campaign" : "Campaign dibuat"}
+          label={isAllTime ? t("Total campaign", "Total campaigns") : t("Campaign dibuat", "Campaigns created")}
           value={stats.campaigns}
         />
         <KpiCard
-          label={isAllTime ? "Total board" : "Board dibuat"}
+          label={isAllTime ? t("Total board", "Total boards") : t("Board dibuat", "Boards created")}
           value={stats.boards}
         />
         <KpiCard
-          label={isAllTime ? "Total card" : "Card dibuat"}
+          label={isAllTime ? t("Total card", "Total cards") : t("Card dibuat", "Cards created")}
           value={stats.cards}
         />
-        <KpiCard label="Task terlambat" value={taskStatus.overdue} tone="danger" />
+        <KpiCard label={t("Task terlambat", "Overdue tasks")} value={taskStatus.overdue} tone="danger" />
       </div>
 
       {/* LEADERBOARD KHUSUS PEMILIK PERMISSION */}
@@ -334,6 +351,8 @@ type KpiCardProps = {
 };
 
 function KpiCard({ label, value, tone = "default" }: KpiCardProps) {
+  const { locale } = useLanguage();
+
   return (
     <div className="bg-surface px-4 py-4 sm:px-5">
       <p
@@ -341,7 +360,7 @@ function KpiCard({ label, value, tone = "default" }: KpiCardProps) {
           tone === "danger" && value > 0 ? "text-danger" : "text-fg"
         }`}
       >
-        {value.toLocaleString("id-ID")}
+        {value.toLocaleString(locale)}
       </p>
       <p className="mt-2 truncate text-[11px] font-medium text-fg-muted">
         {label}

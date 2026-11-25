@@ -1,10 +1,13 @@
-import { FormEvent, useEffect, useState } from 'react';
-import axios from 'axios';
-import { CalendarDays, Loader2, Plus, X } from 'lucide-react';
-import { createCard } from '@/features/card/api/card.api';
-import type { Card, CardPriority } from '@/features/card/types';
-import { calendarApi } from '../api/calendar.api';
-import type { CalendarBoardOption } from '../types';
+import { FormEvent, useEffect, useState } from "react";
+import axios from "axios";
+import { CalendarDays, Loader2, Plus } from "lucide-react";
+
+import { createCard } from "@/features/card/api/card.api";
+import type { Card, CardPriority } from "@/features/card/types";
+import { Modal } from "@/components/ui/modal";
+import { useLanguage } from "@/context/LanguageContext";
+import { calendarApi } from "../api/calendar.api";
+import type { CalendarBoardOption } from "../types";
 
 interface Props {
   date: string;
@@ -12,11 +15,11 @@ interface Props {
   onCreated: (card: Card) => void;
 }
 
-const priorities: Array<{ value: CardPriority; label: string }> = [
-  { value: 'low', label: 'Rendah' },
-  { value: 'medium', label: 'Normal' },
-  { value: 'high', label: 'Tinggi' },
-  { value: 'urgent', label: 'Urgent' },
+const priorities: Array<{ value: CardPriority; label: string; labelEn: string }> = [
+  { value: "low", label: "Rendah", labelEn: "Low" },
+  { value: "medium", label: "Normal", labelEn: "Medium" },
+  { value: "high", label: "Tinggi", labelEn: "High" },
+  { value: "urgent", label: "Urgent", labelEn: "Urgent" },
 ];
 
 export default function CalendarCardCreateModal({
@@ -24,31 +27,32 @@ export default function CalendarCardCreateModal({
   onClose,
   onCreated,
 }: Props) {
+  const { t } = useLanguage();
   const [boards, setBoards] = useState<CalendarBoardOption[]>([]);
-  const [boardId, setBoardId] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<CardPriority>('medium');
+  const [boardId, setBoardId] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<CardPriority>("medium");
   const [dueDate, setDueDate] = useState(`${date}T17:00`);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
     setDueDate(`${date}T17:00`);
     setLoadingOptions(true);
-    setError('');
+    setError("");
 
     calendarApi
       .getCreateOptions()
       .then((options) => {
         if (!active) return;
         setBoards(options);
-        setBoardId((current) => current || options[0]?.id || '');
+        setBoardId((current) => current || options[0]?.id || "");
       })
       .catch(() => {
-        if (active) setError('Gagal memuat pilihan campaign dan board.');
+        if (active) setError(t("Gagal memuat pilihan campaign dan board.", "Failed to load campaign and board options."));
       })
       .finally(() => {
         if (active) setLoadingOptions(false);
@@ -57,7 +61,7 @@ export default function CalendarCardCreateModal({
     return () => {
       active = false;
     };
-  }, [date]);
+  }, [date, t]);
 
   const selectedBoard = boards.find((board) => board.id === boardId);
 
@@ -66,21 +70,21 @@ export default function CalendarCardCreateModal({
     if (!title.trim() || !boardId || !dueDate) return;
 
     setSaving(true);
-    setError('');
+    setError("");
 
     try {
       const card = await createCard(boardId, {
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        due_date: `${dueDate.replace('T', ' ')}:00`,
+        due_date: `${dueDate.replace("T", " ")}:00`,
       });
       onCreated(card);
     } catch (caught) {
       setError(
         axios.isAxiosError(caught)
-          ? caught.response?.data?.message || 'Card gagal dibuat.'
-          : 'Card gagal dibuat.',
+          ? caught.response?.data?.message || t("Card gagal dibuat.", "Failed to create card.")
+          : t("Card gagal dibuat.", "Failed to create card."),
       );
     } finally {
       setSaving(false);
@@ -88,52 +92,43 @@ export default function CalendarCardCreateModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        onClick={onClose}
-        aria-label="Tutup form buat card"
-      />
-
-      <form
-        onSubmit={submit}
-        className="relative w-full max-w-xl overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl dark:border-slate-800 dark:bg-slate-950"
-      >
-        <header className="flex items-start justify-between border-b border-slate-200 p-5 dark:border-slate-800">
-          <div className="flex gap-3">
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
-              <CalendarDays className="size-5" />
-            </span>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Buat card dari Calendar
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Tenggat otomatis diarahkan ke tanggal yang dipilih.
-              </p>
-            </div>
+    <Modal
+      isOpen
+      onClose={onClose}
+      ariaLabelledBy="calendar-create-title"
+      className="max-w-xl"
+    >
+      <form onSubmit={submit}>
+        <header className="flex items-start gap-3 border-b border-line px-5 py-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+            <CalendarDays size={18} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 pr-8">
+            <h2
+              id="calendar-create-title"
+              className="text-sm font-semibold tracking-heading text-fg"
+            >
+              {t("Buat card dari kalender", "Create card from calendar")}
+            </h2>
+            <p className="mt-1 text-xs leading-5 text-fg-muted">
+              {t("Deadline otomatis mengikuti tanggal yang dipilih.", "The deadline follows the selected date automatically.")}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
-            aria-label="Tutup"
-          >
-            <X className="size-5" />
-          </button>
         </header>
 
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto p-5">
-          {error && (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+        <div className="max-h-[70dvh] space-y-4 overflow-y-auto px-5 py-4">
+          {error ? (
+            <p
+              role="alert"
+              className="rounded-control bg-danger-soft px-3 py-2 text-xs text-danger"
+            >
               {error}
             </p>
-          )}
+          ) : null}
 
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Judul card
+            <span className="mb-1.5 block text-xs font-medium text-fg-muted">
+              {t("Judul card", "Card title")}
             </span>
             <input
               autoFocus
@@ -141,101 +136,117 @@ export default function CalendarCardCreateModal({
               onChange={(event) => setTitle(event.target.value)}
               maxLength={255}
               required
-              placeholder="Contoh: Finalisasi materi campaign"
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:ring-indigo-500/10"
+              placeholder={t("Contoh: Finalisasi materi campaign", "Example: Finalize campaign materials")}
+              className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Tujuan campaign dan board
+            <span className="mb-1.5 block text-xs font-medium text-fg-muted">
+              {t("Tujuan campaign dan board", "Campaign and board")}
             </span>
             <select
               value={boardId}
               onChange={(event) => setBoardId(event.target.value)}
               disabled={loadingOptions}
               required
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:bg-surface-muted disabled:text-fg-subtle"
             >
-              {loadingOptions && <option value="">Memuat board...</option>}
+              {loadingOptions && <option value="">{t("Memuat board…", "Loading boards…")}</option>}
               {!loadingOptions && boards.length === 0 && (
-                <option value="">Tidak ada board yang dapat digunakan</option>
+                <option value="">{t("Tidak ada board yang dapat digunakan", "No available boards")}</option>
               )}
               {boards.map((board) => (
                 <option key={board.id} value={board.id}>
-                  {board.division.name} / {board.workspace.name} / {board.campaign.name} / {board.name}
+                  {board.division.name} / {board.workspace.name} /{" "}
+                  {board.campaign.name} / {board.name}
                 </option>
               ))}
             </select>
-            {selectedBoard && (
-              <p className="mt-1.5 text-xs text-slate-500">
-                Card akan masuk ke {selectedBoard.campaign.name} — {selectedBoard.name}.
+            {selectedBoard ? (
+              <p className="mt-1.5 text-2xs text-fg-subtle">
+                {t("Card akan masuk ke {campaign} — {board}.", "The card will be added to {campaign} — {board}.", {
+                  campaign: selectedBoard.campaign.name,
+                  board: selectedBoard.name,
+                })}
               </p>
-            )}
+            ) : null}
           </label>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Tenggat
+              <span className="mb-1.5 block text-xs font-medium text-fg-muted">
+                {t("Deadline", "Deadline")}
               </span>
               <input
                 type="datetime-local"
                 value={dueDate}
                 onChange={(event) => setDueDate(event.target.value)}
                 required
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Prioritas
+              <span className="mb-1.5 block text-xs font-medium text-fg-muted">
+                {t("Prioritas", "Priority")}
               </span>
               <select
                 value={priority}
-                onChange={(event) => setPriority(event.target.value as CardPriority)}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                onChange={(event) =>
+                  setPriority(event.target.value as CardPriority)
+                }
+                className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
               >
                 {priorities.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
+                  <option key={item.value} value={item.value}>
+                    {t(item.label, item.labelEn)}
+                  </option>
                 ))}
               </select>
             </label>
           </div>
 
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Deskripsi <span className="font-normal text-slate-400">(opsional)</span>
+            <span className="mb-1.5 block text-xs font-medium text-fg-muted">
+              {t("Deskripsi", "Description")}{" "}
+              <span className="font-normal text-fg-subtle">{t("(opsional)", "(optional)")}</span>
             </span>
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows={4}
-              placeholder="Tambahkan brief singkat untuk card ini..."
-              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:ring-indigo-500/10"
+              placeholder={t("Tambahkan brief singkat untuk card ini", "Add a short brief for this card")}
+              className="w-full resize-none rounded-control border border-line bg-surface px-3 py-2.5 text-sm leading-5 text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
           </label>
         </div>
 
-        <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 p-5 sm:flex-row sm:justify-end dark:border-slate-800">
+        <footer className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+            className="h-9 rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
           >
-            Batal
+            {t("Batal", "Cancel")}
           </button>
           <button
             type="submit"
             disabled={saving || loadingOptions || !boardId || !title.trim()}
-            className="flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-            Buat card
+            {saving ? (
+              <Loader2
+                className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            )}
+            {t("Buat card", "Create card")}
           </button>
         </footer>
       </form>
-    </div>
+    </Modal>
   );
 }

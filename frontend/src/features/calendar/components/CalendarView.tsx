@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, Plus, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import CardDetailModal from '@/features/card/components/CardDetailModal';
 import type { Card } from '@/features/card/types';
 import { useCalendar } from '../hooks/useCalendar';
@@ -12,11 +13,20 @@ import EmptyState from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 // --- CONSTANTS ---
-const WEEK_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const WEEK_DAYS: Array<{ id: string; en: string }> = [
+  { id: 'Minggu', en: 'Sunday' },
+  { id: 'Senin', en: 'Monday' },
+  { id: 'Selasa', en: 'Tuesday' },
+  { id: 'Rabu', en: 'Wednesday' },
+  { id: 'Kamis', en: 'Thursday' },
+  { id: 'Jumat', en: 'Friday' },
+  { id: 'Sabtu', en: 'Saturday' },
+];
 
 export const CalendarView: React.FC = () => {
   const { currentMonth, data, loading, prevMonth, nextMonth, goToToday, gridDays, refresh } = useCalendar();
   const { can } = useAuth();
+  const { t, locale } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
@@ -32,19 +42,18 @@ export const CalendarView: React.FC = () => {
   const formatHeaderMonth = (monthStr: string) => {
     if (!monthStr || !monthStr.includes('-')) return monthStr;
     const [year, month] = monthStr.split('-');
-    const monthNames = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    return `${monthNames[parseInt(month, 10) - 1]} ${year}`;
+    return new Date(Number(year), parseInt(month, 10) - 1, 1).toLocaleDateString(locale, {
+      month: 'long',
+      year: 'numeric',
+    });
   };
 
   const formatDateLabel = (dateStr: string | null) => {
     if (!dateStr) return '-';
     const safeDateStr = dateStr.replace(' ', 'T');
     const date = new Date(safeDateStr);
-    if (isNaN(date.getTime())) return 'Format Salah';
-    return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    if (isNaN(date.getTime())) return t('Format Salah', 'Invalid format');
+    return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   const formatShortDate = (dateStr?: string) => {
@@ -52,7 +61,7 @@ export const CalendarView: React.FC = () => {
     try {
       const d = new Date(dateStr.replace(' ', 'T'));
       if (isNaN(d.getTime())) return '-';
-      return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
     } catch {
       return '-';
     }
@@ -79,6 +88,20 @@ export const CalendarView: React.FC = () => {
   const canCreateCard = can('card.create');
   const canOpenCard = can('card.view') || can('task.view');
 
+  const agendaDays = compactLayout && data
+    ? gridDays
+        .filter((cell) => cell.isCurrentMonth)
+        .map((cell) => ({
+          cell,
+          dayData: getDayData(cell.dateString),
+        }))
+        .filter(
+          (entry): entry is { cell: GridDayCell; dayData: DayData } =>
+            Boolean(entry.dayData && entry.dayData.total > 0),
+        )
+        .sort((a, b) => a.cell.dateString.localeCompare(b.cell.dateString))
+    : [];
+
   const openTask = (task: Task) => {
     if (!canOpenCard) return;
 
@@ -98,9 +121,9 @@ export const CalendarView: React.FC = () => {
     <div className="relative w-full select-none font-sans text-fg">
 
       {/* --- HEADER NAVBAR --- */}
-      <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">
+      <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:mb-6 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <h1 className="text-xl font-semibold tracking-heading text-fg sm:text-2xl">
             {formatHeaderMonth(currentMonth)}
           </h1>
           {loading ? (
@@ -110,16 +133,16 @@ export const CalendarView: React.FC = () => {
               aria-live="polite"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-fg-subtle" aria-hidden="true" />
-              <span className="text-[11px] font-medium text-fg-muted">Memuat…</span>
+              <span className="text-[11px] font-medium text-fg-muted">{t("Memuat…", "Loading…")}</span>
             </div>
           ) : (
             <span className="inline-flex items-center rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-medium tabular-nums text-fg-muted">
-              {totalTasks} task
+              {t("{count} task", "{count} tasks", { count: totalTasks })}
             </span>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           {!isCurrentMonth ? (
             <button
               type="button"
@@ -127,25 +150,25 @@ export const CalendarView: React.FC = () => {
               className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
             >
               <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-              Hari ini
+              {t("Hari ini", "Today")}
             </button>
           ) : null}
           {canCreateCard && (
             <button
               type="button"
               onClick={() => setCreateDate(selectedDate ?? todayStr)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong"
+              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong sm:flex-none"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Buat card
+              {t("Buat card", "Create card")}
             </button>
           )}
           <div className="flex items-center overflow-hidden rounded-control border border-line bg-surface">
             <button
               onClick={prevMonth}
               className="flex h-9 w-9 items-center justify-center text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-              title="Bulan sebelumnya"
-              aria-label="Bulan sebelumnya"
+              title={t("Bulan sebelumnya", "Previous month")}
+              aria-label={t("Bulan sebelumnya", "Previous month")}
             >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -153,8 +176,8 @@ export const CalendarView: React.FC = () => {
             <button
               onClick={nextMonth}
               className="flex h-9 w-9 items-center justify-center text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-              title="Bulan berikutnya"
-              aria-label="Bulan berikutnya"
+              title={t("Bulan berikutnya", "Next month")}
+              aria-label={t("Bulan berikutnya", "Next month")}
             >
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -169,8 +192,8 @@ export const CalendarView: React.FC = () => {
               <CalendarDays className="h-4 w-4" aria-hidden="true" />
             </span>
             <div>
-              <p className="text-xs font-medium text-fg">Belum ada task di bulan ini</p>
-              <p className="mt-0.5 text-[11px] text-fg-muted">Pilih tanggal untuk menjadwalkan pekerjaan baru.</p>
+              <p className="text-xs font-medium text-fg">{t("Belum ada task di bulan ini", "No tasks this month")}</p>
+              <p className="mt-0.5 text-[11px] text-fg-muted">{t("Pilih tanggal untuk menjadwalkan pekerjaan baru.", "Pick a date to schedule new work.")}</p>
             </div>
           </div>
           {canCreateCard ? (
@@ -180,7 +203,7 @@ export const CalendarView: React.FC = () => {
               className="inline-flex h-8 items-center gap-1.5 self-start rounded-control bg-accent px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong sm:self-auto"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              Buat card
+              {t("Buat card", "Create card")}
             </button>
           ) : null}
         </div>
@@ -194,20 +217,23 @@ export const CalendarView: React.FC = () => {
 
         {/* Header Hari */}
         <div className={`grid grid-cols-7 border-b border-line bg-surface-muted/50 ${compactLayout ? 'min-w-0' : 'min-w-[760px]'}`}>
-          {WEEK_DAYS.map((day) => (
-            <div key={day} className={compactLayout ? 'py-2 text-center text-[10px] font-medium text-fg-subtle' : 'py-2.5 pr-3 text-right text-[11px] font-medium text-fg-subtle'}>
-              {compactLayout ? day.slice(0, 3) : day}
-            </div>
-          ))}
+          {WEEK_DAYS.map((day) => {
+            const label = t(day.id, day.en);
+            return (
+              <div key={day.id} className={compactLayout ? 'py-1.5 text-center text-[10px] font-medium text-fg-subtle' : 'py-2.5 pr-3 text-right text-[11px] font-medium text-fg-subtle'}>
+                {compactLayout ? label.slice(0, 3) : label}
+              </div>
+            );
+          })}
         </div>
 
         {/* Matriks Kotak */}
-        <div className={`grid grid-cols-7 gap-px bg-line ${compactLayout ? 'min-w-0 auto-rows-[96px]' : 'min-w-[760px] auto-rows-[160px]'}`}>
+        <div className={`grid grid-cols-7 gap-px bg-line ${compactLayout ? 'min-w-0 auto-rows-[72px]' : 'min-w-[760px] auto-rows-[160px]'}`}>
           {isInitialLoading ? (
             Array.from({ length: 35 }).map((_, index) => (
               <div
                 key={`skeleton-${index}`}
-                className={`flex flex-col gap-2 bg-surface p-2.5 ${compactLayout ? 'h-24' : 'h-[160px]'}`}
+                className={`flex flex-col gap-2 bg-surface p-2.5 ${compactLayout ? 'h-[72px]' : 'h-[160px]'}`}
               >
                 <Skeleton className="h-6 w-6 rounded-full" />
                 <Skeleton className="h-3 w-4/5" />
@@ -226,7 +252,7 @@ export const CalendarView: React.FC = () => {
               <div
                 key={`${cell.dateString}-${idx}`}
                 onClick={() => setSelectedDate(cell.dateString)}
-                className={`relative flex cursor-pointer flex-col transition-colors ${compactLayout ? 'h-24 p-1.5' : 'h-[160px] p-2.5'} ${
+                className={`relative flex cursor-pointer flex-col transition-colors ${compactLayout ? 'h-[72px] p-1' : 'h-[160px] p-2.5'} ${
                   cell.isCurrentMonth
                     ? (isToday
                         ? 'bg-accent-soft/40 hover:bg-accent-soft/60'
@@ -247,8 +273,8 @@ export const CalendarView: React.FC = () => {
                           setCreateDate(cell.dateString);
                         }}
                         className={`${compactLayout ? 'hidden' : 'flex'} size-7 items-center justify-center rounded-control text-fg-subtle opacity-0 transition-colors hover:bg-accent-soft hover:text-accent group-hover:opacity-100 focus:opacity-100`}
-                        title={`Buat card tanggal ${formatDateLabel(cell.dateString)}`}
-                        aria-label={`Buat card tanggal ${formatDateLabel(cell.dateString)}`}
+                        title={t("Buat card tanggal {date}", "Create card on {date}", { date: formatDateLabel(cell.dateString) })}
+                        aria-label={t("Buat card tanggal {date}", "Create card on {date}", { date: formatDateLabel(cell.dateString) })}
                       >
                         <Plus className="size-4" />
                       </button>
@@ -260,11 +286,16 @@ export const CalendarView: React.FC = () => {
                       event.stopPropagation();
                       setSelectedDate(cell.dateString);
                     }}
-                    aria-label={`Buka ${formatDateLabel(cell.dateString)}${
+                    aria-label={
                       totalTasksOnDay > 0
-                        ? `, ${totalTasksOnDay} task`
-                        : ", belum ada task"
-                    }`}
+                        ? t("Buka {date}, {count} task", "Open {date}, {count} tasks", {
+                            date: formatDateLabel(cell.dateString),
+                            count: totalTasksOnDay,
+                          })
+                        : t("Buka {date}, belum ada task", "Open {date}, no tasks", {
+                            date: formatDateLabel(cell.dateString),
+                          })
+                    }
                     className={`${compactLayout ? 'h-6 w-6 text-xs' : 'h-7 w-7 text-sm'} flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
                       isToday ? 'bg-accent text-accent-fg' : 'text-fg group-hover:bg-surface-muted'
                     } ${!cell.isCurrentMonth && !isToday && 'text-fg-subtle'}`}
@@ -277,8 +308,8 @@ export const CalendarView: React.FC = () => {
                 <div className={compactLayout ? 'hidden' : 'flex-1 space-y-1.5 overflow-y-auto scrollbar-none'}>
                   {tasks.slice(0, 3).map((task: Task) => {
                     const isCompleted = task.status === 'completed' || task.status === 'done';
-                    const creatorName = task.creator?.name || 'Tidak diketahui';
-                    const assigneeNames = task.assignees?.map((a) => a.name).join(', ') || 'Belum ada assignee';
+                    const creatorName = task.creator?.name || t('Tidak diketahui', 'Unknown');
+                    const assigneeNames = task.assignees?.map((a) => a.name).join(', ') || t('Belum ada assignee', 'No assignees');
 
                     return (
                       <div
@@ -301,7 +332,7 @@ export const CalendarView: React.FC = () => {
                             ? 'border-transparent opacity-60 hover:opacity-100'
                             : 'border-line bg-surface hover:border-line-strong hover:bg-surface-hover'
                         } ${canOpenCard ? 'cursor-pointer' : ''}`}
-                        title={`${task.title} — Dibuat: ${creatorName} — Assignee: ${assigneeNames}`}
+                        title={`${task.title} — ${t('Dibuat: {creator}', 'Created by: {creator}', { creator: creatorName })} — Assignee: ${assigneeNames}`}
                         onMouseEnter={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
                           setHoveredTask({ task, rect });
@@ -328,15 +359,16 @@ export const CalendarView: React.FC = () => {
                 </div>
 
                 {compactLayout && totalTasksOnDay > 0 ? (
-                  <div className="mt-auto truncate rounded-[6px] bg-accent-soft px-1 py-1 text-center text-[9px] font-medium text-accent">
-                    {totalTasksOnDay} task
+                  <div className="mt-auto flex items-center justify-center gap-0.5 truncate rounded-[5px] bg-accent-soft px-0.5 py-0.5 text-[10px] font-medium text-accent">
+                    {totalTasksOnDay}
+                    <span className="hidden 2xsm:inline"> {t("task", "tasks")}</span>
                   </div>
                 ) : null}
 
                 {/* Indikator Overflow */}
                 {!compactLayout && totalTasksOnDay > 3 && (
                   <div className="mt-1 border-t border-line pt-1 text-center text-[10px] font-medium text-fg-subtle">
-                    +{totalTasksOnDay - 3} lainnya
+                    +{totalTasksOnDay - 3} {t("lainnya", "more")}
                   </div>
                 )}
               </div>
@@ -344,6 +376,69 @@ export const CalendarView: React.FC = () => {
           })}
         </div>
       </div>
+
+      {compactLayout && agendaDays.length > 0 ? (
+        <section className="mt-4" aria-label={t("Agenda bulan ini", "This month's agenda")}>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 className="text-xs font-medium text-fg-muted">
+              {t("Agenda bulan ini", "This month's agenda")}
+            </h2>
+            <span className="text-2xs text-fg-subtle">
+              {t("{count} hari dengan task", "{count} days with tasks", { count: agendaDays.length })}
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            {agendaDays.slice(0, 10).map(({ cell, dayData }) => {
+              const date = new Date(`${cell.dateString}T00:00:00`);
+              const weekday = date.toLocaleDateString(locale, {
+                weekday: "short",
+              });
+              const dayNumber = date.getDate();
+              const preview = dayData.tasks
+                .slice(0, 2)
+                .map((task) => task.title)
+                .join(" · ");
+
+              return (
+                <button
+                  key={cell.dateString}
+                  type="button"
+                  onClick={() => setSelectedDate(cell.dateString)}
+                  className="flex w-full items-start gap-2.5 rounded-card border border-line bg-surface p-2.5 text-left transition-colors hover:border-line-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                >
+                  <span className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-control bg-surface-muted">
+                    <span className="text-[9px] font-medium text-fg-subtle">
+                      {weekday}
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums text-fg">
+                      {dayNumber}
+                    </span>
+                  </span>
+
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-xs font-medium text-fg">
+                        {date.toLocaleDateString(locale, {
+                          day: "numeric",
+                          month: "long",
+                        })}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-medium tabular-nums text-accent">
+                        {t("{count} task", "{count} tasks", { count: dayData.total })}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block truncate text-2xs text-fg-muted">
+                      {preview || t("Buka detail tanggal", "Open date details")}
+                      {dayData.total > 2 ? ` · +${dayData.total - 2}` : ""}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {/* --- MODAL DIALOG --- */}
       {selectedDate && selectedDayData ? (
@@ -356,7 +451,7 @@ export const CalendarView: React.FC = () => {
           <button
             type="button"
             className="absolute inset-0 cursor-default"
-            aria-label="Tutup detail tanggal"
+            aria-label={t("Tutup detail tanggal", "Close date details")}
             onClick={() => setSelectedDate(null)}
           />
 
@@ -367,7 +462,7 @@ export const CalendarView: React.FC = () => {
                   {formatDateLabel(selectedDate)}
                 </h2>
                 <p className="mt-1 text-xs text-fg-muted">
-                  {selectedDayData.total} task terjadwal
+                  {t("{count} task terjadwal", "{count} tasks scheduled", { count: selectedDayData.total })}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
@@ -377,13 +472,13 @@ export const CalendarView: React.FC = () => {
                     onClick={() => setCreateDate(selectedDate)}
                     className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong"
                   >
-                    <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Buat card
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" /> {t("Buat card", "Create card")}
                   </button>
                 ) : null}
                 <button
                   type="button"
                   onClick={() => setSelectedDate(null)}
-                  aria-label="Tutup detail tanggal"
+                  aria-label={t("Tutup detail tanggal", "Close date details")}
                   className="flex h-9 w-9 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
@@ -395,11 +490,11 @@ export const CalendarView: React.FC = () => {
               {selectedDayData.tasks.length === 0 ? (
                 <EmptyState
                   icon={CalendarDays}
-                  title="Belum ada card pada tanggal ini"
-                  description="Buat card untuk menjadwalkan pekerjaan pada tanggal ini."
+                  title={t("Belum ada card pada tanggal ini", "No cards on this date")}
+                  description={t("Buat card untuk menjadwalkan pekerjaan pada tanggal ini.", "Create a card to schedule work on this date.")}
                   action={
                     canCreateCard
-                      ? { label: "Buat card", onClick: () => setCreateDate(selectedDate) }
+                      ? { label: t("Buat card", "Create card"), onClick: () => setCreateDate(selectedDate) }
                       : undefined
                   }
                 />
@@ -437,7 +532,9 @@ export const CalendarView: React.FC = () => {
                           </p>
                           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-muted">
                             <span>
-                              Dibuat oleh {task.creator?.name || "Tidak diketahui"}
+                              {t("Dibuat oleh {name}", "Created by {name}", {
+                                name: task.creator?.name || t("Tidak diketahui", "Unknown"),
+                              })}
                             </span>
                             {task.campaign?.name ? (
                               <span className="rounded-full bg-surface-muted px-2 py-0.5">
@@ -451,8 +548,8 @@ export const CalendarView: React.FC = () => {
                       <div className="flex items-center justify-between gap-3 border-t border-line pt-3 sm:justify-end sm:border-0 sm:pt-0">
                         <span className="text-[11px] text-fg-subtle">
                           {task.due_date
-                            ? `Tenggat ${formatShortDate(task.due_date)}`
-                            : `Dibuat ${formatShortDate(task.created_at)}`}
+                            ? t("Deadline {date}", "Deadline {date}", { date: formatShortDate(task.due_date) })
+                            : t("Dibuat {date}", "Created {date}", { date: formatShortDate(task.created_at) })}
                         </span>
 
                         <div className="flex items-center gap-3">
@@ -475,13 +572,13 @@ export const CalendarView: React.FC = () => {
                             </div>
                           ) : (
                             <span className="text-[11px] text-fg-subtle">
-                              Belum ada assignee
+                              {t("Belum ada assignee", "No assignees")}
                             </span>
                           )}
                           {canOpenCard ? (
                             <ExternalLink
                               className="h-3.5 w-3.5 text-fg-subtle transition-colors group-hover:text-accent"
-                              aria-label="Buka detail card"
+                              aria-label={t("Buka detail card", "Open card details")}
                             />
                           ) : null}
                         </div>
@@ -511,14 +608,14 @@ export const CalendarView: React.FC = () => {
               {hoveredTask.task.title}
             </div>
             <div>
-              <span className="font-medium">Dibuat oleh:</span>{' '}
-              {hoveredTask.task.creator?.name || 'Tidak diketahui'}
+              <span className="font-medium">{t("Dibuat oleh:", "Created by:")}</span>{' '}
+              {hoveredTask.task.creator?.name || t('Tidak diketahui', 'Unknown')}
             </div>
             <div>
-              <span className="font-medium">Anggota:</span>{' '}
+              <span className="font-medium">{t("Anggota:", "Members:")}</span>{' '}
               {hoveredTask.task.assignees && hoveredTask.task.assignees.length > 0
                 ? hoveredTask.task.assignees.map((a) => a.name).join(', ')
-                : 'Belum ada'}
+                : t('Belum ada', 'None yet')}
             </div>
             <div>
               <span className="font-medium">Campaign:</span>{' '}
@@ -527,7 +624,7 @@ export const CalendarView: React.FC = () => {
             <div className="text-[11px] text-canvas/70">
               {formatShortDate(hoveredTask.task.created_at)}
               {hoveredTask.task.due_date && (
-                <> · Tenggat {formatShortDate(hoveredTask.task.due_date)}</>
+                <> · {t("Deadline", "Deadline")} {formatShortDate(hoveredTask.task.due_date)}</>
               )}
             </div>
           </div>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, Link2, Loader2, MessageCircle, RefreshCw, ShieldCheck, Unlink } from "lucide-react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PageMeta from "@/components/common/PageMeta";
+import { useLanguage } from "@/context/LanguageContext";
 import api from "@/lib/axios";
 import { confirmDialog } from "@/lib/feedback";
 
@@ -21,20 +22,34 @@ type LinkCode = {
 
 type Provider = "discord" | "google_chat";
 
-const providerCopy: Record<Provider, { label: string; description: string; command: string }> = {
+const providerCopy: Record<
+  Provider,
+  {
+    label: string;
+    description: string;
+    descriptionEn: string;
+    command: string;
+    commandEn: string;
+  }
+> = {
   discord: {
     label: "Discord",
     description: "Hubungkan identitas Discord agar AI agent dapat bekerja melalui server Discord.",
+    descriptionEn: "Connect your Discord identity so the AI agent can work through your Discord server.",
     command: "Di Discord jalankan /traco link KODE.",
+    commandEn: "In Discord, run /traco link CODE.",
   },
   google_chat: {
     label: "Google Chat",
     description: "Hubungkan identitas Google Chat agar AI agent dapat bekerja dari ruang Chat Anda.",
+    descriptionEn: "Connect your Google Chat identity so the AI agent can work from your Chat spaces.",
     command: "Kirim kode ini ke agent Traco di Google Chat.",
+    commandEn: "Send this code to the Traco agent in Google Chat.",
   },
 };
 
 export default function IntegrationSettingsPage() {
+  const { t, locale, language } = useLanguage();
   const [identities, setIdentities] = useState<ExternalIdentity[]>([]);
   const [linkCode, setLinkCode] = useState<LinkCode | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,11 +64,11 @@ export default function IntegrationSettingsPage() {
       setIdentities(response.data.data ?? []);
     } catch (error: unknown) {
       const apiMessage = isApiError(error) ? error.response?.data?.message : null;
-      setMessage(apiMessage ?? "Status koneksi gagal dimuat.");
+      setMessage(apiMessage ?? t("Status koneksi gagal dimuat.", "Failed to load connection status."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [language, t]);
 
   useEffect(() => {
     void loadIdentities();
@@ -79,7 +94,7 @@ export default function IntegrationSettingsPage() {
       setLinkCode(response.data.data);
     } catch (error: unknown) {
       const apiMessage = isApiError(error) ? error.response?.data?.message : null;
-      setMessage(apiMessage ?? "Kode koneksi gagal dibuat. Silakan coba lagi.");
+      setMessage(apiMessage ?? t("Kode koneksi gagal dibuat. Silakan coba lagi.", "Failed to create a connection code. Please try again."));
     } finally {
       setWorking(false);
     }
@@ -92,17 +107,35 @@ export default function IntegrationSettingsPage() {
   };
 
   const disconnect = async () => {
-    if (!currentIdentity || !(await confirmDialog({ message: `Putuskan akun ${copy.label} dari Traco?`, variant: "danger" }))) return;
+    if (
+      !currentIdentity ||
+      !(await confirmDialog({
+        message: t("Putuskan akun {provider} dari Traco?", "Disconnect {provider} account from Traco?", {
+          provider: copy.label,
+        }),
+        variant: "danger",
+      }))
+    )
+      return;
     setWorking(true);
     setMessage(null);
     try {
       await api.delete(`/integrations/identities/${currentIdentity.id}`);
       setLinkCode(null);
       await loadIdentities();
-      setMessage(`Koneksi ${copy.label} berhasil diputus.`);
+      setMessage(
+        t("Koneksi {provider} berhasil diputus.", "{provider} disconnected successfully.", {
+          provider: copy.label,
+        }),
+      );
     } catch (error: unknown) {
       const apiMessage = isApiError(error) ? error.response?.data?.message : null;
-      setMessage(apiMessage ?? `Koneksi ${copy.label} gagal diputus.`);
+      setMessage(
+        apiMessage ??
+          t("Koneksi {provider} gagal diputus.", "Failed to disconnect {provider}.", {
+            provider: copy.label,
+          }),
+      );
     } finally {
       setWorking(false);
     }
@@ -110,52 +143,66 @@ export default function IntegrationSettingsPage() {
 
   return (
     <>
-      <PageMeta title="Integrations | Traco" description="Hubungkan Traco dengan Discord, Google Chat, dan AI agent." />
+      <PageMeta
+        title="Integrations | Traco"
+        description={t(
+          "Hubungkan Traco dengan Discord, Google Chat, dan AI agent.",
+          "Connect Traco with Discord, Google Chat, and AI agents.",
+        )}
+      />
       <PageBreadcrumb pageTitle="Integrations" />
 
       <div className="mx-auto max-w-4xl space-y-6">
-        <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-6 dark:border-gray-800 dark:from-indigo-500/10 dark:to-blue-500/5">
+        <section className="overflow-hidden rounded-panel border border-line bg-surface shadow-sm dark:border-line dark:bg-surface-muted/30">
+          <div className="border-b border-line bg-surface-muted/40 p-6 dark:border-line ">
             <div className="flex items-start gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/20">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-card bg-accent text-accent-fg">
                 <MessageCircle className="size-6" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Channel + Traco AI Agent</h1>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-400">
-                  {copy.description} Data tetap mengikuti role, permission, dan akses project Traco Anda.
+                <h1 className="text-xl font-semibold text-fg dark:text-fg">Channel + Traco AI Agent</h1>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-muted dark:text-fg-subtle">
+                  {t(copy.description, copy.descriptionEn)}{" "}
+                  {t(
+                    "Data tetap mengikuti role, permission, dan akses project Traco Anda.",
+                    "Your data still follows your Traco roles, permissions, and project access.",
+                  )}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="p-6">
-            <div className="mb-6 flex flex-wrap gap-2 rounded-2xl bg-gray-50 p-2 dark:bg-gray-900/60">
+            <div className="mb-6 flex flex-wrap gap-2 rounded-card bg-surface-muted/40 p-2 dark:bg-surface-muted/40">
               {(["discord", "google_chat"] as Provider[]).map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => { setProvider(option); setLinkCode(null); setMessage(null); setCopied(false); }}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${provider === option ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-300" : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"}`}
+                  className={`rounded-control px-4 py-2 text-sm font-semibold transition ${provider === option ? "bg-surface text-accent-strong shadow-sm dark:bg-surface-muted dark:text-accent" : "text-fg-muted hover:text-fg dark:text-fg-subtle dark:hover:text-white"}`}
                 >
                   {providerCopy[option].label}
                 </button>
               ))}
             </div>
             {loading ? (
-              <div className="flex items-center gap-3 py-8 text-sm text-gray-500">
-                <Loader2 className="size-5 animate-spin" /> Memuat status koneksi...
+              <div className="flex items-center gap-3 py-8 text-sm text-fg-muted">
+                <Loader2 className="size-5 animate-spin" /> {t("Memuat status koneksi...", "Loading connection status...")}
               </div>
             ) : currentIdentity ? (
               <div className="space-y-5">
-                <div className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-500/20 dark:bg-emerald-500/10 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-4 rounded-card border border-success/20 bg-success-soft p-5 dark:border-emerald-500/20 dark:bg-success-soft0/10 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-emerald-600 text-white">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-success text-white">
                       <Check className="size-5" />
                     </div>
                     <div>
-                        <p className="font-semibold text-emerald-900 dark:text-emerald-200">{copy.label} terhubung</p>
-                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                        <p className="font-semibold text-success dark:text-success">
+                          {t("{provider} terhubung", "{provider} connected", {
+                            provider: copy.label,
+                          })}
+                        </p>
+                        <p className="text-sm text-success dark:text-success">
                         {currentIdentity.display_name || `${copy.label} ID ${currentIdentity.external_user_id}`}
                       </p>
                     </div>
@@ -164,28 +211,37 @@ export default function IntegrationSettingsPage() {
                     type="button"
                     disabled={working}
                     onClick={() => void disconnect()}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-500/30 dark:bg-transparent dark:text-red-300"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-danger/20 bg-surface px-4 text-sm font-semibold text-danger transition hover:bg-danger-soft disabled:opacity-50 dark:border-danger/20 dark:bg-transparent dark:text-danger"
                   >
                     {working ? <Loader2 className="size-4 animate-spin" /> : <Unlink className="size-4" />}
-                    Putuskan koneksi
+                    {t("Putuskan koneksi", "Disconnect")}
                   </button>
                 </div>
 
-                <div className="flex gap-3 rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-900/60 dark:text-gray-400">
-                  <ShieldCheck className="mt-0.5 size-5 shrink-0 text-indigo-600" />
-                  AI agent selalu bertindak sebagai akun Anda. Agent tidak dapat membuka atau mengubah data yang tidak dapat Anda akses langsung di Traco.
+                <div className="flex gap-3 rounded-card bg-surface-muted/40 p-4 text-sm text-fg-muted dark:bg-surface-muted/40 dark:text-fg-subtle">
+                  <ShieldCheck className="mt-0.5 size-5 shrink-0 text-accent" />
+                  {t(
+                    "AI agent selalu bertindak sebagai akun Anda. Agent tidak dapat membuka atau mengubah data yang tidak dapat Anda akses langsung di Traco.",
+                    "The AI agent always acts as your account. The agent cannot open or change data you cannot access directly in Traco.",
+                  )}
                 </div>
               </div>
             ) : (
               <div className="space-y-6">
-                <ol className="grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-3">
+                <ol className="grid gap-3 text-sm text-fg-muted dark:text-fg-muted sm:grid-cols-3">
                   {[
-                    "Buat kode sekali-pakai di halaman ini.",
-                    copy.command,
-                    "Agent mengonfirmasi akun Traco Anda.",
+                    t(
+                      "Buat kode sekali-pakai di halaman ini.",
+                      "Create a one-time code on this page.",
+                    ),
+                    t(copy.command, copy.commandEn),
+                    t(
+                      "Agent mengonfirmasi akun Traco Anda.",
+                      "The agent confirms your Traco account.",
+                    ),
                   ].map((text, index) => (
-                    <li key={text} className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-                      <span className="mb-3 flex size-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                    <li key={text} className="rounded-card border border-line p-4 dark:border-line">
+                      <span className="mb-3 flex size-7 items-center justify-center rounded-full bg-accent-soft text-2xs font-medium text-accent-strong">
                         {index + 1}
                       </span>
                       {text}
@@ -194,19 +250,25 @@ export default function IntegrationSettingsPage() {
                 </ol>
 
                 {linkCode ? (
-                  <div className="rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/60 p-5 text-center dark:border-indigo-500/30 dark:bg-indigo-500/5">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">Kode koneksi sekali-pakai</p>
+                  <div className="rounded-card border-2 border-dashed border-accent/20 bg-accent-soft/60 p-5 text-center dark:border-accent/20 dark:bg-accent-soft/40">
+                    <p className="text-2xs font-medium text-accent dark:text-accent">
+                      {t("Kode koneksi sekali-pakai", "One-time connection code")}
+                    </p>
                     <div className="mt-3 flex items-center justify-center gap-3">
-                      <code className="text-3xl font-bold tracking-[0.16em] text-gray-900 dark:text-white">{linkCode.code}</code>
-                      <button type="button" onClick={() => void copyCode()} className="flex size-10 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm hover:bg-indigo-100 dark:bg-gray-900">
+                      <code className="text-3xl font-bold tracking-[0.16em] text-fg dark:text-fg">{linkCode.code}</code>
+                      <button type="button" onClick={() => void copyCode()} className="flex size-10 items-center justify-center rounded-control bg-surface text-accent shadow-sm hover:bg-accent-soft dark:bg-surface">
                         {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
                       </button>
                     </div>
-                    <p className="mt-3 text-sm text-gray-500">
-                      Berlaku sampai {new Date(linkCode.expires_at).toLocaleString("id-ID")}. Jangan bagikan kode ini kepada orang lain.
+                    <p className="mt-3 text-sm text-fg-muted">
+                      {t(
+                        "Berlaku sampai {date}. Jangan bagikan kode ini kepada orang lain.",
+                        "Valid until {date}. Do not share this code with anyone else.",
+                        { date: new Date(linkCode.expires_at).toLocaleString(locale) },
+                      )}
                     </p>
-                    <button type="button" disabled={working} onClick={() => void createCode()} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50 dark:text-indigo-300">
-                      <RefreshCw className="size-4" /> Buat kode baru
+                    <button type="button" disabled={working} onClick={() => void createCode()} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-accent hover:text-accent-strong disabled:opacity-50 dark:text-accent">
+                      <RefreshCw className="size-4" /> {t("Buat kode baru", "Create new code")}
                     </button>
                   </div>
                 ) : (
@@ -214,16 +276,18 @@ export default function IntegrationSettingsPage() {
                     type="button"
                     disabled={working}
                     onClick={() => void createCode()}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700 disabled:opacity-50"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-card bg-accent px-5 text-sm font-semibold text-white  transition hover:bg-accent-strong disabled:opacity-50"
                   >
                     {working ? <Loader2 className="size-5 animate-spin" /> : <Link2 className="size-5" />}
-                    Buat kode koneksi {copy.label}
+                    {t("Buat kode koneksi {provider}", "Create {provider} connection code", {
+                      provider: copy.label,
+                    })}
                   </button>
                 )}
               </div>
             )}
 
-            {message && <p className="mt-5 rounded-xl bg-gray-100 px-4 py-3 text-sm text-gray-700 dark:bg-gray-900 dark:text-gray-300">{message}</p>}
+            {message && <p className="mt-5 rounded-control bg-surface-muted px-4 py-3 text-sm text-fg-muted dark:bg-surface dark:text-fg-muted">{message}</p>}
           </div>
         </section>
       </div>

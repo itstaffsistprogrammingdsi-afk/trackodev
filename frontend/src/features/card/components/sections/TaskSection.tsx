@@ -1,27 +1,17 @@
-import {
-  Check,
-  CheckSquare,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
-
+import { Check, CheckSquare, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import { CardTask } from "../../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Props {
   tasks: CardTask[];
-
   progress: number;
   total: number;
   done: number;
   error?: string;
-
   handleAddTask: (title: string) => void;
-
   toggleTask: (id: number) => void;
-
   deleteTask: (id: number) => void;
 }
 
@@ -35,293 +25,181 @@ export default function TaskSection({
   toggleTask,
   deleteTask,
 }: Props) {
-  // ============================================
-  // STATE
-  // ============================================
-
-  const [showForm, setShowForm] =
-    useState(false);
-
-  const [title, setTitle] =
-    useState("");
-
-  // ============================================
-  // SUBMIT
-  // ============================================
+  const { t } = useLanguage();
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
 
   const submit = () => {
     if (!title.trim()) return;
 
     handleAddTask(title);
-
     setTitle("");
-
     setShowForm(false);
   };
 
-  // ============================================
-  // UI
-  // ============================================
-
   return (
-    <section>
-      {/* HEADER */}
-
-      <div className="flex items-center gap-3 mb-4">
-        <CheckSquare
-          size={20}
-          className="text-gray-600"
-        />
-
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Tasks
-        </h2>
-      </div>
-
-      {/* PROGRESS */}
-
-      <div className="flex items-center gap-3 mb-5">
-        <div className="flex-1 h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div
-            className="
-              h-full
-              bg-blue-500
-              transition-all
-              duration-500
-            "
-            style={{
-              width: `${progress}%`,
-            }}
+    <section aria-labelledby="card-tasks-heading">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <CheckSquare
+            size={17}
+            aria-hidden="true"
+            className="text-fg-subtle"
           />
+          <h2
+            id="card-tasks-heading"
+            className="text-sm font-semibold tracking-heading text-fg"
+          >
+            {t("Subtask")}
+          </h2>
         </div>
 
-        <span className="text-sm text-gray-500 font-medium">
-          {done}/{total}
+        <span className="text-2xs font-medium tabular-nums text-fg-subtle">
+          {t("{done}/{total} selesai", "{done}/{total} completed", {
+            done,
+            total,
+          })}
         </span>
       </div>
+
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-surface-muted"
+        role="progressbar"
+        aria-label={t("Progres subtask", "Subtask progress")}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress)}
+      >
+        <div
+          className="h-full rounded-full bg-success transition-[width] duration-300 ease-soft"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
       {error ? (
-        <p role="alert" className="mb-3 text-xs font-medium text-rose-600 dark:text-rose-400">
+        <p role="alert" className="mt-2 text-xs font-medium text-danger">
           {error}
         </p>
       ) : null}
 
-      {/* TASK LIST */}
+      <div className="mt-3 space-y-1.5">
+        {tasks.length === 0 ? (
+          <p className="rounded-card border border-dashed border-line px-3 py-5 text-center text-xs text-fg-subtle">
+            {t(
+              "Belum ada subtask. Pecah pekerjaan menjadi langkah kecil.",
+              "No subtasks yet. Break the work into small steps.",
+            )}
+          </p>
+        ) : null}
 
-      <div className="space-y-3">
-        {tasks.length === 0 && (
+        {tasks.map((task) => (
           <div
-            className="
-              border
-              border-dashed
-              rounded-2xl
-              py-8
-              text-center
-              text-sm
-              text-gray-400
-            "
+            key={task.id}
+            className="group flex items-center gap-2.5 rounded-control px-2 py-1.5 transition-colors hover:bg-surface-muted/60"
           >
-            Belum ada task
-          </div>
-        )}
-
-        {tasks.map((t) => (
-          <div
-            key={t.id}
-            className="
-              group
-              bg-white dark:bg-slate-800/50
-              border border-slate-200 dark:border-slate-700
-              rounded-2xl
-              px-4
-              py-3
-              flex
-              items-center
-              gap-3
-              hover:shadow-sm
-              transition
-            "
-          >
-            {/* CHECKBOX */}
-
             <button
               type="button"
-              aria-label={t.is_completed ? `Tandai ${t.title} belum selesai` : `Tandai ${t.title} selesai`}
-              aria-pressed={t.is_completed}
-              onClick={() =>
-                toggleTask(t.id)
+              aria-label={
+                task.is_completed
+                  ? t(
+                      "Tandai {title} belum selesai",
+                      "Mark {title} as incomplete",
+                      { title: task.title },
+                    )
+                  : t("Tandai {title} selesai", "Mark {title} as completed", {
+                      title: task.title,
+                    })
               }
-              className={`
-                w-5
-                h-5
-                rounded-full
-                border-2
-                flex
-                items-center
-                justify-center
-                transition
-                ${
-                  t.is_completed
-                    ? "bg-blue-500 border-blue-500"
-                    : "border-gray-300 dark:border-slate-500"
-                }
-              `}
+              aria-pressed={task.is_completed}
+              onClick={() => toggleTask(task.id)}
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
+                task.is_completed
+                  ? "border-success bg-success text-white"
+                  : "border-line-strong bg-surface hover:border-accent"
+              }`}
             >
-              {t.is_completed && (
-                <Check
-                  size={12}
-                  className="text-white"
-                />
-              )}
+              {task.is_completed ? (
+                <Check size={11} strokeWidth={3} aria-hidden="true" />
+              ) : null}
             </button>
 
-            {/* TITLE */}
-
             <span
-              className={`
-                flex-1
-                text-sm
-                transition
-                ${
-                  t.is_completed
-                    ? "line-through text-gray-400"
-                    : "text-gray-700 dark:text-slate-200"
-                }
-              `}
+              className={`min-w-0 flex-1 break-words text-[13px] leading-5 transition-colors ${
+                task.is_completed
+                  ? "text-fg-subtle line-through"
+                  : "text-fg-muted"
+              }`}
             >
-              {t.title}
+              {task.title}
             </span>
-
-            {/* DELETE */}
 
             <button
               type="button"
-              aria-label={`Hapus task ${t.title}`}
-              onClick={() =>
-                deleteTask(t.id)
-              }
-              className="
-                opacity-0
-                group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100
-                transition
-                text-gray-400
-                hover:text-red-500
-              "
+              aria-label={t("Hapus subtask {title}", "Delete subtask {title}", {
+                title: task.title,
+              })}
+              onClick={() => deleteTask(task.id)}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-fg-subtle opacity-0 transition-[opacity,color,background-color] hover:bg-danger-soft hover:text-danger focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/30 group-hover:opacity-100 group-focus-within:opacity-100"
             >
-              <Trash2 size={16} />
+              <Trash2 size={13} aria-hidden="true" />
             </button>
           </div>
         ))}
       </div>
 
-      {/* ADD TASK */}
-
-      <div className="mt-5">
+      <div className="mt-3">
         {!showForm ? (
           <button
             type="button"
-            onClick={() =>
-              setShowForm(true)
-            }
-            className="
-              flex
-              items-center
-              gap-2
-              text-sm
-              font-medium
-              text-blue-600
-              hover:text-blue-700
-            "
+            onClick={() => setShowForm(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-control px-2 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            <Plus size={16} />
-            Tambah Task
+            <Plus size={14} aria-hidden="true" />
+            {t("Tambah subtask", "Add subtask")}
           </button>
         ) : (
-          <div
-            className="
-              border
-              rounded-2xl
-              p-3
-              bg-gray-50 dark:bg-slate-800/50 dark:border-slate-700
-              space-y-3
-            "
-          >
-            {/* INPUT */}
-
+          <div className="space-y-2 rounded-card border border-line bg-surface p-2.5">
             <input
               autoFocus
               type="text"
-              placeholder="Masukkan task..."
+              placeholder={t("Nama subtask", "Subtask name")}
               value={title}
-              onChange={(e) =>
-                setTitle(e.target.value)
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+              onChange={(event) => setTitle(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
                   submit();
                 }
 
-                if (e.key === "Escape") {
+                if (event.key === "Escape") {
                   setShowForm(false);
-
                   setTitle("");
                 }
               }}
-              className="
-                w-full
-                h-11
-                rounded-xl
-                border border-slate-200 dark:border-slate-700
-                bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100
-                px-3
-                text-sm
-                outline-none
-                focus:ring-2
-                focus:ring-blue-500
-              "
+              aria-label={t("Nama subtask baru", "New subtask name")}
+              className="h-9 w-full rounded-[7px] border border-line bg-surface px-2.5 text-sm text-fg outline-none placeholder:text-fg-subtle focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
-
-            {/* ACTION */}
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={submit}
-                className="
-                  h-10
-                  px-4
-                  rounded-xl
-                  bg-blue-500
-                  hover:bg-blue-600
-                  text-white
-                  text-sm
-                  font-medium
-                  transition
-                "
+                disabled={!title.trim()}
+                className="inline-flex h-8 items-center rounded-[7px] bg-accent px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Add Task
+                {t("Simpan subtask", "Save subtask")}
               </button>
 
               <button
                 type="button"
-                aria-label="Batalkan tambah task"
+                aria-label={t("Batalkan tambah subtask", "Cancel adding subtask")}
                 onClick={() => {
                   setShowForm(false);
-
                   setTitle("");
                 }}
-                className="
-                  h-10
-                  w-10
-                  rounded-xl
-                  border
-                  flex
-                  items-center
-                  justify-center
-                  hover:bg-gray-100
-                  transition
-                "
+                className="flex h-8 w-8 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
               >
-                <X size={16} />
+                <X size={15} aria-hidden="true" />
               </button>
             </div>
           </div>

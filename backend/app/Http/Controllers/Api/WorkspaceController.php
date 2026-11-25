@@ -147,6 +147,7 @@ public function store(Request $request, Division $division): JsonResponse
             'updated',
             "Mengupdate workspace '{$workspace->name}'"
         );
+
         return response()->json([
             'message' => 'Workspace berhasil diupdate.',
             'data'    => new WorkspaceResource($workspace),

@@ -1,6 +1,8 @@
 export type DueDateStatus = "none" | "safe" | "warning" | "overdue";
 
-const WARNING_WINDOW_MS = 48 * 60 * 60 * 1000;
+// Selaras dengan reminder backend `reminder:due-date` yang mengirim notifikasi
+// H-1. Deadline dianggap mendekat mulai 24 jam terakhir.
+const WARNING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export const parseDueDate = (value?: string | null): Date | null => {
   if (!value) return null;
@@ -55,10 +57,10 @@ export const isCardOverdue = (
 ): boolean => getDueDateStatus(value, options) === "overdue";
 
 export const dueDateBadgeClasses: Record<DueDateStatus, string> = {
-  // Deadline yang masih jauh bukan "sukses"; biarkan netral agar warna
-  // hijau/kuning/merah hanya muncul saat benar-benar perlu perhatian.
+  // Tanpa deadline tetap netral. Deadline yang masih aman berwarna hijau,
+  // mendekat (<= 24 jam) oranye, dan lewat deadline merah.
   none: "border-line bg-surface-muted text-fg-muted",
-  safe: "border-line bg-surface-muted text-fg-muted",
+  safe: "border-success/25 bg-success-soft text-success",
   warning: "border-warning/25 bg-warning-soft text-warning",
   overdue: "border-danger/25 bg-danger-soft text-danger",
 };

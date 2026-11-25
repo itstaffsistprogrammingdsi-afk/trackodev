@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { ActivityInsight, ActivityLog } from "../../types";
+import { useLanguage } from "@/context/LanguageContext";
+import { getLocale, translate } from "@/i18n/translate";
 
 interface Props {
   activities: ActivityLog[];
@@ -32,9 +34,9 @@ const meta = (activity: ActivityLog, key: string) => {
 };
 
 const legacyCopy = (activity: ActivityLog) =>
-  (activity.description || activity.action || "mencatat aktivitas")
+  (activity.description || activity.action || translate("mencatat aktivitas", "logged an activity"))
     .replace(/ di card '[^']*'(?: di board '[^']*')?$/i, "")
-    .replace(/^Mengupdate/i, "Memperbarui");
+    .replace(/^Mengupdate/i, translate("Memperbarui", "Updated"));
 
 function activityCopy(activity: ActivityLog) {
   const oldValue = meta(activity, "old_value");
@@ -49,66 +51,113 @@ function activityCopy(activity: ActivityLog) {
 
   const changes: Record<string, { title: string; detail?: string }> = {
     title_updated: {
-      title: "mengubah judul card",
+      title: translate("mengubah judul card", "changed the card title"),
       detail: oldValue && newValue ? `${oldValue} → ${newValue}` : undefined,
     },
-    description_updated: { title: "memperbarui deskripsi" },
+    description_updated: {
+      title: translate("memperbarui deskripsi", "updated the description"),
+    },
     priority_updated: {
-      title: "mengubah prioritas",
+      title: translate("mengubah prioritas", "changed the priority"),
       detail: oldValue && newValue ? `${oldValue} → ${newValue}` : undefined,
     },
-    due_date_added: { title: "menambahkan tenggat waktu", detail: newValue },
+    due_date_added: {
+      title: translate("menambahkan deadline", "added a deadline"),
+      detail: newValue,
+    },
     due_date_updated: {
-      title: "mengubah tenggat waktu",
+      title: translate("mengubah deadline", "changed the deadline"),
       detail: oldValue && newValue ? `${oldValue} → ${newValue}` : newValue,
     },
-    due_date_removed: { title: "menghapus tenggat waktu", detail: oldValue },
-    member_assigned: { title: "menambahkan anggota", detail },
-    member_unassigned: { title: "menghapus anggota", detail },
-    brand_attached: { title: "menambahkan brand", detail },
-    brand_detached: { title: "menghapus brand", detail },
-    label_attached: { title: "menambahkan label", detail },
-    label_detached: { title: "menghapus label", detail },
+    due_date_removed: {
+      title: translate("menghapus deadline", "removed the deadline"),
+      detail: oldValue,
+    },
+    member_assigned: {
+      title: translate("menambahkan anggota", "added a member"),
+      detail,
+    },
+    member_unassigned: {
+      title: translate("menghapus anggota", "removed a member"),
+      detail,
+    },
+    brand_attached: {
+      title: translate("menambahkan brand", "added a brand"),
+      detail,
+    },
+    brand_detached: {
+      title: translate("menghapus brand", "removed a brand"),
+      detail,
+    },
+    label_attached: {
+      title: translate("menambahkan label", "added a label"),
+      detail,
+    },
+    label_detached: {
+      title: translate("menghapus label", "removed a label"),
+      detail,
+    },
   };
   if (changes[activity.action]) return changes[activity.action];
 
   if (activity.action === "mirrored") {
-    return { title: "membuat copy lintas divisi", detail };
+    return {
+      title: translate("membuat copy lintas divisi", "created a cross-division copy"),
+      detail,
+    };
   }
 
   if (activity.action === "mirror_synced") {
-    return { title: "menyinkronkan perubahan lintas divisi", detail };
+    return {
+      title: translate(
+        "menyinkronkan perubahan lintas divisi",
+        "synced cross-division changes",
+      ),
+      detail,
+    };
   }
 
   if (activity.action === "mirror_removed") {
-    return { title: "menghapus copy lintas divisi", detail };
+    return {
+      title: translate("menghapus copy lintas divisi", "removed the cross-division copy"),
+      detail,
+    };
   }
 
   if (activity.action === "mirror_moved") {
-    return { title: "memindahkan copy lintas divisi", detail };
+    return {
+      title: translate("memindahkan copy lintas divisi", "moved the cross-division copy"),
+      detail,
+    };
   }
 
   if (activity.action === "mirror_orphaned") {
-    return { title: "copy lintas divisi ikut terhapus", detail };
+    return {
+      title: translate(
+        "copy lintas divisi ikut terhapus",
+        "the cross-division copy was also deleted",
+      ),
+      detail,
+    };
   }
 
   if (activity.entity_type === "task" || activity.entity_type === "subtask") {
     const noun = activity.entity_type;
     const verbs: Record<string, string> = {
-      created: `membuat ${noun}`,
-      updated: `mengubah nama ${noun}`,
-      completed: `menyelesaikan ${noun}`,
-      reopened: `membuka kembali ${noun}`,
-      deleted: `menghapus ${noun}`,
+      created: translate(`membuat ${noun}`, `created a ${noun}`),
+      updated: translate(`mengubah nama ${noun}`, `renamed the ${noun}`),
+      completed: translate(`menyelesaikan ${noun}`, `completed the ${noun}`),
+      reopened: translate(`membuka kembali ${noun}`, `reopened the ${noun}`),
+      deleted: translate(`menghapus ${noun}`, `deleted the ${noun}`),
     };
     return { title: verbs[activity.action] || legacyCopy(activity), detail };
   }
 
   if (activity.entity_type === "card_comment") {
     const verbs: Record<string, string> = {
-      created: "menambahkan komentar",
-      updated: "mengedit komentar",
-      deleted: "menghapus komentar",
+      created: translate("menambahkan komentar", "added a comment"),
+      updated: translate("mengedit komentar", "edited a comment"),
+      deleted: translate("menghapus komentar", "deleted a comment"),
     };
     return {
       title: verbs[activity.action] || legacyCopy(activity),
@@ -118,9 +167,9 @@ function activityCopy(activity: ActivityLog) {
 
   if (activity.entity_type.includes("attachment")) {
     const verbs: Record<string, string> = {
-      created: "menambahkan file",
-      deleted: "menghapus file",
-      qc_updated: "memperbarui hasil QC",
+      created: translate("menambahkan file", "added a file"),
+      deleted: translate("menghapus file", "deleted a file"),
+      qc_updated: translate("memperbarui hasil QC", "updated the QC result"),
     };
     return { title: verbs[activity.action] || legacyCopy(activity), detail };
   }
@@ -159,13 +208,13 @@ const dateKey = (value: string) => {
 };
 
 const dateLabel = (key: string) => {
-  if (key === "unknown") return "Tanggal tidak tersedia";
+  if (key === "unknown") return translate("Tanggal tidak tersedia", "Date not available");
   const today = dateKey(new Date().toISOString());
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  if (key === today) return "Hari ini";
-  if (key === dateKey(yesterday.toISOString())) return "Kemarin";
-  return new Date(`${key}T00:00:00`).toLocaleDateString("id-ID", {
+  if (key === today) return translate("Hari ini", "Today");
+  if (key === dateKey(yesterday.toISOString())) return translate("Kemarin", "Yesterday");
+  return new Date(`${key}T00:00:00`).toLocaleDateString(getLocale(), {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -176,13 +225,13 @@ const dateLabel = (key: string) => {
 const relativeTime = (value: string) => {
   const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000);
   if (Number.isNaN(seconds)) return "-";
-  const formatter = new Intl.RelativeTimeFormat("id-ID", { numeric: "auto" });
+  const formatter = new Intl.RelativeTimeFormat(getLocale(), { numeric: "auto" });
   if (Math.abs(seconds) < 60) return formatter.format(seconds, "second");
   const minutes = Math.round(seconds / 60);
   if (Math.abs(minutes) < 60) return formatter.format(minutes, "minute");
   const hours = Math.round(minutes / 60);
   if (Math.abs(hours) < 24) return formatter.format(hours, "hour");
-  return new Date(value).toLocaleTimeString("id-ID", {
+  return new Date(value).toLocaleTimeString(getLocale(), {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -196,6 +245,7 @@ export default function ActivitySection({
   total = 0,
   insight,
 }: Props) {
+  const { t, locale } = useLanguage();
   const groups = activities.reduce<Record<string, ActivityLog[]>>(
     (result, activity) => {
       const key = dateKey(activity.created_at);
@@ -205,20 +255,34 @@ export default function ActivitySection({
     {}
   );
   const dominantLabels = {
-    changes: "Perubahan card",
-    tasks: "Aktivitas task",
-    comments: "Komentar",
-    files: "Aktivitas file",
+    changes: t("Perubahan card", "Card changes"),
+    tasks: t("Aktivitas task", "Task activity"),
+    comments: t("Komentar", "Comments"),
+    files: t("Aktivitas file", "File activity"),
   };
   const insightItems: string[] = [];
   if (insight?.dominant_category && insight.dominant_count) {
     insightItems.push(
-      `${dominantLabels[insight.dominant_category]} paling dominan (${insight.dominant_count} aktivitas).`
+      t(
+        "{label} paling dominan ({count} aktivitas).",
+        "{label} is the most dominant ({count} activities).",
+        {
+          label: dominantLabels[insight.dominant_category],
+          count: insight.dominant_count,
+        },
+      ),
     );
   }
   if (insight?.most_active_user) {
     insightItems.push(
-      `${insight.most_active_user.name} paling aktif (${insight.most_active_user.activity_count} aktivitas).`
+      t(
+        "{name} paling aktif ({count} aktivitas).",
+        "{name} is the most active ({count} activities).",
+        {
+          name: insight.most_active_user.name,
+          count: insight.most_active_user.activity_count,
+        },
+      ),
     );
   }
   if (insight?.last_activity_at) {
@@ -227,8 +291,16 @@ export default function ActivitySection({
     );
     insightItems.push(
       inactiveDays >= 7
-        ? `Tidak ada aktivitas penting selama ${inactiveDays} hari.`
-        : `Aktivitas terakhir ${relativeTime(insight.last_activity_at)}.`
+        ? t(
+            "Tidak ada aktivitas penting selama {days} hari.",
+            "No significant activity for {days} days.",
+            { days: inactiveDays },
+          )
+        : t(
+            "Aktivitas terakhir {time}.",
+            "Last activity {time}.",
+            { time: relativeTime(insight.last_activity_at) },
+          ),
     );
   }
 
@@ -239,20 +311,20 @@ export default function ActivitySection({
           <History size={18} />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-fg">Aktivitas</h2>
-          <p className="text-xs text-fg-muted">Riwayat penting pada card ini</p>
+          <h2 className="text-sm font-semibold text-fg">{t("Aktivitas", "Activity")}</h2>
+          <p className="text-xs text-fg-muted">{t("Riwayat penting pada card ini", "Key history for this card")}</p>
         </div>
       </div>
 
       {insightItems.length > 0 && (
-        <aside className="mb-5 rounded-card border border-line bg-surface-muted/60 p-3.5" aria-label="Insight aktivitas">
+        <aside className="mb-5 rounded-card border border-line bg-surface-muted/60 p-3.5" aria-label={t("Insight aktivitas", "Activity insight")}>
           <div className="flex gap-3">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface text-fg-muted">
               <Lightbulb size={16} />
             </span>
             <div className="min-w-0">
               <h3 className="text-xs font-semibold text-fg">
-                Insight aktivitas
+                {t("Insight aktivitas", "Activity insight")}
               </h3>
               <p className="mt-1 text-xs leading-5 text-fg-muted">
                 {insightItems.join(" ")}
@@ -264,7 +336,7 @@ export default function ActivitySection({
 
       {loading && activities.length === 0 ? (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-fg-muted">
-          <Clock3 size={16} className="animate-pulse" /> Memuat aktivitas...
+          <Clock3 size={16} className="animate-pulse" /> {t("Memuat aktivitas...", "Loading activity...")}
         </div>
       ) : activities.length > 0 ? (
         <>
@@ -279,7 +351,7 @@ export default function ActivitySection({
                   {items.map((activity, index) => {
                     const copy = activityCopy(activity);
                     const style = activityStyle(activity);
-                    const exactTime = new Date(activity.created_at).toLocaleString("id-ID", {
+                    const exactTime = new Date(activity.created_at).toLocaleString(locale, {
                       dateStyle: "full",
                       timeStyle: "short",
                     });
@@ -294,7 +366,7 @@ export default function ActivitySection({
                         <div className="min-w-0 flex-1 pt-0.5">
                           <p className="text-sm leading-5 text-fg">
                             <span className="font-semibold">
-                              {activity.user?.name ?? "Sistem"}
+                              {activity.user?.name ?? t("Sistem", "System")}
                               {activity.user?.divisions?.length
                                 ? ` - ${activity.user.divisions.map((division) => division.name).join(", ")}`
                                 : ""}
@@ -319,10 +391,15 @@ export default function ActivitySection({
           </div>
 
           <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
-            <span className="text-xs text-fg-subtle">{activities.length} dari {total} aktivitas</span>
+            <span className="text-xs text-fg-subtle">
+              {t("{shown} dari {total} aktivitas", "{shown} of {total} activities", {
+                shown: activities.length,
+                total,
+              })}
+            </span>
             {hasMore && (
               <button type="button" onClick={loadMore} disabled={loading} className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent-strong disabled:opacity-50">
-                {loading ? "Memuat..." : "Tampilkan lebih banyak"} <ChevronDown size={14} />
+                {loading ? t("Memuat...", "Loading...") : t("Tampilkan lebih banyak", "Show more")} <ChevronDown size={14} />
               </button>
             )}
           </div>
@@ -333,9 +410,14 @@ export default function ActivitySection({
             <Sparkles size={20} />
           </div>
           <h3 className="text-sm font-medium text-fg">
-            Belum ada aktivitas
+            {t("Belum ada aktivitas", "No activity yet")}
           </h3>
-          <p className="mt-0.5 text-xs text-fg-subtle">Perubahan penting akan tercatat otomatis di sini.</p>
+          <p className="mt-0.5 text-xs text-fg-subtle">
+            {t(
+              "Perubahan penting akan tercatat otomatis di sini.",
+              "Important changes will be recorded here automatically.",
+            )}
+          </p>
         </div>
       )}
     </section>

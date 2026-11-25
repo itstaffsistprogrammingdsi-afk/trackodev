@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 
 import api from "@/lib/axios";
+import { useLanguage } from "@/context/LanguageContext";
+import { getLocale, translate } from "@/i18n/translate";
 
 type UserSummary = {
   id: string;
@@ -55,21 +57,25 @@ type Props = {
 };
 
 const formatDateTime = (value: string | null): string => {
-  if (!value) return "Belum tercatat";
+  if (!value) return translate("Belum tercatat", "Not recorded");
 
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat(getLocale(), {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
 };
 
-const passwordActionLabel: Record<PasswordHistoryItem["action"], string> = {
-  password_changed: "Diubah oleh user",
-  password_recovery: "Pemulihan password",
-  password_reset: "Direset Super Admin",
+const passwordActionLabel: Record<
+  PasswordHistoryItem["action"],
+  { label: string; labelEn: string }
+> = {
+  password_changed: { label: "Diubah oleh user", labelEn: "Changed by user" },
+  password_recovery: { label: "Pemulihan password", labelEn: "Password recovery" },
+  password_reset: { label: "Direset Super Admin", labelEn: "Reset by Super Admin" },
 };
 
 export default function UserActivityDetailModal({ user, onClose }: Props) {
+  const { t } = useLanguage();
   const userId = user?.id ?? null;
   const [detail, setDetail] = useState<UserActivityDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -95,7 +101,12 @@ export default function UserActivityDetailModal({ user, onClose }: Props) {
       .catch((requestError) => {
         if (requestError?.code !== "ERR_CANCELED") {
           console.error(requestError);
-          setError("Detail aktivitas user gagal dimuat.");
+          setError(
+            t(
+              "Detail aktivitas user gagal dimuat.",
+              "Failed to load user activity details.",
+            ),
+          );
         }
       })
       .finally(() => {
@@ -103,7 +114,7 @@ export default function UserActivityDetailModal({ user, onClose }: Props) {
       });
 
     return () => controller.abort();
-  }, [userId]);
+  }, [t, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -122,31 +133,31 @@ export default function UserActivityDetailModal({ user, onClose }: Props) {
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-overlay backdrop-blur-sm"
         onClick={onClose}
-        aria-label="Tutup detail user"
+        aria-label={t("Tutup detail user", "Close user details")}
       />
 
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="user-activity-title"
-        className="relative z-10 max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-gray-900"
+        className="relative z-10 max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-modal bg-surface shadow-e3 dark:bg-surface"
       >
-        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-200 bg-white px-6 py-5 dark:border-gray-800 dark:bg-gray-900">
+        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-surface px-6 py-5 dark:border-line dark:bg-surface">
           <div>
-            <h2 id="user-activity-title" className="text-xl font-semibold text-gray-900 dark:text-white">
-              Detail aktivitas user
+            <h2 id="user-activity-title" className="text-xl font-semibold text-fg dark:text-white">
+              {t("Detail aktivitas user", "User activity details")}
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-fg-muted">
               {user.name} · {user.email}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-10 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="Tutup"
+            className="flex size-10 items-center justify-center rounded-control text-fg-muted hover:bg-surface-muted dark:hover:bg-surface-muted"
+            aria-label={t("Tutup", "Close")}
           >
             <X size={20} />
           </button>
@@ -155,10 +166,10 @@ export default function UserActivityDetailModal({ user, onClose }: Props) {
         <div className="space-y-6 p-6">
           {loading ? (
             <div className="flex min-h-52 items-center justify-center">
-              <Loader2 className="animate-spin text-blue-600" />
+              <Loader2 className="animate-spin text-accent" />
             </div>
           ) : error ? (
-            <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+            <p className="rounded-card bg-danger-soft p-4 text-sm text-danger dark:bg-danger-soft/10 dark:text-danger">
               {error}
             </p>
           ) : detail ? (
@@ -166,61 +177,84 @@ export default function UserActivityDetailModal({ user, onClose }: Props) {
               <div className="grid gap-4 md:grid-cols-3">
                 <StatCard
                   icon={<Download size={20} />}
-                  label="Download report"
+                  label={t("Download report", "Report downloads")}
                   value={detail.stats.report_downloads}
                 />
                 <StatCard
                   icon={<KeyRound size={20} />}
-                  label="Perubahan password"
+                  label={t("Perubahan password", "Password changes")}
                   value={detail.stats.password_changes}
                 />
                 <StatCard
                   icon={<ShieldCheck size={20} />}
-                  label="Password terakhir diubah"
+                  label={t("Password terakhir diubah", "Last password change")}
                   value={formatDateTime(detail.stats.last_password_changed_at)}
                   compact
                 />
               </div>
 
               <div className="grid gap-6 lg:grid-cols-2">
-                <AuditList title="Riwayat password" icon={<KeyRound size={18} />}>
+                <AuditList title={t("Riwayat password", "Password history")} icon={<KeyRound size={18} />}>
                   {detail.password_history.length === 0 ? (
-                    <EmptyState text="Belum ada perubahan password yang tercatat." />
+                    <EmptyState
+                      text={t(
+                        "Belum ada perubahan password yang tercatat.",
+                        "No password changes recorded yet.",
+                      )}
+                    />
                   ) : (
                     detail.password_history.map((item) => (
-                      <li key={item.id} className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {passwordActionLabel[item.action]}
+                      <li key={item.id} className="rounded-card border border-line p-4 dark:border-line">
+                        <p className="font-medium text-fg dark:text-white">
+                          {t(
+                            passwordActionLabel[item.action].label,
+                            passwordActionLabel[item.action].labelEn,
+                          )}
                         </p>
-                        <p className="mt-1 text-sm text-gray-500">
-                          Pelaku: {item.performed_by?.name ?? "Sistem"}
+                        <p className="mt-1 text-sm text-fg-muted">
+                          {t("Pelaku: {name}", "Performed by: {name}", {
+                            name: item.performed_by?.name ?? t("Sistem", "System"),
+                          })}
                         </p>
-                        <p className="mt-1 text-xs text-gray-400">
-                          Tanggal &amp; waktu: {formatDateTime(item.created_at)}
+                        <p className="mt-1 text-xs text-fg-subtle">
+                          {t("Tanggal & waktu: {date}", "Date & time: {date}", {
+                            date: formatDateTime(item.created_at),
+                          })}
                         </p>
                       </li>
                     ))
                   )}
                 </AuditList>
 
-                <AuditList title="Download report terbaru" icon={<History size={18} />}>
+                <AuditList
+                  title={t("Download report terbaru", "Recent report downloads")}
+                  icon={<History size={18} />}
+                >
                   {detail.recent_report_downloads.length === 0 ? (
-                    <EmptyState text="Belum ada download report yang tercatat." />
+                    <EmptyState
+                      text={t(
+                        "Belum ada download report yang tercatat.",
+                        "No report downloads recorded yet.",
+                      )}
+                    />
                   ) : (
                     detail.recent_report_downloads.map((item) => (
-                      <li key={item.id} className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-                        <p className="font-medium capitalize text-gray-900 dark:text-white">
-                          {item.source.replace(/_/g, " ")} · {(item.format ?? "file").toUpperCase()}
+                      <li key={item.id} className="rounded-card border border-line p-4 dark:border-line">
+                        <p className="font-medium capitalize text-fg dark:text-white">
+                          {item.source.replace(/_/g, " ")} · {(item.format ?? t("file")).toUpperCase()}
                         </p>
-                        <p className="mt-1 text-xs text-gray-400">{formatDateTime(item.created_at)}</p>
+                        <p className="mt-1 text-xs text-fg-subtle">{formatDateTime(item.created_at)}</p>
                       </li>
                     ))
                   )}
                 </AuditList>
               </div>
 
-              <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
-                Riwayat hanya mencatat kejadian perubahan password, pelaku, tanggal, dan waktu. Nilai password tidak disimpan dalam audit.
+              <p className="rounded-card border border-warning/20 bg-warning-soft p-4 text-sm leading-6 text-warning dark:border-warning/20 dark:bg-warning-soft/10 dark:text-warning">
+                {t(
+                  "Riwayat hanya mencatat kejadian perubahan password, pelaku, tanggal, dan waktu. Nilai password tidak disimpan dalam audit.",
+                  "This history only records password change events, who performed them, and the date and time. Password values are never stored in the audit log.",
+                )}
               </p>
             </>
           ) : null}
@@ -242,12 +276,12 @@ function StatCard({
   compact?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
-      <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+    <div className="rounded-card border border-line p-4 dark:border-line">
+      <div className="flex items-center gap-2 text-accent text-accent">
         {icon}
-        <span className="text-sm font-medium text-gray-500">{label}</span>
+        <span className="text-sm font-medium text-fg-muted">{label}</span>
       </div>
-      <p className={`mt-3 font-semibold text-gray-900 dark:text-white ${compact ? "text-sm" : "text-2xl"}`}>
+      <p className={`mt-3 font-semibold text-fg dark:text-white ${compact ? "text-sm" : "text-2xl"}`}>
         {value}
       </p>
     </div>
@@ -265,7 +299,7 @@ function AuditList({
 }) {
   return (
     <section>
-      <h3 className="mb-3 flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+      <h3 className="mb-3 flex items-center gap-2 font-semibold text-fg dark:text-white">
         {icon}
         {title}
       </h3>
@@ -275,5 +309,5 @@ function AuditList({
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <li className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-500 dark:bg-white/[0.03]">{text}</li>;
+  return <li className="rounded-card bg-surface-muted/40 p-4 text-sm text-fg-muted dark:bg-surface/[0.03]">{text}</li>;
 }

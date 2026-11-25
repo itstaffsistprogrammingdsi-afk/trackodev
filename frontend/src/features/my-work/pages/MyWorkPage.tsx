@@ -9,9 +9,11 @@ import ExportLogPanel from "../components/ExportLogPanel";
 import CompletionRanking from "../components/CompletionRanking";
 import MyAssignedTasks from "../components/MyAssignedTasks";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import PageHeader from "@/components/layout/PageHeader";
 
 export default function MyWorkPage() {
+  const { t } = useLanguage();
   const { can, hasRole, managesDivision } = useAuth();
   const canViewRanking =
     (hasRole("super_admin") || managesDivision() || can("division.view_all"))
@@ -28,7 +30,7 @@ export default function MyWorkPage() {
   if (loading || (!activities && activityLoading)) {
     return (
       <div className="space-y-6 sm:space-y-8" role="status" aria-busy="true">
-        <span className="sr-only">Memuat My Work</span>
+        <span className="sr-only">{t("Memuat My Work", "Loading My Work")}</span>
         <div className="space-y-3">
           <Skeleton className="h-8 w-40" />
           <Skeleton className="h-4 w-80 max-w-full" />
@@ -53,7 +55,7 @@ export default function MyWorkPage() {
         role="alert"
         className="rounded-card border border-danger/20 bg-danger-soft p-4 text-sm font-medium text-danger"
       >
-        {error ?? "Gagal memuat My Work. Silakan coba lagi."}
+        {error ?? t("Gagal memuat My Work. Silakan coba lagi.", "Failed to load My Work. Please try again.")}
       </div>
     );
   }
@@ -62,7 +64,7 @@ export default function MyWorkPage() {
     <div className="space-y-6 sm:space-y-8">
       <PageHeader
         title="My Work"
-        description="Pantau progres pekerjaan dan siapkan laporan kinerja Anda."
+        description={t("Pantau progres pekerjaan dan siapkan laporan kinerja Anda.", "Track your work progress and prepare your performance report.")}
         actions={
           <MyWorkPeriodFilter
             value={range}

@@ -18,14 +18,15 @@ import {
 } from "@/lib/exportSecurity";
 import DatePickerField from "./DatePickerField";
 import type { ExportPeriodType, ExportFormat } from "../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i).reverse();
 
-const PERIOD_OPTIONS: { key: ExportPeriodType; label: string }[] = [
-  { key: "daily", label: "Harian" },
-  { key: "monthly", label: "Bulanan" },
-  { key: "yearly", label: "Tahunan" },
+const PERIOD_OPTIONS: { key: ExportPeriodType; label: string; labelEn: string }[] = [
+  { key: "daily", label: "Harian", labelEn: "Daily" },
+  { key: "monthly", label: "Bulanan", labelEn: "Monthly" },
+  { key: "yearly", label: "Tahunan", labelEn: "Yearly" },
 ];
 
 const FORMAT_OPTIONS: {
@@ -44,6 +45,7 @@ const toDateInputValue = (d: Date) => {
 };
 
 export default function ExportLogPanel() {
+  const { t } = useLanguage();
   const now = new Date();
 
   const [type, setType] = useState<ExportPeriodType>("daily");
@@ -86,7 +88,7 @@ export default function ExportLogPanel() {
       exportPassword.length > 0 &&
       exportPassword.length < EXPORT_PASSWORD_MIN_LENGTH
     ) {
-      setError(`Password minimal ${EXPORT_PASSWORD_MIN_LENGTH} karakter.`);
+      setError(t("Password minimal {min} karakter.", "Password must be at least {min} characters.", { min: EXPORT_PASSWORD_MIN_LENGTH }));
       return;
     }
 
@@ -104,7 +106,7 @@ export default function ExportLogPanel() {
         ...(type === "yearly" ? { year } : {}),
       });
     } catch {
-      setError("Gagal mengekspor laporan. Silakan coba lagi.");
+      setError(t("Gagal mengekspor laporan. Silakan coba lagi.", "Failed to export the report. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -115,10 +117,10 @@ export default function ExportLogPanel() {
       {/* HEADER */}
       <div className="border-b border-line p-5">
         <h2 className="text-base font-semibold text-fg">
-          Laporan Kinerja Individu
+          {t("Laporan Kinerja Individu", "Individual performance report")}
         </h2>
         <p className="text-xs text-fg-subtle mt-1">
-          Unduh ringkasan progres task dan attachment Anda
+          {t("Unduh ringkasan progres task dan attachment Anda", "Download a summary of your task progress and attachments")}
         </p>
       </div>
 
@@ -139,7 +141,7 @@ export default function ExportLogPanel() {
                 }
               `}
             >
-              {opt.label}
+              {t(opt.label, opt.labelEn)}
             </button>
           ))}
         </div>
@@ -155,7 +157,7 @@ export default function ExportLogPanel() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="report-start-date" className="mb-1 block text-xs text-fg-subtle">
-                Tanggal Awal
+                {t("Tanggal Awal", "Start date")}
               </label>
               <DatePickerField
                 id="report-start-date"
@@ -166,7 +168,7 @@ export default function ExportLogPanel() {
 
             <div>
               <label htmlFor="report-end-date" className="mb-1 block text-xs text-fg-subtle">
-                Tanggal Akhir
+                {t("Tanggal Akhir", "End date")}
               </label>
               <DatePickerField
                 id="report-end-date"
@@ -180,7 +182,7 @@ export default function ExportLogPanel() {
 
         {type === "yearly" && (
           <div>
-            <label className="text-xs text-fg-subtle block mb-1">Pilih Tahun</label>
+            <label className="text-xs text-fg-subtle block mb-1">{t("Pilih Tahun", "Select year")}</label>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
@@ -197,7 +199,7 @@ export default function ExportLogPanel() {
 
         {monthlyRangeInvalid && (
           <p className="text-xs text-danger">
-            Tanggal akhir tidak boleh lebih awal dari tanggal awal.
+            {t("Tanggal akhir tidak boleh lebih awal dari tanggal awal.", "The end date cannot be earlier than the start date.")}
           </p>
         )}
 
@@ -205,7 +207,7 @@ export default function ExportLogPanel() {
 
         {/* FORMAT */}
         <div>
-          <label className="text-xs text-fg-subtle block mb-1">Format File</label>
+          <label className="text-xs text-fg-subtle block mb-1">{t("Format File", "File format")}</label>
           <div className="flex gap-2">
             {FORMAT_OPTIONS.map((opt) => {
               const Icon = opt.icon;
@@ -239,8 +241,8 @@ export default function ExportLogPanel() {
               <ShieldCheck size={17} aria-hidden="true" />
             </span>
             <div>
-              <label htmlFor="my-work-export-password" className="text-xs font-semibold text-fg">Password Enkripsi (Opsional)</label>
-              <p className="mt-0.5 text-2xs leading-relaxed text-success">Kosongkan agar file dapat langsung dibuka, atau isi password untuk mengenkripsinya.</p>
+              <label htmlFor="my-work-export-password" className="text-xs font-semibold text-fg">{t("Password Enkripsi (Opsional)", "Encryption password (optional)")}</label>
+              <p className="mt-0.5 text-2xs leading-relaxed text-success">{t("Kosongkan agar file dapat langsung dibuka, atau isi password untuk mengenkripsinya.", "Leave it empty so the file opens directly, or enter a password to encrypt it.")}</p>
             </div>
           </div>
 
@@ -253,7 +255,7 @@ export default function ExportLogPanel() {
               maxLength={128}
               autoComplete="new-password"
               spellCheck={false}
-              placeholder="Kosongkan untuk tanpa password"
+              placeholder={t("Kosongkan untuk tanpa password", "Leave empty for no password")}
               onChange={(event) => {
                 setExportPassword(event.target.value);
                 setPasswordCopied(false);
@@ -265,7 +267,7 @@ export default function ExportLogPanel() {
               type="button"
               onClick={() => setShowPassword((visible) => !visible)}
               className="px-2 text-fg-subtle transition hover:text-fg"
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={showPassword ? t("Sembunyikan password", "Hide password") : t("Tampilkan password", "Show password")}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -273,7 +275,7 @@ export default function ExportLogPanel() {
               type="button"
               onClick={regeneratePassword}
               className="border-l border-line px-2 text-fg-subtle transition hover:text-success"
-              aria-label="Buat password baru"
+              aria-label={t("Buat password baru", "Generate new password")}
             >
               <RefreshCw size={16} />
             </button>
@@ -282,17 +284,17 @@ export default function ExportLogPanel() {
               onClick={copyPassword}
               disabled={!exportPassword}
               className="border-l border-line px-2.5 text-fg-subtle transition hover:text-success disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Salin password"
+              aria-label={t("Salin password", "Copy password")}
             >
               <Copy size={16} />
             </button>
           </div>
           <p id="my-work-export-password-help" className="mt-2 text-2xs text-success">
             {passwordCopied
-              ? "Password berhasil disalin."
+              ? t("Password berhasil disalin.", "Password copied successfully.")
               : exportPassword
-                ? `Jika diisi, password minimal ${EXPORT_PASSWORD_MIN_LENGTH} karakter dan tidak disimpan sistem.`
-                : "File akan diunduh tanpa password."}
+                ? t("Jika diisi, password minimal {min} karakter dan tidak disimpan sistem.", "If filled in, the password must be at least {min} characters and is not stored by the system.", { min: EXPORT_PASSWORD_MIN_LENGTH })
+                : t("File akan diunduh tanpa password.", "The file will be downloaded without a password.")}
           </p>
         </div>
 
@@ -312,8 +314,10 @@ export default function ExportLogPanel() {
             exportPassword ? <ShieldCheck size={16} /> : <Download size={16} />
           )}
           {loading
-            ? "Mengekspor..."
-            : `Export ${format === "pdf" ? "PDF" : "Excel"}${exportPassword ? " Terenkripsi" : ""}`}
+            ? t("Mengekspor...", "Exporting...")
+            : exportPassword
+              ? t("Export {format} Terenkripsi", "Export encrypted {format}", { format: format === "pdf" ? "PDF" : "Excel" })
+              : t("Export {format}", "Export {format}", { format: format === "pdf" ? "PDF" : "Excel" })}
         </button>
       </div>
     </div>

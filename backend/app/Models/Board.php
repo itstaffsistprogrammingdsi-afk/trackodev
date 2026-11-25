@@ -27,6 +27,12 @@ class Board extends Model
                 'labels',
                 'brands',
             ])
+            ->withCount([
+                'attachments',
+                'comments',
+                'tasks',
+                'tasks as completed_tasks_count' => fn ($query) => $query->where('is_completed', true),
+            ])
             ->orderBy('order');
     }
 

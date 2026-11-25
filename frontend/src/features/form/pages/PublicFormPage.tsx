@@ -18,6 +18,7 @@ import {
   ChevronDown,
   FileText,
   Info,
+  Languages,
   Loader2,
   Upload,
 } from "lucide-react";
@@ -31,21 +32,74 @@ import type {
   FileValues,
 } from "../types";
 import { getFormThemeColor, readableTextColor } from "../utils/theme";
+import { useLanguage } from "@/context/LanguageContext";
+import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
+
+function FormHeader({ form, accent }: { form: Form; accent: string }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [form.header_image]);
+
+  if (!form.header_image || failed) {
+    return (
+      <div className="overflow-hidden rounded-t-modal border border-b-0 border-[var(--tracko-line)] bg-surface shadow-e1">
+        <div className="h-6 w-full" style={{ backgroundColor: accent }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-t-modal border border-b-0 border-[var(--tracko-line)] bg-surface shadow-e1">
+      <img
+        src={resolveStorageUrl(form.header_image)}
+        alt=""
+        decoding="async"
+        onError={() => setFailed(true)}
+        className="max-h-[320px] w-full object-cover sm:max-h-[380px]"
+      />
+    </div>
+  );
+}
 
 function PublicFormTopBar() {
+  const { language, t, toggleLanguage } = useLanguage();
+
   return (
     <nav
-      aria-label="Navigasi formulir publik"
-      className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur"
+      aria-label={t("Navigasi formulir publik", "Public form navigation")}
+      className="sticky top-0 z-40 border-b border-line bg-surface/95 pt-[env(safe-area-inset-top)] shadow-e1 backdrop-blur"
     >
-      <div className="mx-auto flex w-full max-w-3xl px-3 sm:px-4">
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-3 sm:px-4">
         <Link
           to="/landing"
-          className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-[var(--form-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--form-accent)] focus-visible:ring-offset-2"
+          className="flex min-h-11 min-w-0 items-center gap-2 rounded-control px-2 text-sm font-medium text-fg-muted transition hover:bg-surface-muted hover:text-[var(--form-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--form-accent)] focus-visible:ring-offset-2"
         >
           <ArrowLeft aria-hidden="true" className="h-5 w-5 shrink-0" />
-          <span>Kembali ke landing page</span>
+          <span className="truncate">
+            {t("Kembali ke landing page", "Back to landing page")}
+          </span>
         </Link>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            aria-label={
+              language === "id"
+                ? t("Ganti ke bahasa Inggris", "Switch to English")
+                : t("Ganti ke bahasa Indonesia", "Switch to Indonesian")
+            }
+            title={t("Ganti bahasa", "Switch language")}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            <Languages size={14} aria-hidden="true" />
+            {language === "id" ? "ID" : "EN"}
+          </button>
+
+          <ThemeTogglerTwo />
+        </div>
       </div>
     </nav>
   );
@@ -111,6 +165,7 @@ function isPublicFieldVisible(
 
 export default function PublicFormPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { t, language } = useLanguage();
 
   const [form, setForm] = useState<Form | null>(null);
 
@@ -143,7 +198,7 @@ export default function PublicFormPage() {
   // =========================
   const fetchForm = useCallback(async (signal?: AbortSignal) => {
     if (!slug) {
-      setError("Tautan formulir tidak valid.");
+      setError(t("Tautan formulir tidak valid.", "Invalid form link."));
       setLoading(false);
       return;
     }
@@ -192,11 +247,16 @@ export default function PublicFormPage() {
       console.error(error);
       setForm(null);
       setDraftReady(false);
-      setError("Formulir tidak dapat dimuat. Periksa koneksi lalu coba lagi.");
+      setError(
+        t(
+          "Formulir tidak dapat dimuat. Periksa koneksi lalu coba lagi.",
+          "The form could not be loaded. Check your connection and try again.",
+        ),
+      );
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [draftStorageKey, slug]);
+  }, [draftStorageKey, language, slug, t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -417,7 +477,12 @@ export default function PublicFormPage() {
       return updated;
     });
 
-    toast.info(`Status kosong pada bagian ini diisi PASS.`);
+    toast.info(
+      t(
+        "Status kosong pada bagian ini diisi PASS.",
+        "Empty statuses in this section were filled with PASS.",
+      ),
+    );
   };
 
   // =========================
@@ -511,7 +576,11 @@ export default function PublicFormPage() {
 
     if (invalid) {
       focusInvalidField(invalid);
-      toast.error(`"${invalid.label}" wajib diisi.`);
+      toast.error(
+        t('"{label}" wajib diisi.', '"{label}" is required.', {
+          label: invalid.label,
+        }),
+      );
       return;
     }
 
@@ -589,9 +658,11 @@ export default function PublicFormPage() {
           };
         };
 
-        toast.error(err.response?.data?.message || "Gagal submit form");
+        toast.error(
+          err.response?.data?.message || t("Gagal submit form", "Failed to submit form"),
+        );
       } else {
-        toast.error("Gagal submit form");
+        toast.error(t("Gagal submit form", "Failed to submit form"));
       }
     } finally {
       setSubmitting(false);
@@ -603,7 +674,7 @@ export default function PublicFormPage() {
   // =========================
   const renderInput = (field: FormField) => {
     const highlightClass = highlightFieldId === field.id
-      ? "rounded-lg ring-2 ring-rose-400 ring-offset-2"
+      ? "rounded-control ring-2 ring-rose-400 ring-offset-2"
       : "";
 
     // TEXT / EMAIL
@@ -616,7 +687,7 @@ export default function PublicFormPage() {
           value={String(values[field.name] || "")}
           onChange={(e) => handleChange(field.name, e.target.value)}
           className={`h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0 ${highlightClass}`}
-          placeholder="Jawaban Anda"
+          placeholder={t("Jawaban Anda", "Your answer")}
         />
       );
     }
@@ -630,7 +701,11 @@ export default function PublicFormPage() {
           value={String(values[field.name] || "")}
           onChange={(e) => handleChange(field.name, e.target.value)}
           className={`w-full resize-none border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 py-2 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0 ${highlightClass}`}
-          placeholder={isNoteField(field) ? "Tulis saran atau catatan di sini..." : "Jawaban Anda"}
+          placeholder={
+            isNoteField(field)
+              ? t("Tulis saran atau catatan di sini...", "Write suggestions or notes here...")
+              : t("Jawaban Anda", "Your answer")
+          }
         />
       );
     }
@@ -659,7 +734,7 @@ export default function PublicFormPage() {
             handleChange(field.name, rawValue === "" ? "" : Number(rawValue));
           }}
           className={`h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0 ${highlightClass}`}
-          placeholder="Jawaban Anda"
+          placeholder={t("Jawaban Anda", "Your answer")}
         />
       );
     }
@@ -668,7 +743,7 @@ export default function PublicFormPage() {
     if (field.type === "date") {
       return (
         <div className={`relative ${highlightClass}`}>
-          <Calendar className="pointer-events-none absolute left-0 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Calendar className="pointer-events-none absolute left-0 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
 
           <DatePicker
             id={`field-${field.id}`}
@@ -688,7 +763,7 @@ export default function PublicFormPage() {
               handleChange(field.name, `${year}-${month}-${day}`);
             }}
             dateFormat="yyyy-MM-dd"
-            placeholderText="Pilih tanggal"
+            placeholderText={t("Pilih tanggal", "Select date")}
             wrapperClassName="w-full"
             popperPlacement="bottom-start"
             showPopperArrow={false}
@@ -702,12 +777,16 @@ export default function PublicFormPage() {
     if (field.type === "file") {
       return (
         <div className={`space-y-3 ${highlightClass}`}>
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--tracko-line)] bg-slate-50 px-4 py-8 text-center transition hover:bg-slate-100">
-            <Upload className="mb-2 h-6 w-6 text-slate-500" />
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-card border border-dashed border-[var(--tracko-line)] bg-surface-muted/50 px-4 py-8 text-center transition hover:bg-surface-muted">
+            <Upload className="mb-2 h-6 w-6 text-fg-muted" />
 
-            <span className="text-sm font-medium text-slate-700">Upload file</span>
+            <span className="text-sm font-medium text-fg-muted">
+              {t("Upload file", "Upload file")}
+            </span>
 
-            <span className="mt-1 text-xs text-slate-500">Klik untuk memilih file</span>
+            <span className="mt-1 text-xs text-fg-muted">
+              {t("Klik untuk memilih file", "Click to choose a file")}
+            </span>
 
             <input
               id={`field-${field.id}`}
@@ -721,7 +800,7 @@ export default function PublicFormPage() {
           </label>
 
           {fileValues[field.name] && (
-            <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div className="rounded-control bg-success-soft px-4 py-3 text-sm text-success">
               {fileValues[field.name]?.name}
             </div>
           )}
@@ -762,8 +841,8 @@ export default function PublicFormPage() {
                   className="mt-1 h-4 w-4"
                 />
 
-                <span className="text-sm text-slate-700">
-                  {option === "__other__" ? field.other_label || "Lainnya" : option}
+                <span className="text-sm text-fg-muted">
+                  {option === "__other__" ? field.other_label || t("Lainnya", "Other") : option}
                 </span>
               </label>
             );
@@ -778,7 +857,9 @@ export default function PublicFormPage() {
                   setOtherValues((prev) => ({ ...prev, [field.name]: e.target.value }))
                 }
                 className="h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none focus:border-[var(--form-accent)]"
-                placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
+                placeholder={t("Isi {label}", "Enter {label}", {
+                  label: field.other_label || t("jawaban lainnya", "other answer"),
+                })}
               />
             )}
         </div>
@@ -802,8 +883,8 @@ export default function PublicFormPage() {
                 onChange={() => handleChange(field.name, option)}
                 className="h-5 w-5 shrink-0"
               />
-              <span className="text-sm text-slate-700">
-                {option === "__other__" ? field.other_label || "Lainnya" : option}
+              <span className="text-sm text-fg-muted">
+                {option === "__other__" ? field.other_label || t("Lainnya", "Other") : option}
               </span>
             </label>
           ))}
@@ -816,7 +897,9 @@ export default function PublicFormPage() {
                 setOtherValues((prev) => ({ ...prev, [field.name]: e.target.value }))
               }
               className="h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none focus:border-[var(--form-accent)]"
-              placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
+              placeholder={t("Isi {label}", "Enter {label}", {
+                label: field.other_label || t("jawaban lainnya", "other answer"),
+              })}
             />
           )}
         </div>
@@ -833,7 +916,7 @@ export default function PublicFormPage() {
             onChange={(e) => handleChange(field.name, e.target.value)}
             className="h-11 w-full appearance-none border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 pr-8 text-sm outline-none transition focus:border-[var(--form-accent)] focus:ring-0"
           >
-            <option value="">Pilih opsi</option>
+            <option value="">{t("Pilih opsi", "Select an option")}</option>
 
             {field.options?.map((option, index) => (
               <option key={index} value={option}>
@@ -842,11 +925,11 @@ export default function PublicFormPage() {
             ))}
 
             {field.allow_other && (
-              <option value="__other__">{field.other_label || "Lainnya"}</option>
+              <option value="__other__">{field.other_label || t("Lainnya", "Other")}</option>
             )}
           </select>
 
-          <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
 
           {values[field.name] === "__other__" && (
             <input
@@ -856,7 +939,9 @@ export default function PublicFormPage() {
                 setOtherValues((prev) => ({ ...prev, [field.name]: e.target.value }))
               }
               className="mt-3 h-11 w-full border-0 border-b border-[var(--tracko-line)] bg-transparent px-0 text-sm outline-none focus:border-[var(--form-accent)]"
-              placeholder={`Isi ${field.other_label || "jawaban lainnya"}`}
+              placeholder={t("Isi {label}", "Enter {label}", {
+                label: field.other_label || t("jawaban lainnya", "other answer"),
+              })}
             />
           )}
         </div>
@@ -883,7 +968,7 @@ export default function PublicFormPage() {
         <div className="flex min-h-[calc(100vh-3rem)] items-center justify-center px-4">
           <div className="flex items-center gap-3 text-fg-muted">
             <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />
-            <span className="text-sm">Memuat formulir...</span>
+            <span className="text-sm">{t("Memuat formulir...", "Loading form...")}</span>
           </div>
         </div>
       </div>
@@ -901,19 +986,21 @@ export default function PublicFormPage() {
           <div className="w-full max-w-md rounded-panel border border-line bg-surface p-8 text-center shadow-e2">
             <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-500" />
 
-            <h2 className="text-xl font-semibold text-slate-900">Formulir tidak tersedia</h2>
+            <h2 className="text-xl font-semibold text-fg">
+              {t("Formulir tidak tersedia", "Form unavailable")}
+            </h2>
 
-            <p className="mt-2 text-sm text-slate-500">
-              {error || "Tautan formulir mungkin sudah tidak tersedia."}
+            <p className="mt-2 text-sm text-fg-muted">
+              {error || t("Tautan formulir mungkin sudah tidak tersedia.", "The form link may no longer be available.")}
             </p>
 
             {error && (
               <button
                 type="button"
                 onClick={() => void fetchForm()}
-                className="mt-5 min-h-11 rounded-lg bg-[var(--form-accent)] px-5 py-2 text-sm font-medium text-[var(--form-accent-fg)]"
+                className="mt-5 min-h-11 rounded-control bg-[var(--form-accent)] px-5 py-2 text-sm font-medium text-[var(--form-accent-fg)]"
               >
-                Coba lagi
+                {t("Coba lagi", "Try again")}
               </button>
             )}
           </div>
@@ -931,28 +1018,31 @@ export default function PublicFormPage() {
       return (
         <div
           key={field.id}
-          className="rounded-2xl border border-[var(--tracko-line)] bg-[var(--tracko-surface-muted)] px-5 py-5 shadow-sm sm:px-6"
+          className="rounded-card border border-[var(--tracko-line)] bg-[var(--tracko-surface-muted)] px-5 py-5 shadow-e1 sm:px-6"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--form-accent)]">
-                Section pengujian
+                {t("Section pengujian", "Test section")}
               </p>
               <h2 className="mt-1 text-lg font-semibold text-fg">{field.label}</h2>
               {field.description ? (
-                <p className="mt-1 text-sm text-slate-600">{field.description}</p>
+                <p className="mt-1 text-sm text-fg-muted">{field.description}</p>
               ) : null}
             </div>
 
             {stats && stats.total > 0 ? (
               <span
-                className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                className={`shrink-0 rounded-full px-2.5 py-1 text-2xs font-semibold ${
                   stats.answered === stats.total
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-white text-slate-600 ring-1 ring-slate-200"
+                    ? "bg-success-soft text-success"
+                    : "bg-surface text-fg-muted ring-1 ring-line"
                 }`}
               >
-                {stats.answered}/{stats.total} terisi
+                {t("{answered}/{total} terisi", "{answered}/{total} filled", {
+                  answered: stats.answered,
+                  total: stats.total,
+                })}
               </span>
             ) : null}
           </div>
@@ -961,15 +1051,16 @@ export default function PublicFormPage() {
             <button
               type="button"
               onClick={fillSectionWithPass}
-              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--tracko-line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--form-accent)] transition hover:bg-[var(--tracko-surface-muted)]"
+              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-control border border-[var(--tracko-line)] bg-surface px-3 py-1.5 text-xs font-semibold text-[var(--form-accent)] transition hover:bg-[var(--tracko-surface-muted)]"
             >
-              <Check size={14} /> Tandai semua PASS (yang belum dijawab)
+              <Check size={14} />{" "}
+              {t("Tandai semua PASS (yang belum dijawab)", "Mark all unanswered as PASS")}
             </button>
           ) : null}
 
           {showNote && note ? (
-            <div className="mt-4 rounded-xl border border-[var(--tracko-line)] bg-white px-4 py-3">
-              <label htmlFor={`field-${note.id}`} className="text-xs font-semibold text-slate-600">
+            <div className="mt-4 rounded-control border border-[var(--tracko-line)] bg-surface px-4 py-3">
+              <label htmlFor={`field-${note.id}`} className="text-xs font-semibold text-fg-muted">
                 {note.label}
               </label>
               <div className="mt-1">{renderInput(note)}</div>
@@ -986,7 +1077,7 @@ export default function PublicFormPage() {
     return (
       <div
         key={field.id}
-        className={`rounded-2xl border bg-white px-5 py-6 shadow-sm transition sm:px-6 ${
+        className={`rounded-card border bg-surface px-5 py-6 shadow-e1 transition sm:px-6 ${
           isHighlighted ? "border-rose-300 ring-2 ring-rose-200" : "border-[var(--tracko-line)] hover:shadow-md"
         }`}
       >
@@ -998,8 +1089,8 @@ export default function PublicFormPage() {
         </label>
 
         {field.description ? (
-          <p className="mb-4 flex items-start gap-1.5 text-[13px] leading-5 text-slate-500">
-            <Info size={14} className="mt-0.5 shrink-0 text-slate-400" />
+          <p className="mb-4 flex items-start gap-1.5 text-[13px] leading-5 text-fg-muted">
+            <Info size={14} className="mt-0.5 shrink-0 text-fg-subtle" />
             <span>{field.description}</span>
           </p>
         ) : (
@@ -1009,12 +1100,12 @@ export default function PublicFormPage() {
         {renderInput(field)}
 
         {showNote && note ? (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <label htmlFor={`field-${note.id}`} className="text-xs font-semibold text-slate-600">
+          <div className="mt-4 rounded-control border border-line bg-surface-muted/50 px-4 py-3">
+            <label htmlFor={`field-${note.id}`} className="text-xs font-semibold text-fg-muted">
               {note.label}
             </label>
             {note.description ? (
-              <p className="mt-0.5 text-[11px] text-slate-500">{note.description}</p>
+              <p className="mt-0.5 text-2xs text-fg-muted">{note.description}</p>
             ) : null}
             <div className="mt-1">{renderInput(note)}</div>
           </div>
@@ -1031,25 +1122,15 @@ export default function PublicFormPage() {
       <PublicFormTopBar />
       <div className="mx-auto w-full max-w-3xl px-3 py-6 sm:px-4 sm:py-10">
         {/* HEADER IMAGE */}
-        <div className="overflow-hidden rounded-t-3xl border border-b-0 border-[var(--tracko-line)] bg-white shadow-sm">
-          {form.header_image ? (
-            <img
-              src={resolveStorageUrl(form.header_image)}
-              alt={form.name}
-              className="max-h-[320px] w-full object-cover sm:max-h-[380px]"
-            />
-          ) : (
-            <div className="h-24 w-full bg-[var(--form-accent)]" />
-          )}
-        </div>
+        <FormHeader form={form} accent={themeColor} />
 
         {/* FORM CARD */}
-        <div className="rounded-b-3xl border border-[var(--tracko-line)] bg-white shadow-sm">
+        <div className="rounded-b-modal border border-[var(--tracko-line)] bg-surface shadow-e1">
           {/* TITLE */}
           <div className="border-t-[10px] border-[var(--form-accent)] px-5 py-6 sm:px-8">
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-fg-muted">
               <FileText className="h-4 w-4" />
-              Public Form
+              {t("Formulir publik", "Public form")}
             </div>
 
             <h1 className="mt-3 break-words text-2xl font-normal text-[var(--tracko-fg)] sm:text-3xl">
@@ -1057,7 +1138,7 @@ export default function PublicFormPage() {
             </h1>
 
             {form.description && (
-              <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-slate-600">
+              <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-fg-muted">
                 {form.description}
               </p>
             )}
@@ -1065,12 +1146,14 @@ export default function PublicFormPage() {
 
           {/* NOTE */}
           {form.show_note && form.note_content && (
-            <div className="mx-5 mb-2 rounded-2xl border border-warning/25 bg-warning-soft px-4 py-4 sm:mx-8">
+            <div className="mx-5 mb-2 rounded-card border border-warning/25 bg-warning-soft px-4 py-4 sm:mx-8">
               <div className="flex items-start gap-3">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
 
                 <div>
-                  <h3 className="text-sm font-medium text-warning">Informasi</h3>
+                  <h3 className="text-sm font-medium text-warning">
+                    {t("Informasi", "Information")}
+                  </h3>
 
                   <p className="mt-1 text-sm leading-6 text-warning">{form.note_content}</p>
                 </div>
@@ -1080,26 +1163,29 @@ export default function PublicFormPage() {
 
           {submitted ? (
             <div
-              className="mx-5 mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-6 sm:mx-8 sm:px-6"
+              className="mx-5 mb-6 rounded-card border border-success/20 bg-success-soft px-5 py-6 sm:mx-8 sm:px-6"
               role="status"
             >
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-lg text-white">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success text-lg text-white">
                   ✓
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-emerald-900">
-                    Jawaban berhasil dikirim
+                  <h2 className="text-lg font-semibold text-success">
+                    {t("Jawaban berhasil dikirim", "Response submitted successfully")}
                   </h2>
-                  <p className="mt-1 text-sm leading-6 text-emerald-800">
-                    Terima kasih. Tim Tracko akan meninjau hasil UAT Anda.
+                  <p className="mt-1 text-sm leading-6 text-success">
+                    {t(
+                      "Terima kasih. Tim Tracko akan meninjau hasil UAT Anda.",
+                      "Thank you. The Tracko team will review your UAT results.",
+                    )}
                   </p>
                   <button
                     type="button"
                     onClick={() => setSubmitted(false)}
-                    className="mt-4 min-h-11 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+                    className="mt-4 min-h-11 rounded-control bg-success px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/40 focus-visible:ring-offset-2"
                   >
-                    Isi jawaban lain
+                    {t("Isi jawaban lain", "Submit another response")}
                   </button>
                 </div>
               </div>
@@ -1108,15 +1194,21 @@ export default function PublicFormPage() {
             <>
               {sectionFields.length > 0 && (
                 <div
-                  className="mx-5 mb-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 sm:mx-8"
-                  aria-label="Navigasi section UAT"
+                  className="mx-5 mb-3 rounded-card border border-line bg-surface px-3 py-3 sm:mx-8"
+                  aria-label={t("Navigasi section UAT", "UAT section navigation")}
                 >
                   <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                    <span className="text-xs font-semibold text-slate-700">
-                      Section {activeSectionIndex + 1} dari {sectionFields.length}
+                    <span className="text-xs font-semibold text-fg-muted">
+                      {t("Section {current} dari {total}", "Section {current} of {total}", {
+                        current: activeSectionIndex + 1,
+                        total: sectionFields.length,
+                      })}
                     </span>
-                    <span className="text-[11px] text-slate-500">
-                      Anda dapat kembali ke section sebelumnya
+                    <span className="text-2xs text-fg-muted">
+                      {t(
+                        "Anda dapat kembali ke section sebelumnya",
+                        "You can return to a previous section",
+                      )}
                     </span>
                   </div>
                   <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1131,12 +1223,12 @@ export default function PublicFormPage() {
                           type="button"
                           onClick={() => setActiveSectionId(section.id)}
                           aria-current={isActive ? "step" : undefined}
-                          className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${
+                          className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-control px-3 py-2 text-left text-xs font-semibold transition ${
                             isActive
-                              ? "bg-[var(--form-accent)] text-[var(--form-accent-fg)] shadow-sm"
+                              ? "bg-[var(--form-accent)] text-[var(--form-accent-fg)] shadow-e1"
                               : complete
-                                ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                ? "bg-success-soft text-success hover:bg-success-soft"
+                                : "bg-surface-muted text-fg-muted hover:bg-surface-muted"
                           }`}
                         >
                           {complete && !isActive ? (
@@ -1152,15 +1244,18 @@ export default function PublicFormPage() {
                 </div>
               )}
 
-              <div className="mx-5 mb-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:mx-8">
-                <div className="flex items-center justify-between gap-3 text-xs font-medium text-slate-600">
+              <div className="mx-5 mb-2 rounded-card border border-line bg-surface-muted/50 px-4 py-3 sm:mx-8">
+                <div className="flex items-center justify-between gap-3 text-xs font-medium text-fg-muted">
                   <span>
-                    {answeredFields} dari {visibleFields.length} pertanyaan terisi
+                    {t("{answered} dari {total} pertanyaan terisi", "{answered} of {total} questions filled", {
+                      answered: answeredFields,
+                      total: visibleFields.length,
+                    })}
                   </span>
                   <span>{completionPercent}%</span>
                 </div>
                 <div
-                  className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200"
+                  className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted"
                   aria-hidden="true"
                 >
                   <div
@@ -1168,10 +1263,16 @@ export default function PublicFormPage() {
                     style={{ width: `${completionPercent}%` }}
                   />
                 </div>
-                <p className="mt-2 text-[11px] text-slate-500">
+                <p className="mt-2 text-2xs text-fg-muted">
                   {draftSavedAt
-                    ? "Draft tersimpan otomatis di perangkat ini. Lampiran perlu dipilih ulang bila halaman ditutup."
-                    : "Jawaban teks tersimpan otomatis sebagai draft di perangkat ini."}
+                    ? t(
+                        "Draft tersimpan otomatis di perangkat ini. Lampiran perlu dipilih ulang bila halaman ditutup.",
+                        "Draft saved automatically on this device. Attachments must be selected again if the page is closed.",
+                      )
+                    : t(
+                        "Jawaban teks tersimpan otomatis sebagai draft di perangkat ini.",
+                        "Text answers are saved automatically as a draft on this device.",
+                      )}
                 </p>
               </div>
 
@@ -1183,7 +1284,7 @@ export default function PublicFormPage() {
                   .map((field) => renderFieldCard(field))}
 
                 {/* SUBMIT (sticky di bawah) */}
-                <div className="sticky bottom-0 z-30 -mx-3 mt-2 flex flex-wrap items-center gap-3 border-t border-[var(--tracko-line)] bg-white/95 px-3 py-3 backdrop-blur sm:-mx-4 sm:px-4">
+                <div className="sticky bottom-0 z-30 -mx-3 mt-2 flex flex-wrap items-center gap-3 border-t border-[var(--tracko-line)] bg-surface/95 px-3 py-3 backdrop-blur sm:-mx-4 sm:px-4">
                   {sectionFields.length > 0 && activeSectionIndex > 0 && (
                     <button
                       type="button"
@@ -1191,16 +1292,19 @@ export default function PublicFormPage() {
                         const previousSection = sectionFields[activeSectionIndex - 1];
                         if (previousSection) setActiveSectionId(previousSection.id);
                       }}
-                      className="flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                      className="flex h-11 items-center justify-center rounded-control border border-line-strong bg-surface px-5 text-sm font-medium text-fg-muted transition hover:bg-surface-muted/50"
                     >
-                      Section sebelumnya
+                      {t("Section sebelumnya", "Previous section")}
                     </button>
                   )}
 
-                  <div className="ml-auto text-[11px] text-slate-500">
+                  <div className="ml-auto text-2xs text-fg-muted">
                     {isLastSection
-                      ? "Periksa kembali sebelum mengirim."
-                      : "Jawaban tersimpan otomatis sebagai draft."}
+                      ? t("Periksa kembali sebelum mengirim.", "Review your answers before submitting.")
+                      : t(
+                          "Jawaban tersimpan otomatis sebagai draft.",
+                          "Answers are saved automatically as a draft.",
+                        )}
                   </div>
 
                   <button
@@ -1215,7 +1319,7 @@ export default function PublicFormPage() {
                       void handleSubmit();
                     }}
                     disabled={submitting}
-                    className="flex h-11 items-center justify-center rounded-lg bg-[var(--form-accent)] px-6 text-sm font-medium text-[var(--form-accent-fg)] transition hover:bg-[var(--form-accent)] disabled:cursor-not-allowed disabled:opacity-70"
+                    className="flex h-11 items-center justify-center rounded-control bg-[var(--form-accent)] px-6 text-sm font-medium text-[var(--form-accent-fg)] transition hover:bg-[var(--form-accent)] disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {isLastSection && submitting && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1223,9 +1327,9 @@ export default function PublicFormPage() {
 
                     {isLastSection
                       ? submitting
-                        ? "Mengirim..."
-                        : "Kirim UAT"
-                      : "Lanjut ke section berikutnya"}
+                        ? t("Mengirim...", "Sending...")
+                        : t("Kirim UAT", "Submit UAT")
+                      : t("Lanjut ke section berikutnya", "Continue to next section")}
                   </button>
                 </div>
               </div>

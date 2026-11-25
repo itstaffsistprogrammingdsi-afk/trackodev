@@ -1,5 +1,6 @@
 import { CalendarRange } from "lucide-react";
 
+import { useLanguage } from "@/context/LanguageContext";
 import type { ActivityRange } from "../types";
 
 type Props = {
@@ -8,11 +9,11 @@ type Props = {
   disabled?: boolean;
 };
 
-const OPTIONS: { value: ActivityRange; label: string }[] = [
-  { value: "today", label: "Hari ini" },
-  { value: "week", label: "Minggu ini" },
-  { value: "month", label: "Bulan ini" },
-  { value: "all", label: "Semua" },
+const OPTIONS: { value: ActivityRange; label: string; labelEn: string }[] = [
+  { value: "today", label: "Hari ini", labelEn: "Today" },
+  { value: "week", label: "Minggu ini", labelEn: "This week" },
+  { value: "month", label: "Bulan ini", labelEn: "This month" },
+  { value: "all", label: "Semua", labelEn: "All" },
 ];
 
 export default function MyWorkPeriodFilter({
@@ -20,12 +21,14 @@ export default function MyWorkPeriodFilter({
   onChange,
   disabled = false,
 }: Props) {
+  const { t } = useLanguage();
+
   return (
     <div className="w-full rounded-control border border-line bg-surface p-1 sm:w-auto">
       <div className="flex items-center gap-1 overflow-x-auto">
         <div className="hidden shrink-0 items-center gap-1.5 px-2 text-[11px] font-medium text-fg-muted md:flex">
           <CalendarRange size={14} aria-hidden="true" />
-          Periode
+          {t("Periode", "Period")}
         </div>
 
         {OPTIONS.map((option) => (
@@ -41,7 +44,7 @@ export default function MyWorkPeriodFilter({
                 : "text-fg-muted hover:text-fg"
             }`}
           >
-            {option.label}
+            {t(option.label, option.labelEn)}
           </button>
         ))}
       </div>

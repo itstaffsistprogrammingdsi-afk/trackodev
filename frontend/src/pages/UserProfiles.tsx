@@ -19,9 +19,6 @@ import {
   LogOut,
   Mail,
   Phone,
-  Users,
-  Crown,
-  ShieldCheck,
   KeyRound,
   Eye,
   EyeOff,
@@ -30,14 +27,15 @@ import {
   History,
 } from "lucide-react";
 
-import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
+import PageHeader from "@/components/layout/PageHeader";
 import Button from "../components/ui/button/Button";
 import api from "../lib/axios";
 import UserPermissionModal from '../features/user/components/UserPermissionModal';
 import UserActivityDetailModal from '../features/user/components/UserActivityDetailModal';
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { toast, confirmDialog } from "@/lib/feedback";
+import { useLanguage } from "@/context/LanguageContext";
 
 // ============================================
 // TYPES
@@ -112,23 +110,12 @@ const roleStyle: Record<
   RoleType | "unassigned",
   string
 > = {
-  super_admin:
-    "bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20",
-
-  admin:
-    "bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
-
-  manager:
-    "bg-teal-100 text-teal-700 border border-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20",
-
-  hrd:
-    "bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:border-fuchsia-500/20",
-
-  user:
-    "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-500/10 dark:text-gray-300 dark:border-gray-700",
-
-  unassigned:
-    "bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20",
+  super_admin: "bg-accent-soft text-accent",
+  admin: "bg-info-soft text-info",
+  manager: "bg-success-soft text-success",
+  hrd: "bg-warning-soft text-warning",
+  user: "bg-surface-muted text-fg-muted",
+  unassigned: "bg-warning-soft text-warning",
 };
 
 // ============================================
@@ -218,6 +205,7 @@ export default function UserProfiles() {
   // di sini akan membuat loop GET /users -> ActivityLog -> GET /users.
   const realtimeRevision = useRealtimeRevision(["User"]);
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // ============================================
   // STATES
@@ -399,12 +387,12 @@ export default function UserProfiles() {
 
   const handleSubmit = async () => {
     if (!editingId && password.length < 8) {
-      toast.error("Password user baru minimal 8 karakter.");
+      toast.error(t("Password user baru minimal 8 karakter.", "The new user password must be at least 8 characters."));
       return;
     }
 
     if (password && password !== passwordConfirmation) {
-      toast.error("Konfirmasi password belum sama.");
+      toast.error(t("Konfirmasi password belum sama.", "Password confirmation does not match."));
       return;
     }
 
@@ -444,7 +432,7 @@ export default function UserProfiles() {
       console.error(err);
 
       toast.error(
-        "Gagal menyimpan user"
+        t("Gagal menyimpan user", "Failed to save user")
       );
     } finally {
       setSubmitting(false);
@@ -498,7 +486,7 @@ export default function UserProfiles() {
   ) => {
     const confirmed =
       await confirmDialog({
-        message: "Yakin hapus user ini?",
+        message: t("Yakin hapus user ini?", "Delete this user?"),
         variant: "danger",
       });
 
@@ -514,7 +502,7 @@ export default function UserProfiles() {
       console.error(err);
 
       toast.error(
-        "Gagal menghapus user"
+        t("Gagal menghapus user", "Failed to delete user")
       );
     }
   };
@@ -551,126 +539,65 @@ export default function UserProfiles() {
         onClose={() => setDetailUser(null)}
       />
       <PageMeta
-        title="User Management"
-        description="User Management Page"
+        title={t("User Management")}
+        description={t("User Management Page")}
       />
 
-      <PageBreadcrumb pageTitle="User Management" />
-
-      {/* ============================================ */}
-      {/* HEADER */}
-      {/* ============================================ */}
-
-      <div className="mb-6 flex flex-col gap-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03] md:flex-row md:items-center md:justify-between md:p-6">
-        {/* LEFT */}
-        <div className="flex items-center gap-4">
-          <div>
-            {authUser && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <div className="flex size-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/10">
-                  <UserIcon className="size-4 text-blue-600 dark:text-blue-400" />
-                </div>
-
-                <span>
-                  Hallo{" "}
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {
-                      authUser.name
-                    }
-                  </span>
+      <PageHeader
+        className="mb-6"
+        title={t("User management")}
+        description={t(
+          "Kelola akun, peran, dan izin akses anggota tim.",
+          "Manage team member accounts, roles, and access permissions.",
+        )}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {authUser ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-2xs font-medium text-fg-muted">
+                <UserIcon className="h-3 w-3" aria-hidden="true" />
+                {authUser.name}
+                <span className="text-fg-subtle">
+                  · {getUserRole(authUser)?.replace("_", " ") ?? t("belum ditetapkan", "not assigned")}
                 </span>
+              </span>
+            ) : null}
 
-                <span className="text-gray-400">
-                  •
-                </span>
-
-                <span className="capitalize">
-                  {getUserRole(authUser)?.replace("_", " ") ?? "belum ditetapkan"}
-                </span>
-              </div>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              startIcon={<LogOut />}
+              onClick={handleLogout}
+            >
+              {t("Keluar", "Sign out")}
+            </Button>
           </div>
-        </div>
-
-        {/* RIGHT */}
-
-        <div className="flex items-center">
-          <button
-            onClick={
-              handleLogout
-            }
-            className="flex h-11 items-center gap-2 rounded-2xl px-5 text-sm font-medium text-gray transition-all hover:bg-gray-100 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-          >
-            <LogOut className="size-4" />
-
-            Logout
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* ============================================ */}
       {/* STATS */}
       {/* ============================================ */}
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">
-                Total User
-              </p>
-
-              <h3 className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                {
-                  stats.total_users
-                }
-              </h3>
-            </div>
-
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-500/10">
-              <Users className="size-7 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
+      <div className="mb-6 grid grid-cols-1 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3">
+        <div className="bg-surface px-4 py-3.5">
+          <p className="text-2xs font-medium text-fg-subtle">{t("Total user", "Total users")}</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums tracking-heading text-fg">
+            {stats.total_users}
+          </p>
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">
-                Super Admin
-              </p>
-
-              <h3 className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                {
-                  stats.total_super_admin
-                }
-              </h3>
-            </div>
-
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-500/10">
-              <Crown className="size-7 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
+        <div className="bg-surface px-4 py-3.5">
+          <p className="text-2xs font-medium text-fg-subtle">{t("Super admin")}</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums tracking-heading text-fg">
+            {stats.total_super_admin}
+          </p>
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">
-                Admin
-              </p>
-
-              <h3 className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                {
-                  stats.total_admin
-                }
-              </h3>
-            </div>
-
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-green-100 dark:bg-green-500/10">
-              <ShieldCheck className="size-7 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
+        <div className="bg-surface px-4 py-3.5">
+          <p className="text-2xs font-medium text-fg-subtle">{t("Admin")}</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums tracking-heading text-fg">
+            {stats.total_admin}
+          </p>
         </div>
       </div>
 
@@ -678,30 +605,29 @@ export default function UserProfiles() {
       {/* FORM */}
       {/* ============================================ */}
 
-      <div className="mb-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03] md:p-7">
+      <div className="mb-6 rounded-panel border border-line bg-surface p-5 shadow-e1 dark:border-line md:p-7">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white">
+          <div className="flex size-9 items-center justify-center rounded-card bg-accent-soft text-accent">
             <Shield className="size-5" />
           </div>
 
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-sm font-semibold tracking-heading text-fg">
               {editingId
-                ? "Edit User"
-                : "Tambah User"}
+                ? t("Edit User", "Edit user")
+                : t("Tambah User", "Add user")}
             </h3>
 
-            <p className="text-sm text-gray-500">
-              Kelola data user
-              sistem
+            <p className="text-sm text-fg-muted">
+              {t("Kelola data user sistem", "Manage system user data")}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Nama
+            <label className="text-xs font-medium text-fg-muted">
+              {t("Nama", "Name")}
             </label>
 
             <input
@@ -712,14 +638,14 @@ export default function UserProfiles() {
                   e.target.value
                 )
               }
-              placeholder="Masukkan nama"
-              className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
+              placeholder={t("Masukkan nama", "Enter name")}
+              className="h-9 w-full rounded-control border border-line bg-surface-muted/40 px-3 text-xs outline-none transition-all focus:border-accent focus:bg-surface dark:border-line-strong dark:bg-surface-muted/60"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Email
+            <label className="text-xs font-medium text-fg-muted">
+              {t("Email")}
             </label>
 
             <input
@@ -730,18 +656,20 @@ export default function UserProfiles() {
                   e.target.value
                 )
               }
-              placeholder="Masukkan email"
-              className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
+              placeholder={t("Masukkan email", "Enter email")}
+              className="h-9 w-full rounded-control border border-line bg-surface-muted/40 px-3 text-xs outline-none transition-all focus:border-accent focus:bg-surface dark:border-line-strong dark:bg-surface-muted/60"
             />
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {editingId ? "Password baru (reset)" : "Password awal"}
+              <label className="text-xs font-medium text-fg-muted">
+                {editingId
+                  ? t("Password baru (reset)", "New password (reset)")
+                  : t("Password awal", "Initial password")}
               </label>
-              <button type="button" onClick={handleGeneratePassword} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">
-                <RefreshCw size={13} /> Buat otomatis
+              <button type="button" onClick={handleGeneratePassword} className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent-strong">
+                <RefreshCw size={13} /> {t("Buat otomatis", "Generate")}
               </button>
             </div>
             <div className="relative">
@@ -753,38 +681,45 @@ export default function UserProfiles() {
                   setPasswordCopied(false);
                 }}
                 autoComplete="new-password"
-                placeholder={editingId ? "Kosongkan jika tidak direset" : "Minimal 8 karakter"}
-                className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 pr-20 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
+                placeholder={editingId
+                  ? t("Kosongkan jika tidak direset", "Leave empty to keep the current password")
+                  : t("Minimal 8 karakter", "At least 8 characters")}
+                className="h-10 w-full rounded-control border border-line bg-surface-muted/40 px-4 pr-20 text-sm outline-none transition-all focus:border-accent focus:bg-surface dark:border-line-strong dark:bg-surface-muted/60"
               />
               <div className="absolute right-1 top-1/2 flex -translate-y-1/2">
-                <button type="button" onClick={() => setShowManagedPassword((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-white hover:text-gray-700 dark:hover:bg-gray-800" aria-label={showManagedPassword ? "Sembunyikan password baru" : "Tampilkan password baru"}>
+                <button type="button" onClick={() => setShowManagedPassword((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-control text-fg-subtle hover:bg-surface hover:text-fg-muted dark:hover:bg-surface-muted" aria-label={showManagedPassword ? t("Sembunyikan password baru", "Hide new password") : t("Tampilkan password baru", "Show new password")}>
                   {showManagedPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
-                <button type="button" onClick={handleCopyPassword} disabled={!password} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-white hover:text-gray-700 disabled:opacity-30 dark:hover:bg-gray-800" aria-label="Salin password baru">
+                <button type="button" onClick={handleCopyPassword} disabled={!password} className="flex h-9 w-9 items-center justify-center rounded-control text-fg-subtle hover:bg-surface hover:text-fg-muted disabled:opacity-30 dark:hover:bg-surface-muted" aria-label={t("Salin password baru", "Copy new password")}>
                   <Copy size={17} />
                 </button>
               </div>
             </div>
-            <p className="text-[11px] leading-5 text-gray-500">
-              {passwordCopied ? "Password baru telah disalin." : "Password lama terenkripsi dan tidak dapat dilihat. Super admin hanya dapat menetapkan password baru."}
+            <p className="text-[11px] leading-5 text-fg-muted">
+              {passwordCopied
+                ? t("Password baru telah disalin.", "The new password has been copied.")
+                : t(
+                    "Password lama terenkripsi dan tidak dapat dilihat. Super admin hanya dapat menetapkan password baru.",
+                    "The old password is encrypted and cannot be viewed. A super admin can only set a new password.",
+                  )}
             </p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Konfirmasi password</label>
+            <label className="text-xs font-medium text-fg-muted">{t("Konfirmasi password", "Confirm password")}</label>
             <input
               type={showManagedPassword ? "text" : "password"}
               value={passwordConfirmation}
               onChange={(e) => setPasswordConfirmation(e.target.value)}
               autoComplete="new-password"
-              placeholder="Ulangi password baru"
-              className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
+              placeholder={t("Ulangi password baru", "Repeat new password")}
+              className="h-9 w-full rounded-control border border-line bg-surface-muted/40 px-3 text-xs outline-none transition-all focus:border-accent focus:bg-surface dark:border-line-strong dark:bg-surface-muted/60"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Role
+            <label className="text-xs font-medium text-fg-muted">
+              {t("Role")}
             </label>
 
             <select
@@ -795,39 +730,39 @@ export default function UserProfiles() {
                     .value as RoleType | ""
                 )
               }
-              className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
+              className="h-9 w-full rounded-control border border-line bg-surface-muted/40 px-3 text-xs outline-none transition-all focus:border-accent focus:bg-surface dark:border-line-strong dark:bg-surface-muted/60"
             >
               <option value="" disabled>
-                Belum ditetapkan
+                {t("Belum ditetapkan", "Not assigned")}
               </option>
 
               <option value="super_admin">
-                Super Admin
+                {t("Super Admin")}
               </option>
 
               <option value="admin">
-                Admin
+                {t("Admin")}
               </option>
 
               <option value="manager">
-                Manager
+                {t("Manager")}
               </option>
 
               <option value="hrd">
-                HRD
+                {t("HRD")}
               </option>
 
               <option value="user">
-                User
+                {t("User")}
               </option>
             </select>
 
-            <p className="text-[11px] leading-5 text-gray-500 dark:text-gray-400">
-              <strong>Manager</strong>: akses penuh 1 divisi termasuk Report.{" "}
-              <strong>Admin</strong>: akses penuh divisi, tanpa Report.{" "}
-              <strong>HRD</strong>: akses baca seluruh divisi tanpa hak mengubah data.{" "}
-              <strong>User</strong>: terbatas pada campaign/task yang dibuat atau diikuti.{" "}
-              <strong>Super Admin</strong>: seluruh sistem.
+            <p className="text-[11px] leading-5 text-fg-muted text-fg-subtle">
+              <strong>Manager</strong>: {t("akses penuh 1 divisi termasuk Report.", "full access to 1 division, including Reports.")}{" "}
+              <strong>Admin</strong>: {t("akses penuh divisi, tanpa Report.", "full access to the division, without Reports.")}{" "}
+              <strong>HRD</strong>: {t("akses baca seluruh divisi tanpa hak mengubah data.", "read access to all divisions without the right to change data.")}{" "}
+              <strong>User</strong>: {t("terbatas pada campaign/task yang dibuat atau diikuti.", "limited to campaigns/tasks they created or joined.")}{" "}
+              <strong>Super Admin</strong>: {t("seluruh sistem.", "the entire system.")}
             </p>
           </div>
         </div>
@@ -840,7 +775,7 @@ export default function UserProfiles() {
             disabled={
               submitting
             }
-            className="h-12 rounded-2xl"
+            className="h-9 rounded-control"
           >
             {submitting ? (
               <Loader2 className="size-4 animate-spin" />
@@ -849,8 +784,8 @@ export default function UserProfiles() {
             )}
 
             {editingId
-              ? "Update User"
-              : "Tambah User"}
+              ? t("Update User", "Update user")
+              : t("Tambah User", "Add user")}
           </Button>
 
           {editingId && (
@@ -859,9 +794,9 @@ export default function UserProfiles() {
               onClick={
                 resetForm
               }
-              className="h-12 rounded-2xl"
+              className="h-9 rounded-control"
             >
-              Cancel
+              {t("Cancel")}
             </Button>
           )}
         </div>
@@ -871,28 +806,26 @@ export default function UserProfiles() {
       {/* TABLE */}
       {/* ============================================ */}
 
-      <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-e1 dark:border-line dark:bg-surface">
         {/* TOPBAR */}
 
-        <div className="flex flex-col gap-4 border-b border-gray-200 p-5 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 border-b border-line p-5 dark:border-line md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Daftar User
+            <h3 className="text-sm font-semibold tracking-heading text-fg">
+              {t("Daftar User", "User list")}
             </h3>
 
-            <p className="text-sm text-gray-500">
-              Semua user yang
-              terdaftar dalam
-              sistem
+            <p className="text-sm text-fg-muted">
+              {t("Semua user yang terdaftar dalam sistem", "All users registered in the system")}
             </p>
           </div>
 
           <div className="relative w-full md:max-w-sm">
-            <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
 
             <input
               type="text"
-              placeholder="Cari nama atau email..."
+              placeholder={t("Cari nama atau email...", "Search name or email...")}
               value={search}
               onChange={(e) => {
                 setPage(1);
@@ -901,7 +834,7 @@ export default function UserProfiles() {
                   e.target.value
                 );
               }}
-              className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-gray-700 dark:bg-gray-900"
+              className="h-9 w-full rounded-control border border-line bg-surface-muted/40 py-2 pl-10 pr-3 text-xs outline-none transition-all focus:border-accent focus:bg-surface dark:border-line-strong dark:bg-surface-muted/60"
             />
           </div>
         </div>
@@ -910,18 +843,18 @@ export default function UserProfiles() {
 
         <div className="hidden overflow-x-auto lg:block">
           <table className="min-w-full">
-            <thead className="border-b border-gray-200 bg-gray-50/70 dark:border-gray-800 dark:bg-white/[0.02]">
+            <thead className="border-b border-line bg-surface-muted/40 dark:border-line dark:bg-surface/[0.02]">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  User
+                <th className="px-6 py-4 text-left text-2xs font-medium text-fg-muted">
+                  {t("User")}
                 </th>
 
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Role
+                <th className="px-6 py-4 text-left text-2xs font-medium text-fg-muted">
+                  {t("Role")}
                 </th>
 
-                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Action
+                <th className="px-6 py-4 text-right text-2xs font-medium text-fg-muted">
+                  {t("Action")}
                 </th>
               </tr>
             </thead>
@@ -933,7 +866,7 @@ export default function UserProfiles() {
                     colSpan={4}
                     className="px-6 py-14 text-center"
                   >
-                    <Loader2 className="mx-auto animate-spin text-blue-500" />
+                    <Loader2 className="mx-auto animate-spin text-accent motion-reduce:animate-none" />
                   </td>
                 </tr>
               ) : users.length ===
@@ -941,10 +874,9 @@ export default function UserProfiles() {
                 <tr>
                   <td
                     colSpan={4}
-                    className="px-6 py-14 text-center text-gray-500"
+                    className="px-6 py-14 text-center text-fg-muted"
                   >
-                    Tidak ada
-                    user
+                    {t("Tidak ada user", "No users")}
                   </td>
                 </tr>
               ) : (
@@ -963,22 +895,22 @@ export default function UserProfiles() {
                         key={
                           user.id
                         }
-                        className="border-b border-gray-100 transition-colors hover:bg-gray-50/80 dark:border-gray-800 dark:hover:bg-white/[0.02]"
+                        className="border-b border-line transition-colors hover:bg-surface-muted/40 dark:border-line dark:hover:bg-surface/[0.02]"
                       >
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-4">
-                            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
+                            <div className="flex size-9 items-center justify-center rounded-card bg-accent-soft text-accent">
                               <UserIcon className="size-5" />
                             </div>
 
                             <div>
-                              <div className="font-semibold text-gray-900 dark:text-white">
+                              <div className="font-semibold text-fg">
                                 {
                                   user.name
                                 }
                               </div>
 
-                              <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                              <div className="mt-1 flex items-center gap-2 text-sm text-fg-muted">
                                 <Mail className="size-3.5" />
 
                                 {
@@ -995,7 +927,7 @@ export default function UserProfiles() {
                           >
                             {userRole
                               ? userRole.replace("_", " ")
-                              : "Belum ditetapkan"}
+                              : t("Belum ditetapkan", "Not assigned")}
                           </span>
                         </td>
 
@@ -1003,18 +935,18 @@ export default function UserProfiles() {
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => setDetailUser(user)}
-                              className="flex size-10 items-center justify-center rounded-xl border border-amber-200 bg-white text-amber-600 transition hover:bg-amber-50 dark:border-amber-500/30 dark:bg-gray-900"
-                              title="Lihat detail aktivitas"
-                              aria-label={`Lihat detail aktivitas ${user.name}`}
+                              className="flex size-10 items-center justify-center rounded-control border border-warning/20 bg-surface text-warning transition hover:bg-warning-soft dark:border-amber-500/30 dark:bg-surface-muted/60"
+                              title={t("Lihat detail aktivitas", "View activity details")}
+                              aria-label={t("Lihat detail aktivitas {name}", "View activity details for {name}", { name: user.name })}
                             >
                               <History className="size-4" />
                             </button>
                             {(authUser?.permissions?.includes('user.permissions.view') || authUser?.permissions?.includes('user.update')) && (
                               <button
                                 onClick={() => setPermissionUser(user)}
-                                className='flex size-10 items-center justify-center rounded-xl border border-indigo-200 bg-white text-indigo-600 transition hover:bg-indigo-50 dark:border-indigo-500/30 dark:bg-gray-900'
-                                title='Atur akses tambahan'
-                                aria-label={`Atur akses ${user.name}`}
+                                className='flex size-10 items-center justify-center rounded-control border border-accent/20 bg-surface text-accent transition hover:bg-accent-soft dark:border-indigo-500/30 dark:bg-surface-muted/60'
+                                title={t("Atur akses tambahan", "Manage additional access")}
+                                aria-label={t("Atur akses {name}", "Manage access for {name}", { name: user.name })}
                               >
                                 <KeyRound className='size-4' />
                               </button>
@@ -1026,9 +958,9 @@ export default function UserProfiles() {
                                   user
                                 )
                               }
-                              className="flex size-10 items-center justify-center rounded-xl border border-gray-200 bg-white transition hover:bg-blue-50 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-blue-500/10"
-                              title={`Edit user ${user.name}`}
-                              aria-label={`Edit user ${user.name}`}
+                              className="flex size-10 items-center justify-center rounded-control border border-line bg-surface transition hover:bg-accent-soft hover:text-accent dark:border-line-strong dark:bg-surface-muted/60 dark:hover:bg-accent-soft"
+                              title={t("Edit user {name}", "Edit user {name}", { name: user.name })}
+                              aria-label={t("Edit user {name}", "Edit user {name}", { name: user.name })}
                             >
                               <Pencil className="size-4" />
                             </button>
@@ -1040,9 +972,9 @@ export default function UserProfiles() {
                                   user.id
                                 )
                               }
-                              className="flex size-10 items-center justify-center rounded-xl border border-red-200 bg-white text-red-500 transition hover:bg-red-50 dark:bg-gray-900"
-                              title={`Hapus user ${user.name}`}
-                              aria-label={`Hapus user ${user.name}`}
+                              className="flex size-10 items-center justify-center rounded-control border border-danger/20 bg-surface text-danger transition hover:bg-danger-soft dark:bg-surface-muted/60"
+                              title={t("Hapus user {name}", "Delete user {name}", { name: user.name })}
+                              aria-label={t("Hapus user {name}", "Delete user {name}", { name: user.name })}
                             >
                               <Trash2 className="size-4" />
                             </button>
@@ -1062,12 +994,12 @@ export default function UserProfiles() {
         <div className="grid gap-4 p-4 lg:hidden">
           {loading ? (
             <div className="flex justify-center py-10">
-              <Loader2 className="animate-spin text-blue-500" />
+              <Loader2 className="animate-spin text-accent motion-reduce:animate-none" />
             </div>
           ) : users.length ===
             0 ? (
-            <div className="py-10 text-center text-gray-500">
-              Tidak ada user
+            <div className="py-10 text-center text-fg-muted">
+              {t("Tidak ada user", "No users")}
             </div>
           ) : (
             users.map((user) => {
@@ -1080,22 +1012,22 @@ export default function UserProfiles() {
               return (
                 <div
                   key={user.id}
-                  className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]"
+                  className="rounded-panel border border-line bg-surface p-5 shadow-e1 dark:border-line"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex gap-4">
-                      <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                      <div className="flex size-9 items-center justify-center rounded-card bg-accent-soft text-accent">
                         <UserIcon className="size-5" />
                       </div>
 
                       <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white">
+                        <h4 className="font-semibold text-fg">
                           {
                             user.name
                           }
                         </h4>
 
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm text-fg-muted">
                           {
                             user.email
                           }
@@ -1107,7 +1039,7 @@ export default function UserProfiles() {
                           >
                             {userRole
                               ? userRole.replace("_", " ")
-                              : "Belum ditetapkan"}
+                              : t("Belum ditetapkan", "Not assigned")}
                           </span>
                         </div>
                       </div>
@@ -1116,18 +1048,18 @@ export default function UserProfiles() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setDetailUser(user)}
-                        className="flex size-10 items-center justify-center rounded-xl border border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-500/30"
-                        title="Lihat detail aktivitas"
-                        aria-label={`Lihat detail aktivitas ${user.name}`}
+                        className="flex size-10 items-center justify-center rounded-control border border-warning/20 text-warning hover:bg-warning-soft dark:border-amber-500/30"
+                        title={t("Lihat detail aktivitas", "View activity details")}
+                        aria-label={t("Lihat detail aktivitas {name}", "View activity details for {name}", { name: user.name })}
                       >
                         <History className="size-4" />
                       </button>
                       {(authUser?.permissions?.includes('user.permissions.view') || authUser?.permissions?.includes('user.update')) && (
                         <button
                           onClick={() => setPermissionUser(user)}
-                          className='flex size-10 items-center justify-center rounded-xl border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-500/30'
-                          title='Atur akses tambahan'
-                          aria-label={`Atur akses ${user.name}`}
+                          className='flex size-10 items-center justify-center rounded-control border border-accent/20 text-accent hover:bg-accent-soft dark:border-indigo-500/30'
+                          title={t("Atur akses tambahan", "Manage additional access")}
+                          aria-label={t("Atur akses {name}", "Manage access for {name}", { name: user.name })}
                         >
                           <KeyRound className='size-4' />
                         </button>
@@ -1139,9 +1071,9 @@ export default function UserProfiles() {
                             user
                           )
                         }
-                        className="flex size-10 items-center justify-center rounded-xl border border-gray-200 hover:bg-blue-50 dark:border-gray-700"
-                        title={`Edit user ${user.name}`}
-                        aria-label={`Edit user ${user.name}`}
+                        className="flex size-10 items-center justify-center rounded-control border border-line hover:bg-accent-soft dark:border-line-strong"
+                        title={t("Edit user {name}", "Edit user {name}", { name: user.name })}
+                        aria-label={t("Edit user {name}", "Edit user {name}", { name: user.name })}
                       >
                         <Pencil className="size-4" />
                       </button>
@@ -1153,16 +1085,16 @@ export default function UserProfiles() {
                             user.id
                           )
                         }
-                        className="flex size-10 items-center justify-center rounded-xl border border-red-200 text-red-500 hover:bg-red-50"
-                        title={`Hapus user ${user.name}`}
-                        aria-label={`Hapus user ${user.name}`}
+                        className="flex size-10 items-center justify-center rounded-control border border-danger/20 text-danger hover:bg-danger-soft"
+                        title={t("Hapus user {name}", "Delete user {name}", { name: user.name })}
+                        aria-label={t("Hapus user {name}", "Delete user {name}", { name: user.name })}
                       >
                         <Trash2 className="size-4" />
                       </button>
                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                  <div className="mt-4 flex items-center gap-2 text-sm text-fg-muted">
                     <Phone className="size-4" />
 
                     {user.phone ||
@@ -1177,19 +1109,19 @@ export default function UserProfiles() {
         {/* PAGINATION */}
 
         {pagination && (
-          <div className="flex flex-col gap-4 border-t border-gray-200 px-5 py-4 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm text-gray-500">
-              Menampilkan{" "}
-              <span className="font-semibold text-gray-800 dark:text-white">
+          <div className="flex flex-col gap-4 border-t border-line px-5 py-4 dark:border-line md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-fg-muted">
+              {t("Menampilkan", "Showing")}{" "}
+              <span className="font-semibold text-fg">
                 {users.length}
               </span>{" "}
-              dari{" "}
-              <span className="font-semibold text-gray-800 dark:text-white">
+              {t("dari", "of")}{" "}
+              <span className="font-semibold text-fg">
                 {
                   pagination.total
                 }
               </span>{" "}
-              user
+              {t("user", "users")}
             </div>
 
             <div className="flex items-center justify-center gap-3">
@@ -1204,13 +1136,13 @@ export default function UserProfiles() {
                       prev - 1
                   )
                 }
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-white transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900"
+                className="flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50 dark:border-line-strong dark:bg-surface-muted/60"
               >
                 <ChevronLeft className="size-4" />
               </button>
 
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium dark:border-gray-700 dark:bg-gray-900">
-                Page{" "}
+              <div className="rounded-card border border-line bg-surface-muted/40 px-4 py-2 text-sm font-medium dark:border-line-strong dark:bg-surface-muted/60">
+                {t("Page")}{" "}
                 {
                   pagination.current_page
                 }{" "}
@@ -1231,7 +1163,7 @@ export default function UserProfiles() {
                       prev + 1
                   )
                 }
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-white transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900"
+                className="flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50 dark:border-line-strong dark:bg-surface-muted/60"
               >
                 <ChevronRight className="size-4" />
               </button>

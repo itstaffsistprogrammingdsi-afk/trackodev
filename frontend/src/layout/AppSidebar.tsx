@@ -1,7 +1,14 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { AxiosError } from "axios";
-import { PanelLeftClose, Search } from "lucide-react";
+import {
+  Building2,
+  Check,
+  ChevronsUpDown,
+  ChevronsLeft,
+  FolderKanban,
+  Search,
+} from "lucide-react";
 import api from "@/lib/axios";
 
 import UserDropdown from "../components/header/UserDropdown";
@@ -18,9 +25,13 @@ import {
 
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useDivisions } from "@/features/division/hooks/useDivisions";
+import type { Division } from "@/features/division/types";
 import CommandPalette from "@/components/layout/CommandPalette";
 import type { CommandPaletteItem } from "@/components/layout/CommandPalette";
+import { Dropdown } from "@/components/ui/dropdown/Dropdown";
+import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -52,6 +63,31 @@ type NavItem = {
   activePrefixes?: string[];
 };
 
+const navEnglish: Record<string, string> = {
+  Dashboard: "Dashboard",
+  "My Work": "My Work",
+  "Virtual Office": "Virtual office",
+  "Task Management": "Task management",
+  Divisi: "Divisions",
+  "Divisi saya": "My divisions",
+  Workspace: "Workspaces",
+  Campaign: "Campaigns",
+  "Detail campaign": "Campaign detail",
+  Board: "Board",
+  Calendar: "Calendar",
+  Form: "Forms",
+  "Semua form": "All forms",
+  "Buat form": "Create form",
+  Chats: "Chats",
+  Report: "Reports",
+  "User Management": "User management",
+  "Studio Maskot": "Mascot studio",
+  Utama: "Main",
+  Kolaborasi: "Collaboration",
+  Lainnya: "Other",
+  "Semua divisi": "All divisions",
+};
+
 function navGroup(name: string): string {
   if (["Dashboard", "My Work", "Virtual Office", "Task Management"].includes(name)) {
     return "Utama";
@@ -71,6 +107,30 @@ const DotIcon = memo(() => (
 ));
 
 DotIcon.displayName = "DotIcon";
+
+type DivisionBadgeTone = "collab" | "admin" | "member";
+
+function DivisionBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: DivisionBadgeTone;
+}) {
+  const tones: Record<DivisionBadgeTone, string> = {
+    collab: "bg-info-soft text-info",
+    admin: "bg-accent-soft text-accent",
+    member: "bg-surface-muted text-fg-muted",
+  };
+
+  return (
+    <span
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${tones[tone]}`}
+    >
+      {label}
+    </span>
+  );
+}
 
 const menuItemBase =
   "relative flex items-center gap-3 rounded-control transition-colors duration-150";
@@ -113,6 +173,28 @@ function usePersistedRouteParams(
   const [campaignId, setCampaignId] = useState<string | null>(() =>
     localStorage.getItem("lastCampaignId"),
   );
+
+  // Halaman campaign detail bisa memberi tahu divisi asalnya (URL campaign
+  // tidak memuat divisionId, hanya workspaceId).
+  useEffect(() => {
+    const handleDivisionContext = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ divisionId?: string }>
+      ).detail;
+
+      if (!detail?.divisionId) return;
+
+      setDivisionId(detail.divisionId);
+      localStorage.setItem("lastDivisionId", detail.divisionId);
+    };
+
+    window.addEventListener("tracko:division-context", handleDivisionContext);
+    return () =>
+      window.removeEventListener(
+        "tracko:division-context",
+        handleDivisionContext,
+      );
+  }, []);
 
   // Simpan ID terakhir ketika user berpindah halaman
   useEffect(() => {
@@ -250,11 +332,13 @@ const TreeLeaf = memo(function TreeLeaf({
 type TreeBranchProps = {
   subItem: SubItem;
   onNavigate?: () => void;
+  translateName: (name: string) => string;
 };
 
 const TreeBranch = memo(function TreeBranch({
   subItem,
   onNavigate,
+  translateName,
 }: TreeBranchProps) {
   const hasChildren = !!subItem.children?.length;
   const location = useLocation();
@@ -333,7 +417,9 @@ const TreeBranch = memo(function TreeBranch({
                 : "text-fg-muted hover:bg-surface-muted hover:text-fg"
             }`}
           >
-            <span className="flex-1 truncate text-left">{subItem.name}</span>
+            <span className="flex-1 truncate text-left">
+              {translateName(subItem.name)}
+            </span>
             <ChevronDownIcon
               className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
                 open ? "rotate-180" : ""
@@ -350,7 +436,7 @@ const TreeBranch = memo(function TreeBranch({
               {subItem.children?.map((child, index) => (
                 <TreeLeaf
                   key={child.name}
-                  name={child.name}
+                  name={translateName(child.name)}
                   path={child.path}
                   active={index === activeChildIndex}
                   onNavigate={onNavigate}
@@ -371,7 +457,7 @@ const TreeBranch = memo(function TreeBranch({
           }`}
         >
           <DotIcon />
-          <span className="truncate">{subItem.name}</span>
+          <span className="truncate">{translateName(subItem.name)}</span>
         </Link>
       )}
     </li>
@@ -394,6 +480,12 @@ const AppSidebar: React.FC = () => {
 
   const location = useLocation();
   const auth = useAuth();
+  const { language, t } = useLanguage();
+
+  const label = useCallback(
+    (name: string) => t(name, navEnglish[name] ?? name),
+    [t],
+  );
 
   const isSuperAdmin = useMemo(() => {
     try {
@@ -418,11 +510,51 @@ const AppSidebar: React.FC = () => {
   }, [auth]);
 
   const { data: accessibleDivisions } = useDivisions(true, !canViewAllDivisions);
+  const { data: allDivisions } = useDivisions(false, canViewAllDivisions);
   const { divisionId, workspaceId, campaignId } =
     usePersistedRouteParams(canViewAllDivisions, accessibleDivisions);
 
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+
+  const switcherDivisions = canViewAllDivisions
+    ? allDivisions
+    : accessibleDivisions;
+  const currentDivision = switcherDivisions?.find(
+    (division) => division.id === divisionId,
+  );
+
+  const badgeForDivision = (division: Division) => {
+    if (!auth.user?.id) return null;
+
+    // Divisi yang bisa diakses lewat workspace/campaign tidak mengirim roster
+    // anggota (division.users tidak dimuat). Itu artinya akses kolaborator.
+    if (!Array.isArray(division.users)) {
+      return {
+        label: t("Kolaborator", "Collab"),
+        tone: "collab" as const,
+      };
+    }
+
+    const membership = division.users.find(
+      (member) => member.id === auth.user?.id,
+    );
+
+    if (membership?.division_role === "admin") {
+      return { label: t("Admin", "Admin"), tone: "admin" as const };
+    }
+
+    if (membership?.division_role === "member") {
+      return { label: t("Anggota", "Member"), tone: "member" as const };
+    }
+
+    return null;
+  };
+
+  const currentBadge = currentDivision
+    ? badgeForDivision(currentDivision)
+    : null;
 
   const slim = !isExpanded && !isHovered && !isMobileOpen;
 
@@ -600,9 +732,9 @@ const AppSidebar: React.FC = () => {
       if (item.path) {
         result.push({
           id: item.name,
-          label: item.name,
+          label: label(item.name),
           path: item.path,
-          group: item.group,
+          group: item.group ? label(item.group) : undefined,
           icon: item.icon,
         });
       }
@@ -610,9 +742,9 @@ const AppSidebar: React.FC = () => {
       for (const sub of item.subItems ?? []) {
         result.push({
           id: `${item.name}-${sub.name}`,
-          label: sub.name,
+          label: label(sub.name),
           path: sub.path,
-          group: item.name,
+          group: label(item.name),
           icon: item.icon,
         });
 
@@ -621,9 +753,9 @@ const AppSidebar: React.FC = () => {
 
           result.push({
             id: `${item.name}-${sub.name}-${child.name}`,
-            label: child.name,
+            label: label(child.name),
             path: child.path,
-            group: `${item.name} · ${sub.name}`,
+            group: `${label(item.name)} · ${label(sub.name)}`,
             icon: item.icon,
           });
         }
@@ -631,7 +763,8 @@ const AppSidebar: React.FC = () => {
     }
 
     return result;
-  }, [navItems]);
+    // `language` ikut dependency agar label palette ikut berubah saat bahasa diganti.
+  }, [navItems, label, language]);
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -695,7 +828,7 @@ const AppSidebar: React.FC = () => {
       {isMobileOpen && (
         <button
           type="button"
-          aria-label="Close sidebar"
+          aria-label={t("Tutup sidebar", "Close sidebar")}
           onClick={toggleMobileSidebar}
           className="fixed inset-0 z-40 bg-overlay lg:hidden"
         />
@@ -734,21 +867,160 @@ const AppSidebar: React.FC = () => {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-              aria-label="Ciutkan sidebar"
+              title={t("Ciutkan sidebar", "Collapse sidebar")}
+              className="flex h-8 w-8 items-center justify-center rounded-[7px] border border-line bg-surface text-fg-subtle transition-colors hover:border-line-strong hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              aria-label={t("Ciutkan sidebar", "Collapse sidebar")}
             >
-              <PanelLeftClose aria-hidden="true" className="h-4 w-4" />
+              <ChevronsLeft aria-hidden="true" className="h-4 w-4" />
             </button>
           )}
         </div>
 
         {/* CONTENT */}
         <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4">
+          {switcherDivisions?.length ? (
+            slim ? (
+              <Link
+                to={divisionId ? `/divisions/${divisionId}` : "/divisions"}
+                title={currentDivision?.name ?? label("Divisi")}
+                onClick={handleNavClick}
+                className="mx-auto flex h-10 w-10 items-center justify-center rounded-control border border-line bg-surface text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              >
+                <Building2 aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            ) : (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setSwitcherOpen((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={switcherOpen}
+                  className="dropdown-toggle flex w-full items-center gap-2.5 rounded-control border border-line bg-surface px-2.5 py-2 text-left transition-colors hover:border-line-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-accent-soft text-accent">
+                    <Building2 aria-hidden="true" className="h-3.5 w-3.5" />
+                  </span>
+
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[10px] font-medium text-fg-subtle">
+                      {label("Divisi")}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-xs font-medium text-fg">
+                        {location.pathname === "/divisions"
+                          ? canViewAllDivisions
+                            ? label("Semua divisi")
+                            : label("Divisi saya")
+                          : currentDivision?.name ??
+                            (canViewAllDivisions
+                              ? label("Semua divisi")
+                              : label("Divisi saya"))}
+                      </span>
+                      {currentBadge ? (
+                        <DivisionBadge
+                          label={currentBadge.label}
+                          tone={currentBadge.tone}
+                        />
+                      ) : null}
+                    </span>
+                  </span>
+
+                  <ChevronsUpDown
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 shrink-0 text-fg-subtle"
+                  />
+                </button>
+
+                <Dropdown
+                  isOpen={switcherOpen}
+                  onClose={() => setSwitcherOpen(false)}
+                  align="left"
+                  className="w-full p-1.5"
+                >
+                  <p className="px-2 py-1 text-[10px] font-medium text-fg-subtle">
+                    {t("Pindah divisi", "Switch division")}
+                  </p>
+
+                  <div className="max-h-60 overflow-y-auto">
+                    {switcherDivisions.map((division) => {
+                      const selected = division.id === divisionId;
+                      const badge = badgeForDivision(division);
+
+                      return (
+                        <DropdownItem
+                          key={division.id}
+                          tag="a"
+                          to={`/divisions/${division.id}`}
+                          icon={
+                            selected ? (
+                              <Check
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5 text-accent"
+                              />
+                            ) : (
+                              <Building2
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5 text-fg-subtle"
+                              />
+                            )
+                          }
+                          endSlot={
+                            badge ? (
+                              <DivisionBadge
+                                label={badge.label}
+                                tone={badge.tone}
+                              />
+                            ) : undefined
+                          }
+                          className={
+                            selected
+                              ? "bg-accent-soft text-accent-strong hover:bg-accent-soft"
+                              : undefined
+                          }
+                          onClick={() => {
+                            localStorage.setItem("lastDivisionId", division.id);
+                            localStorage.removeItem("lastWorkspaceId");
+                            localStorage.removeItem("lastCampaignId");
+                          }}
+                          onItemClick={() => {
+                            setSwitcherOpen(false);
+                            handleNavClick();
+                          }}
+                        >
+                          {division.name}
+                        </DropdownItem>
+                      );
+                    })}
+                  </div>
+
+                  <div className="my-1 border-t border-line" />
+
+                  <DropdownItem
+                    tag="a"
+                    to={divisionId ? `/divisions/${divisionId}` : "/divisions"}
+                    icon={
+                      <FolderKanban
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 text-fg-subtle"
+                      />
+                    }
+                    onItemClick={() => {
+                      setSwitcherOpen(false);
+                      handleNavClick();
+                    }}
+                  >
+                    {t("Daftar workspace", "Workspace list")}
+                  </DropdownItem>
+                </Dropdown>
+              </div>
+            )
+          ) : null}
+
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            title="Cari menu (Ctrl+K)"
-            aria-label="Cari menu"
+            title={t("Cari menu (Ctrl+K)", "Search menu (Ctrl+K)")}
+            aria-label={t("Cari menu", "Search menu")}
             className={
               slim
                 ? "mx-auto flex h-9 w-9 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
@@ -758,9 +1030,14 @@ const AppSidebar: React.FC = () => {
             <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
             {!slim ? (
               <>
-                <span className="flex-1 text-left">Cari menu</span>
+                <span className="flex-1 text-left">
+                  {t("Cari menu", "Search menu")}
+                </span>
                 <kbd className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-2xs">
-                  ⌘K
+                  {typeof navigator !== "undefined" &&
+                  /Mac|iPhone|iPad/i.test(navigator.platform)
+                    ? "⌘K"
+                    : "Ctrl K"}
                 </kbd>
               </>
             ) : null}
@@ -789,13 +1066,13 @@ const AppSidebar: React.FC = () => {
                             index === 0 ? "mb-2" : "mb-2 mt-4"
                           }`}
                         >
-                          {item.group}
+                          {label(item.group ?? "")}
                         </p>
                       ) : null}
                       <button
                         type="button"
                         aria-expanded={isOpen}
-                        title={slim ? item.name : undefined}
+                        title={slim ? label(item.name) : undefined}
                         onClick={() =>
                           setOpenSubmenu((prev) =>
                             prev === index ? null : index,
@@ -814,7 +1091,7 @@ const AppSidebar: React.FC = () => {
                         {!slim && (
                           <>
                             <span className="flex-1 truncate text-left text-sm font-medium">
-                              {item.name}
+                              {label(item.name)}
                             </span>
                             <ChevronDownIcon
                               className={`h-4 w-4 shrink-0 transition-transform ${
@@ -839,6 +1116,7 @@ const AppSidebar: React.FC = () => {
                                 key={`${item.name}-${subItem.name}`}
                                 subItem={subItem}
                                 onNavigate={handleNavClick}
+                                translateName={label}
                               />
                             ))}
                           </ul>
@@ -858,13 +1136,13 @@ const AppSidebar: React.FC = () => {
                           index === 0 ? "mb-2" : "mb-2 mt-4"
                         }`}
                       >
-                        {item.group}
+                        {label(item.group ?? "")}
                       </p>
                     ) : null}
                     <Link
                       to={item.path}
                       onClick={handleNavClick}
-                      title={slim ? item.name : undefined}
+                      title={slim ? label(item.name) : undefined}
                       aria-current={
                         startsWithRoute(location.pathname, item.path)
                           ? "page"
@@ -882,7 +1160,7 @@ const AppSidebar: React.FC = () => {
 
                       {!slim && (
                         <span className="truncate text-sm font-medium">
-                          {item.name}
+                          {label(item.name)}
                         </span>
                       )}
                     </Link>

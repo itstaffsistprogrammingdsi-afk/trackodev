@@ -4,6 +4,7 @@ import useLabels from "../../hooks/useLabels";
 
 import { Card } from "../../types";
 import { useAuth } from '../../../../context/AuthContext';
+import { useLanguage } from "@/context/LanguageContext";
 import TaxonomyPickerSection from "./TaxonomyPickerSection";
 
 interface Props {
@@ -19,6 +20,7 @@ export default function LabelSection({
   setDetail,
 }: Props) {
   const { can } = useAuth();
+  const { t } = useLanguage();
   const {
     labels,
     loading,
@@ -62,12 +64,12 @@ export default function LabelSection({
       attachedIds={detail.labels?.map((l) => l.id) ?? []}
       loading={loading}
       error={error}
-      searchPlaceholder="Cari label..."
-      createPlaceholder="Nama label baru..."
-      attachedTitle="Label terpasang"
-      attachedEmptyText="Belum ada label terpasang pada card ini."
-      listTitle="Daftar label"
-      duplicateHint="Label sudah ada. Pilih label tersebut dari daftar untuk memasangnya."
+      searchPlaceholder={t("Cari label...", "Search labels...")}
+      createPlaceholder={t("Nama label baru...", "New label name...")}
+      attachedTitle={t("Label terpasang", "Attached labels")}
+      attachedEmptyText={t("Belum ada label terpasang pada card ini.", "No labels attached to this card yet.")}
+      listTitle={t("Daftar label", "Label list")}
+      duplicateHint={t("Label sudah ada. Pilih label tersebut dari daftar untuk memasangnya.", "This label already exists. Select it from the list to attach it.")}
       canCreate={can('label.create')}
       canAttach={can('label.attach')}
       canDetach={can('label.detach')}

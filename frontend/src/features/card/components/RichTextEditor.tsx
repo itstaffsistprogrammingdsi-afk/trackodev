@@ -7,6 +7,7 @@ import {
   Bold,
   Italic,
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const ALLOWED_TAGS = new Set(["br", "div", "em", "i", "p", "span", "strong", "b"]);
 
@@ -191,10 +192,10 @@ function ToolbarButton({ label, onCommand, active = false, children }: ToolbarBu
         event.preventDefault();
         onCommand();
       }}
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-control transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
         active
-          ? "bg-blue-100 text-blue-700 shadow-inner dark:bg-blue-500/25 dark:text-blue-200"
-          : "text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
+          ? "bg-accent-soft text-accent"
+          : "text-fg-muted hover:bg-surface-muted hover:text-fg"
       }`}
     >
       {children}
@@ -213,10 +214,13 @@ interface RichTextEditorProps {
 export function RichTextEditor({
   value,
   onChange,
-  placeholder = "Tulis deskripsi...",
-  ariaLabel = "Deskripsi",
+  placeholder,
+  ariaLabel,
   className = "",
 }: RichTextEditorProps) {
+  const { t } = useLanguage();
+  const resolvedPlaceholder = placeholder ?? t("Tulis deskripsi...", "Write a description...");
+  const resolvedAriaLabel = ariaLabel ?? t("Deskripsi", "Description");
   const editorRef = useRef<HTMLDivElement | null>(null);
   const selectionRef = useRef<Range | null>(null);
   const typingMarkerRef = useRef<HTMLElement | null>(null);
@@ -604,47 +608,47 @@ export function RichTextEditor({
   };
 
   return (
-    <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-800/40 ${className}`}>
-      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white/80 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900/70">
-        <ToolbarButton label="Bold" active={toolbarState.bold} onCommand={() => runCommand("bold")}>
+    <div className={`overflow-hidden rounded-card border border-line bg-surface-muted/40 ${className}`}>
+      <div className="flex flex-wrap items-center gap-1 border-b border-line bg-surface px-2 py-1.5">
+        <ToolbarButton label={t("Bold")} active={toolbarState.bold} onCommand={() => runCommand("bold")}>
           <Bold size={16} />
         </ToolbarButton>
-        <ToolbarButton label="Italic" active={toolbarState.italic} onCommand={() => runCommand("italic")}>
+        <ToolbarButton label={t("Italic")} active={toolbarState.italic} onCommand={() => runCommand("italic")}>
           <Italic size={16} />
         </ToolbarButton>
         <select
-          aria-label="Ukuran font"
+          aria-label={t("Ukuran font", "Font size")}
           value={toolbarState.fontSize}
           onMouseDown={saveSelection}
           onChange={(event) => {
             if (event.target.value) applyFontSize(event.target.value);
           }}
-          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          className="h-8 rounded-control border border-line bg-surface px-2 text-xs font-medium text-fg-muted outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
         >
-          <option value="" disabled>Font size</option>
+          <option value="" disabled>{t("Ukuran font", "Font size")}</option>
           {[12, 14, 16, 18, 20, 24, 32].map((size) => (
             <option key={size} value={size}>{size}px</option>
           ))}
         </select>
-        <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
-        <ToolbarButton label="Rata kiri" active={toolbarState.alignment === "left"} onCommand={() => runCommand("justifyLeft")}>
+        <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />
+        <ToolbarButton label={t("Rata kiri", "Align left")} active={toolbarState.alignment === "left"} onCommand={() => runCommand("justifyLeft")}>
           <AlignLeft size={16} />
         </ToolbarButton>
-        <ToolbarButton label="Rata tengah" active={toolbarState.alignment === "center"} onCommand={() => runCommand("justifyCenter")}>
+        <ToolbarButton label={t("Rata tengah", "Align center")} active={toolbarState.alignment === "center"} onCommand={() => runCommand("justifyCenter")}>
           <AlignCenter size={16} />
         </ToolbarButton>
-        <ToolbarButton label="Rata kanan" active={toolbarState.alignment === "right"} onCommand={() => runCommand("justifyRight")}>
+        <ToolbarButton label={t("Rata kanan", "Align right")} active={toolbarState.alignment === "right"} onCommand={() => runCommand("justifyRight")}>
           <AlignRight size={16} />
         </ToolbarButton>
-        <ToolbarButton label="Rata kiri-kanan" active={toolbarState.alignment === "justify"} onCommand={() => runCommand("justifyFull")}>
+        <ToolbarButton label={t("Rata kiri-kanan", "Justify")} active={toolbarState.alignment === "justify"} onCommand={() => runCommand("justifyFull")}>
           <AlignJustify size={16} />
         </ToolbarButton>
       </div>
 
       <div className="relative">
         {empty ? (
-          <span className="pointer-events-none absolute left-5 top-5 text-[15px] text-slate-400 dark:text-slate-500">
-            {placeholder}
+          <span className="pointer-events-none absolute left-5 top-5 text-[15px] text-fg-subtle dark:text-fg-muted">
+            {resolvedPlaceholder}
           </span>
         ) : null}
         <div
@@ -652,7 +656,7 @@ export function RichTextEditor({
           contentEditable
           suppressContentEditableWarning
           role="textbox"
-          aria-label={ariaLabel}
+          aria-label={resolvedAriaLabel}
           aria-multiline="true"
           onInput={handleInput}
           onKeyUp={saveSelection}
@@ -661,7 +665,7 @@ export function RichTextEditor({
           onSelect={updateToolbarState}
           onBlur={saveSelection}
           onPaste={handlePaste}
-          className="min-h-[300px] max-h-[70vh] overflow-y-auto whitespace-normal break-words p-5 text-[15px] leading-relaxed text-slate-800 outline-none focus:ring-4 focus:ring-blue-500/10 dark:text-slate-100 sm:min-h-[440px] sm:text-base lg:min-h-[560px] [&_div]:min-h-[1.5em] [&_p]:min-h-[1.5em]"
+          className="max-h-[70vh] min-h-[300px] overflow-y-auto whitespace-normal break-words p-5 text-[15px] leading-relaxed text-fg outline-none focus:ring-2 focus:ring-accent/15 sm:min-h-[440px] sm:text-base lg:min-h-[560px] [&_div]:min-h-[1.5em] [&_p]:min-h-[1.5em]"
         />
       </div>
     </div>

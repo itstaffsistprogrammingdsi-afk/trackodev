@@ -1,10 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { X, Download, FileText, Eye, FileSpreadsheet } from 'lucide-react';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  X,
+} from "lucide-react";
+
 import {
   AttachmentPreviewModal,
   type ReportAttachmentPreview,
-} from './AttachmentPreviewModal';
-import { useAuth } from '@/context/AuthContext';
+} from "./AttachmentPreviewModal";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ReportPreviewModalProps {
   isOpen: boolean;
@@ -28,21 +37,23 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   onExportExcel,
   previewData,
   loading,
-  title = 'Preview Laporan',
+  title,
 }) => {
   const { can } = useAuth();
-  const canExportPdf = can('report.export') || can('report.export.pdf');
-  const canExportExcel = can('report.export') || can('report.export.excel');
-  const [viewMode, setViewMode] = useState<'html' | 'pdf'>('html');
-  const [previewAttachment, setPreviewAttachment] = useState<ReportAttachmentPreview | null>(null);
+  const { t } = useLanguage();
+  const resolvedTitle = title ?? t("Preview laporan", "Report preview");
+  const canExportPdf = can("report.export") || can("report.export.pdf");
+  const canExportExcel = can("report.export") || can("report.export.excel");
+  const [viewMode, setViewMode] = useState<"html" | "pdf">("html");
+  const [previewAttachment, setPreviewAttachment] =
+    useState<ReportAttachmentPreview | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    if (isOpen && previewData?.pdf_base64 && viewMode === 'pdf') {
+    if (isOpen && previewData?.pdf_base64 && viewMode === "pdf") {
       const iframe = iframeRef.current;
       if (iframe) {
-        const pdfData = `data:application/pdf;base64,${previewData.pdf_base64}`;
-        iframe.src = pdfData;
+        iframe.src = `data:application/pdf;base64,${previewData.pdf_base64}`;
       }
     }
   }, [isOpen, previewData, viewMode]);
@@ -55,20 +66,20 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
     if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
+      if (event.key === "Escape") onClose();
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   const handleHtmlClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
-    const link = target.closest<HTMLAnchorElement>('[data-attachment-preview="true"]');
+    const link = target.closest<HTMLAnchorElement>(
+      '[data-attachment-preview="true"]',
+    );
     if (!link) return;
 
     event.preventDefault();
@@ -78,144 +89,157 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
     if (!url) return;
 
     setPreviewAttachment({
-      name: link.dataset.attachmentName || link.textContent?.trim() || 'Attachment',
+      name:
+        link.dataset.attachmentName ||
+        link.textContent?.trim() ||
+        t("Lampiran", "Attachment"),
       url,
       fileType: link.dataset.attachmentFileType,
     });
   };
 
-
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden">
-      {/* Backdrop */}
       <div
-        className="absolute inset-0 z-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-overlay backdrop-blur-sm"
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      {/* Modal */}
       <div className="absolute inset-0 z-10 flex items-end justify-center p-0 sm:items-center sm:p-4">
         <div
-          className="relative z-10 flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[90dvh] sm:rounded-2xl"
+          role="dialog"
+          aria-modal="true"
+          aria-label={resolvedTitle}
+          className="relative z-10 flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden border border-line bg-surface shadow-e3 sm:h-[90dvh] sm:rounded-panel"
           onClick={(event) => event.stopPropagation()}
+          style={{ animation: "ui-scale-in 160ms ease-out" }}
         >
-          
-          {/* Header */}
-          <div className="relative z-20 flex shrink-0 flex-col gap-3 border-b border-gray-200 bg-gray-50/90 px-4 py-3 pointer-events-auto sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <FileText className="h-5 w-5 shrink-0 text-blue-600" />
+          <header className="flex shrink-0 flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3.5">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+                <FileText size={16} aria-hidden="true" />
+              </span>
               <div className="min-w-0">
-                <h2 className="truncate text-lg font-bold text-gray-900">{title}</h2>
-                {previewData && (
-                  <p className="truncate text-sm text-gray-500">
-                    {previewData.users_count} User · {previewData.total_cards} Card
+                <h2 className="truncate text-sm font-semibold tracking-heading text-fg">
+                  {resolvedTitle}
+                </h2>
+                {previewData ? (
+                  <p className="truncate text-2xs text-fg-subtle">
+                    {t("{users} user · {cards} card", "{users} users · {cards} cards", {
+                      users: previewData.users_count,
+                      cards: previewData.total_cards,
+                    })}
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
-            
-            <div className="ml-auto flex w-full max-w-full shrink-0 flex-wrap items-center justify-end gap-2 pb-1 sm:w-auto sm:pb-0">
-              {/* Toggle View Mode */}
-              <div className="flex shrink-0 overflow-hidden rounded-lg border border-gray-200">
+
+            <div className="ml-auto flex w-full max-w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
+              <div className="flex shrink-0 items-center gap-0.5 rounded-control border border-line bg-surface-muted/50 p-0.5">
                 <button
                   type="button"
-                  onClick={() => setViewMode('html')}
-                    className={`flex h-9 shrink-0 items-center gap-1 whitespace-nowrap px-2.5 text-sm font-medium transition-colors ${
-                    viewMode === 'html'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  onClick={() => setViewMode("html")}
+                  aria-pressed={viewMode === "html"}
+                  className={`inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-[7px] px-2.5 text-xs font-medium transition-colors ${
+                    viewMode === "html"
+                      ? "bg-surface text-fg shadow-e1"
+                      : "text-fg-muted hover:text-fg"
                   }`}
                 >
-                  <FileText className="h-4 w-4" />
-                  Detail
+                  <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("Detail")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode('pdf')}
-                    className={`flex h-9 shrink-0 items-center gap-1 whitespace-nowrap px-2.5 text-sm font-medium transition-colors ${
-                    viewMode === 'pdf'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  onClick={() => setViewMode("pdf")}
+                  aria-pressed={viewMode === "pdf"}
+                  className={`inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-[7px] px-2.5 text-xs font-medium transition-colors ${
+                    viewMode === "pdf"
+                      ? "bg-surface text-fg shadow-e1"
+                      : "text-fg-muted hover:text-fg"
                   }`}
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                   PDF
                 </button>
               </div>
 
-              {/* Action Buttons */}
               <button
+                type="button"
                 onClick={onExportExcel}
-                className={`${canExportExcel ? 'flex' : 'hidden'} h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700`}
+                className={`${canExportExcel ? "inline-flex" : "hidden"} h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg`}
               >
-                <FileSpreadsheet className="w-4 h-4" />
+                <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
                 Excel
               </button>
-              
+
               <button
+                type="button"
                 onClick={onDownload}
-                className={`${canExportPdf ? 'flex' : 'hidden'} h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700`}
+                className={`${canExportPdf ? "inline-flex" : "hidden"} h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control bg-accent px-2.5 text-xs font-medium text-accent-fg transition-colors hover:bg-accent-strong`}
               >
-                <Download className="w-4 h-4" />
-                Download PDF
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("Unduh PDF", "Download PDF")}
               </button>
-              
+
               <button
+                type="button"
                 onClick={onClose}
-                className="h-9 w-9 shrink-0 rounded-lg p-2 transition-colors hover:bg-gray-200"
-                aria-label="Tutup preview laporan"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
+                aria-label={t("Tutup preview laporan", "Close report preview")}
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-          </div>
+          </header>
 
-          {/* Content */}
-          <div className="flex-1 overflow-hidden bg-gray-100">
+          <div className="flex-1 overflow-hidden bg-surface-muted/40">
             {loading ? (
-              <div className="flex flex-col items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Sedang memuat preview...</p>
-                <div className="mt-4 w-64 bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-                </div>
+              <div className="flex h-full flex-col items-center justify-center">
+                <Loader2
+                  className="h-6 w-6 animate-spin text-accent motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+                <p className="mt-3 text-xs text-fg-muted">
+                  {t("Menyiapkan preview…", "Preparing preview…")}
+                </p>
               </div>
             ) : previewData ? (
-              <>
-                {viewMode === 'pdf' ? (
-                  <iframe
-                    ref={iframeRef}
-                    className="w-full h-full border-0"
-                    title="PDF Preview"
+              viewMode === "pdf" ? (
+                <iframe
+                  ref={iframeRef}
+                  className="h-full w-full border-0"
+                  title={t("Preview PDF", "PDF preview")}
+                />
+              ) : (
+                <div className="h-full overflow-auto bg-surface p-2 sm:p-4">
+                  <div
+                    className="mx-auto max-w-6xl"
+                    dangerouslySetInnerHTML={{ __html: previewData.html }}
+                    onClick={handleHtmlClick}
                   />
-                ) : (
-                  <div className="h-full overflow-auto bg-white p-2 sm:p-4">
-                    <div 
-                      className="max-w-6xl mx-auto"
-                      dangerouslySetInnerHTML={{ __html: previewData.html }}
-                      onClick={handleHtmlClick}
-                    />
-                  </div>
-                )}
-              </>
+                </div>
+              )
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-gray-500">Tidak ada data untuk dipreview</p>
+              <div className="flex h-full items-center justify-center px-4">
+                <p className="text-xs text-fg-muted">
+                  {t("Tidak ada data untuk dipreview", "No data to preview")}
+                </p>
               </div>
             )}
           </div>
 
-          {/* Footer */}
-          <div className="hidden items-center justify-between gap-2 border-t border-gray-200 bg-gray-50/80 px-6 py-3 sm:flex sm:flex-wrap">
-            <div className="text-sm text-gray-500">
-              <span className="font-medium">Tip:</span> Klik nama file pada mode Detail untuk preview aman di dalam modal
-            </div>
-
-          </div>
+          <footer className="hidden items-center justify-between gap-2 border-t border-line bg-surface px-5 py-2.5 sm:flex">
+            <p className="text-2xs text-fg-subtle">
+              {t("Klik nama file pada mode Detail untuk membuka preview aman di dalam modal.", "Click a file name in Detail mode to open a secure preview inside the modal.")}
+            </p>
+          </footer>
         </div>
       </div>
+
       <AttachmentPreviewModal
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}

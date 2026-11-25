@@ -1,5 +1,7 @@
 import { Globe, User } from "lucide-react";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export type DashboardScope = "global" | "me";
 
 interface Props {
@@ -13,6 +15,7 @@ interface Props {
  * Pengganti <select> scope yang kecil dan kurang jelas.
  */
 export default function ScopeToggle({ value, onChange, isSuperAdmin }: Props) {
+  const { t } = useLanguage();
   const options: Array<{
     value: DashboardScope;
     label: string;
@@ -21,14 +24,16 @@ export default function ScopeToggle({ value, onChange, isSuperAdmin }: Props) {
   }> = [
     {
       value: "global",
-      label: isSuperAdmin ? "Global View" : "Division View",
-      description: isSuperAdmin ? "Seluruh sistem" : "Ringkasan divisi Anda",
+      label: isSuperAdmin ? t("Global View") : t("Division View"),
+      description: isSuperAdmin
+        ? t("Seluruh sistem", "Entire system")
+        : t("Ringkasan divisi Anda", "Your division summary"),
       Icon: Globe,
     },
     {
       value: "me",
-      label: "My Workspace",
-      description: "Ruang kerja Anda",
+      label: t("My Workspace"),
+      description: t("Ruang kerja Anda", "Your workspace"),
       Icon: User,
     },
   ];
@@ -41,7 +46,7 @@ export default function ScopeToggle({ value, onChange, isSuperAdmin }: Props) {
   return (
     <div
       role="radiogroup"
-      aria-label="Cakupan dashboard"
+      aria-label={t("Cakupan dashboard", "Dashboard scope")}
       className="relative grid w-full grid-cols-2 rounded-control border border-line bg-surface-muted p-1 sm:w-auto"
     >
       {/* Indicator meluncur */}

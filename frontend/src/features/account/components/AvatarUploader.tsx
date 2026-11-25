@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useUploadAvatar } from "../hooks/useAccount";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface AvatarUploaderProps {
   name?: string;
@@ -13,6 +14,7 @@ export default function AvatarUploader({
   name,
   avatarUrl,
 }: AvatarUploaderProps) {
+  const { t } = useLanguage();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,12 +29,16 @@ export default function AvatarUploader({
     setError(null);
 
     if (!file.type.startsWith("image/")) {
-      setError("File harus berupa gambar.");
+      setError(t("File harus berupa gambar.", "The file must be an image."));
       return;
     }
 
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      setError(`Ukuran gambar maksimal ${MAX_SIZE_MB}MB.`);
+      setError(
+        t("Ukuran gambar maksimal {size}MB.", "Maximum image size is {size}MB.", {
+          size: MAX_SIZE_MB,
+        }),
+      );
       return;
     }
 
@@ -40,7 +46,12 @@ export default function AvatarUploader({
 
     mutate(file, {
       onError: () => {
-        setError("Gagal mengunggah foto profil. Coba lagi.");
+        setError(
+          t(
+            "Gagal mengunggah foto profil. Coba lagi.",
+            "Failed to upload profile photo. Please try again.",
+          ),
+        );
         setPreview(null);
       },
     });
@@ -56,7 +67,7 @@ export default function AvatarUploader({
       <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border border-line bg-surface-muted">
         <img
           src={displaySrc}
-          alt={name || "Avatar"}
+          alt={name || t("Avatar")}
           className="h-full w-full object-cover"
         />
 
@@ -74,11 +85,13 @@ export default function AvatarUploader({
           disabled={isPending}
           className="h-9 rounded-control border border-line bg-surface px-3.5 text-xs font-medium text-fg transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? "Mengunggah..." : "Ganti foto"}
+          {isPending ? t("Mengunggah...", "Uploading...") : t("Ganti foto", "Change photo")}
         </button>
 
         <p className="mt-2 text-xs text-fg-muted">
-          JPG, PNG, atau GIF. Maks {MAX_SIZE_MB}MB.
+          {t("JPG, PNG, atau GIF. Maks {size}MB.", "JPG, PNG, or GIF. Max {size}MB.", {
+            size: MAX_SIZE_MB,
+          })}
         </p>
 
         {error && (

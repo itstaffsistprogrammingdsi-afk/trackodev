@@ -15,6 +15,7 @@ import { confirmDialog, toast } from "@/lib/feedback";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import WorkspaceMembersModal from "./WorkspaceMembersModal";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   workspace: Workspace;
@@ -24,10 +25,10 @@ type Props = {
   view?: "grid" | "list";
 };
 
-function formatDate(value: string): string {
+function formatDate(value: string, locale: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("id-ID", {
+  return date.toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -42,6 +43,7 @@ export default function WorkspaceCard({
   view = "grid",
 }: Props) {
   const navigate = useNavigate();
+  const { t, locale } = useLanguage();
   const [membersOpen, setMembersOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -56,10 +58,14 @@ export default function WorkspaceCard({
     setMenuOpen(false);
 
     const confirmed = await confirmDialog({
-      title: "Hapus workspace",
-      message: `Workspace "${workspace.name}" akan dihapus permanen beserta campaign dan board di dalamnya.`,
-      confirmText: "Hapus workspace",
-      cancelText: "Batal",
+      title: t("Hapus workspace", "Delete workspace"),
+      message: t(
+        'Workspace "{name}" akan dihapus permanen beserta campaign dan board di dalamnya.',
+        'Workspace "{name}" will be permanently deleted along with its campaigns and boards.',
+        { name: workspace.name },
+      ),
+      confirmText: t("Hapus workspace", "Delete workspace"),
+      cancelText: t("Batal", "Cancel"),
       variant: "danger",
     });
 
@@ -67,9 +73,14 @@ export default function WorkspaceCard({
 
     try {
       await deleteWorkspace.mutateAsync(workspace.id);
-      toast.success("Workspace dihapus.");
+      toast.success(t("Workspace dihapus.", "Workspace deleted."));
     } catch {
-      toast.error("Workspace gagal dihapus. Coba lagi.");
+      toast.error(
+        t(
+          "Workspace gagal dihapus. Coba lagi.",
+          "Failed to delete workspace. Try again.",
+        ),
+      );
     }
   };
 
@@ -106,7 +117,9 @@ export default function WorkspaceCard({
         }}
         role="button"
         tabIndex={0}
-        aria-label={`Buka workspace ${workspace.name}`}
+        aria-label={t("Buka workspace {name}", "Open workspace {name}", {
+          name: workspace.name,
+        })}
         className={`group relative flex cursor-pointer border border-line bg-surface shadow-e1 transition-[transform,border-color,box-shadow] duration-200 ease-soft hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:translate-y-0 active:shadow-e1 ${
           isList
             ? "items-center gap-4 rounded-card p-4"
@@ -132,7 +145,8 @@ export default function WorkspaceCard({
                   isList ? "line-clamp-1" : "line-clamp-2"
                 }`}
               >
-                {workspace.description || "Belum ada deskripsi workspace."}
+                {workspace.description ||
+                  t("Belum ada deskripsi workspace.", "No workspace description yet.")}
               </p>
             </div>
           </div>
@@ -153,7 +167,9 @@ export default function WorkspaceCard({
             onClick={(event) => event.stopPropagation()}
           >
             <span className="hidden text-2xs text-fg-subtle sm:block">
-              Dibuat {formatDate(workspace.created_at)}
+              {t("Dibuat {date}", "Created {date}", {
+                date: formatDate(workspace.created_at, locale),
+              })}
             </span>
 
             <ArrowRight
@@ -164,23 +180,21 @@ export default function WorkspaceCard({
             {menu ? <div className="relative">{menu}</div> : null}
           </div>
         ) : (
-          <>
-            <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-fg-muted transition-colors group-hover:text-accent">
-              Buka workspace
-              <ArrowRight
-                aria-hidden="true"
-                className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
-              />
-            </div>
+          <div className="mt-auto pt-4">
+            <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
+              <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-fg-muted transition-colors group-hover:text-accent">
+                {t("Buka workspace", "Open workspace")}
+                <ArrowRight
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                />
+              </span>
 
-            <div className="mt-auto pt-4">
-              <div className="border-t border-line pt-3">
-                <span className="text-2xs text-fg-subtle">
-                  Dibuat {formatDate(workspace.created_at)}
-                </span>
-              </div>
+              <span className="truncate text-2xs text-fg-subtle">
+                {formatDate(workspace.created_at, locale)}
+              </span>
             </div>
-          </>
+          </div>
         )}
       </article>
 
@@ -210,11 +224,15 @@ function WorkspaceMenu({
   onDelete: () => void;
   deleting: boolean;
 }) {
+  const { t } = useLanguage();
+
   return (
     <>
       <button
         type="button"
-        aria-label={`Aksi workspace ${workspace.name}`}
+        aria-label={t("Aksi workspace {name}", "Workspace actions {name}", {
+          name: workspace.name,
+        })}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen(!menuOpen)}
@@ -233,7 +251,7 @@ function WorkspaceMenu({
           onClick={onShare}
           onItemClick={() => setMenuOpen(false)}
         >
-          Bagikan akses
+          {t("Bagikan akses", "Share access")}
         </DropdownItem>
 
         <DropdownItem
@@ -241,7 +259,7 @@ function WorkspaceMenu({
           onClick={onEdit}
           onItemClick={() => setMenuOpen(false)}
         >
-          Edit workspace
+          {t("Edit workspace", "Edit workspace")}
         </DropdownItem>
 
         <DropdownItem
@@ -251,7 +269,7 @@ function WorkspaceMenu({
           onClick={onDelete}
           onItemClick={() => setMenuOpen(false)}
         >
-          Hapus workspace
+          {t("Hapus workspace", "Delete workspace")}
         </DropdownItem>
       </Dropdown>
     </>

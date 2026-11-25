@@ -5,8 +5,10 @@ import { CardDetail } from '../components/CardDetail';
 import { ReportPreviewModal } from '../components/ReportPreviewModal';
 import { SecureExportDialog } from '../components/SecureExportDialog';
 import { generateExportPassword } from '@/lib/exportSecurity';
+import { useLanguage } from '@/context/LanguageContext';
 
 export const ReportPage: React.FC = () => {
+  const { t } = useLanguage();
   const {
     users,
     pagination,
@@ -100,7 +102,7 @@ export const ReportPage: React.FC = () => {
           onExportExcel={handleExportExcelFromPreview}
           previewData={previewData}
           loading={loadingPreview}
-          title={selectedUser ? `Preview Laporan - ${selectedUser.name}` : 'Preview Laporan Batch'}
+          title={selectedUser ? t("Preview Laporan - {name}", "Report preview - {name}", { name: selectedUser.name }) : t("Preview Laporan Batch", "Batch report preview")}
         />
 
         {/* Card Detail Modal */}

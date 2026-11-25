@@ -12,6 +12,8 @@ interface TableProps {
 interface TableHeaderProps {
   children: ReactNode; // Header row(s)
   className?: string; // Optional className for styling
+  /** Rekatkan header saat tabel di-scroll di dalam container. */
+  sticky?: boolean;
 }
 
 // Props for TableBody
@@ -39,9 +41,19 @@ const Table: React.FC<TableProps> = ({ children, className }) => {
 };
 
 // TableHeader Component
-const TableHeader: React.FC<TableHeaderProps> = ({ children, className }) => {
+const TableHeader: React.FC<TableHeaderProps> = ({
+  children,
+  className,
+  sticky = false,
+}) => {
   return (
-    <thead className={cn("[&_tr]:border-b [&_tr]:border-line", className)}>
+    <thead
+      className={cn(
+        "[&_tr]:border-b [&_tr]:border-line",
+        sticky && "sticky top-0 z-10 bg-surface",
+        className,
+      )}
+    >
       {children}
     </thead>
   );

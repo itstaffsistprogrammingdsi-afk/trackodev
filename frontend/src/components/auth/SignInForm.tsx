@@ -13,6 +13,8 @@ import axios from "axios";
 import { login } from "../../lib/auth.service";
 import { roleDestination } from "../../lib/authRedirect";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { translate } from "@/i18n/translate";
 import AuthField, {
   PasswordToggle,
   authPrimaryButtonClass,
@@ -47,32 +49,47 @@ function isValidEmail(value: string): boolean {
 
 function loginErrorMessage(error: unknown): string {
   if (!axios.isAxiosError(error)) {
-    return "Tidak dapat masuk. Coba lagi.";
+    return translate("Tidak dapat masuk. Coba lagi.", "Unable to sign in. Try again.");
   }
 
   if (!error.response) {
-    return "Tidak dapat terhubung ke server. Periksa koneksi Anda lalu coba lagi.";
+    return translate(
+      "Tidak dapat terhubung ke server. Periksa koneksi Anda lalu coba lagi.",
+      "Unable to reach the server. Check your connection and try again.",
+    );
   }
 
   const status = error.response.status;
 
   if (status === 429) {
-    return "Terlalu banyak percobaan masuk. Tunggu sebentar lalu coba lagi.";
+    return translate(
+      "Terlalu banyak percobaan masuk. Tunggu sebentar lalu coba lagi.",
+      "Too many sign-in attempts. Wait a moment and try again.",
+    );
   }
 
   if (status === 403) {
-    return "Akun ini tidak dapat mengakses Tracko. Hubungi admin divisi Anda.";
+    return translate(
+      "Akun ini tidak dapat mengakses Tracko. Hubungi admin divisi Anda.",
+      "This account cannot access Tracko. Contact your division admin.",
+    );
   }
 
   if (status >= 500) {
-    return "Server sedang bermasalah. Coba lagi beberapa saat lagi.";
+    return translate(
+      "Server sedang bermasalah. Coba lagi beberapa saat lagi.",
+      "The server is having issues. Try again in a moment.",
+    );
   }
 
   if (status === 400 || status === 401 || status === 422) {
-    return "Email atau password salah.";
+    return translate("Email atau password salah.", "Incorrect email or password.");
   }
 
-  return "Permintaan masuk belum dapat diproses. Coba lagi.";
+  return translate(
+    "Permintaan masuk belum dapat diproses. Coba lagi.",
+    "The sign-in request could not be processed. Try again.",
+  );
 }
 
 export default function SignInForm({
@@ -83,6 +100,7 @@ export default function SignInForm({
 }: SignInFormProps) {
   const navigate = useNavigate();
   const { setUser } = useAuth();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState(readRememberedEmail);
   const [password, setPassword] = useState("");
@@ -145,13 +163,13 @@ export default function SignInForm({
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
-      nextErrors.email = "Email wajib diisi.";
+      nextErrors.email = t("Email wajib diisi.", "Email is required.");
     } else if (!isValidEmail(trimmedEmail)) {
-      nextErrors.email = "Format email belum benar.";
+      nextErrors.email = t("Format email belum benar.", "Email format is invalid.");
     }
 
     if (!password) {
-      nextErrors.password = "Password wajib diisi.";
+      nextErrors.password = t("Password wajib diisi.", "Password is required.");
     }
 
     setFieldErrors(nextErrors);
@@ -215,16 +233,19 @@ export default function SignInForm({
   return (
     <div>
       <h1 className="text-[26px] font-medium leading-tight tracking-[-0.02em] text-fg sm:text-[30px]">
-        Masuk ke Tracko
+        {t("Masuk ke Tracko", "Sign in to Tracko")}
       </h1>
       <p className="mt-2 text-sm leading-6 text-fg-muted">
-        Gunakan akun yang terdaftar untuk membuka workspace Anda.
+        {t(
+          "Gunakan akun yang terdaftar untuk membuka workspace Anda.",
+          "Use your registered account to open your workspace.",
+        )}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
         <AuthField
           id="login-email"
-          label="Email"
+          label={t("Email")}
           type="email"
           autoComplete="username"
           inputMode="email"
@@ -237,14 +258,14 @@ export default function SignInForm({
           }}
           onFocus={() => handleFieldFocus("email")}
           onBlur={handleFieldBlur}
-          placeholder="nama@perusahaan.com"
+          placeholder={t("nama@perusahaan.com", "name@company.com")}
           icon={<Mail />}
           error={fieldErrors.email}
         />
 
         <AuthField
           id="login-password"
-          label="Password"
+          label={t("Password")}
           type={showPassword ? "text" : "password"}
           autoComplete="current-password"
           value={password}
@@ -255,7 +276,7 @@ export default function SignInForm({
           }}
           onFocus={() => handleFieldFocus("password")}
           onBlur={handleFieldBlur}
-          placeholder="Masukkan password"
+          placeholder={t("Masukkan password", "Enter your password")}
           icon={<LockKeyhole />}
           error={fieldErrors.password}
           trailing={
@@ -278,14 +299,14 @@ export default function SignInForm({
               onChange={(event) => setRememberEmail(event.target.checked)}
               className="h-4 w-4 rounded-[4px] border border-line accent-[var(--tracko-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             />
-            Ingat email saya
+            {t("Ingat email saya", "Remember my email")}
           </label>
 
           <Link
             to="/forgot-password"
             className="inline-flex min-h-8 items-center rounded-[4px] text-xs font-medium text-accent transition-colors duration-150 hover:text-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Lupa password?
+            {t("Lupa password?", "Forgot password?")}
           </Link>
         </div>
 
@@ -309,7 +330,7 @@ export default function SignInForm({
           {succeeded ? (
             <>
               <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-              Berhasil masuk
+              {t("Berhasil masuk", "Signed in")}
             </>
           ) : loading ? (
             <>
@@ -317,11 +338,11 @@ export default function SignInForm({
                 aria-hidden="true"
                 className="h-4 w-4 animate-spin motion-reduce:animate-none"
               />
-              Memeriksa akun
+              {t("Memeriksa akun", "Checking account")}
             </>
           ) : (
             <>
-              Masuk
+              {t("Masuk", "Sign in")}
               <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </>
           )}

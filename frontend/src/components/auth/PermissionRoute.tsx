@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/context/ToastContext";
 
 interface Props {
@@ -23,9 +24,16 @@ export default function PermissionRoute({
     hasRole,
   } = useAuth();
   const { showToast } = useToast();
+  const { t } = useLanguage();
   const location = useLocation();
 
-  const fallbackPath = can("dashboard.view") ? "/dashboard" : "/my-work";
+  const fallbackPath = can("dashboard.view")
+    ? "/dashboard"
+    : can("my_work.view")
+      ? "/my-work"
+      : can("calendar.view")
+        ? "/calendar"
+        : "/account/edit";
   const accessDenied = Boolean(
     user &&
       !loading &&
@@ -33,20 +41,26 @@ export default function PermissionRoute({
         (permission && !can(permission)) ||
         (permissions?.length && !permissions.some((item) => can(item)))),
   );
+  const isImpersonating =
+    typeof localStorage !== "undefined" &&
+    Boolean(localStorage.getItem("impersonated_by"));
 
   useEffect(() => {
-    if (!accessDenied) return;
+    if (!accessDenied || isImpersonating) return;
 
     showToast({
       variant: "error",
-      title: "Akses ditolak",
-      message: "Anda tidak memiliki izin untuk membuka halaman ini.",
+      title: t("Akses ditolak", "Access denied"),
+      message: t(
+        "Anda tidak memiliki izin untuk membuka halaman ini.",
+        "You do not have permission to open this page.",
+      ),
     });
-  }, [accessDenied, showToast]);
+  }, [accessDenied, isImpersonating, showToast, t]);
 
   // tunggu proses getMe selesai
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>{t("Memuat...", "Loading...")}</div>;
   }
 
   // belum login

@@ -12,6 +12,7 @@ import type {
 import { formatDate } from "../../utils/formatDate";
 
 import RenderCellValue from "../cells/RenderCellValue";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   form: Form;
@@ -32,6 +33,8 @@ export default function ResponseMobileList({
   summaryFields,
   toggleExpanded,
 }: Props) {
+  const { t } = useLanguage();
+
   return (
     <div className="grid gap-4 xl:hidden">
       {submissions.map((s, i) => {
@@ -42,16 +45,16 @@ export default function ResponseMobileList({
         return (
           <div
             key={s.id}
-            className="rounded-3xl border bg-white"
+            className="rounded-panel border bg-surface"
           >
-            <div className="flex justify-between border-b bg-gray-50 p-4">
+            <div className="flex justify-between border-b bg-surface-muted/40 p-4">
 
               <div>
                 <p className="font-semibold">
                   #{i + 1}
                 </p>
 
-                <p className="flex items-center gap-1 text-xs text-gray-500">
+                <p className="flex items-center gap-1 text-xs text-fg-muted">
                   <CalendarDays className="h-4 w-4" />
 
                   {formatDate(s.created_at)}
@@ -62,20 +65,20 @@ export default function ResponseMobileList({
                 onClick={() =>
                   toggleExpanded(String(s.id))
                 }
-                className="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs"
+                className="flex items-center gap-2 rounded-control border px-3 py-2 text-xs"
               >
                 <Eye className="h-4 w-4" />
 
                 {isOpen
-                  ? "Close"
-                  : "Detail"}
+                  ? t("Tutup", "Close")
+                  : t("Detail", "Details")}
               </button>
             </div>
 
             <div className="space-y-3 p-4">
               {summaryFields.map((f) => (
                 <div key={f.id}>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-fg-subtle">
                     {f.label}
                   </p>
 
@@ -88,13 +91,13 @@ export default function ResponseMobileList({
             </div>
 
             {isOpen && (
-              <div className="border-t bg-gray-50 p-4">
+              <div className="border-t bg-surface-muted/40 p-4">
                 {form.fields?.filter((f) => f.type !== "section").map((f) => (
                   <div
                     key={f.id}
                     className="mb-4"
                   >
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-fg-subtle">
                       {f.label}
                     </p>
 

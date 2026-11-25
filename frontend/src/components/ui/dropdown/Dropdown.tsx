@@ -6,6 +6,7 @@ interface DropdownProps {
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  align?: "left" | "right";
 }
 
 export const Dropdown: React.FC<DropdownProps> = ({
@@ -13,6 +14,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   onClose,
   children,
   className = "",
+  align = "right",
 }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +40,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
   return (
     <div
       ref={dropdownRef}
-      className={`absolute right-0 z-50 mt-1.5 min-w-[180px] rounded-card border border-line bg-surface p-1 shadow-e2 ${className}`}
+      className={`absolute z-50 mt-1.5 min-w-[180px] rounded-card border border-line bg-surface p-1 shadow-e2 ${
+        align === "left" ? "left-0" : "right-0"
+      } ${className}`}
     >
       {children}
     </div>

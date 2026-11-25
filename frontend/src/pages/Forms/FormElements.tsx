@@ -10,15 +10,17 @@ import SelectInputs from "../../components/form/form-elements/SelectInputs";
 import TextAreaInput from "../../components/form/form-elements/TextAreaInput";
 import InputStates from "../../components/form/form-elements/InputStates";
 import PageMeta from "../../components/common/PageMeta";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function FormElements() {
+  const { t } = useLanguage();
   return (
     <div>
       <PageMeta
-        title="React.js Form Elements Dashboard | TailAdmin - React.js Admin Dashboard Template"
-        description="This is React.js Form Elements  Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
+        title={t("Dasbor Elemen Formulir React.js | TailAdmin - Template Dasbor Admin React.js", "React.js Form Elements Dashboard | TailAdmin - React.js Admin Dashboard Template")}
+        description={t("Ini adalah halaman Dasbor Elemen Formulir React.js untuk TailAdmin - Template Dasbor Admin Tailwind CSS React.js", "This is React.js Form Elements Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template")}
       />
-      <PageBreadcrumb pageTitle="Form Elements" />
+      <PageBreadcrumb pageTitle={t("Elemen formulir", "Form elements")} />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="space-y-6">
           <DefaultInputs />

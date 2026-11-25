@@ -13,6 +13,7 @@ import type {
   ActivityResponse,
 } from "../types";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
+import { translate } from "@/i18n/translate";
 
 export const useMyWork = () => {
   const [loading, setLoading] = useState(true);
@@ -37,7 +38,12 @@ export const useMyWork = () => {
       );
       setActivities(activityRes);
     } catch {
-      setError("Gagal memuat data My Work. Silakan coba lagi.");
+      setError(
+        translate(
+          "Gagal memuat data My Work. Silakan coba lagi.",
+          "Failed to load My Work data. Please try again.",
+        ),
+      );
     } finally {
       setActivityLoading(false);
       setLoading(false);

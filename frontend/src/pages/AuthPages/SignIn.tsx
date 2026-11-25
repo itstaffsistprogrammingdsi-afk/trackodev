@@ -7,12 +7,14 @@ import AuthLayout from "./AuthPageLayout";
 import { getToken, getUser } from "@/lib/authStore";
 import { roleDestination, safeInternalRedirect } from "@/lib/authRedirect";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 import type { MascotGaze, MascotState } from "@/features/ai/JellyMascot";
 
 export default function SignIn() {
   const [searchParams] = useSearchParams();
   const redirectTo = safeInternalRedirect(searchParams.get("redirect"));
   const { theme } = useTheme();
+  const { t } = useLanguage();
 
   // Tema terang menyapa, tema gelap santai. Ekspresi interaksi tetap
   // menimpa state dasar ini selama form dipakai.
@@ -44,8 +46,11 @@ export default function SignIn() {
   return (
     <>
       <PageMeta
-        title="Masuk | Tracko"
-        description="Masuk ke aplikasi manajemen tugas Tracko."
+        title={t("Masuk | Tracko", "Sign in | Tracko")}
+        description={t(
+          "Masuk ke aplikasi manajemen tugas Tracko.",
+          "Sign in to the Tracko task management app.",
+        )}
       />
       <AuthLayout mascotState={mascotState} mascotGaze={mascotGaze}>
         <SignInForm

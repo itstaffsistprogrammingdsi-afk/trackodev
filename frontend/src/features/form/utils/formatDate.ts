@@ -1,5 +1,7 @@
+import { getLocale } from "@/i18n/translate";
+
 export const formatDate = (date: string) =>
-  new Date(date).toLocaleString("id-ID", {
+  new Date(date).toLocaleString(getLocale(), {
     dateStyle: "short",
     timeStyle: "short",
   });

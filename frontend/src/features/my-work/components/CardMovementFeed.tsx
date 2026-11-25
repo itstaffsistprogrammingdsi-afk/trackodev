@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ArrowRight, ArrowRightLeft, ChevronDown, ChevronUp, Inbox } from "lucide-react";
 
 import type { ActivityItem } from "../types";
+import { useLanguage } from "@/context/LanguageContext";
+import { translate } from "@/i18n/translate";
 
 type Props = {
   activities: ActivityItem[];
@@ -22,6 +24,7 @@ export default function CardMovementFeed({
   total,
   loading = false,
 }: Props) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const visibleActivities = expanded ? activities : activities.slice(0, MAX_VISIBLE);
 
@@ -35,12 +38,12 @@ export default function CardMovementFeed({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-fg">Activity Feed</h2>
+                <h2 className="text-base font-semibold text-fg">{t("Feed aktivitas", "Activity feed")}</h2>
                 <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
                   {total}
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-fg-subtle">Perpindahan card dan pekerjaan yang masih berjalan.</p>
+              <p className="mt-0.5 text-xs text-fg-subtle">{t("Perpindahan card dan pekerjaan yang masih berjalan.", "Card movements and work still in progress.")}</p>
             </div>
           </div>
         </div>
@@ -48,7 +51,7 @@ export default function CardMovementFeed({
 
       <div className="divide-y divide-line px-4 sm:px-5">
         {loading ? (
-          <div className="space-y-3 py-5" aria-label="Memuat activity feed">
+          <div className="space-y-3 py-5" aria-label={t("Memuat activity feed", "Loading activity feed")}>
             {[1, 2, 3].map((item) => (
               <div key={item} className="h-14 animate-pulse rounded-control bg-surface-muted" />
             ))}
@@ -58,9 +61,9 @@ export default function CardMovementFeed({
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-muted/50 text-fg-subtle">
               <Inbox size={20} aria-hidden="true" />
             </div>
-            <p className="mt-3 text-sm font-medium text-fg-muted">Belum ada perpindahan card</p>
+            <p className="mt-3 text-sm font-medium text-fg-muted">{t("Belum ada perpindahan card", "No card movements yet")}</p>
             <p className="mt-1 text-xs text-fg-subtle">
-              Perpindahan antar-list pada periode ini akan tampil di sini.
+              {t("Perpindahan antar-list pada periode ini akan tampil di sini.", "Movements between lists in this period will appear here.")}
             </p>
           </div>
         ) : (
@@ -78,10 +81,10 @@ export default function CardMovementFeed({
             className="inline-flex items-center gap-1.5 text-sm font-medium text-accent transition-colors hover:text-accent-strong"
           >
             {expanded ? (
-              <>Tampilkan lebih sedikit <ChevronUp size={15} /></>
+              <>{t("Tampilkan lebih sedikit", "Show less")} <ChevronUp size={15} /></>
             ) : (
               <>
-                Lihat {activities.length - MAX_VISIBLE} aktivitas lainnya
+                {t("Lihat {count} aktivitas lainnya", "View {count} more activities", { count: activities.length - MAX_VISIBLE })}
                 <ChevronDown size={15} />
               </>
             )}
@@ -93,6 +96,7 @@ export default function CardMovementFeed({
 }
 
 function MovementRow({ activity }: { activity: ActivityItem }) {
+  const { t, locale } = useLanguage();
   const movement = resolveMovement(activity);
   const userName = activity.user?.name?.trim() || "System";
 
@@ -105,7 +109,7 @@ function MovementRow({ activity }: { activity: ActivityItem }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm text-fg-muted">
           <span className="font-semibold text-fg">{userName}</span>
-          {" memindahkan card "}
+          {t(" memindahkan card ", " moved card ")}
           <span className="font-semibold text-fg">{movement.cardTitle}</span>
         </p>
 
@@ -119,11 +123,11 @@ function MovementRow({ activity }: { activity: ActivityItem }) {
           {movement.toBoard ? (
             <BoardBadge name={movement.toBoard} tone="to" />
           ) : (
-            <span className="text-xs text-fg-subtle">Tujuan list tidak tersedia</span>
+            <span className="text-xs text-fg-subtle">{t("Tujuan list tidak tersedia", "Destination list unavailable")}</span>
           )}
           {activity.is_ongoing && (
             <span className="rounded-full bg-success-soft px-2.5 py-1 text-xs font-semibold text-success ring-1 ring-success/15">
-              Masih berjalan
+              {t("Masih berjalan", "Still in progress")}
             </span>
           )}
         </div>
@@ -133,7 +137,7 @@ function MovementRow({ activity }: { activity: ActivityItem }) {
         dateTime={activity.created_at}
         className="hidden shrink-0 pt-0.5 text-right text-xs text-fg-subtle sm:block"
       >
-        {formatActivityTime(activity.created_at)}
+        {formatActivityTime(activity.created_at, locale)}
       </time>
     </article>
   );
@@ -161,7 +165,7 @@ function resolveMovement(activity: ActivityItem): Movement {
   const toBoard = readMeta(meta, "to_board_name");
 
   if (cardTitle || fromBoard || toBoard) {
-    return { cardTitle: cardTitle ?? "Tanpa judul", fromBoard, toBoard };
+    return { cardTitle: cardTitle ?? translate("Tanpa judul", "Untitled"), fromBoard, toBoard };
   }
 
   const legacy = activity.description.match(
@@ -169,7 +173,7 @@ function resolveMovement(activity: ActivityItem): Movement {
   );
 
   return {
-    cardTitle: legacy?.[1] ?? "Tanpa judul",
+    cardTitle: legacy?.[1] ?? translate("Tanpa judul", "Untitled"),
     fromBoard: legacy?.[2] ?? null,
     toBoard: legacy?.[3] ?? null,
   };
@@ -180,8 +184,8 @@ function readMeta(meta: Record<string, unknown>, key: string): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function formatActivityTime(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
+function formatActivityTime(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { useDeleteBoard } from "../hooks/useBoards";
 import { Board } from "../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   board: Board | null;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export default function DeleteBoardDialog({ board, campaignId, onClose }: Props) {
+  const { t } = useLanguage();
   const mutation = useDeleteBoard(campaignId);
 
   useEffect(() => {
@@ -59,19 +61,31 @@ export default function DeleteBoardDialog({ board, campaignId, onClose }: Props)
               id="delete-board-title"
               className="text-base font-semibold tracking-heading text-fg"
             >
-              Hapus kolom “{board.name}”?
+              {t("Hapus kolom “{name}”?", "Delete column “{name}”?", {
+                name: board.name,
+              })}
             </h2>
             <p className="mt-1 text-sm leading-5 text-fg-muted">
               {cardCount > 0
-                ? `Kolom ini punya ${cardCount} task. Semua task di dalamnya ikut terhapus dan tidak bisa dikembalikan.`
-                : "Tindakan ini tidak bisa dibatalkan."}
+                ? t(
+                    "Kolom ini punya {count} task. Semua task di dalamnya ikut terhapus dan tidak bisa dikembalikan.",
+                    "This column has {count} tasks. Everything inside it will be deleted too and cannot be restored.",
+                    { count: cardCount },
+                  )
+                : t(
+                    "Tindakan ini tidak bisa dibatalkan.",
+                    "This action cannot be undone.",
+                  )}
             </p>
           </div>
         </div>
 
         {mutation.isError ? (
           <p role="alert" className="mt-3 text-xs font-medium text-danger">
-            Kolom gagal dihapus. Coba lagi.
+            {t(
+              "Kolom gagal dihapus. Coba lagi.",
+              "Failed to delete the column. Try again.",
+            )}
           </p>
         ) : null}
 
@@ -82,7 +96,7 @@ export default function DeleteBoardDialog({ board, campaignId, onClose }: Props)
             disabled={mutation.isPending}
             className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:pointer-events-none disabled:opacity-60"
           >
-            Batal
+            {t("Batal", "Cancel")}
           </button>
 
           <button
@@ -98,10 +112,10 @@ export default function DeleteBoardDialog({ board, campaignId, onClose }: Props)
                   aria-hidden="true"
                   className="h-4 w-4 animate-spin motion-reduce:animate-none"
                 />
-                Menghapus
+                {t("Menghapus", "Deleting")}
               </>
             ) : (
-              "Hapus kolom"
+              t("Hapus kolom", "Delete column")
             )}
           </button>
         </div>

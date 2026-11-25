@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import { confirmDialog } from "@/lib/feedback";
+import { translate } from "@/i18n/translate";
 
 interface Props {
   cardId?: string;
@@ -17,7 +18,10 @@ export default function useDeleteCard({
   const handleDelete = async () => {
     if (!cardId) return;
 
-    const ok = await confirmDialog({ message: "Hapus card?", variant: "danger" });
+    const ok = await confirmDialog({
+      message: translate("Hapus card?", "Delete card?"),
+      variant: "danger",
+    });
 
     if (!ok) return;
 

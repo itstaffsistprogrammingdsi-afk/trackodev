@@ -1,3 +1,4 @@
+import { useLanguage } from "@/context/LanguageContext";
 import { Card } from "../types";
 
 interface Props {
@@ -13,16 +14,15 @@ export default function CardListRow({
   boardName,
   onOpen,
 }: Props) {
+  const { locale } = useLanguage();
   const formattedDate = card.created_at
-    ? new Date(card.created_at).toLocaleDateString(
-        "id-ID",
-      )
+    ? new Date(card.created_at).toLocaleDateString(locale)
     : "-";
 
   const formattedDueDate = card.due_date
     ? new Date(
         card.due_date.replace(" ", "T"),
-      ).toLocaleString("id-ID")
+      ).toLocaleString(locale)
     : "-";
 
   return (
@@ -30,14 +30,14 @@ export default function CardListRow({
       onClick={() => onOpen?.(card)}
       className="
         border-b
-        hover:bg-gray-50
+        hover:bg-surface-muted/40
         cursor-pointer
         transition
       "
     >
       {/* TITLE */}
       <td className="p-4">
-        <div className="font-medium text-gray-800">
+        <div className="font-medium text-fg">
           {card.title}
         </div>
       </td>
@@ -49,8 +49,8 @@ export default function CardListRow({
             px-2 py-1
             rounded-full
             text-xs
-            bg-blue-50
-            text-blue-600
+            bg-accent-soft
+            text-accent
           "
         >
           {boardName}
@@ -58,17 +58,17 @@ export default function CardListRow({
       </td>
 
       {/* CREATOR */}
-      <td className="p-4 text-sm text-gray-600">
+      <td className="p-4 text-sm text-fg-muted">
         {card.created_by?.name || "-"}
       </td>
 
       {/* DUE DATE */}
-      <td className="p-4 text-sm text-gray-600">
+      <td className="p-4 text-sm text-fg-muted">
         {formattedDueDate}
       </td>
 
       {/* CREATED */}
-      <td className="p-4 text-sm text-gray-400">
+      <td className="p-4 text-sm text-fg-subtle">
         {formattedDate}
       </td>
     </tr>

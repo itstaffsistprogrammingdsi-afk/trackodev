@@ -35,6 +35,7 @@ import DesignerPicker from "../DesignerPicker";
 import RenderCellValue from "../cells/RenderCellValue";
 
 import { useAuth } from "../../../../context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   open: boolean;
@@ -43,6 +44,17 @@ type Props = {
   onClose: () => void;
   onSuccess?: () => void;
 };
+
+const PRIORITY_OPTIONS: Array<{
+  value: NonNullable<AssignSubmissionPayload["priority"]>;
+  label: string;
+  labelEn: string;
+}> = [
+  { value: "low", label: "Rendah", labelEn: "Low" },
+  { value: "medium", label: "Normal", labelEn: "Medium" },
+  { value: "high", label: "Tinggi", labelEn: "High" },
+  { value: "urgent", label: "Urgent", labelEn: "Urgent" },
+];
 
 const createInitialForm = (): AssignSubmissionPayload => ({
   campaign_id: "",
@@ -71,6 +83,7 @@ export default function AssignmentModal({
   onClose,
   onSuccess,
 }: Props) {
+  const { t } = useLanguage();
   const assignMutation = useAssignSubmission();
 
   const { user: authUser } = useAuth();
@@ -197,27 +210,27 @@ export default function AssignmentModal({
     }
 
     if (!authUser?.id) {
-      toast.error("User tidak terautentikasi");
+      toast.error(t("User tidak terautentikasi", "User is not authenticated"));
       return;
     }
 
     if (!form.division_id) {
-      toast.error("Division wajib dipilih");
+      toast.error(t("Division wajib dipilih", "Division is required"));
       return;
     }
 
     if (!form.workspace_id) {
-      toast.error("Workspace wajib dipilih");
+      toast.error(t("Workspace wajib dipilih", "Workspace is required"));
       return;
     }
 
     if (!form.campaign_id) {
-      toast.error("Campaign wajib dipilih");
+      toast.error(t("Campaign wajib dipilih", "Campaign is required"));
       return;
     }
 
     if (!form.designer_id) {
-      toast.error("PIC/anggota wajib dipilih");
+      toast.error(t("PIC/anggota wajib dipilih", "PIC/member is required"));
       return;
     }
 
@@ -266,7 +279,7 @@ const payload = {
                   };
                 };
               }
-            )?.response?.data?.message || "Gagal membuat assignment",
+            )?.response?.data?.message || t("Gagal membuat assignment", "Failed to create assignment"),
           );
         },
       },
@@ -323,9 +336,9 @@ const payload = {
           w-full
           max-w-4xl
           overflow-hidden
-          rounded-3xl
-          border border-zinc-200
-          bg-white
+          rounded-modal
+          border border-line
+          bg-surface
           shadow-2xl
         "
       >
@@ -334,7 +347,7 @@ const payload = {
         <div
           className="
             flex items-center justify-between
-            border-b border-zinc-200
+            border-b border-line
             px-6 py-5
           "
         >
@@ -347,7 +360,7 @@ const payload = {
                 text-zinc-900
               "
             >
-              Tugaskan Request
+              {t("Tugaskan request", "Assign request")}
             </h2>
 
             <p
@@ -357,21 +370,24 @@ const payload = {
                 text-zinc-500
               "
             >
-              Request akan otomatis masuk ke board By Request
+              {t(
+                "Request akan otomatis masuk ke board By Request",
+                "The request will automatically be added to the By Request board",
+              )}
             </p>
           </div>
 
           <button
             type="button"
-            aria-label="Tutup modal assignment"
+            aria-label={t("Tutup modal assignment", "Close assignment modal")}
             onClick={onClose}
             className="
               flex h-10 w-10
               items-center justify-center
-              rounded-xl
-              border border-zinc-200
+              rounded-control
+              border border-line
               transition
-              hover:bg-zinc-100
+              hover:bg-surface-muted
             "
           >
             <X size={18} />
@@ -392,9 +408,9 @@ const payload = {
           <div
             className="
               mb-6
-              rounded-2xl
-              border border-indigo-100
-              bg-indigo-50
+              rounded-card
+              border border-accent/15
+              bg-accent-soft
               p-5
             "
           >
@@ -403,11 +419,11 @@ const payload = {
                 mb-2
                 flex items-center gap-2
                 text-sm font-medium
-                text-indigo-700
+                text-accent
               "
             >
               <FolderKanban size={16} />
-              Incoming Request
+              {t("Request masuk", "Incoming request")}
             </div>
 
             <h3
@@ -417,18 +433,18 @@ const payload = {
                 text-zinc-900
               "
             >
-              {submission.form?.name ?? "Untitled Request"}
+              {submission.form?.name ?? t("Request tanpa judul", "Untitled request")}
             </h3>
 
             {answeredFields.length > 0 ? (
-              <div className="mt-4 border-t border-indigo-100 pt-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-indigo-700">
-                  Detail Request
+              <div className="mt-4 border-t border-accent/15 pt-4">
+                <p className="mb-3 text-2xs font-medium text-accent">
+                  {t("Detail request", "Request details")}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {answeredFields.map((field) => (
-                    <div key={field.id} className="min-w-0 rounded-xl border border-indigo-100 bg-white p-3">
-                      <p className="mb-2 text-xs font-medium text-slate-500">{field.label}</p>
+                    <div key={field.id} className="min-w-0 rounded-control border border-accent/15 bg-surface p-3">
+                      <p className="mb-2 text-xs font-medium text-fg-muted">{field.label}</p>
                       <RenderCellValue
                         value={submission.data?.[field.name]}
                         label={field.label}
@@ -460,7 +476,7 @@ const payload = {
                 "
               >
                 <Users size={16} />
-                Division
+                {t("Divisi", "Division")}
               </label>
 
               <select
@@ -488,9 +504,9 @@ const payload = {
                 }}
                 className="
                   w-full
-                  rounded-2xl
-                  border border-zinc-200
-                  bg-white
+                  rounded-card
+                  border border-line
+                  bg-surface
                   px-4 py-3
                   outline-none
                   transition
@@ -499,7 +515,7 @@ const payload = {
                   focus:ring-indigo-100
                 "
               >
-                <option value="">Pilih Division</option>
+                <option value="">{t("Pilih divisi", "Select division")}</option>
 
                 {divisions.map((d: Division) => (
                   <option key={d.id} value={d.id}>
@@ -521,7 +537,7 @@ const payload = {
                 "
               >
                 <FolderKanban size={16} />
-                Workspace
+                {t("Workspace", "Workspace")}
               </label>
 
               <select
@@ -546,9 +562,9 @@ const payload = {
                 disabled={!selectedDivisionId}
                 className="
                   w-full
-                  rounded-2xl
-                  border border-zinc-200
-                  bg-white
+                  rounded-card
+                  border border-line
+                  bg-surface
                   px-4 py-3
                   outline-none
                   transition
@@ -556,10 +572,10 @@ const payload = {
                   focus:ring-4
                   focus:ring-indigo-100
                   disabled:cursor-not-allowed
-                  disabled:bg-zinc-100
+                  disabled:bg-surface-muted
                 "
               >
-                <option value="">Pilih Workspace</option>
+                <option value="">{t("Pilih workspace", "Select workspace")}</option>
 
                 {workspaces.map((w: Workspace) => (
                   <option key={w.id} value={w.id}>
@@ -581,7 +597,7 @@ const payload = {
                 "
               >
                 <FolderKanban size={16} />
-                Campaign
+                {t("Campaign", "Campaign")}
               </label>
 
               <select
@@ -596,9 +612,9 @@ const payload = {
                 disabled={!selectedWorkspaceId}
                 className="
                   w-full
-                  rounded-2xl
-                  border border-zinc-200
-                  bg-white
+                  rounded-card
+                  border border-line
+                  bg-surface
                   px-4 py-3
                   outline-none
                   transition
@@ -606,13 +622,13 @@ const payload = {
                   focus:ring-4
                   focus:ring-indigo-100
                   disabled:cursor-not-allowed
-                  disabled:bg-zinc-100
+                  disabled:bg-surface-muted
                 "
               >
                 <option value="">
                   {campaigns.length === 0
-                    ? "Tidak ada campaign"
-                    : "Pilih Campaign"}
+                    ? t("Tidak ada campaign", "No campaigns")
+                    : t("Pilih campaign", "Select campaign")}
                 </option>
 
                 {campaigns.map((c: Campaign) => (
@@ -635,7 +651,7 @@ const payload = {
                 "
               >
                 <Users size={16} />
-                Pilih User untuk Ditugaskan
+                {t("Pilih pengguna untuk ditugaskan", "Select a user to assign")}
               </label>
 
               <div
@@ -673,23 +689,23 @@ const payload = {
                   className="
                     mt-3
                     flex items-center gap-3
-                    rounded-2xl
+                    rounded-card
                     border border-emerald-200
-                    bg-emerald-50
+                    bg-success-soft
                     px-4 py-3
                   "
                 >
-                  <CheckCircle2 size={18} className="text-emerald-600" />
+                  <CheckCircle2 size={18} className="text-success" />
 
                   <div>
                     <p
                       className="
                         text-sm
                         font-semibold
-                        text-emerald-700
+                        text-success
                       "
                     >
-                      PIC/Anggota Dipilih
+                      {t("PIC/anggota dipilih", "PIC/member selected")}
                     </p>
 
                     <p
@@ -712,7 +728,10 @@ const payload = {
                     text-zinc-500
                   "
                 >
-                  Division wajib dipilih sebelum memilih PIC/anggota
+                  {t(
+                    "Division wajib dipilih sebelum memilih PIC/anggota",
+                    "Select a division before choosing a PIC/member",
+                  )}
                 </p>
               )}
             </div>
@@ -730,7 +749,7 @@ const payload = {
   >
     <Calendar size={16} />
 
-    Deadline
+    {t("Deadline", "Deadline")}
   </label>
 
   <DatePicker
@@ -755,21 +774,21 @@ const payload = {
     timeFormat="HH:mm"
     timeIntervals={15}
     dateFormat="dd MMM yyyy • HH:mm"
-    placeholderText="Pilih deadline & jam"
+    placeholderText={t("Pilih deadline & jam", "Select deadline & time")}
     popperPlacement="bottom-start"
     showPopperArrow={false}
     isClearable
     calendarClassName="
-      rounded-2xl
+      rounded-card
       border
-      border-zinc-200
+      border-line
       shadow-2xl
     "
     className="
       w-full
-      rounded-2xl
-      border border-zinc-200
-      bg-white
+      rounded-card
+      border border-line
+      bg-surface
       px-4 py-3
       text-sm
       text-zinc-800
@@ -793,7 +812,10 @@ const payload = {
       text-zinc-500
     "
   >
-    Tentukan batas waktu pengerjaan request
+    {t(
+      "Tentukan batas waktu pengerjaan request",
+      "Set the deadline for working on the request",
+    )}
   </p>
 </div>
 
@@ -809,7 +831,7 @@ const payload = {
                 "
               >
                 <Clock3 size={16} />
-                Estimasi Jam
+                {t("Estimasi jam", "Estimated hours")}
               </label>
 
               <input
@@ -825,8 +847,8 @@ const payload = {
                 }
                 className="
                   w-full
-                  rounded-2xl
-                  border border-zinc-200
+                  rounded-card
+                  border border-line
                   px-4 py-3
                   outline-none
                   transition
@@ -849,7 +871,7 @@ const payload = {
                 "
               >
                 <Flag size={16} />
-                Priority
+                {t("Prioritas", "Priority")}
               </label>
 
               <div
@@ -859,32 +881,32 @@ const payload = {
                   md:grid-cols-4
                 "
               >
-                {["low", "medium", "high", "urgent"].map((level) => (
+                {PRIORITY_OPTIONS.map((option) => (
                   <button
-                    key={level}
+                    key={option.value}
                     type="button"
                     onClick={() =>
                       setForm((prev) => ({
                         ...prev,
 
-                        priority: level as AssignSubmissionPayload["priority"],
+                        priority: option.value,
                       }))
                     }
                     className={`
-                      rounded-2xl
+                      rounded-card
                       border
                       px-4 py-3
                       text-sm font-medium
                       capitalize
                       transition
                       ${
-                        form.priority === level
-                          ? "border-indigo-600 bg-indigo-600 text-white"
-                          : "border-zinc-200 bg-white hover:bg-zinc-100"
+                        form.priority === option.value
+                          ? "border-accent bg-accent text-white"
+                          : "border-line bg-surface hover:bg-surface-muted"
                       }
                     `}
                   >
-                    {level}
+                    {t(option.label, option.labelEn)}
                   </button>
                 ))}
               </div>
@@ -903,7 +925,7 @@ const payload = {
                 text-zinc-700
               "
             >
-              Catatan Assignment
+              {t("Catatan assignment", "Assignment notes")}
             </label>
 
             <textarea
@@ -915,12 +937,15 @@ const payload = {
                   notes: e.target.value,
                 }))
               }
-              placeholder="Tambahkan brief atau instruksi tambahan..."
+              placeholder={t(
+                "Tambahkan brief atau instruksi tambahan...",
+                "Add a brief or extra instructions...",
+              )}
               className="
                 min-h-[120px]
                 w-full
-                rounded-2xl
-                border border-zinc-200
+                rounded-card
+                border border-line
                 px-4 py-3
                 outline-none
                 transition
@@ -938,7 +963,7 @@ const payload = {
           className="
             flex items-center justify-end
             gap-3
-            border-t border-zinc-200
+            border-t border-line
             px-6 py-5
           "
         >
@@ -946,15 +971,15 @@ const payload = {
             type="button"
             onClick={onClose}
             className="
-              rounded-2xl
-              border border-zinc-200
+              rounded-card
+              border border-line
               px-5 py-3
               font-medium
               transition
-              hover:bg-zinc-100
+              hover:bg-surface-muted
             "
           >
-            Cancel
+            {t("Batal", "Cancel")}
           </button>
 
           <button
@@ -963,13 +988,13 @@ const payload = {
             disabled={assignMutation.isPending}
             className="
               flex items-center gap-2
-              rounded-2xl
-              bg-indigo-600
+              rounded-card
+              bg-accent
               px-5 py-3
               font-medium
               text-white
               transition
-              hover:bg-indigo-700
+              hover:bg-accent-strong
               disabled:cursor-not-allowed
               disabled:opacity-50
             "
@@ -978,7 +1003,9 @@ const payload = {
               <Loader2 size={18} className="animate-spin" />
             )}
 
-            {assignMutation.isPending ? "Menyimpan..." : "Tugaskan Request"}
+            {assignMutation.isPending
+              ? t("Menyimpan...", "Saving...")
+              : t("Tugaskan request", "Assign request")}
           </button>
         </div>
       </div>

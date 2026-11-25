@@ -8,6 +8,8 @@ import {
   isCardCompleted,
 } from "@/features/card/utils/dueDate";
 import EmptyState from "@/components/ui/EmptyState";
+import { useLanguage } from "@/context/LanguageContext";
+import { getLocale } from "@/i18n/translate";
 
 interface Props {
   boards: Board[];
@@ -15,16 +17,30 @@ interface Props {
   emptyMessage?: string;
 }
 
+const priorityLabels: Record<string, { id: string; en: string }> = {
+  low: { id: "Rendah", en: "Low" },
+  medium: { id: "Normal", en: "Medium" },
+  high: { id: "Tinggi", en: "High" },
+  urgent: { id: "Urgent", en: "Urgent" },
+};
+
 const priorityDot: Record<string, string> = {
-  low: "bg-success",
-  medium: "bg-priority-medium",
-  high: "bg-priority-high",
-  urgent: "bg-danger",
+  low: "bg-priority-low-dot",
+  medium: "bg-priority-medium-dot",
+  high: "bg-priority-high-dot",
+  urgent: "bg-priority-urgent-dot",
+};
+
+const priorityBadge: Record<string, string> = {
+  low: "bg-priority-low-soft text-priority-low",
+  medium: "bg-priority-medium-soft text-priority-medium",
+  high: "bg-priority-high-soft text-priority-high",
+  urgent: "bg-priority-urgent-soft text-priority-urgent",
 };
 
 const formatDate = (value?: string | null): string =>
   value
-    ? new Date(value).toLocaleDateString("id-ID", {
+    ? new Date(value).toLocaleDateString(getLocale(), {
         timeZone: "Asia/Jakarta",
         day: "2-digit",
         month: "short",
@@ -41,6 +57,7 @@ function DueDateBadge({
   completed?: boolean;
   completedAt?: string | null;
 }) {
+  const { t } = useLanguage();
   const status = getDueDateStatus(value, { completed, completedAt });
 
   if (status === "none") {
@@ -52,24 +69,35 @@ function DueDateBadge({
       className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${dueDateBadgeClasses[status]}`}
     >
       {status === "overdue"
-        ? `Terlambat · ${formatDate(value)}`
+        ? t("Terlambat · {date}", "Overdue · {date}", {
+            date: formatDate(value),
+          })
         : formatDate(value)}
     </span>
   );
 }
 
 function PriorityLabel({ priority }: { priority?: string }) {
+  const { t } = useLanguage();
+
   if (!priority) return <span className="text-fg-subtle">-</span>;
 
+  const key = priority.toLowerCase();
+  const label = priorityLabels[key];
+
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium capitalize text-fg-muted">
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${
+        priorityBadge[key] ?? "bg-surface-muted text-fg-muted"
+      }`}
+    >
       <span
         aria-hidden="true"
         className={`h-1.5 w-1.5 rounded-full ${
-          priorityDot[priority.toLowerCase()] ?? "bg-fg-subtle"
+          priorityDot[key] ?? "bg-fg-subtle"
         }`}
       />
-      {priority}
+      {label ? t(label.id, label.en) : priority}
     </span>
   );
 }
@@ -92,8 +120,9 @@ function StatusLabel({ board }: { board: Board }) {
 export default function BoardListView({
   boards,
   onOpenCard,
-  emptyMessage = "Belum ada task",
+  emptyMessage,
 }: Props) {
+  const { t } = useLanguage();
   const rows = boards.flatMap((board) =>
     board.cards.map((card) => ({ board, card })),
   );
@@ -102,8 +131,11 @@ export default function BoardListView({
     return (
       <EmptyState
         icon={Inbox}
-        title={emptyMessage}
-        description="Task yang dibuat di semua kolom akan muncul di sini."
+        title={emptyMessage ?? t("Belum ada task", "No tasks yet")}
+        description={t(
+          "Task yang dibuat di semua kolom akan muncul di sini.",
+          "Tasks created in any column will appear here.",
+        )}
       />
     );
   }
@@ -143,19 +175,19 @@ export default function BoardListView({
           <thead className="sticky top-0 z-10 border-b border-line bg-surface-muted/50">
             <tr>
               <th className="w-[40%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
-                Task
+                {t("Task", "Task")}
               </th>
               <th className="w-[15%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
-                Prioritas
+                {t("Prioritas", "Priority")}
               </th>
               <th className="w-[15%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
-                Status
+                {t("Status", "Status")}
               </th>
               <th className="w-[15%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
-                Tenggat
+                {t("Deadline", "Deadline")}
               </th>
               <th className="w-[15%] px-5 py-3 text-left text-[11px] font-medium text-fg-subtle">
-                Dibuat
+                {t("Dibuat", "Created")}
               </th>
             </tr>
           </thead>

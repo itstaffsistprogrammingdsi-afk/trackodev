@@ -5,7 +5,10 @@ import { User } from "../types";
 import MemberMentionInput from "./MemberMentionInput";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { X } from "lucide-react";
+
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { toast } from "@/lib/feedback";
 
 type Props = {
@@ -28,6 +31,7 @@ export default function CampaignForm({
   onSuccess,
 }: Props) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const {
     register,
     handleSubmit,
@@ -95,7 +99,7 @@ export default function CampaignForm({
       onSuccess();
     } catch (err) {
       console.error(err);
-      toast.error("Gagal membuat campaign");
+      toast.error(t("Gagal membuat campaign", "Failed to create campaign"));
     } finally {
       setLoading(false);
     }
@@ -108,10 +112,10 @@ export default function CampaignForm({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-[450px] max-h-[90dvh] overflow-y-auto rounded-t-3xl bg-white p-6 space-y-5 dark:bg-gray-900 sm:rounded-2xl">
+      <div className="w-full max-w-[450px] max-h-[90dvh] overflow-y-auto rounded-t-modal bg-surface p-6 space-y-5 dark:bg-surface sm:rounded-card">
 
         <h2 className="font-semibold text-lg">
-          Create Campaign
+          {t("Buat Campaign", "Create campaign")}
         </h2>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -119,21 +123,21 @@ export default function CampaignForm({
           {/* NAME */}
           <input
             {...register("name", { required: true })}
-            placeholder="Campaign name"
+            placeholder={t("Nama campaign", "Campaign name")}
             className="w-full border p-2 rounded"
           />
 
           {/* DESCRIPTION */}
           <textarea
             {...register("description")}
-            placeholder="Description"
+            placeholder={t("Deskripsi", "Description")}
             className="w-full border p-2 rounded"
           />
 
           {/* 🔥 DATE SECTION (IMPROVED UX) */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-600">
-              Due Date
+            <label className="text-sm font-medium text-fg-muted">
+              {t("Tenggat", "Due date")}
             </label> <br />
 
             <DatePicker
@@ -153,8 +157,8 @@ export default function CampaignForm({
                 );
               }}
               dateFormat="dd MMMM yyyy"
-              placeholderText="Select due date"
-              className="w-full border p-2 rounded bg-white dark:bg-gray-800"
+              placeholderText={t("Pilih tanggal", "Select due date")}
+              className="w-full border p-2 rounded-control bg-surface dark:bg-surface-muted"
               minDate={new Date()}
               isClearable
             />
@@ -165,59 +169,79 @@ export default function CampaignForm({
             {...register("type")}
             className="w-full border p-2 rounded"
           >
-            <option value="group">Team</option>
-            <option value="personal">Personal</option>
+            <option value="group">{t("Tim", "Team")}</option>
+            <option value="personal">{t("Personal")}</option>
           </select>
 
           {/* MEMBERS */}
           <div>
-            <p className="text-sm font-medium mb-1">
-              Collaborator
+            <p className="mb-1 text-xs font-medium text-fg-muted">
+              {t("Anggota campaign", "Campaign members")}
             </p>
 
-            <p className="mb-2 text-xs leading-5 text-gray-500">
+            <p className="mb-2 text-2xs leading-5 text-fg-subtle">
               {isSuperAdmin
-                ? "Super Admin dapat memilih user dari seluruh sistem."
-                : "Pilih anggota dari division mana pun. Admin division asal akan menerima notifikasi untuk undangan lintas division."}
+                ? t(
+                    "Super Admin dapat memilih user dari seluruh sistem.",
+                    "Super admins can pick users from the entire system.",
+                  )
+                : t(
+                    "Pilih anggota dari divisi mana pun. Admin divisi asal akan menerima notifikasi untuk undangan lintas divisi.",
+                    "Pick members from any division. Admins of the origin division will be notified about cross-division invitations.",
+                  )}
             </p>
 
             <MemberMentionInput
               collaboratorOnly
               workspaceId={workspaceId}
-              placeholder={isSuperAdmin || isAdmin ? "Cari user atau email..." : undefined}
+              placeholder={
+                isSuperAdmin || isAdmin
+                  ? t("Cari anggota campaign", "Search campaign members")
+                  : undefined
+              }
               onSelect={handleSelectUser}
             />
 
-            <div className="flex flex-wrap gap-2 mt-2">
-              {selectedUsers.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs"
-                >
-                  {u.name}
-                  <button
-                    type="button"
-                    onClick={() => removeUser(u.id)}
-                    className="ml-1 text-red-500"
+            {selectedUsers.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {selectedUsers.map((user) => (
+                  <span
+                    key={user.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-accent-soft py-1 pl-2.5 pr-1 text-2xs font-medium text-accent"
                   >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
+                    {user.name}
+                    <button
+                      type="button"
+                      onClick={() => removeUser(user.id)}
+                      aria-label={t("Batalkan {name}", "Remove {name}", {
+                        name: user.name,
+                      })}
+                      className="flex h-5 w-5 items-center justify-center rounded-full transition-colors hover:bg-accent/15"
+                    >
+                      <X size={11} aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {/* ACTION */}
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose}>
-              Cancel
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="h-9 rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted disabled:opacity-50"
+            >
+              {t("Batal", "Cancel")}
             </button>
 
             <button
               disabled={loading}
-              className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+              className="h-9 rounded-control bg-accent px-4 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:opacity-50"
             >
-              {loading ? "Creating..." : "Create"}
+              {loading ? t("Menyimpan…", "Saving…") : t("Buat campaign", "Create campaign")}
             </button>
           </div>
 

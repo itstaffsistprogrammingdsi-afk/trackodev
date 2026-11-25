@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from "react"
 import { getMembers, addMember, removeMember } from "../api/campaign.api"
 import { User } from "../types"
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision"
+import { useLanguage } from "@/context/LanguageContext"
 
 type Props = {
   campaignId: string
 }
 
 export default function CampaignMember({ campaignId }: Props) {
+  const { t } = useLanguage()
   const [members, setMembers] = useState<User[]>([])
   const [userId, setUserId] = useState("")
   const realtimeRevision = useRealtimeRevision(["ActivityLog", "Campaign"])
@@ -35,7 +37,7 @@ export default function CampaignMember({ campaignId }: Props) {
 
   return (
     <div className="mt-6">
-      <h3 className="font-semibold mb-2">Members</h3>
+      <h3 className="font-semibold mb-2">{t("Anggota", "Members")}</h3>
 
       <div className="space-y-2">
         {members.map((m) => (
@@ -48,7 +50,7 @@ export default function CampaignMember({ campaignId }: Props) {
               onClick={() => handleRemove(m.id)}
               className="text-red-500 text-xs"
             >
-              remove
+              {t("Hapus", "Remove")}
             </button>
           </div>
         ))}
@@ -58,7 +60,7 @@ export default function CampaignMember({ campaignId }: Props) {
         <input
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
-          placeholder="User ID"
+          placeholder={t("ID pengguna", "User ID")}
           className="border p-2 rounded w-full"
         />
 
@@ -66,7 +68,7 @@ export default function CampaignMember({ campaignId }: Props) {
           onClick={handleAdd}
           className="bg-blue-600 text-white px-3 rounded"
         >
-          Add
+          {t("Tambah", "Add")}
         </button>
       </div>
     </div>

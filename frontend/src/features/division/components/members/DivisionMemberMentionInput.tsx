@@ -6,10 +6,15 @@ import {
 
 import {
   Loader2,
-  Search,
   UserPlus,
   Users,
 } from "lucide-react";
+
+import {
+  PeopleSearchInput,
+  PersonRow,
+} from "@/components/ui/people-picker/PeoplePicker";
+import { useLanguage } from "@/context/LanguageContext";
 
 import { searchUsers }
   from "@/features/user/api/user.api";
@@ -29,6 +34,7 @@ export default function DivisionMemberMentionInput({
   onSelect,
   role = "member",
 }: Props) {
+  const { t, language } = useLanguage();
   const [query, setQuery] =
     useState("");
 
@@ -137,7 +143,10 @@ export default function DivisionMemberMentionInput({
         } catch {
           if (requestId !== requestIdRef.current) return;
           setError(
-            "Gagal mencari user. Coba lagi."
+            t(
+              "Gagal mencari user. Coba lagi.",
+              "Failed to search users. Try again.",
+            )
           );
         } finally {
           if (requestId === requestIdRef.current) {
@@ -150,7 +159,7 @@ export default function DivisionMemberMentionInput({
 
     return () =>
       clearTimeout(timer);
-  }, [query, role]);
+  }, [language, query, role, t]);
 
   const handleAdd =
     async (user: User) => {
@@ -164,7 +173,10 @@ export default function DivisionMemberMentionInput({
         setShow(false);
       } catch {
         setError(
-          "Failed to add member."
+          t(
+            "Gagal menambahkan anggota.",
+            "Failed to add member."
+          )
         );
       } finally {
         setAddingId(null);
@@ -177,56 +189,15 @@ export default function DivisionMemberMentionInput({
       className="relative"
     >
       <div className="space-y-2">
-        <label
-          className="
-            block
-            text-sm
-            font-medium
-            text-gray-700
-          "
-        >
-          Add Member
-        </label>
-
-        <div className="relative">
-          <Search
-            size={18}
-            className="
-              absolute
-              left-3
-              top-1/2
-              -translate-y-1/2
-              text-gray-400
-            "
-          />
-
-          <input
-            type="text"
-            value={query}
-            onChange={(e) =>
-              setQuery(
-                e.target.value
-              )
-            }
-            placeholder="Search user by name or email..."
-            className="
-              w-full
-              rounded-xl
-              border
-              border-gray-300
-              bg-white
-              py-3
-              pl-10
-              pr-4
-              text-sm
-              outline-none
-              transition
-              focus:border-blue-500
-              focus:ring-2
-              focus:ring-blue-500/20
-            "
-          />
-        </div>
+        <PeopleSearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder={t("Cari nama atau email", "Search name or email")}
+          ariaLabel={t(
+            "Cari user untuk ditambahkan",
+            "Search users to add"
+          )}
+        />
       </div>
 
       {show && (
@@ -238,10 +209,11 @@ export default function DivisionMemberMentionInput({
             z-50
             mt-2
             overflow-hidden
-            rounded-xl
+            rounded-card
             border
-            bg-white
-            shadow-xl
+            border-line
+            bg-surface
+            shadow-e2
           "
         >
           {loading && (
@@ -252,15 +224,15 @@ export default function DivisionMemberMentionInput({
                 gap-2
                 p-4
                 text-sm
-                text-gray-500
+                text-fg-muted
               "
             >
               <Loader2
-                size={16}
-                className="animate-spin"
+                size={14}
+                className="animate-spin motion-reduce:animate-none"
               />
 
-              Searching users...
+              {t("Mencari user…", "Searching users…")}
             </div>
           )}
 
@@ -270,7 +242,7 @@ export default function DivisionMemberMentionInput({
                 className="
                   p-4
                   text-sm
-                  text-red-500
+                  text-danger
                 "
               >
                 {error}
@@ -287,12 +259,12 @@ export default function DivisionMemberMentionInput({
                   gap-2
                   p-5
                   text-sm
-                  text-gray-500
+                  text-fg-muted
                 "
               >
-                <Users size={16} />
+                <Users size={16} aria-hidden="true" />
 
-                No users found.
+                {t("Tidak ada user yang cocok.", "No matching users.")}
               </div>
             )}
 
@@ -305,96 +277,37 @@ export default function DivisionMemberMentionInput({
                   overflow-y-auto
                 "
               >
-                {users.map(
-                  (user) => (
-                    <div
+                {users.map((user) => {
+                  const busy = addingId === user.id;
+
+                  return (
+                    <PersonRow
                       key={user.id}
-                      className="
-                        flex
-                        items-center
-                        justify-between
-                        gap-4
-                        border-b
-                        p-4
-                        last:border-b-0
-                      "
-                    >
-                      <div
-                        className="
-                          min-w-0
-                          flex-1
-                        "
-                      >
-                        <p
-                          className="
-                            truncate
-                            font-medium
-                            text-gray-900
-                          "
+                      person={user}
+                      className="rounded-none border-0 border-b border-line px-2.5 last:border-b-0 hover:bg-surface-muted/50"
+                      action={
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleAdd(user)}
+                          className="inline-flex h-7 items-center gap-1.5 rounded-[7px] bg-accent-soft px-2.5 text-2xs font-medium text-accent transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {user.name}
-                        </p>
-
-                        <p
-                          className="
-                            truncate
-                            text-sm
-                            text-gray-500
-                          "
-                        >
-                          {user.email}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        disabled={
-                          addingId ===
-                          user.id
-                        }
-                        onClick={() =>
-                          handleAdd(
-                            user
-                          )
-                        }
-                        className="
-                          inline-flex
-                          items-center
-                          gap-2
-                          rounded-lg
-                          bg-blue-600
-                          px-3
-                          py-2
-                          text-sm
-                          font-medium
-                          text-white
-                          transition
-                          hover:bg-blue-700
-                          disabled:cursor-not-allowed
-                          disabled:opacity-60
-                        "
-                      >
-                        {addingId ===
-                        user.id ? (
-                          <>
+                          {busy ? (
                             <Loader2
-                              size={14}
-                              className="animate-spin"
+                              size={11}
+                              className="animate-spin motion-reduce:animate-none"
                             />
-                            Adding...
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus
-                              size={14}
-                            />
-                            Add
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )
-                )}
+                          ) : (
+                            <UserPlus size={11} />
+                          )}
+                          {busy
+                            ? t("Menambah…", "Adding…")
+                            : t("Tambah", "Add")}
+                        </button>
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
         </div>

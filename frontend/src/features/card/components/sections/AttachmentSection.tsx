@@ -9,6 +9,7 @@ import CreatableSelect from "react-select/creatable";
 import api from "@/lib/axios";
 import { resolveStorageUrl } from "@/lib/storageUrl";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { toast, confirmDialog } from "@/lib/feedback";
 
 import {
@@ -37,10 +38,6 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StylesConfig } from "node_modules/react-select/dist/declarations/src/styles";
 
 const EMPTY_ATTACHMENTS: Attachment[] = [];
-const INDONESIAN_DATE_TIME = new Intl.DateTimeFormat("id-ID", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 interface Props {
   attachments: Attachment[];
@@ -76,7 +73,7 @@ export default function AttachmentSection({
   fetchAttachments,
   showUploader = false,
   showList = true,
-  title = "Attachment",
+  title,
   uploadEndpoint,
   deleteEndpoint,
   downloadEndpoint,
@@ -84,6 +81,8 @@ export default function AttachmentSection({
   requiresQuantity = false,
 }: Props) {
   const { can, hasRole, managesDivision } = useAuth();
+  const { t, locale } = useLanguage();
+  const sectionTitle = title ?? t("Lampiran", "Attachment");
   const canManageResultAttachments =
     can("attachment.delete") || can("task.update");
   const canCreateResultDescriptionTemplate =
@@ -109,14 +108,19 @@ export default function AttachmentSection({
   const selectStyles: StylesConfig<DescriptionOption, false> = {
   control: (base, state) => ({
     ...base,
-    minHeight: "44px",
-    borderRadius: "12px",
-    borderColor: state.isFocused ? "#3b82f6" : "#e5e7eb",
-    boxShadow: "none",
-    transition: "all 150ms ease",
+    minHeight: "36px",
+    borderRadius: "10px",
+    borderColor: state.isFocused
+      ? "var(--tracko-accent)"
+      : "var(--tracko-line)",
+    backgroundColor: "var(--tracko-surface)",
+    boxShadow: state.isFocused
+      ? "0 0 0 3px var(--tracko-accent-soft)"
+      : "none",
+    transition: "border-color 150ms ease, box-shadow 150ms ease",
 
     "&:hover": {
-      borderColor: "#3b82f6",
+      borderColor: "var(--tracko-line-strong)",
     },
   }),
 
@@ -127,8 +131,20 @@ export default function AttachmentSection({
 
   placeholder: (base) => ({
     ...base,
-    color: "#9ca3af",
-    fontSize: "14px",
+    color: "var(--tracko-fg-subtle)",
+    fontSize: "12px",
+  }),
+
+  singleValue: (base) => ({
+    ...base,
+    color: "var(--tracko-fg-muted)",
+    fontSize: "12px",
+  }),
+
+  input: (base) => ({
+    ...base,
+    color: "var(--tracko-fg)",
+    fontSize: "12px",
   }),
 
   menu: (base) => ({
@@ -136,14 +152,20 @@ export default function AttachmentSection({
     borderRadius: "12px",
     overflow: "hidden",
     zIndex: 50,
+    backgroundColor: "var(--tracko-surface)",
+    border: "1px solid var(--tracko-line)",
+    boxShadow: "var(--shadow-e2)",
   }),
 
   option: (base, state) => ({
     ...base,
-    fontSize: "14px",
+    fontSize: "12px",
+    color: state.isFocused
+      ? "var(--tracko-accent-strong)"
+      : "var(--tracko-fg-muted)",
     backgroundColor: state.isFocused
-      ? "#eff6ff"
-      : "#fff",
+      ? "var(--tracko-accent-soft)"
+      : "var(--tracko-surface)",
   }),
 
   indicatorSeparator: () => ({
@@ -255,9 +277,12 @@ export default function AttachmentSection({
   };
 
   const formatDateTime = (value?: string | null) => {
-    if (!value) return "Waktu tidak tersedia";
+    if (!value) return t("Waktu tidak tersedia", "Time not available");
 
-    return INDONESIAN_DATE_TIME.format(new Date(value));
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
   };
 
   // =========================================
@@ -301,7 +326,7 @@ export default function AttachmentSection({
     setPreviewLoading(true);
 
     try {
-      if (!downloadEndpoint) throw new Error("Endpoint preview tidak tersedia");
+      if (!downloadEndpoint) throw new Error(t("Endpoint preview tidak tersedia", "Preview endpoint is not available"));
 
       const response = await api.get(
         `${downloadEndpoint}/${item.id}/download`,
@@ -317,7 +342,12 @@ export default function AttachmentSection({
     } catch (error) {
       if (previewRequestRef.current !== requestId) return;
       console.error("Preview gagal:", error);
-      setPreviewError("File tidak dapat dimuat atau sudah tidak tersedia.");
+      setPreviewError(
+        t(
+          "File tidak dapat dimuat atau sudah tidak tersedia.",
+          "The file could not be loaded or is no longer available.",
+        ),
+      );
     } finally {
       if (previewRequestRef.current === requestId) setPreviewLoading(false);
     }
@@ -361,7 +391,7 @@ export default function AttachmentSection({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error("Ukuran file maksimal 10,99 MB");
+      toast.error(t("Ukuran file maksimal 10,99 MB", "Maximum file size is 10.99 MB"));
       e.target.value = "";
       return;
     }
@@ -375,12 +405,12 @@ export default function AttachmentSection({
     if (!uploadEndpoint) return;
 
     if (requiresQuantity && (!quantity || quantity <= 0)) {
-      toast.error("Quantity wajib diisi");
+      toast.error(t("Quantity wajib diisi", "Quantity is required"));
       return;
     }
 
     if (supportsResultDescription && !resultDescription.trim()) {
-      toast.error("Result Description wajib diisi");
+      toast.error(t("Result Description wajib diisi", "Result description is required"));
       return;
     }
 
@@ -414,7 +444,7 @@ export default function AttachmentSection({
             : {}),
         });
       } else {
-        toast.error("Pilih file atau isi link");
+        toast.error(t("Pilih file atau isi link", "Select a file or enter a link"));
         return;
       }
 
@@ -428,13 +458,19 @@ export default function AttachmentSection({
       await fetchAttachments();
       setFeedback({
         type: "success",
-        message: "Result berhasil diunggah dan tetap aktif.",
+        message: t(
+          "Result berhasil diunggah dan tetap aktif.",
+          "Result uploaded successfully and remains active.",
+        ),
       });
     } catch (err) {
       console.error(err);
       setFeedback({
         type: "error",
-        message: "Upload belum berhasil. Periksa data lalu coba lagi.",
+        message: t(
+          "Upload belum berhasil. Periksa data lalu coba lagi.",
+          "Upload failed. Check the details and try again.",
+        ),
       });
     } finally {
       setUploading(false);
@@ -445,7 +481,10 @@ export default function AttachmentSection({
   // DELETE
   // =========================================
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog({ message: "Hapus attachment?", variant: "danger" });
+    const ok = await confirmDialog({
+      message: t("Hapus attachment?", "Delete attachment?"),
+      variant: "danger",
+    });
 
     if (!ok) return;
 
@@ -478,13 +517,19 @@ export default function AttachmentSection({
       await fetchAttachments();
       setFeedback({
         type: "success",
-        message: response.data?.message || "File dipindahkan ke riwayat arsip.",
+        message: response.data?.message || t(
+          "File dipindahkan ke riwayat arsip.",
+          "The file was moved to archive history.",
+        ),
       });
     } catch (error) {
       console.error("Gagal mengarsipkan file revisi:", error);
       setFeedback({
         type: "error",
-        message: getErrorMessage(error, "File belum berhasil diarsipkan."),
+        message: getErrorMessage(
+          error,
+          t("File belum berhasil diarsipkan.", "The file could not be archived."),
+        ),
       });
     } finally {
       setBusyAttachmentId(null);
@@ -500,13 +545,19 @@ export default function AttachmentSection({
       await fetchAttachments();
       setFeedback({
         type: "success",
-        message: response.data?.message || "File berhasil dipulihkan.",
+        message: response.data?.message || t(
+          "File berhasil dipulihkan.",
+          "The file was restored successfully.",
+        ),
       });
     } catch (error) {
       console.error("Gagal memulihkan file:", error);
       setFeedback({
         type: "error",
-        message: getErrorMessage(error, "File belum berhasil dipulihkan."),
+        message: getErrorMessage(
+          error,
+          t("File belum berhasil dipulihkan.", "The file could not be restored."),
+        ),
       });
     } finally {
       setBusyAttachmentId(null);
@@ -528,10 +579,13 @@ export default function AttachmentSection({
             {" "}
             {/* HEADER */}
             <div className="mb-4">
-              <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
+              <h3 className="text-sm font-semibold tracking-heading text-fg">{sectionTitle}</h3>
 
-              <p className="mt-1 text-xs text-gray-500">
-                Upload file atau tambahkan link external. Beberapa result tetap aktif sampai diarsipkan manual.
+              <p className="mt-1 text-xs leading-5 text-fg-muted">
+                {t(
+                  "Unggah file atau tambahkan link eksternal. Result tetap aktif sampai diarsipkan manual.",
+                  "Upload a file or add an external link. Results stay active until archived manually.",
+                )}
               </p>
             </div>
             <div className="space-y-3">
@@ -544,17 +598,17 @@ export default function AttachmentSection({
   items-center
   justify-center
   gap-3
-  rounded-2xl
-  border-2
+  rounded-card
+  border
   border-dashed
-  border-slate-300
-  bg-slate-50
-  px-6
-  py-8
+  border-line-strong
+  bg-surface-muted/40
+  px-5
+  py-6
   cursor-pointer
-  transition-all
-  hover:border-blue-500
-  hover:bg-blue-50
+  transition-colors
+  hover:border-accent/40
+  hover:bg-accent-soft/40
 "
               >
                 <div
@@ -564,34 +618,38 @@ export default function AttachmentSection({
     w-12
     items-center
     justify-center
-    rounded-2xl
-    bg-white
-    shadow-sm
+    rounded-control
+    bg-surface
+    text-fg-muted
+    shadow-e1
   "
                 >
-                  <Upload size={22} />
+                  <Upload size={20} />
                 </div>
 
                 <div className="text-center">
-                  <p className="font-medium text-slate-800">
-                    Upload Attachment
+                  <p className="text-sm font-medium text-fg">
+                    {t("Unggah lampiran", "Upload attachment")}
                   </p>
 
-                  <p className="text-xs text-slate-500 mt-1">
-                    Gambar, dokumen, arsip, audio, dan video hingga 10,99 MB
+                  <p className="mt-1 text-xs text-fg-muted">
+                    {t(
+                      "Gambar, dokumen, arsip, audio, dan video hingga 10,99 MB",
+                      "Images, documents, archives, audio, and video up to 10.99 MB",
+                    )}
                   </p>
                 </div>
 
                 <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
               </label>
-              <label className="group flex min-h-24 cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-blue-200 bg-blue-50/60 px-4 py-3 text-blue-700 transition hover:border-blue-400 hover:bg-blue-50 active:scale-[0.99] sm:hidden">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
-                  <Camera size={21} />
+              <label className="group flex min-h-20 cursor-pointer items-center gap-3 rounded-card border border-dashed border-line-strong bg-surface-muted/40 px-3.5 py-3 text-fg-muted transition-colors hover:border-accent/40 hover:bg-accent-soft/40 active:scale-[0.99] sm:hidden">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-surface text-accent shadow-e1">
+                  <Camera size={19} />
                 </span>
                 <span>
-                  <span className="block text-sm font-semibold">Ambil dari Kamera</span>
-                  <span className="mt-0.5 block text-xs text-blue-600/80">
-                    Foto langsung untuk attachment
+                  <span className="block text-sm font-medium text-fg">{t("Ambil dari kamera", "Take from camera")}</span>
+                  <span className="mt-0.5 block text-xs text-fg-muted">
+                    {t("Foto langsung untuk lampiran", "Capture a photo for the attachment")}
                   </span>
                 </span>
                 <input
@@ -610,32 +668,33 @@ export default function AttachmentSection({
     flex
     items-center
     justify-between
-    rounded-2xl
+    rounded-card
     border
-    border-emerald-200
-    bg-emerald-50
-    p-4
+    border-success/20
+    bg-success-soft
+    p-3
   "
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className="
-        h-10
-        w-10
-        rounded-xl
-        bg-white
         flex
+        h-9
+        w-9
         items-center
         justify-center
+        rounded-control
+        bg-surface
+        text-success
       "
                     >
-                      <File size={18} />
+                      <File size={16} />
                     </div>
 
                     <div>
-                      <p className="text-sm font-medium">{selectedFile.name}</p>
+                      <p className="text-xs font-medium text-fg">{selectedFile.name}</p>
 
-                      <p className="text-xs text-slate-500">
+                      <p className="text-2xs text-fg-subtle">
                         {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
@@ -649,14 +708,17 @@ export default function AttachmentSection({
                       if (cameraInputRef.current) cameraInputRef.current.value = "";
                     }}
                     className="
+      flex
       h-8
       w-8
-      rounded-lg
-      hover:bg-red-100
-      text-red-500
+      items-center
+      justify-center
+      rounded-[7px]
+      text-danger
+      hover:bg-danger-soft
       "
-                    aria-label="Hapus file yang dipilih"
-                    title="Hapus file yang dipilih"
+                    aria-label={t("Hapus file yang dipilih", "Remove selected file")}
+                    title={t("Hapus file yang dipilih", "Remove selected file")}
                   >
                     <X size={16} />
                   </button>
@@ -667,14 +729,16 @@ export default function AttachmentSection({
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Link2
-                    size={16}
+                    size={14}
                     className="
+              pointer-events-none
               absolute
-              left-3
+              left-2.5
               top-1/2
               -translate-y-1/2
-              text-gray-400
+              text-fg-subtle
             "
+                    aria-hidden="true"
                   />
 
                   <input
@@ -682,27 +746,30 @@ export default function AttachmentSection({
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
                     placeholder="https://example.com"
-                    aria-label="Link attachment"
+                    aria-label={t("Link attachment", "Attachment link")}
                     className="
-              h-11
+              h-9
               w-full
-              rounded-xl
+              rounded-control
               border
-              border-gray-200
-              bg-white
-              pl-10
-              pr-4
-              text-sm
-              focus:outline-none
+              border-line
+              bg-surface
+              pl-8
+              pr-3
+              text-xs
+              text-fg
+              outline-none
+              placeholder:text-fg-subtle
+              focus:border-accent
               focus:ring-2
-              focus:ring-blue-500
+              focus:ring-accent/15
             "
                   />
                 </div>
               </div>
 
-              <p className="text-xs text-red-400">
-                File yang diunggah harus berukuran maksimal 10,99 MB
+              <p className="text-2xs text-fg-subtle">
+                {t("Ukuran file maksimal 10,99 MB", "Maximum file size is 10.99 MB")}
               </p>
             </div>
             {(requiresQuantity || supportsResultDescription) && (
@@ -717,11 +784,11 @@ export default function AttachmentSection({
                     min="0"
                     value={quantity}
                     onChange={(e) => setQuantity(Number(e.target.value))}
-                    placeholder="Quantity"
-                    aria-label="Quantity"
+                    placeholder={t("Quantity")}
+                    aria-label={t("Quantity")}
                     className="
-                      h-11 rounded-xl border border-gray-200 px-4 text-sm
-                      focus:outline-none focus:ring-2 focus:ring-blue-500
+                      h-9 rounded-control border border-line bg-surface px-3 text-xs text-fg
+                      outline-none focus:border-accent focus:ring-2 focus:ring-accent/15
                     "
                   />
                 )}
@@ -730,7 +797,7 @@ export default function AttachmentSection({
                   <CreatableSelect
                     isClearable
                     styles={selectStyles}
-                    placeholder="Pilih / tambah"
+                    placeholder={t("Pilih / tambah", "Select / add")}
                     options={descriptionOptions}
                     value={
                       resultDescription
@@ -771,11 +838,11 @@ export default function AttachmentSection({
                           "Gagal membuat template result description:",
                           error,
                         );
-                        toast.error("Gagal membuat template Result Description");
+                        toast.error(t("Gagal membuat template Result Description", "Failed to create result description template"));
                       }
                     }}
                     className="text-sm"
-                    aria-label="Result Description"
+                    aria-label={t("Result Description", "Result description")}
                   />
                 )}
               </div>
@@ -786,15 +853,15 @@ export default function AttachmentSection({
     onClick={handleSubmit}
     disabled={uploading || (!selectedFile && !linkUrl.trim())}
     className="
-      h-11
+      h-9
       w-full
-      rounded-xl
-      bg-slate-900
+      rounded-control
+      bg-accent
       text-white
       text-sm
       font-medium
       transition
-      hover:bg-slate-800
+      hover:bg-accent-strong
       disabled:opacity-50
       disabled:cursor-not-allowed
     "
@@ -802,10 +869,10 @@ export default function AttachmentSection({
     {uploading ? (
       <span className="flex items-center justify-center gap-2">
         <Loader2 size={16} className="animate-spin" />
-        Uploading...
+        {t("Mengunggah...", "Uploading...")}
       </span>
     ) : (
-      "Upload Attachment"
+      t("Unggah lampiran", "Upload attachment")
     )}
   </button>
 )}
@@ -816,25 +883,32 @@ export default function AttachmentSection({
         {/* ATTACHMENT LIST */}
         {showList ? <div className="space-y-3">
           {!loading && attachments.length > 0 && (
-            <div className="flex flex-col gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/40 dark:bg-emerald-950/20">
+            <div className="flex flex-col gap-2 rounded-card border border-success/15 bg-success-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-success/20 dark:bg-success-soft">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm dark:bg-slate-800">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-surface text-success shadow-e1 dark:bg-surface-muted">
                   <CheckCircle2 size={18} />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Hasil aktif</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Semua result aktif ditampilkan di daftar utama sampai diarsipkan manual.</p>
+                  <p className="text-sm font-semibold text-fg text-fg">{t("Hasil aktif", "Active results")}</p>
+                  <p className="text-xs text-fg-subtle text-fg-muted">
+                    {t(
+                      "Semua result aktif ditampilkan di daftar utama sampai diarsipkan manual.",
+                      "All active results are shown in the main list until archived manually.",
+                    )}
+                  </p>
                 </div>
               </div>
-              <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm dark:bg-slate-800 dark:text-emerald-400">
-                {attachments.length} hasil aktif
+              <span className="w-fit rounded-full bg-surface px-3 py-1 text-xs font-semibold text-success shadow-e1 dark:bg-surface-muted text-success">
+                {t("{count} hasil aktif", "{count} active results", {
+                  count: attachments.length,
+                })}
               </span>
             </div>
           )}
           {/* LOADING */}
           {loading && (
             <div className="space-y-2" role="status" aria-busy="true">
-              <span className="sr-only">Memuat lampiran</span>
+              <span className="sr-only">{t("Memuat lampiran", "Loading attachments")}</span>
               <Skeleton className="h-20 w-full rounded-card" />
               <Skeleton className="h-20 w-full rounded-card" />
             </div>
@@ -844,8 +918,11 @@ export default function AttachmentSection({
           {!loading && attachments.length === 0 && (
             <EmptyState
               icon={Paperclip}
-              title="Belum ada hasil aktif"
-              description="Upload hasil baru atau buka riwayat arsip untuk melihat versi lama."
+              title={t("Belum ada hasil aktif", "No active results yet")}
+              description={t(
+                "Upload hasil baru atau buka riwayat arsip untuk melihat versi lama.",
+                "Upload a new result or open archive history to view older versions.",
+              )}
             />
           )}
 
@@ -859,7 +936,7 @@ export default function AttachmentSection({
               return (
                 <div
                   key={item.id}
-                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-slate-600"
+                  className="group overflow-hidden rounded-card border border-line bg-surface transition-[border-color,box-shadow] duration-150 hover:border-line-strong hover:shadow-e2"
                 >
                   <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start">
                     {/* ========================================= */}
@@ -875,8 +952,8 @@ export default function AttachmentSection({
                       }}
                       role={clickable ? "button" : undefined}
                       tabIndex={clickable ? 0 : undefined}
-                      aria-label={clickable ? `Preview ${item.file_name || "attachment"}` : undefined}
-                      className={`relative h-40 w-full shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 sm:h-[84px] sm:w-[120px] ${
+                      aria-label={clickable ? t("Preview {name}", "Preview {name}", { name: item.file_name || t("attachment", "attachment") }) : undefined}
+                      className={`relative h-36 w-full shrink-0 overflow-hidden rounded-control border border-line bg-surface-muted sm:h-[76px] sm:w-[108px] ${
                         clickable ? "cursor-pointer" : ""
                       }`}
                     >
@@ -915,11 +992,11 @@ export default function AttachmentSection({
                         (!isImage(item.file_type, item.file_name) ||
                           failedThumbnailIds.has(item.id)) &&
                         !isPdf(item.file_type, item.file_name) && (
-                          <div className="flex h-full w-full flex-col items-center justify-center text-gray-500">
-                            <File size={24} />
+                          <div className="flex h-full w-full flex-col items-center justify-center text-fg-subtle">
+                            <File size={22} />
 
-                            <span className="mt-1 text-[11px] font-medium uppercase">
-                              FILE
+                            <span className="mt-1 text-[10px] font-medium">
+                              {t("File")}
                             </span>
                           </div>
                         )}
@@ -930,12 +1007,12 @@ export default function AttachmentSection({
                           href={item.link_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex h-full w-full flex-col items-center justify-center bg-blue-50 text-blue-600 transition hover:bg-blue-100"
+                          className="flex h-full w-full flex-col items-center justify-center bg-accent-soft text-accent transition-colors hover:bg-accent/15"
                         >
-                          <Link2 size={24} />
+                          <Link2 size={22} />
 
-                          <span className="mt-1 text-[11px] font-medium text-fg-subtle">
-                            Link
+                          <span className="mt-1 text-[10px] font-medium">
+                            {t("Link")}
                           </span>
                         </a>
                       )}
@@ -951,7 +1028,7 @@ export default function AttachmentSection({
                           href={item.link_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="line-clamp-2 break-all text-sm font-semibold text-blue-600 hover:underline"
+                          className="line-clamp-2 break-all text-xs font-medium text-accent hover:underline"
                         >
                           {item.link_url}
                         </a>
@@ -959,7 +1036,7 @@ export default function AttachmentSection({
                         <button
                           type="button"
                           onClick={() => openPreview(item)}
-                          className="max-w-full truncate text-left text-sm font-semibold text-slate-800 transition hover:text-blue-600 hover:underline dark:text-slate-100"
+                          className="max-w-full truncate text-left text-xs font-medium text-fg transition-colors hover:text-accent hover:underline"
                         >
                           {item.file_name}
                         </button>
@@ -967,41 +1044,43 @@ export default function AttachmentSection({
 
                       {/* META */}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium ${
                           item.qc_at
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-amber-50 text-amber-700"
+                            ? "bg-success-soft text-success"
+                            : "bg-warning-soft text-warning"
                         }`}>
-                          {item.qc_at && <CheckCircle2 size={12} />}
-                          {item.qc_at ? "ACC" : "Menunggu ACC"} · v{item.version ?? 1}
+                          {item.qc_at && <CheckCircle2 size={11} />}
+                          {item.qc_at ? t("ACC") : t("Menunggu ACC", "Waiting for approval")} · v{item.version ?? 1}
                         </span>
                         {/* SIZE */}
                         {item.file_size && (
-                          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">
+                          <span className="rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted">
                             {formatSize(item.file_size)}
                           </span>
                         )}
 
                         {/* TYPE */}
                         {item.file_type && (
-                          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-2xs font-medium text-fg-subtle">
                             {item.file_type}
                           </span>
                         )}
 
                         {/* TYPE BADGE */}
                         <span
-                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          className={`rounded-full px-2 py-0.5 text-2xs font-medium ${
                             item.attachment_type === "link"
-                              ? "bg-blue-50 text-blue-600"
-                              : "bg-gray-100 text-gray-600"
+                              ? "bg-accent-soft text-accent"
+                              : "bg-surface-muted text-fg-muted"
                           }`}
                         >
-                          {item.attachment_type}
+                          {item.attachment_type === "link"
+                            ? t("Tautan", "Link")
+                            : t("File")}
                         </span>
                         {item.quantity !== undefined && (
-                          <div className="mt-2 text-xs text-slate-600 dark:text-slate-300">
-                            Quantity:{" "}
+                          <div className="mt-2 text-xs text-fg-muted text-fg-muted">
+                            {t("Quantity:")}{" "}
                             <span className="font-semibold">
                               {item.quantity}
                             </span>
@@ -1009,7 +1088,7 @@ export default function AttachmentSection({
                         )}
 
                         {item.result_description && (
-                          <div className="mt-1 text-sm text-slate-700 dark:text-slate-200">
+                          <div className="mt-1 text-sm text-fg-muted text-fg">
                             {item.result_description}
                           </div>
                         )}
@@ -1024,19 +1103,23 @@ export default function AttachmentSection({
                         <button
                           type="button"
                           onClick={() => setArchiveCandidate(item)}
-                          className="flex h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300 sm:px-3"
-                          title="Arsipkan result"
-                          aria-label={`Arsipkan ${item.file_name || item.link_url || "attachment"}`}
+                          className="flex h-8 items-center gap-1.5 rounded-[7px] px-2 text-xs font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/30"
+                          title={t("Arsipkan result", "Archive result")}
+                          aria-label={t("Arsipkan {name}", "Archive {name}", {
+                            name: item.file_name || item.link_url || t("attachment", "attachment"),
+                          })}
                         >
                           <Archive size={16} />
-                          <span className="hidden md:inline">Arsipkan</span>
+                          <span className="hidden md:inline">{t("Arsipkan", "Archive")}</span>
                         </button>
                       )}
                       <button
                         type="button"
-                        aria-label={`Hapus ${item.file_name || item.link_url || "attachment"}`}
+                        aria-label={t("Hapus {name}", "Delete {name}", {
+                          name: item.file_name || item.link_url || t("attachment", "attachment"),
+                        })}
                         onClick={() => handleDelete(item.id)}
-                        className="flex h-10 w-10 items-center justify-center rounded-xl text-red-500 transition hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-200"
+                        className="flex h-8 w-8 items-center justify-center rounded-[7px] text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/30"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -1049,59 +1132,68 @@ export default function AttachmentSection({
             <button
               type="button"
               onClick={() => setVisibleCount((current) => current + 20)}
-              className="w-full rounded-xl border border-slate-200 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 dark:border-slate-700 dark:text-blue-400 dark:hover:bg-slate-800"
+              className="w-full rounded-control border border-line py-2 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
             >
-              Muat {Math.min(20, attachments.length - visibleCount)} attachment lagi
+              {t("Muat {count} attachment lagi", "Load {count} more attachments", {
+                count: Math.min(20, attachments.length - visibleCount),
+              })}
             </button>
           ) : null}
 
           {!loading && archivedAttachments.length > 0 && (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
+            <div className="overflow-hidden rounded-card border border-line bg-surface-muted/40 dark:border-line-strong dark:bg-accent/40">
               <button
                 type="button"
                 onClick={() => setArchiveOpen((current) => !current)}
                 aria-expanded={archiveOpen}
-                className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-300 dark:hover:bg-slate-800"
+                className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-300 dark:hover:bg-accent-strong"
               >
                 <span className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-surface text-fg-subtle shadow-e1 dark:bg-surface-muted text-fg-muted">
                     <Archive size={18} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">Riwayat arsip</span>
-                    <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-                      {archivedAttachments.length} versi lama · tersembunyi dari hasil aktif
+                    <span className="block text-sm font-semibold text-fg text-fg">{t("Riwayat arsip", "Archive history")}</span>
+                    <span className="block truncate text-xs text-fg-subtle text-fg-muted">
+                      {t(
+                        "{count} versi lama · tersembunyi dari hasil aktif",
+                        "{count} older versions · hidden from active results",
+                        { count: archivedAttachments.length },
+                      )}
                     </span>
                   </span>
                 </span>
                 <ChevronDown
                   size={18}
-                  className={`shrink-0 text-slate-500 transition-transform ${archiveOpen ? "rotate-180" : ""}`}
+                  className={`shrink-0 text-fg-subtle transition-transform ${archiveOpen ? "rotate-180" : ""}`}
                 />
               </button>
 
               {archiveOpen && (
-                <div className="space-y-2 border-t border-slate-200 p-3 dark:border-slate-700">
-                  <div className="flex items-center gap-2 px-1 pb-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="space-y-2 border-t border-line p-3 dark:border-line-strong">
+                  <div className="flex items-center gap-2 px-1 pb-1 text-xs text-fg-subtle text-fg-muted">
                     <Clock3 size={14} />
-                    Versi terdahulu hanya ditampilkan di riwayat ini.
+                    {t(
+                      "Versi terdahulu hanya ditampilkan di riwayat ini.",
+                      "Older versions are only shown in this history.",
+                    )}
                   </div>
                   {archivedAttachments.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-col gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-3 sm:flex-row sm:items-center dark:border-slate-600 dark:bg-slate-800/70"
+                      className="flex flex-col gap-3 rounded-control border border-dashed border-line-strong bg-surface p-3 sm:flex-row sm:items-center dark:border-line-strong dark:bg-surface-muted/70"
                     >
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-surface-muted text-fg-subtle dark:bg-surface-muted text-fg-muted">
                         {item.attachment_type === "link" ? <Link2 size={18} /> : <File size={18} />}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">
-                          {item.file_name || item.link_url || "Attachment"}
+                        <p className="truncate text-sm font-semibold text-fg-muted text-fg">
+                          {item.file_name || item.link_url || t("Attachment")}
                         </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold dark:bg-slate-700">Arsip · v{item.version ?? 1}</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-subtle text-fg-muted">
+                          <span className="rounded-full bg-surface-muted px-2 py-0.5 font-semibold dark:bg-surface-muted">{t("Arsip", "Archived")} · v{item.version ?? 1}</span>
                           <span>{formatDateTime(item.archived_at)}</span>
-                          {item.archiver?.name && <span>oleh {item.archiver.name}</span>}
+                          {item.archiver?.name && <span>{t("oleh {name}", "by {name}", { name: item.archiver.name })}</span>}
                         </div>
                       </div>
                       <div className="flex items-center justify-end gap-1">
@@ -1111,8 +1203,8 @@ export default function AttachmentSection({
                             target="_blank"
                             rel="noreferrer"
                             className="flex h-9 w-9 items-center justify-center rounded-lg text-blue-600 transition hover:bg-blue-50"
-                            aria-label="Buka link arsip"
-                            title="Buka link"
+                            aria-label={t("Buka link arsip", "Open archived link")}
+                            title={t("Buka link", "Open link")}
                           >
                             <ExternalLink size={15} />
                           </a>
@@ -1122,7 +1214,7 @@ export default function AttachmentSection({
                             onClick={() => openPreview(item)}
                             className="flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50"
                           >
-                            <FileText size={15} /> Preview
+                            <FileText size={15} /> {t("Preview")}
                           </button>
                         )}
                         {item.can_restore && canManageResultAttachments && (
@@ -1130,11 +1222,11 @@ export default function AttachmentSection({
                             type="button"
                             onClick={() => handleRestore(item)}
                             disabled={busyAttachmentId === item.id}
-                            className="flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
-                            title="Pulihkan sebagai hasil aktif"
+                            className="flex h-9 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold text-success transition hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
+                            title={t("Pulihkan sebagai hasil aktif", "Restore as active result")}
                           >
                             {busyAttachmentId === item.id ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
-                            Pulihkan
+                            {t("Pulihkan", "Restore")}
                           </button>
                         )}
                       </div>
@@ -1150,7 +1242,7 @@ export default function AttachmentSection({
       {feedback && (
         <div
           role="status"
-          className={`fixed right-4 top-4 z-[100000] flex max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-xl ${
+          className={`fixed right-4 top-4 z-[100000] flex max-w-sm items-start gap-3 rounded-card border px-4 py-3 text-sm shadow-e3 ${
             feedback.type === "success"
               ? "border-emerald-200 bg-emerald-50 text-emerald-800"
               : "border-red-200 bg-red-50 text-red-800"
@@ -1158,7 +1250,7 @@ export default function AttachmentSection({
         >
           {feedback.type === "success" ? <CheckCircle2 size={18} className="mt-0.5 shrink-0" /> : <AlertTriangle size={18} className="mt-0.5 shrink-0" />}
           <span className="leading-5">{feedback.message}</span>
-          <button type="button" onClick={() => setFeedback(null)} className="ml-1 rounded p-0.5 opacity-60 hover:opacity-100" aria-label="Tutup notifikasi">
+          <button type="button" onClick={() => setFeedback(null)} className="ml-1 rounded p-0.5 opacity-60 hover:opacity-100" aria-label={t("Tutup notifikasi", "Close notification")}>
             <X size={15} />
           </button>
         </div>
@@ -1166,7 +1258,7 @@ export default function AttachmentSection({
 
       {archiveCandidate && (
         <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-overlay p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="archive-confirmation-title"
@@ -1174,38 +1266,41 @@ export default function AttachmentSection({
             if (event.target === event.currentTarget && !busyAttachmentId) setArchiveCandidate(null);
           }}
         >
-          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl dark:bg-slate-900 sm:p-6">
+          <div className="w-full max-w-md rounded-modal bg-surface p-5 shadow-2xl dark:bg-accent sm:p-6">
             <div className="flex items-start gap-4">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-card bg-warning-soft text-warning dark:bg-warning-soft dark:text-warning">
                 <Archive size={22} />
               </span>
               <div className="min-w-0">
-                <h3 id="archive-confirmation-title" className="text-base font-bold text-slate-900 dark:text-white">Arsipkan result?</h3>
-                <p className="mt-1 truncate text-sm font-medium text-slate-700 dark:text-slate-200">
-                  {archiveCandidate.file_name || archiveCandidate.link_url || "Attachment"}
+                <h3 id="archive-confirmation-title" className="text-sm font-semibold text-fg">{t("Arsipkan result?", "Archive result?")}</h3>
+                <p className="mt-1 truncate text-sm font-medium text-fg-muted text-fg">
+                  {archiveCandidate.file_name || archiveCandidate.link_url || t("Attachment")}
                 </p>
               </div>
             </div>
-            <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-              File langsung disembunyikan dari hasil aktif dan tetap aman di Riwayat arsip. Result lain tetap aktif sampai Anda mengarsipkannya secara manual.
+            <div className="mt-5 rounded-card border border-warning/15 bg-warning-soft p-4 text-sm leading-6 text-warning dark:border-warning/20 dark:bg-warning-soft dark:text-warning">
+              {t(
+                "File langsung disembunyikan dari hasil aktif dan tetap aman di Riwayat arsip. Result lain tetap aktif sampai Anda mengarsipkannya secara manual.",
+                "The file is immediately hidden from active results and stays safe in Archive history. Other results remain active until you archive them manually.",
+              )}
             </div>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => setArchiveCandidate(null)}
                 disabled={Boolean(busyAttachmentId)}
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="h-9 rounded-control border border-line px-4 text-sm font-semibold text-fg-muted transition hover:bg-surface-muted/60 disabled:opacity-50 dark:border-line-strong text-fg dark:hover:bg-accent-strong"
               >
-                Batal
+                {t("Batal", "Cancel")}
               </button>
               <button
                 type="button"
                 onClick={handleArchiveForRevision}
                 disabled={busyAttachmentId === archiveCandidate.id}
-                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
+                className="flex h-9 items-center justify-center gap-2 rounded-control bg-amber-600 px-4 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
               >
                 {busyAttachmentId === archiveCandidate.id ? <Loader2 size={16} className="animate-spin" /> : <Archive size={16} />}
-                Pindahkan ke arsip
+                {t("Pindahkan ke arsip", "Move to archive")}
               </button>
             </div>
           </div>
@@ -1226,7 +1321,7 @@ export default function AttachmentSection({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-6xl bg-[#1f1f1f] rounded-2xl overflow-hidden"
+            className="relative w-full max-w-6xl bg-[#1f1f1f] rounded-card overflow-hidden"
           >
             {/* HEADER */}
             <div className="h-14 px-5 border-b border-white/10 flex items-center justify-between">
@@ -1238,8 +1333,8 @@ export default function AttachmentSection({
                 {/* DOWNLOAD BUTTON */}
                 <button
                   onClick={() => handleDownload(previewFile)}
-                  className="w-9 h-9 rounded-xl hover:bg-white/10 text-white flex items-center justify-center"
-                  title="Download"
+                  className="w-9 h-9 rounded-control hover:bg-surface/10 text-white flex items-center justify-center"
+                  title={t("Download")}
                 >
                   <Download size={18} />
                 </button>
@@ -1251,7 +1346,7 @@ export default function AttachmentSection({
                     setPreviewOpen(false);
                     setPreviewUrl(null);
                   }}
-                  className="w-9 h-9 rounded-xl hover:bg-white/10 text-white flex items-center justify-center"
+                  className="w-9 h-9 rounded-control hover:bg-surface/10 text-white flex items-center justify-center"
                 >
                   <X size={18} />
                 </button>
@@ -1263,22 +1358,22 @@ export default function AttachmentSection({
               {previewLoading && (
                 <div className="flex flex-col items-center gap-3 text-gray-300">
                   <Loader2 size={32} className="animate-spin" />
-                  <span className="text-sm">Memuat preview...</span>
+                  <span className="text-sm">{t("Memuat preview...", "Loading preview...")}</span>
                 </div>
               )}
 
               {!previewLoading && previewError && (
                 <div className="flex flex-col items-center px-6 text-center text-gray-300">
                   <File size={60} />
-                  <p className="mt-4 text-lg font-medium">Preview gagal dimuat</p>
+                  <p className="mt-4 text-lg font-medium">{t("Preview gagal dimuat", "Preview failed to load")}</p>
                   <p className="mt-2 text-sm text-gray-400">{previewError}</p>
                   <button
                     type="button"
                     onClick={() => handleDownload(previewFile)}
-                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
+                    className="mt-5 inline-flex items-center gap-2 rounded-control bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
                   >
                     <Download size={14} />
-                    Coba Download
+                    {t("Coba Download", "Try download")}
                   </button>
                 </div>
               )}
@@ -1291,7 +1386,7 @@ export default function AttachmentSection({
                     src={previewUrl}
                     alt={previewFile.file_name}
                     onError={() => {
-                      setPreviewError("Gambar gagal ditampilkan.");
+                      setPreviewError(t("Gambar gagal ditampilkan.", "The image could not be displayed."));
                       setPreviewUrl(null);
                     }}
                     className="max-h-[82vh] max-w-full object-contain"
@@ -1304,12 +1399,12 @@ export default function AttachmentSection({
                 isPdf(previewFile.file_type, previewFile.file_name) && (
                   <iframe
                     src={previewUrl}
-                    title={previewFile.file_name || "Preview PDF"}
+                    title={previewFile.file_name || t("Preview PDF", "PDF preview")}
                     onError={() => {
-                      setPreviewError("PDF gagal ditampilkan.");
+                      setPreviewError(t("PDF gagal ditampilkan.", "The PDF could not be displayed."));
                       setPreviewUrl(null);
                     }}
-                    className="h-[82vh] w-full bg-white"
+                    className="h-[82vh] w-full bg-surface"
                   />
                 )}
 
@@ -1320,14 +1415,14 @@ export default function AttachmentSection({
                 !isPdf(previewFile.file_type, previewFile.file_name) && (
                   <div className="flex h-[82vh] flex-col items-center justify-center text-gray-300">
                     <File size={60} />
-                    <p className="mt-4 text-lg font-medium">Preview tidak tersedia</p>
+                    <p className="mt-4 text-lg font-medium">{t("Preview tidak tersedia", "Preview not available")}</p>
                     <button
                       type="button"
                       onClick={() => handleDownload(previewFile)}
-                      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
+                      className="mt-5 inline-flex items-center gap-2 rounded-control bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
                     >
                       <Download size={14} />
-                      Download File
+                      {t("Download File", "Download file")}
                     </button>
                   </div>
                 )}

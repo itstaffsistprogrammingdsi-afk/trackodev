@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import type { User } from "@/features/user/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   users: User[];
@@ -29,8 +30,10 @@ export default function UserPicker({
   users,
   selected,
   onSelect,
-  placeholder = "Cari user...",
+  placeholder,
 }: Props) {
+  const { t } = useLanguage();
+
   const wrapperRef =
     useRef<HTMLDivElement>(null);
 
@@ -126,10 +129,10 @@ export default function UserPicker({
             flex
             items-center
             justify-between
-            rounded-2xl
+            rounded-card
             border
             border-emerald-200
-            bg-emerald-50
+            bg-success-soft
             px-4
             py-3
           "
@@ -139,7 +142,7 @@ export default function UserPicker({
               className="
                 text-sm
                 font-semibold
-                text-emerald-700
+                text-success
               "
             >
               {selected.name}
@@ -161,9 +164,9 @@ export default function UserPicker({
               onSelect(null)
             }
             className="
-              rounded-xl
+              rounded-control
               p-2
-              hover:bg-white
+              hover:bg-surface
             "
           >
             <X size={16} />
@@ -197,13 +200,13 @@ export default function UserPicker({
 
             setOpen(true);
           }}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("Cari user...", "Search users...")}
           className="
             w-full
-            rounded-2xl
+            rounded-card
             border
             border-zinc-200
-            bg-white
+            bg-surface
             py-3
             pl-10
             pr-4
@@ -228,10 +231,10 @@ export default function UserPicker({
             max-h-72
             w-full
             overflow-y-auto
-            rounded-2xl
+            rounded-card
             border
             border-zinc-200
-            bg-white
+            bg-surface
             shadow-2xl
           "
         >
@@ -244,7 +247,7 @@ export default function UserPicker({
                 text-zinc-500
               "
             >
-              User tidak ditemukan
+              {t("User tidak ditemukan", "No users found")}
             </div>
           )}
 
@@ -296,7 +299,7 @@ export default function UserPicker({
                   user.id && (
                   <Check
                     size={16}
-                    className="text-emerald-600"
+                    className="text-success"
                   />
                 )}
               </button>

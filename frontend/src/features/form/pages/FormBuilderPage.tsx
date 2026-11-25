@@ -26,6 +26,7 @@ import {
 } from "../api/form.api";
 import type { Form, FormField } from "../types";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useRealtimeRevision } from "@/hooks/useRealtimeRevision";
 import { toast, confirmDialog } from "@/lib/feedback";
 import EmptyState from "@/components/ui/EmptyState";
@@ -35,22 +36,24 @@ import RequiredToggle from "../components/RequiredToggle";
 const FIELD_TYPES: Array<{
   value: FormField["type"];
   label: string;
+  labelEn: string;
   icon: typeof Type;
 }> = [
-  { value: "text", label: "Teks singkat", icon: Type },
-  { value: "textarea", label: "Paragraf", icon: AlignLeft },
-  { value: "number", label: "Angka", icon: Hash },
-  { value: "date", label: "Tanggal", icon: Calendar },
-  { value: "file", label: "Upload file", icon: Upload },
-  { value: "select", label: "Dropdown", icon: List },
-  { value: "checkbox", label: "Checkbox", icon: CheckSquare },
-  { value: "radio", label: "Pilihan ganda", icon: CircleDot },
-  { value: "section", label: "Section", icon: Heading },
+  { value: "text", label: "Teks singkat", labelEn: "Short text", icon: Type },
+  { value: "textarea", label: "Paragraf", labelEn: "Paragraph", icon: AlignLeft },
+  { value: "number", label: "Angka", labelEn: "Number", icon: Hash },
+  { value: "date", label: "Tanggal", labelEn: "Date", icon: Calendar },
+  { value: "file", label: "Upload file", labelEn: "File upload", icon: Upload },
+  { value: "select", label: "Dropdown", labelEn: "Dropdown", icon: List },
+  { value: "checkbox", label: "Checkbox", labelEn: "Checkbox", icon: CheckSquare },
+  { value: "radio", label: "Pilihan ganda", labelEn: "Multiple choice", icon: CircleDot },
+  { value: "section", label: "Section", labelEn: "Section", icon: Heading },
 ];
 
 export default function FormBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const { can } = useAuth();
+  const { t, language } = useLanguage();
   const canCreateField = can('form.field.create') || can('form.update');
   const canUpdateField = can('form.field.update') || can('form.update');
   const canDeleteField = can('form.field.delete') || can('form.update');
@@ -87,11 +90,11 @@ export default function FormBuilderPage() {
       setForm(data);
     } catch (error) {
       console.error(error);
-      toast.error("Gagal load form");
+      toast.error(t("Gagal load form", "Failed to load form"));
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, language, t]);
 
   const generateFieldName = (text: string) =>
     text.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, "");
@@ -132,7 +135,7 @@ export default function FormBuilderPage() {
 
   const handleSaveField = async () => {
     if (!id || !label.trim()) {
-      toast.error("Label wajib diisi");
+      toast.error(t("Label wajib diisi", "Label is required"));
       return;
     }
 
@@ -168,15 +171,19 @@ export default function FormBuilderPage() {
       }
 
       resetFieldEditor();
-      toast.success(wasEditing ? "Field diperbarui." : "Field ditambahkan.");
+      toast.success(
+        wasEditing
+          ? t("Field diperbarui.", "Field updated.")
+          : t("Field ditambahkan.", "Field added."),
+      );
 
       await fetchForm();
     } catch (error) {
       console.error(error);
       toast.error(
         editingFieldId
-          ? "Gagal mengubah field"
-          : "Gagal menambahkan field",
+          ? t("Gagal mengubah field", "Failed to update field")
+          : t("Gagal menambahkan field", "Failed to add field"),
       );
     } finally {
       setSavingField(false);
@@ -184,16 +191,22 @@ export default function FormBuilderPage() {
   };
 
   const handleDeleteField = async (fieldId: string) => {
-    if (!(await confirmDialog({ message: "Hapus field ini?", variant: "danger" }))) return;
+    if (
+      !(await confirmDialog({
+        message: t("Hapus field ini?", "Delete this field?"),
+        variant: "danger",
+      }))
+    )
+      return;
 
     try {
       await deleteField(fieldId);
       if (editingFieldId === fieldId) resetFieldEditor();
       await fetchForm();
-      toast.success("Field dihapus.");
+      toast.success(t("Field dihapus.", "Field deleted."));
     } catch (error) {
       console.error(error);
-      toast.error("Gagal hapus field");
+      toast.error(t("Gagal hapus field", "Failed to delete field"));
     }
   };
 
@@ -212,10 +225,10 @@ export default function FormBuilderPage() {
       } as Partial<FormField>);
 
       await fetchForm();
-      toast.success("Field diduplikasi.");
+      toast.success(t("Field diduplikasi.", "Field duplicated."));
     } catch (error) {
       console.error(error);
-      toast.error("Gagal menduplikasi field.");
+      toast.error(t("Gagal menduplikasi field.", "Failed to duplicate field."));
     } finally {
       setSavingField(false);
     }
@@ -228,7 +241,7 @@ export default function FormBuilderPage() {
   if (loading) {
     return (
       <div className="space-y-6" role="status" aria-busy="true">
-        <span className="sr-only">Memuat builder form</span>
+        <span className="sr-only">{t("Memuat builder form", "Loading form builder")}</span>
         <div className="space-y-3">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="h-8 w-64 max-w-full" />
@@ -244,9 +257,15 @@ export default function FormBuilderPage() {
     return (
       <EmptyState
         icon={ListChecks}
-        title="Form tidak ditemukan"
-        description="Form mungkin sudah dihapus atau Anda tidak memiliki akses."
-        action={{ label: "Kembali ke daftar form", onClick: () => window.location.assign("/forms") }}
+        title={t("Form tidak ditemukan", "Form not found")}
+        description={t(
+          "Form mungkin sudah dihapus atau Anda tidak memiliki akses.",
+          "The form may have been deleted or you do not have access.",
+        )}
+        action={{
+          label: t("Kembali ke daftar form", "Back to form list"),
+          onClick: () => window.location.assign("/forms"),
+        }}
       />
     );
   }
@@ -262,13 +281,15 @@ export default function FormBuilderPage() {
             className="inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted transition-colors hover:text-fg"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-            Semua form
+            {t("Semua form", "All forms")}
           </Link>
           <h1 className="mt-2 truncate text-2xl font-semibold tracking-[-0.02em] text-fg">
             {form.name}
           </h1>
           <p className="mt-1 text-sm text-fg-muted">
-            Form builder · {form.fields?.length ?? 0} field
+            {t("Form builder · {count} field", "Form builder · {count} fields", {
+              count: form.fields?.length ?? 0,
+            })}
           </p>
         </div>
 
@@ -280,7 +301,7 @@ export default function FormBuilderPage() {
             className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
           >
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
-            Buka form
+            {t("Buka form", "Open form")}
           </a>
           {can("form.update") ? (
             <Link
@@ -288,7 +309,7 @@ export default function FormBuilderPage() {
               className="inline-flex h-9 items-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong"
             >
               <Pencil className="h-4 w-4" aria-hidden="true" />
-              Edit info form
+              {t("Edit info form", "Edit form info")}
             </Link>
           ) : null}
         </div>
@@ -327,24 +348,32 @@ export default function FormBuilderPage() {
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 id="field-editor-title" className="text-sm font-semibold text-fg">
-              {editingFieldId ? "Edit pertanyaan" : "Tambah pertanyaan"}
+              {editingFieldId
+                ? t("Edit pertanyaan", "Edit question")
+                : t("Tambah pertanyaan", "Add question")}
             </h2>
             <p className="mt-1 text-xs text-fg-muted">
               {editingFieldId
-                ? "Perbarui pertanyaan ini, lalu simpan perubahan."
-                : "Tambahkan pertanyaan baru ke form ini."}
+                ? t(
+                    "Perbarui pertanyaan ini, lalu simpan perubahan.",
+                    "Update this question, then save your changes.",
+                  )
+                : t(
+                    "Tambahkan pertanyaan baru ke form ini.",
+                    "Add a new question to this form.",
+                  )}
             </p>
           </div>
 
           {editingFieldId ? (
             <div className="flex shrink-0 items-center gap-2">
               <p className="hidden text-[10px] font-medium text-accent sm:block" aria-live="polite">
-                Belum disimpan
+                {t("Belum disimpan", "Unsaved")}
               </p>
               <button
                 type="button"
                 onClick={resetFieldEditor}
-                aria-label="Tutup editor pertanyaan"
+                aria-label={t("Tutup editor pertanyaan", "Close question editor")}
                 className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -356,35 +385,38 @@ export default function FormBuilderPage() {
         <div className="space-y-4">
           <div>
             <label htmlFor="builder-field-label" className="mb-1.5 block text-xs font-medium text-fg-muted">
-              Label pertanyaan
+              {t("Label pertanyaan", "Question label")}
             </label>
             <input
               id="builder-field-label"
               ref={labelInputRef}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Contoh: Nama lengkap"
+              placeholder={t("Contoh: Nama lengkap", "Example: Full name")}
               className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-fg outline-none transition-colors focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
             />
           </div>
 
           <div>
             <label htmlFor="builder-field-description" className="mb-1.5 block text-xs font-medium text-fg-muted">
-              Deskripsi pertanyaan (opsional)
+              {t("Deskripsi pertanyaan (opsional)", "Question description (optional)")}
             </label>
             <textarea
               id="builder-field-description"
               rows={2}
               value={fieldDescription}
               onChange={(event) => setFieldDescription(event.target.value)}
-              placeholder="Panduan singkat di bawah pertanyaan"
+              placeholder={t(
+                "Panduan singkat di bawah pertanyaan",
+                "Short guidance below the question",
+              )}
               className="w-full resize-none rounded-control border border-line bg-surface px-3 py-2 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
             />
           </div>
 
           <div>
             <span className="mb-1.5 block text-xs font-medium text-fg-muted">
-              Tipe pertanyaan
+              {t("Tipe pertanyaan", "Question type")}
             </span>
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
               {FIELD_TYPES.map((fieldType) => {
@@ -409,7 +441,7 @@ export default function FormBuilderPage() {
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    <span className="truncate">{fieldType.label}</span>
+                    <span className="truncate">{t(fieldType.label, fieldType.labelEn)}</span>
                   </button>
                 );
               })}
@@ -433,7 +465,7 @@ export default function FormBuilderPage() {
                       updated[i] = e.target.value;
                       setOptions(updated);
                     }}
-                    placeholder={`Option ${i + 1}`}
+                    placeholder={t(`Opsi ${i + 1}`, `Option ${i + 1}`)}
                     className="flex-1 rounded-lg border px-3 py-2"
                   />
 
@@ -457,7 +489,7 @@ export default function FormBuilderPage() {
               onClick={() => setOptions([...options, ""])}
               className="mt-3 text-sm text-blue-600 hover:underline"
             >
-              + Tambah opsi
+              {t("+ Tambah opsi", "+ Add option")}
             </button>
 
             {/* OTHER */}
@@ -467,14 +499,19 @@ export default function FormBuilderPage() {
                 checked={allowOther}
                 onChange={(e) => setAllowOther(e.target.checked)}
               />
-              <span className="text-sm">Izinkan opsi "Other"</span>
+              <span className="text-sm">
+                {t('Izinkan opsi "Other"', 'Allow "Other" option')}
+              </span>
             </div>
 
             {allowOther && (
               <input
                 value={otherLabel}
                 onChange={(e) => setOtherLabel(e.target.value)}
-                placeholder="Label opsi Other (default: Other)"
+                placeholder={t(
+                  "Label opsi Other (default: Other)",
+                  "Other option label (default: Other)",
+                )}
                 className="mt-2 w-full rounded-lg border px-3 py-2"
               />
             )}
@@ -489,7 +526,7 @@ export default function FormBuilderPage() {
               className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
             >
               <X size={16} />
-              Batal
+              {t("Batal", "Cancel")}
             </button>
           )}
           <button
@@ -499,10 +536,10 @@ export default function FormBuilderPage() {
             className="inline-flex h-9 items-center justify-center gap-2 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
           >
             {savingField
-              ? "Menyimpan..."
+              ? t("Menyimpan...", "Saving...")
               : editingFieldId
-                ? "Simpan perubahan"
-                : "Tambah field"}
+                ? t("Simpan perubahan", "Save changes")
+                : t("Tambah field", "Add field")}
           </button>
         </div>
       </div>
@@ -513,13 +550,20 @@ export default function FormBuilderPage() {
       <div className="overflow-hidden rounded-panel border border-line bg-surface">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-fg">Field form</h2>
+            <h2 className="text-sm font-semibold text-fg">
+              {t("Field form", "Form fields")}
+            </h2>
             <p className="mt-0.5 text-xs text-fg-muted">
-              Urutan field mengikuti urutan saat form publik dibuka.
+              {t(
+                "Urutan field mengikuti urutan saat form publik dibuka.",
+                "Field order follows the order shown when the public form opens.",
+              )}
             </p>
           </div>
           <span className="rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-medium tabular-nums text-fg-muted">
-            {form.fields?.length ?? 0} field
+            {t("{count} field", "{count} fields", {
+              count: form.fields?.length ?? 0,
+            })}
           </span>
         </div>
 
@@ -541,7 +585,7 @@ export default function FormBuilderPage() {
                       </span>
                       {field.is_required ? (
                         <span className="text-[10px] font-medium text-danger">
-                          Wajib
+                          {t("Wajib", "Required")}
                         </span>
                       ) : null}
                     </div>
@@ -567,7 +611,7 @@ export default function FormBuilderPage() {
 
                     {field.allow_other ? (
                       <p className="mt-1.5 text-[10px] text-accent">
-                        Opsi “Other” aktif
+                        {t('Opsi "Other" aktif', '"Other" option enabled')}
                       </p>
                     ) : null}
                   </div>
@@ -579,8 +623,10 @@ export default function FormBuilderPage() {
                         onClick={() => void handleDuplicateField(field)}
                         disabled={savingField}
                         className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg disabled:cursor-wait disabled:opacity-50"
-                        aria-label={`Duplikasi field ${field.label}`}
-                        title="Duplikasi field"
+                        aria-label={t("Duplikasi field {label}", "Duplicate field {label}", {
+                          label: field.label,
+                        })}
+                        title={t("Duplikasi field", "Duplicate field")}
                       >
                         <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
@@ -592,7 +638,7 @@ export default function FormBuilderPage() {
                         className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
                       >
                         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                        Edit
+                        {t("Edit", "Edit")}
                       </button>
                     ) : null}
                     {canDeleteField ? (
@@ -600,8 +646,10 @@ export default function FormBuilderPage() {
                         type="button"
                         onClick={() => void handleDeleteField(field.id)}
                         className="flex h-8 w-8 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger"
-                        aria-label={`Hapus field ${field.label}`}
-                        title="Hapus field"
+                        aria-label={t("Hapus field {label}", "Delete field {label}", {
+                          label: field.label,
+                        })}
+                        title={t("Hapus field", "Delete field")}
                       >
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
@@ -614,8 +662,11 @@ export default function FormBuilderPage() {
             <EmptyState
               compact
               icon={ListChecks}
-              title="Belum ada field"
-              description="Tambahkan field pertama di editor di atas. Mulai dari teks singkat atau pilihan status."
+              title={t("Belum ada field", "No fields yet")}
+              description={t(
+                "Tambahkan field pertama di editor di atas. Mulai dari teks singkat atau pilihan status.",
+                "Add your first field in the editor above. Start with short text or a status choice.",
+              )}
             />
           )}
         </div>

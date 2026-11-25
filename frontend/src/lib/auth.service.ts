@@ -1,4 +1,5 @@
 import api from "./axios";
+import { translate } from "@/i18n/translate";
 
 // ====== TYPE USER ======
 export interface User {
@@ -28,7 +29,12 @@ export const login = async (
   const user = res.data?.user;
 
   if (!token) {
-    throw new Error("Token tidak ditemukan dari response");
+    throw new Error(
+      translate(
+        "Token tidak ditemukan dari response",
+        "Token not found in the response",
+      ),
+    );
   }
 
   // simpan token + user

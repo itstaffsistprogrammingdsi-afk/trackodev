@@ -2,6 +2,7 @@ import { Users, X } from "lucide-react";
 
 import DivisionMembers from "../members/DivisionMembers";
 import type { Division } from "../../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   open: boolean;
@@ -14,6 +15,8 @@ export default function ManageDivisionMembersModal({
   division,
   onClose,
 }: Props) {
+  const { t } = useLanguage();
+
   if (!open || !division) return null;
 
   return (
@@ -40,7 +43,7 @@ export default function ManageDivisionMembersModal({
                 id="manage-members-title"
                 className="truncate text-base font-semibold tracking-heading text-fg"
               >
-                Kelola anggota divisi
+                {t("Kelola anggota divisi", "Manage division members")}
               </h2>
               <p className="mt-0.5 truncate text-xs leading-5 text-fg-muted">
                 {division.name}
@@ -51,7 +54,7 @@ export default function ManageDivisionMembersModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Tutup"
+            aria-label={t("Tutup", "Close")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             <X aria-hidden="true" className="h-4 w-4" />
@@ -68,7 +71,7 @@ export default function ManageDivisionMembersModal({
             onClick={onClose}
             className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Tutup
+            {t("Tutup", "Close")}
           </button>
         </div>
       </div>

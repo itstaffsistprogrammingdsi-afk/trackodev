@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { translate } from "@/i18n/translate";
 import { getAvailableForms } from "../api/landing.api";
 import type { FormItem } from "../types";
 
@@ -24,7 +25,10 @@ export const useLanding = () => {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Terjadi kesalahan yang tidak diketahui",
+          : translate(
+              "Terjadi kesalahan yang tidak diketahui",
+              "An unknown error occurred",
+            ),
       );
     } finally {
       if (!signal?.aborted) {

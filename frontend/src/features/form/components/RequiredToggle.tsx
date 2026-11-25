@@ -1,3 +1,5 @@
+import { useLanguage } from "@/context/LanguageContext";
+
 interface RequiredToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -9,6 +11,8 @@ export default function RequiredToggle({
   onChange,
   disabled = false,
 }: RequiredToggleProps) {
+  const { t } = useLanguage();
+
   return (
     <button
       type="button"
@@ -19,15 +23,23 @@ export default function RequiredToggle({
       className="group flex w-full items-center justify-between gap-4 rounded-card border border-line bg-surface px-4 py-3 text-left transition-colors hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span>
-        <span className="block text-sm font-medium text-fg">Wajib diisi</span>
+        <span className="block text-sm font-medium text-fg">
+          {t("Wajib diisi", "Required")}
+        </span>
         <span
           className={`mt-0.5 block text-xs ${
             checked ? "text-accent" : "text-fg-muted"
           }`}
         >
           {checked
-            ? "Responden wajib menjawab pertanyaan ini"
-            : "Responden boleh melewati pertanyaan ini"}
+            ? t(
+                "Responden wajib menjawab pertanyaan ini",
+                "Respondents must answer this question",
+              )
+            : t(
+                "Responden boleh melewati pertanyaan ini",
+                "Respondents may skip this question",
+              )}
         </span>
       </span>
 
@@ -37,7 +49,7 @@ export default function RequiredToggle({
             checked ? "text-fg-subtle" : "font-semibold text-fg"
           }`}
         >
-          Tidak
+          {t("Tidak", "No")}
         </span>
         <span
           aria-hidden="true"
@@ -58,7 +70,7 @@ export default function RequiredToggle({
             checked ? "font-semibold text-accent" : "text-fg-subtle"
           }`}
         >
-          Ya
+          {t("Ya", "Yes")}
         </span>
       </span>
     </button>

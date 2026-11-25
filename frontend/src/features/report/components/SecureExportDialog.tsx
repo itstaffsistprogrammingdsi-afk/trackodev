@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
-import { Copy, Download, Eye, EyeOff, Loader2, LockKeyhole, RefreshCw, ShieldCheck, X } from "lucide-react";
+import {
+  Copy,
+  Download,
+  Eye,
+  EyeOff,
+  Loader2,
+  LockKeyhole,
+  RefreshCw,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 
 import { EXPORT_PASSWORD_MIN_LENGTH } from "@/lib/exportSecurity";
+import { useLanguage } from "@/context/LanguageContext";
 
 type SecureExportDialogProps = {
   open: boolean;
@@ -24,6 +35,7 @@ export const SecureExportDialog = ({
   onClose,
   onConfirm,
 }: SecureExportDialogProps) => {
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const hasPassword = password.length > 0;
@@ -48,29 +60,63 @@ export const SecureExportDialog = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="secure-export-title">
-      <button className="absolute inset-0 cursor-default" aria-label="Tutup dialog" onClick={loading ? undefined : onClose} />
+    <div
+      className="fixed inset-0 z-[110] flex items-end justify-center bg-overlay p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="secure-export-title"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label={t("Tutup dialog", "Close dialog")}
+        onClick={loading ? undefined : onClose}
+      />
 
-      <div className="relative w-full rounded-t-3xl border border-white/60 bg-white shadow-2xl sm:max-w-md sm:rounded-3xl">
-        <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-5 sm:px-6">
-          <span className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
-            <ShieldCheck size={24} aria-hidden="true" />
+      <div
+        className="relative w-full overflow-hidden rounded-t-modal border border-line bg-surface shadow-e3 sm:max-w-md sm:rounded-modal"
+        style={{ animation: "ui-scale-in 160ms ease-out" }}
+      >
+        <div className="flex items-start gap-3 border-b border-line px-5 py-4 sm:px-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+            <ShieldCheck size={18} aria-hidden="true" />
           </span>
+
           <div className="min-w-0 flex-1">
-            <h2 id="secure-export-title" className="text-base font-bold text-slate-950">Keamanan File Laporan</h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">Kosongkan password agar file {format === "pdf" ? "PDF" : "Excel"} dapat langsung dibuka, atau isi untuk mengenkripsinya.</p>
+            <h2
+              id="secure-export-title"
+              className="text-sm font-semibold tracking-heading text-fg"
+            >
+              {t("Keamanan file laporan", "Report file security")}
+            </h2>
+            <p className="mt-1 text-xs leading-5 text-fg-muted">
+              {t(
+                "Kosongkan password agar file {format} dapat langsung dibuka, atau isi untuk mengenkripsinya.",
+                "Leave the password empty so the {format} file can be opened directly, or enter one to encrypt it.",
+                { format: format === "pdf" ? "PDF" : "Excel" },
+              )}
+            </p>
           </div>
-          <button type="button" onClick={onClose} disabled={loading} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50" aria-label="Tutup dialog">
-            <X size={18} />
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
+            aria-label={t("Tutup dialog", "Close dialog")}
+          >
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
 
-        <div className="space-y-4 px-5 py-5 sm:px-6">
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-emerald-950">
-              <LockKeyhole size={15} /> Password Enkripsi (Opsional)
+        <div className="space-y-4 px-5 py-4">
+          <div className="rounded-card border border-line bg-surface-muted/50 p-3">
+            <div className="mb-2 flex items-center gap-1.5 text-2xs font-medium text-fg-muted">
+              <LockKeyhole size={13} aria-hidden="true" />
+              {t("Password enkripsi (opsional)", "Encryption password (optional)")}
             </div>
-            <div className="flex min-w-0 overflow-hidden rounded-xl border border-emerald-200 bg-white focus-within:ring-2 focus-within:ring-emerald-500/20">
+
+            <div className="flex min-w-0 overflow-hidden rounded-control border border-line bg-surface focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/15">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
@@ -78,49 +124,108 @@ export const SecureExportDialog = ({
                 maxLength={128}
                 autoComplete="new-password"
                 spellCheck={false}
-                placeholder="Kosongkan untuk tanpa password"
+                placeholder={t("Kosongkan untuk tanpa password", "Leave empty for no password")}
                 onChange={(event) => {
                   onPasswordChange(event.target.value);
                   setCopied(false);
                 }}
-                className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-slate-950 outline-none"
-                aria-label="Password enkripsi"
+                className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-xs text-fg outline-none placeholder:text-fg-subtle"
+                aria-label={t("Password enkripsi", "Encryption password")}
                 autoFocus
               />
-              <button type="button" onClick={() => setShowPassword((value) => !value)} className="px-2.5 text-slate-500 transition hover:text-slate-800" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}>
-                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="flex w-9 items-center justify-center text-fg-subtle transition-colors hover:text-fg"
+                aria-label={
+                  showPassword
+                    ? t("Sembunyikan password", "Hide password")
+                    : t("Tampilkan password", "Show password")
+                }
+              >
+                {showPassword ? (
+                  <EyeOff size={15} aria-hidden="true" />
+                ) : (
+                  <Eye size={15} aria-hidden="true" />
+                )}
               </button>
-              <button type="button" onClick={onRegenerate} className="border-l border-slate-100 px-2.5 text-slate-500 transition hover:text-emerald-700" aria-label="Buat password baru">
-                <RefreshCw size={17} />
+
+              <button
+                type="button"
+                onClick={onRegenerate}
+                className="flex w-9 items-center justify-center border-l border-line text-fg-subtle transition-colors hover:text-accent"
+                aria-label={t("Buat password baru", "Generate new password")}
+              >
+                <RefreshCw size={15} aria-hidden="true" />
               </button>
-              <button type="button" onClick={copyPassword} disabled={!hasPassword} className="border-l border-slate-100 px-2.5 text-slate-500 transition hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Salin password">
-                <Copy size={17} />
+
+              <button
+                type="button"
+                onClick={copyPassword}
+                disabled={!hasPassword}
+                className="flex w-9 items-center justify-center border-l border-line text-fg-subtle transition-colors hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={t("Salin password", "Copy password")}
+              >
+                <Copy size={15} aria-hidden="true" />
               </button>
             </div>
-            <p className={`mt-2 text-[11px] ${passwordValid ? "text-emerald-800" : "text-red-600"}`}>
+
+            <p
+              className={`mt-2 text-2xs ${
+                passwordValid ? "text-fg-subtle" : "text-danger"
+              }`}
+            >
               {copied
-                ? "Password berhasil disalin."
+                ? t("Password berhasil disalin.", "Password copied successfully.")
                 : !hasPassword
-                  ? "File akan diunduh tanpa password."
+                  ? t("File akan diunduh tanpa password.", "The file will be downloaded without a password.")
                   : passwordValid
-                    ? "File akan dienkripsi. Simpan password sebelum menutup dialog."
-                    : `Password minimal ${EXPORT_PASSWORD_MIN_LENGTH} karakter.`}
+                    ? t("File akan dienkripsi. Simpan password sebelum menutup dialog.", "The file will be encrypted. Save the password before closing the dialog.")
+                    : t("Password minimal {min} karakter.", "Password must be at least {min} characters.", { min: EXPORT_PASSWORD_MIN_LENGTH })}
             </p>
           </div>
 
+          <div className="rounded-card border border-info/15 bg-info-soft px-3 py-2 text-2xs leading-4 text-info">
+            {t("Simpan password di tempat aman. File terenkripsi tidak bisa dibuka tanpa password ini.", "Store the password somewhere safe. The encrypted file cannot be opened without it.")}
+          </div>
+
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onClose} disabled={loading} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50">Batal</button>
-            <button type="button" onClick={onConfirm} disabled={loading || !passwordValid} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="h-9 rounded-control border border-line bg-surface px-3.5 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
+            >
+              {t("Batal", "Cancel")}
+            </button>
+
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={loading || !passwordValid}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
+            >
               {loading ? (
-                <Loader2 size={17} className="animate-spin" />
+                <Loader2
+                  size={15}
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
               ) : hasPassword ? (
-                <ShieldCheck size={17} />
+                <ShieldCheck size={15} aria-hidden="true" />
               ) : (
-                <Download size={17} />
+                <Download size={15} aria-hidden="true" />
               )}
               {loading
-                ? "Menyiapkan file..."
-                : `Download ${format === "pdf" ? "PDF" : "Excel"}${hasPassword ? " Terenkripsi" : ""}`}
+                ? t("Menyiapkan file…", "Preparing file…")
+                : hasPassword
+                  ? t("Unduh {format} terenkripsi", "Download encrypted {format}", {
+                      format: format === "pdf" ? "PDF" : "Excel",
+                    })
+                  : t("Unduh {format}", "Download {format}", {
+                      format: format === "pdf" ? "PDF" : "Excel",
+                    })}
             </button>
           </div>
         </div>

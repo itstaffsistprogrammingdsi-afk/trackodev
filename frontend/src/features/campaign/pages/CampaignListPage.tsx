@@ -7,10 +7,12 @@ import { useCampaign } from "../hooks/useCampaign";
 import CampaignCard from "../components/CampaignCard";
 import CampaignForm from "../components/CampaignForm";
 import EmptyState from "@/components/ui/EmptyState";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function CampaignListPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
 
   // 1. Menggunakan return value asli dari useCampaign (tanpa isFetching)
   const { campaigns, loading } = useCampaign(workspaceId);
@@ -52,15 +54,18 @@ export default function CampaignListPage() {
       <div className="flex flex-col justify-between gap-4 border-b border-line pb-4 sm:flex-row sm:items-center">
         <div>
           <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-fg-subtle">
-            <span>Workspace</span>
+            <span>{t("Workspace")}</span>
             <span aria-hidden="true">/</span>
-            <span className="text-fg-muted">Campaigns</span>
+            <span className="text-fg-muted">{t("Campaigns")}</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg sm:text-[28px]">
-            Campaign & project
+            {t("Campaign & project")}
           </h1>
           <p className="mt-1 text-sm text-fg-muted">
-            Kelola dan pantau seluruh performa campaign pemasaran Anda dalam satu tempat.
+            {t(
+              "Kelola dan pantau seluruh performa campaign pemasaran Anda dalam satu tempat.",
+              "Manage and monitor the performance of all your marketing campaigns in one place.",
+            )}
           </p>
         </div>
 
@@ -70,8 +75,8 @@ export default function CampaignListPage() {
             onClick={refreshCampaigns}
             disabled={loading}
             className="inline-flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg disabled:opacity-50"
-            title="Muat ulang data"
-            aria-label="Muat ulang data campaign"
+            title={t("Muat ulang data", "Reload data")}
+            aria-label={t("Muat ulang data campaign", "Reload campaign data")}
           >
             <svg
               className={`h-4 w-4 ${loading ? "animate-spin text-accent motion-reduce:animate-none" : ""}`}
@@ -96,7 +101,7 @@ export default function CampaignListPage() {
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>Campaign baru</span>
+            <span>{t("Campaign baru", "New campaign")}</span>
           </button>
         </div>
       </div>
@@ -121,15 +126,17 @@ export default function CampaignListPage() {
             </svg>
             <input
               type="search"
-              placeholder="Cari campaign"
-              aria-label="Cari campaign"
+              placeholder={t("Cari campaign", "Search campaigns")}
+              aria-label={t("Cari campaign", "Search campaigns")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-9 w-full rounded-control border border-transparent bg-surface-muted pl-9 pr-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:bg-surface focus:ring-2 focus:ring-accent/15"
             />
           </div>
           <div className="self-end px-2 text-[11px] font-medium text-fg-muted sm:self-center">
-            Total: <span className="font-semibold text-fg">{filteredCampaigns.length}</span> campaign
+            {t("Total:", "Total:")}{" "}
+            <span className="font-semibold text-fg">{filteredCampaigns.length}</span>{" "}
+            {t("campaign", "campaigns")}
           </div>
         </div>
       )}
@@ -158,16 +165,27 @@ export default function CampaignListPage() {
       ) : filteredCampaigns.length === 0 ? (
         <EmptyState
           icon={searchQuery ? SearchX : Megaphone}
-          title={searchQuery ? "Campaign tidak ditemukan" : "Belum ada campaign"}
+          title={
+            searchQuery
+              ? t("Campaign tidak ditemukan", "No campaigns found")
+              : t("Belum ada campaign", "No campaigns yet")
+          }
           description={
             searchQuery
-              ? `Tidak ada hasil yang cocok dengan "${searchQuery}". Coba kata kunci lain.`
-              : "Mulai buat campaign pemasaran pertama Anda untuk menjangkau target audiens."
+              ? t(
+                  'Tidak ada hasil yang cocok dengan "{query}". Coba kata kunci lain.',
+                  'No results match "{query}". Try a different keyword.',
+                  { query: searchQuery },
+                )
+              : t(
+                  "Mulai buat campaign pemasaran pertama Anda untuk menjangkau target audiens.",
+                  "Create your first marketing campaign to reach your target audience.",
+                )
           }
           action={
             !searchQuery
               ? {
-                  label: "Buat campaign",
+                  label: t("Buat campaign", "Create campaign"),
                   onClick: () => setOpen(true),
                 }
               : undefined

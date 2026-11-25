@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ChevronDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 import { CardPriority } from "../../types";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Props {
   priority?: CardPriority | null;
@@ -13,27 +14,42 @@ interface Props {
 const PRIORITIES: {
   value: CardPriority;
   label: string;
-  color: string;
+  labelEn: string;
+  dot: string;
+  soft: string;
+  text: string;
 }[] = [
   {
     value: "low",
-    label: "Low",
-    color: "bg-green-500",
+    label: "Rendah",
+    labelEn: "Low",
+    dot: "bg-priority-low-dot",
+    soft: "bg-priority-low-soft",
+    text: "text-priority-low",
   },
   {
     value: "medium",
-    label: "Medium",
-    color: "bg-yellow-500",
+    label: "Normal",
+    labelEn: "Medium",
+    dot: "bg-priority-medium-dot",
+    soft: "bg-priority-medium-soft",
+    text: "text-priority-medium",
   },
   {
     value: "high",
-    label: "High",
-    color: "bg-orange-500",
+    label: "Tinggi",
+    labelEn: "High",
+    dot: "bg-priority-high-dot",
+    soft: "bg-priority-high-soft",
+    text: "text-priority-high",
   },
   {
     value: "urgent",
     label: "Urgent",
-    color: "bg-red-500",
+    labelEn: "Urgent",
+    dot: "bg-priority-urgent-dot",
+    soft: "bg-priority-urgent-soft",
+    text: "text-priority-urgent",
   },
 ];
 
@@ -43,9 +59,9 @@ export default function PrioritySection({
   disabled = false,
   onChange,
 }: Props) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const current = useMemo(
@@ -56,14 +72,15 @@ export default function PrioritySection({
   useEffect(() => {
     if (!open) return;
 
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
         wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
+        !wrapperRef.current.contains(event.target as Node)
       ) {
         setOpen(false);
       }
     };
+
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
@@ -85,9 +102,7 @@ export default function PrioritySection({
 
     try {
       setSaving(true);
-
       await onChange?.(value);
-
       setOpen(false);
     } finally {
       setSaving(false);
@@ -99,71 +114,43 @@ export default function PrioritySection({
       <button
         type="button"
         disabled={disabled || loading || saving}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => setOpen((previous) => !previous)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Priority: ${current.label}`}
-        className="
-          inline-flex
-          items-center
-          gap-2
-          rounded-lg
-          border
-          border-slate-200
-          bg-white
-          px-3
-          py-2
-          text-sm
-          font-medium
-          text-slate-700
-          shadow-sm
-          transition-all
-          hover:border-slate-300
-          hover:bg-slate-50
-          disabled:cursor-not-allowed
-          disabled:opacity-60
-          dark:border-slate-700
-          dark:bg-slate-800
-          dark:text-slate-200
-          dark:hover:border-slate-600
-          dark:hover:bg-slate-700
-        "
+        aria-label={t("Prioritas: {label}", "Priority: {label}", {
+          label: t(current.label, current.labelEn),
+        })}
+        className={`inline-flex h-9 items-center gap-2 rounded-control border border-transparent px-2.5 text-xs font-medium transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60 ${current.soft} ${current.text}`}
       >
         {loading || saving ? (
-          <Loader2 size={15} className="animate-spin" />
+          <Loader2
+            size={14}
+            className="animate-spin motion-reduce:animate-none"
+            aria-hidden="true"
+          />
         ) : (
-          <span className={`h-2.5 w-2.5 rounded-full ${current.color}`} />
+          <span
+            className={`h-2 w-2 rounded-full ${current.dot}`}
+            aria-hidden="true"
+          />
         )}
 
-        <span>{current.label}</span>
+        <span>{t(current.label, current.labelEn)}</span>
 
         <ChevronDown
-          size={15}
-          className={`transition-transform duration-200 ${
+          size={14}
+          aria-hidden="true"
+          className={`text-fg-subtle transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
         />
       </button>
 
-      {open && (
+      {open ? (
         <div
-          className="
-absolute
-left-0
-top-full
-mt-2
-z-50
-min-w-[180px]
-overflow-hidden
-rounded-xl
-border
-bg-white
-shadow-xl
-dark:border-slate-700
-dark:bg-slate-800
-"
+          className="absolute left-0 top-full z-50 mt-1.5 min-w-[176px] overflow-hidden rounded-card border border-line bg-surface p-1 shadow-e2"
           role="listbox"
-          aria-label="Pilih priority"
+          aria-label={t("Pilih prioritas", "Select priority")}
         >
           {PRIORITIES.map((item) => (
             <button
@@ -172,34 +159,25 @@ dark:bg-slate-800
               role="option"
               aria-selected={item.value === priority}
               onClick={() => void handleSelect(item.value)}
-              className="
-                flex
-                w-full
-                items-center
-                gap-3
-                px-4
-                py-2.5
-                text-left
-                text-sm
-                transition
-                hover:bg-slate-100
-                dark:hover:bg-slate-700
-              "
+              className={`flex w-full items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                item.value === priority
+                  ? `${item.soft} ${item.text} font-medium`
+                  : "text-fg-muted hover:bg-surface-muted hover:text-fg"
+              }`}
             >
-              <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+              <span
+                className={`h-2 w-2 rounded-full ${item.dot}`}
+                aria-hidden="true"
+              />
+              <span className="flex-1">{t(item.label, item.labelEn)}</span>
 
-              <span className="flex-1">{item.label}</span>
-
-              {item.value === priority && (
-                <AlertCircle
-                  size={14}
-                  className="text-blue-600 dark:text-blue-400"
-                />
-              )}
+              {item.value === priority ? (
+                <Check size={13} aria-hidden="true" />
+              ) : null}
             </button>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

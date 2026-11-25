@@ -1,7 +1,10 @@
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Activity,
+  Building2,
   ChevronDown,
+  ChevronRight,
   FolderKanban,
   LayoutGrid,
   List as ListIcon,
@@ -10,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 
+import { useDivision } from "@/features/division/hooks/useDivisions";
 import { useWorkspaces } from "../hooks/useWorkspaces";
 import WorkspaceCard from "../components/WorkspaceCard";
 import CreateWorkspaceModal from "../components/CreateWorkspaceModal";
@@ -18,6 +22,7 @@ import { Workspace } from "../types";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import PageHeader from "@/components/layout/PageHeader";
+import { useLanguage } from "@/context/LanguageContext";
 
 type ViewMode = "grid" | "list";
 type SortMode = "recent" | "name";
@@ -37,7 +42,9 @@ export default function WorkspacePage() {
   const divisionId = id ?? "";
 
   const { user, loading: authLoading } = useAuth();
+  const { t, locale } = useLanguage();
   const { data, isLoading: workspacesLoading } = useWorkspaces(divisionId);
+  const { data: division } = useDivision(divisionId);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
@@ -82,14 +89,14 @@ export default function WorkspacePage() {
 
     return [...filtered].sort((a, b) => {
       if (sortBy === "name") {
-        return a.name.localeCompare(b.name, "id");
+        return a.name.localeCompare(b.name, locale);
       }
 
       return (
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     });
-  }, [safeWorkspaces, searchQuery, sortBy]);
+  }, [safeWorkspaces, searchQuery, sortBy, locale]);
 
   const openCreateModal = () => {
     setEditingWorkspace(null);
@@ -109,7 +116,9 @@ export default function WorkspacePage() {
   if (isLoading) {
     return (
       <div className="w-full space-y-6" role="status" aria-busy="true">
-        <span className="sr-only">Memuat daftar workspace</span>
+        <span className="sr-only">
+          {t("Memuat daftar workspace", "Loading workspace list")}
+        </span>
 
         <div className="space-y-3">
           <Skeleton className="h-8 w-44" />
@@ -150,18 +159,56 @@ export default function WorkspacePage() {
   return (
     <div className="w-full space-y-6">
       <PageHeader
-        title="Workspace"
-        description="Kelola dan pantau seluruh ruang kerja pada divisi ini."
-        actions={
-          canManageWorkspace ? (
-            <button
-              onClick={openCreateModal}
-              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas sm:w-auto"
+        eyebrow={
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Link
+              to="/divisions"
+              className="rounded-sm transition-colors hover:text-fg"
             >
-              <Plus size={17} aria-hidden="true" />
-              <span>Workspace baru</span>
-            </button>
-          ) : null
+              {t("Divisi", "Divisions")}
+            </Link>
+            <ChevronRight aria-hidden="true" className="h-3 w-3 shrink-0" />
+            <span className="inline-flex min-w-0 items-center gap-1 text-fg-muted">
+              <Building2 aria-hidden="true" className="h-3 w-3 shrink-0" />
+              <span className="truncate">
+                {division?.name ?? t("Workspace divisi", "Division workspace")}
+              </span>
+            </span>
+          </div>
+        }
+        title={t("Workspace", "Workspaces")}
+        description={
+          division
+            ? t(
+                "Ruang kerja, campaign, dan board di divisi {name}.",
+                "Workspaces, campaigns, and boards in the {name} division.",
+                { name: division.name },
+              )
+            : t(
+                "Kelola dan pantau seluruh ruang kerja pada divisi ini.",
+                "Manage and monitor all workspaces in this division.",
+              )
+        }
+        actions={
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Link
+              to={`/divisions/${divisionId}/detail`}
+              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-control border border-line bg-surface px-3 text-sm font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas sm:flex-none"
+            >
+              <Activity size={16} aria-hidden="true" />
+              <span>{t("Aktivitas", "Activity")}</span>
+            </Link>
+
+            {canManageWorkspace ? (
+              <button
+                onClick={openCreateModal}
+                className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-control bg-accent px-3.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas sm:flex-none"
+              >
+                <Plus size={17} aria-hidden="true" />
+                <span>{t("Workspace baru", "New workspace")}</span>
+              </button>
+            ) : null}
+          </div>
         }
       />
 
@@ -174,8 +221,8 @@ export default function WorkspacePage() {
             />
             <input
               type="search"
-              placeholder="Cari workspace"
-              aria-label="Cari workspace"
+              placeholder={t("Cari workspace", "Search workspaces")}
+              aria-label={t("Cari workspace", "Search workspaces")}
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               className="h-9 w-full rounded-control border border-transparent bg-surface-muted/60 pl-9 pr-9 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle hover:bg-surface-muted focus:border-accent/40 focus:bg-surface focus:ring-2 focus:ring-accent/15 [&::-webkit-search-cancel-button]:hidden"
@@ -184,7 +231,10 @@ export default function WorkspacePage() {
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                aria-label="Hapus pencarian workspace"
+                aria-label={t(
+                  "Hapus pencarian workspace",
+                  "Clear workspace search",
+                )}
                 className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[7px] text-fg-subtle transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
               >
                 <X aria-hidden="true" className="h-3.5 w-3.5" />
@@ -197,11 +247,11 @@ export default function WorkspacePage() {
               <select
                 value={sortBy}
                 onChange={(event) => setSortBy(event.target.value as SortMode)}
-                aria-label="Urutkan workspace"
+                aria-label={t("Urutkan workspace", "Sort workspaces")}
                 className="h-9 cursor-pointer appearance-none rounded-control border border-line bg-surface pl-3 pr-8 text-xs font-medium text-fg-muted outline-none transition-colors hover:bg-surface-muted focus:border-accent focus:ring-2 focus:ring-accent/15"
               >
-                <option value="recent">Terbaru</option>
-                <option value="name">Nama A–Z</option>
+                <option value="recent">{t("Terbaru", "Newest")}</option>
+                <option value="name">{t("Nama A–Z", "Name A–Z")}</option>
               </select>
               <ChevronDown
                 aria-hidden="true"
@@ -211,12 +261,12 @@ export default function WorkspacePage() {
 
             <div
               role="group"
-              aria-label="Tampilan workspace"
+              aria-label={t("Tampilan workspace", "Workspace view")}
               className="flex items-center gap-0.5 rounded-control border border-line bg-surface p-0.5"
             >
               <button
                 type="button"
-                aria-label="Tampilan grid"
+                aria-label={t("Tampilan grid", "Grid view")}
                 aria-pressed={view === "grid"}
                 onClick={() => setView("grid")}
                 className={`flex h-9 w-9 items-center justify-center rounded-[7px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
@@ -230,7 +280,7 @@ export default function WorkspacePage() {
 
               <button
                 type="button"
-                aria-label="Tampilan list"
+                aria-label={t("Tampilan list", "List view")}
                 aria-pressed={view === "list"}
                 onClick={() => setView("list")}
                 className={`flex h-9 w-9 items-center justify-center rounded-[7px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
@@ -244,7 +294,9 @@ export default function WorkspacePage() {
             </div>
 
             <span className="ml-1 hidden text-2xs text-fg-subtle sm:block">
-              {visibleWorkspaces.length} workspace
+              {t("{count} workspace", "{count} workspaces", {
+                count: visibleWorkspaces.length,
+              })}
             </span>
           </div>
         </div>
@@ -254,18 +306,33 @@ export default function WorkspacePage() {
         <EmptyState
           icon={FolderKanban}
           title={
-            searchQuery ? "Workspace tidak ditemukan" : "Belum ada workspace"
+            searchQuery
+              ? t("Workspace tidak ditemukan", "No workspaces found")
+              : t("Belum ada workspace", "No workspaces yet")
           }
           description={
             searchQuery
-              ? `Tidak ada workspace yang cocok dengan “${searchQuery.trim()}”.`
+              ? t(
+                  "Tidak ada workspace yang cocok dengan “{query}”.",
+                  "No workspaces match “{query}”.",
+                  { query: searchQuery.trim() },
+                )
               : canManageWorkspace
-                ? "Buat workspace pertama untuk mulai mengelompokkan project dan campaign divisi Anda."
-                : "Workspace akan muncul di sini setelah dibuat oleh administrator."
+                ? t(
+                    "Buat workspace pertama untuk mulai mengelompokkan project dan campaign divisi Anda.",
+                    "Create your first workspace to start grouping your division's projects and campaigns.",
+                  )
+                : t(
+                    "Workspace akan muncul di sini setelah dibuat oleh administrator.",
+                    "Workspaces will appear here once an administrator creates them.",
+                  )
           }
           action={
             !searchQuery && canManageWorkspace
-              ? { label: "Buat workspace", onClick: openCreateModal }
+              ? {
+                  label: t("Buat workspace", "Create workspace"),
+                  onClick: openCreateModal,
+                }
               : undefined
           }
           className="py-16"

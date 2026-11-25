@@ -11,11 +11,13 @@ import ResponseTable from "../components/responses/ResponseTable";
 
 import AssignmentModal from "../components/modals/AssignmentModal";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function FormResponsesPage() {
   const { can } = useAuth();
+  const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -73,7 +75,7 @@ export default function FormResponsesPage() {
   if (loading) {
     return (
       <div className="w-full space-y-6" role="status" aria-busy="true">
-        <span className="sr-only">Memuat respons form</span>
+        <span className="sr-only">{t("Memuat respons form", "Loading form responses")}</span>
         <Skeleton className="h-4 w-28" />
         <div className="space-y-4 rounded-panel border border-line bg-surface p-5 sm:p-6">
           <div className="flex items-start gap-3">
@@ -98,9 +100,9 @@ export default function FormResponsesPage() {
       <div className="w-full">
         <EmptyState
           icon={FileX2}
-          title="Gagal memuat respons"
+          title={t("Gagal memuat respons", "Failed to load responses")}
           description={error}
-          action={{ label: "Coba lagi", onClick: () => void reload() }}
+          action={{ label: t("Coba lagi", "Try again"), onClick: () => void reload() }}
         />
       </div>
     );
@@ -111,8 +113,11 @@ export default function FormResponsesPage() {
       <div className="w-full">
         <EmptyState
           icon={FileX2}
-          title="Form tidak ditemukan"
-          description="Form mungkin sudah dihapus atau Anda tidak memiliki akses."
+          title={t("Form tidak ditemukan", "Form not found")}
+          description={t(
+            "Form mungkin sudah dihapus atau Anda tidak memiliki akses.",
+            "The form may have been deleted or you do not have access.",
+          )}
         />
       </div>
     );
@@ -137,8 +142,11 @@ export default function FormResponsesPage() {
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari jawaban, status, atau ID pengirim"
-                  aria-label="Cari respons"
+                  placeholder={t(
+                    "Cari jawaban, status, atau ID pengirim",
+                    "Search answers, status, or submitter ID",
+                  )}
+                  aria-label={t("Cari respons", "Search responses")}
                   className="h-9 w-full rounded-control border border-transparent bg-surface-muted pl-9 pr-3 text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-accent/40 focus:bg-surface focus:ring-2 focus:ring-accent/15"
                 />
               </div>
@@ -146,10 +154,10 @@ export default function FormResponsesPage() {
               <select
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
-                aria-label="Filter status respons"
+                aria-label={t("Filter status respons", "Filter response status")}
                 className="h-9 rounded-control border border-line bg-surface px-3 text-xs font-medium text-fg outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
               >
-                <option value="all">Semua status</option>
+                <option value="all">{t("Semua status", "All statuses")}</option>
                 {statuses.map((item) => (
                   <option key={item} value={item}>
                     {item}
@@ -158,17 +166,23 @@ export default function FormResponsesPage() {
               </select>
 
               <span className="shrink-0 px-1 text-[11px] font-medium tabular-nums text-fg-muted">
-                {filteredSubmissions.length} dari {submissions.length} respons
+                {t("{filtered} dari {total} respons", "{filtered} of {total} responses", {
+                  filtered: filteredSubmissions.length,
+                  total: submissions.length,
+                })}
               </span>
             </div>
 
             {filteredSubmissions.length === 0 ? (
               <EmptyState
                 icon={Inbox}
-                title="Tidak ada respons yang cocok"
-                description="Ubah kata kunci atau status filter untuk melihat respons lain."
+                title={t("Tidak ada respons yang cocok", "No matching responses")}
+                description={t(
+                  "Ubah kata kunci atau status filter untuk melihat respons lain.",
+                  "Change the keyword or status filter to see other responses.",
+                )}
                 action={{
-                  label: "Hapus filter",
+                  label: t("Hapus filter", "Clear filters"),
                   onClick: () => {
                     setSearch("");
                     setStatus("all");
