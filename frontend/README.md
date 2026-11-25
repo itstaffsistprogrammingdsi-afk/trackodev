@@ -177,9 +177,9 @@ rollout atau menampilkan maintenance mode.
 
 ## Build publik Android
 
-Rilis publik terakhir adalah `1.0.4` dengan `versionCode 11`. Untuk rilis
+Rilis publik terakhir adalah `1.1.0` dengan `versionCode 12`. Untuk rilis
 berikutnya, naikkan `versionName` dan `versionCode` di `package.json` dan
-`android/app/build.gradle` (misalnya `1.1.0` / `12`). Simpan Android upload
+`android/app/build.gradle` (misalnya `1.1.1` / `13`). Simpan Android upload
 keystore di secret manager dan sediakan seluruh environment berikut pada mesin
 build:
 
@@ -201,11 +201,11 @@ AAB digunakan untuk Google Play. APK release digunakan untuk distribusi langsung
 Script akan berhenti sebelum Gradle dijalankan bila salah satu secret signing tidak
 tersedia, sehingga binary publik tidak mungkin terbuat tanpa tanda tangan resmi.
 
-> Catatan status: APK `1.0.4` yang saat ini ada di `public/downloads`
+> Catatan status: APK `1.1.0` yang saat ini ada di `public/downloads`
 > ditandatangani dengan sertifikat **Android Debug**, bukan upload keystore.
-> Update tanpa uninstall hanya mungkin bila keystore yang sama masih tersedia.
-> Untuk rilis berikutnya, gunakan upload keystore resmi; bila keystore lama
-> hilang, pengguna perlu uninstall sekali.
+> APK `1.0.4` memakai sertifikat debug berbeda, jadi update dari 1.0.4 ke 1.1.0
+> memerlukan uninstall sekali. Untuk rilis berikutnya, gunakan upload keystore
+> resmi yang sama agar update berikutnya tidak perlu uninstall.
 
 ## Distribusi iOS
 

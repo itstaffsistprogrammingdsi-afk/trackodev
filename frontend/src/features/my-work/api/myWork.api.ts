@@ -1,5 +1,6 @@
 import axios from "@/lib/axios";
 import { getDownloadFileName } from "@/lib/exportSecurity";
+import { saveBlobFile } from "@/lib/nativeDownload";
 import { translate } from "@/i18n/translate";
 
 import type {
@@ -92,15 +93,5 @@ export const exportMyWorkLog = async (
         : "application/octet-stream",
   });
 
-  const url = window.URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-
-  document.body.appendChild(link);
-  link.click();
-
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
+  await saveBlobFile(blob, filename, "laporan-kerja-individu");
 };

@@ -10,6 +10,7 @@ import {
 import api from '@/lib/axios';
 
 import { getDownloadFileName } from '@/lib/exportSecurity';
+import { saveBlobFile } from '@/lib/nativeDownload';
 import { useRealtimeRevision } from '@/hooks/useRealtimeRevision';
 import { toast, confirmDialog } from '@/lib/feedback';
 import { translate } from '@/i18n/translate';
@@ -361,23 +362,12 @@ export const useReport = () => {
       }
 
       const blob = new Blob([data]);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-
-      link.setAttribute(
-        'download',
-        getDownloadFileName(
-          response.headers['content-disposition'],
-          `${translate('laporan-kinerja', 'performance-report')}.${type === 'pdf' ? 'pdf' : 'xlsx'}`,
-        ),
+      const fileName = getDownloadFileName(
+        response.headers['content-disposition'],
+        `${translate('laporan-kinerja', 'performance-report')}.${type === 'pdf' ? 'pdf' : 'xlsx'}`,
       );
 
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+      await saveBlobFile(blob, fileName, 'laporan-kinerja');
       return true;
     } catch (error: unknown) {
       console.error('Gagal export data:', error);

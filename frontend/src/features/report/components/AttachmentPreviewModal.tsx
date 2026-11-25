@@ -1,7 +1,10 @@
-import { useEffect } from 'react';
-import { File, Image as ImageIcon, ShieldCheck, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Download, File, Image as ImageIcon, ShieldCheck, X } from 'lucide-react';
 
 import { resolveStorageUrl } from '@/lib/storageUrl';
+import { saveBlobFile } from '@/lib/nativeDownload';
+import { isMobileApp } from '@/lib/mobileConfig';
+import { toast } from '@/lib/feedback';
 import { useLanguage } from '@/context/LanguageContext';
 
 export type ReportAttachmentPreview = {
@@ -17,6 +20,8 @@ type Props = {
 
 export function AttachmentPreviewModal({ attachment, onClose }: Props) {
   const { t } = useLanguage();
+  const nativeApp = isMobileApp();
+  const [opening, setOpening] = useState(false);
 
   useEffect(() => {
     if (!attachment) return;
@@ -33,6 +38,27 @@ export function AttachmentPreviewModal({ attachment, onClose }: Props) {
 
   const previewUrl = getSafePreviewUrl(attachment.url);
   const previewKind = getPreviewKind(attachment.name, attachment.fileType);
+
+  const openWithAnotherApp = async () => {
+    if (!previewUrl || opening) return;
+
+    setOpening(true);
+    try {
+      const response = await fetch(previewUrl);
+      const blob = await response.blob();
+      await saveBlobFile(blob, attachment.name, 'attachment');
+    } catch (error) {
+      console.error('Gagal membuka file di aplikasi lain', error);
+      toast.error(
+        t(
+          'Gagal membuka file. Silakan coba lagi.',
+          'Failed to open the file. Please try again.',
+        ),
+      );
+    } finally {
+      setOpening(false);
+    }
+  };
 
   return (
     <div
@@ -57,14 +83,30 @@ export function AttachmentPreviewModal({ attachment, onClose }: Props) {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-            aria-label={t("Tutup preview attachment", "Close attachment preview")}
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {nativeApp && previewUrl && previewKind !== 'image' ? (
+              <button
+                type="button"
+                onClick={() => void openWithAnotherApp()}
+                disabled={opening}
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-white/10 px-3 text-xs font-medium text-white transition hover:bg-white/20 disabled:opacity-60"
+              >
+                <Download className="h-4 w-4" aria-hidden="true" />
+                {opening
+                  ? t('Menyiapkan…', 'Preparing…')
+                  : t('Buka file', 'Open file')}
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+              aria-label={t("Tutup preview attachment", "Close attachment preview")}
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
         </header>
 
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-slate-900">
@@ -82,13 +124,24 @@ export function AttachmentPreviewModal({ attachment, onClose }: Props) {
               referrerPolicy="no-referrer"
             />
           ) : previewKind === 'pdf' ? (
-            <iframe
-              src={previewUrl}
-              title={attachment.name}
-              className="h-full min-h-[70vh] w-full border-0 bg-white"
-              sandbox=""
-              referrerPolicy="no-referrer"
-            />
+            nativeApp ? (
+              <PreviewMessage
+                icon={<File className="h-12 w-12" aria-hidden="true" />}
+                title={t('PDF siap dibuka', 'PDF is ready to open')}
+                description={t(
+                  'Gunakan tombol Buka file untuk membuka PDF dengan aplikasi pembaca di perangkat.',
+                  'Use the Open file button to open the PDF with a viewer on this device.',
+                )}
+              />
+            ) : (
+              <iframe
+                src={previewUrl}
+                title={attachment.name}
+                className="h-full min-h-[70vh] w-full border-0 bg-white"
+                sandbox=""
+                referrerPolicy="no-referrer"
+              />
+            )
           ) : (
             <PreviewMessage
               icon={<ImageIcon className="h-12 w-12" aria-hidden="true" />}
