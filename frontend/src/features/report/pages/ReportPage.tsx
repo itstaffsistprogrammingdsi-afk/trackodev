@@ -33,30 +33,44 @@ export const ReportPage: React.FC = () => {
   } = useReport();
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewUser, setPreviewUser] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [pendingExport, setPendingExport] = useState<{ format: 'pdf' | 'excel'; userId?: string | number } | null>(null);
   const [exportPassword, setExportPassword] = useState("");
 
 
   const handlePreviewClick = async (userId?: string | number) => {
-    // Preview from a user row must also select that user. Without this,
-    // the modal title and its PDF/Excel actions still point at the previous
-    // selection (or the whole batch) even though the HTML is per user.
-    const previewUser =
-      userId !== undefined
-        ? users.find((user) => String(user.id) === String(userId)) ?? null
-        : null;
-
-    if (previewUser) {
-      setSelectedUser(previewUser);
+    if (userId === undefined || userId === null || userId === '') {
+      setPreviewUser(null);
+      return;
     }
 
-    setIsPreviewOpen(true);
-    const result = await handlePreview(userId);
+    const matchingUser = users.find(
+      (user) => String(user.id) === String(userId),
+    );
+    const fallbackUser =
+      selectedUser && String(selectedUser.id) === String(userId)
+        ? selectedUser
+        : null;
+    const resolvedUser = matchingUser ?? fallbackUser;
 
+    setPreviewUser(
+      resolvedUser
+        ? { id: String(resolvedUser.id), name: resolvedUser.name }
+        : { id: String(userId), name: t("User", "User") },
+    );
+    setIsPreviewOpen(true);
+
+    const result = await handlePreview(userId);
     if (!result) {
       setIsPreviewOpen(false);
+      setPreviewUser(null);
     }
   };
+
+  const previewUserId = previewUser?.id ?? selectedUser?.id;
 
   const requestSecureExport = (format: 'pdf' | 'excel', userId?: string | number) => {
     setExportPassword("");
@@ -75,12 +89,12 @@ export const ReportPage: React.FC = () => {
   };
   const handleDownloadFromPreview = () => {
     if (previewData) {
-      requestSecureExport('pdf', selectedUser?.id);
+      requestSecureExport('pdf', previewUserId);
     }
   };
 
   const handleExportExcelFromPreview = () => {
-    requestSecureExport('excel', selectedUser?.id);
+    requestSecureExport('excel', previewUserId);
   };
 
   return (
@@ -110,13 +124,20 @@ export const ReportPage: React.FC = () => {
           isOpen={isPreviewOpen}
           onClose={() => {
             setIsPreviewOpen(false);
+            setPreviewUser(null);
             clearPreview();
           }}
           onDownload={handleDownloadFromPreview}
           onExportExcel={handleExportExcelFromPreview}
           previewData={previewData}
           loading={loadingPreview}
-          title={selectedUser ? t("Preview Laporan - {name}", "Report preview - {name}", { name: selectedUser.name }) : t("Preview Laporan Batch", "Batch report preview")}
+          title={
+            previewUser
+              ? t("Preview Laporan - {name}", "Report preview - {name}", {
+                  name: previewUser.name,
+                })
+              : t("Preview Laporan", "Report preview")
+          }
         />
 
         {/* Card Detail Modal */}
