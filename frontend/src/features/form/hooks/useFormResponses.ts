@@ -162,6 +162,13 @@ export function useFormResponses(
     submission:
       FormSubmission
   ) => {
+    if (
+      submission.assignment ||
+      submission.status === "assigned" ||
+      submission.status === "forwarded"
+    ) {
+      return;
+    }
 
     setSelectedSubmission(
       submission
