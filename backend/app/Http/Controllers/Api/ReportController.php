@@ -25,6 +25,7 @@ use App\Services\ReportScopeService;
 use App\Services\ReportTotalsService;
 use App\Support\ResourceAccess;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -544,6 +545,35 @@ class ReportController extends Controller
     }
 
     /**
+     * Metadata audit yang disimpan bersama setiap download report.
+     *
+     * @param  array{cards?: int, attachments?: int, qc?: int}  $totals
+     * @param  array{period_label?: string}  $meta
+     */
+    private function reportDownloadLogMeta(
+        Request $request,
+        string $format,
+        string $fileName,
+        array $totals,
+        array $meta
+    ): array {
+        $targetUserId = $request->input('user_id');
+        $targetUser = $targetUserId
+            ? User::query()->whereKey($targetUserId)->first(['id', 'name'])
+            : null;
+
+        return [
+            'source' => 'performance_report',
+            'format' => $format,
+            'target_user_id' => $targetUser?->id,
+            'target_user_name' => $targetUser?->name,
+            'period_label' => $meta['period_label'] ?? null,
+            'total_cards' => (int) ($totals['cards'] ?? 0),
+            'file_name' => $fileName,
+        ];
+    }
+
+    /**
      * @return array{period_label: string, generated_at: string, total_cards?: int, total_attachments?: int, total_qc?: int}
      */
     private function reportMeta(Request $request): array
@@ -655,6 +685,93 @@ class ReportController extends Controller
     }
 
     /**
+     * RIWAYAT DOWNLOAD REPORT
+     */
+    public function downloadHistory(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'format' => ['sometimes', 'nullable', 'in:pdf,xlsx'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'start_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            'end_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $query = ActivityLog::query()
+            ->with('user:id,name')
+            ->where('entity_type', 'report')
+            ->where('action', 'report_downloaded');
+
+        if (! empty($validated['format'])) {
+            $query->where('meta->format', $validated['format']);
+        }
+
+        if (! empty($validated['search'])) {
+            $search = '%'.$validated['search'].'%';
+            $query->where(function (Builder $logQuery) use ($search): void {
+                $logQuery
+                    ->whereHas('user', fn (Builder $userQuery) => $userQuery->where('name', 'like', $search))
+                    ->orWhere('meta->target_user_name', 'like', $search);
+            });
+        }
+
+        if (! empty($validated['start_date'])) {
+            $query->where('created_at', '>=', $validated['start_date'].' 00:00:00');
+        }
+
+        if (! empty($validated['end_date'])) {
+            $query->where('created_at', '<=', $validated['end_date'].' 23:59:59');
+        }
+
+        $logs = $query->latest()->paginate($validated['limit'] ?? 20);
+
+        $targetIds = collect($logs->items())
+            ->map(fn (ActivityLog $log) => data_get($log->meta, 'target_user_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $targetNames = User::query()
+            ->whereIn('id', $targetIds)
+            ->pluck('name', 'id');
+
+        return response()->json([
+            'success' => true,
+            'data' => collect($logs->items())
+                ->map(function (ActivityLog $log) use ($targetNames): array {
+                    $meta = $log->meta ?? [];
+                    $targetId = $meta['target_user_id'] ?? null;
+
+                    return [
+                        'id' => $log->id,
+                        'created_at' => $log->created_at?->toIso8601String(),
+                        'format' => $meta['format'] ?? null,
+                        'file_name' => $meta['file_name'] ?? null,
+                        'period_label' => $meta['period_label'] ?? null,
+                        'total_cards' => $meta['total_cards'] ?? null,
+                        'target_user_id' => $targetId,
+                        'target_user_name' => $targetId
+                            ? ($targetNames[$targetId] ?? $meta['target_user_name'] ?? null)
+                            : null,
+                        'ip_address' => $log->ip_address,
+                        'user' => $log->user ? [
+                            'id' => $log->user->id,
+                            'name' => $log->user->name,
+                        ] : null,
+                    ];
+                })
+                ->values(),
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+            ],
+        ]);
+    }
+
+    /**
      * EXPORT PDF
      */
     public function exportPdf(
@@ -712,11 +829,7 @@ class ReportController extends Controller
                 null,
                 'report_downloaded',
                 'Mengunduh laporan kinerja dalam format PDF.',
-                [
-                    'source' => 'performance_report',
-                    'format' => 'pdf',
-                    'target_user_id' => $request->input('user_id'),
-                ],
+                $this->reportDownloadLogMeta($request, 'pdf', $fileName, $totals, $meta),
             );
 
             return $download;
@@ -789,11 +902,7 @@ class ReportController extends Controller
                 null,
                 'report_downloaded',
                 'Mengunduh laporan kinerja dalam format Excel.',
-                [
-                    'source' => 'performance_report',
-                    'format' => 'xlsx',
-                    'target_user_id' => $request->input('user_id'),
-                ],
+                $this->reportDownloadLogMeta($request, 'xlsx', $fileName, $totals, $meta),
             );
 
             return $download;

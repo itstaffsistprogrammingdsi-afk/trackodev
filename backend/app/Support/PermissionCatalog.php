@@ -186,7 +186,7 @@ final class PermissionCatalog
                 'notification.read_all' => 'Tandai semua notifikasi sudah dibaca',
                 'notification.delete' => 'Hapus notifikasi',
             ]),
-            'report' => self::module('Report & QC', 'Akses laporan, preview, export, dan verifikasi QC.', [
+            'report' => self::module('Report & QC', 'Akses laporan, preview, export, riwayat download, dan verifikasi QC.', [
                 'report.view' => 'Lihat report',
                 'report.preview' => 'Preview report PDF',
                 'report.preview.pdf' => 'Preview report PDF secara spesifik',
@@ -194,7 +194,7 @@ final class PermissionCatalog
                 'report.export.pdf' => 'Export report PDF',
                 'report.export.excel' => 'Export report Excel',
                 'report.qc' => 'Submit verifikasi QC',
-                'report.activity.view' => 'Lihat activity log user',
+                'report.activity.view' => 'Lihat activity log user & riwayat download',
             ]),
             'profile' => self::module('Profile', 'Akses halaman profil user.', [
                 'profile.view' => 'Lihat profil',

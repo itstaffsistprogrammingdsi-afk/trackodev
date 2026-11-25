@@ -104,6 +104,39 @@ export interface ReportPreviewData {
   period_label?: string;
 }
 
+export interface ReportDownloadHistoryItem {
+  id: string;
+  created_at: string | null;
+  format: 'pdf' | 'xlsx' | null;
+  file_name: string | null;
+  period_label: string | null;
+  total_cards: number | null;
+  target_user_id: string | null;
+  target_user_name: string | null;
+  ip_address: string | null;
+  user: { id: string; name: string } | null;
+}
+
+export interface ReportDownloadHistoryParams {
+  page?: number;
+  limit?: number;
+  format?: 'pdf' | 'xlsx' | '';
+  search?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface ReportDownloadHistoryResponse {
+  success: boolean;
+  data: ReportDownloadHistoryItem[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   meta: {

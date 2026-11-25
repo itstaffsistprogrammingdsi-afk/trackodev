@@ -1,5 +1,13 @@
 import api from '@/lib/axios';
-import { User, Card, PaginatedResponse, FilterParams, MasterFilterOptions } from '../types';
+import {
+  User,
+  Card,
+  PaginatedResponse,
+  FilterParams,
+  MasterFilterOptions,
+  ReportDownloadHistoryParams,
+  ReportDownloadHistoryResponse,
+} from '../types';
 
 type SecureExportParams = FilterParams & { export_password?: string };
 type PreviewParams = FilterParams & { include_pdf?: boolean };
@@ -72,6 +80,15 @@ export const reportApi = {
         : undefined,
     });
     return response;
+  },
+
+  // Riwayat download report (audit)
+  getDownloadHistory: async (params: ReportDownloadHistoryParams) => {
+    const response = await api.get<ReportDownloadHistoryResponse>(
+      '/reports/download-history',
+      { params },
+    );
+    return response.data;
   },
 
   
