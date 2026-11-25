@@ -58,7 +58,7 @@ function formatDate(value: string): string {
 
 export default function DivisionCard({ division, onManageMembers }: Props) {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { hasRole, managesDivision } = useAuth();
   const canManageDivision = hasRole("super_admin") || managesDivision();
 
@@ -75,6 +75,16 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
   // User lintas divisi bisa melihat divisi lewat workspace/campaign tanpa
   // menerima roster anggota. Jangan tampilkan itu sebagai "0 anggota".
   const accessViaWorkspace = !membersLoaded;
+
+  const memberLabel =
+    language === "en"
+      ? `${users.length} ${users.length === 1 ? "member" : "members"}`
+      : `${users.length} anggota`;
+  const adminLabel =
+    language === "en"
+      ? `${adminCount} ${adminCount === 1 ? "admin" : "admins"}`
+      : `${adminCount} admin`;
+
   const destination = `/divisions/${division.id}`;
 
   const handleOpen = () => navigate(destination);
@@ -270,11 +280,11 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
                 users={users}
                 max={4}
                 size="sm"
-                label={t(
-                  "{count} anggota divisi {name}",
-                  "{count} members of division {name}",
-                  { count: users.length, name: division.name },
-                )}
+                label={
+                  language === "en"
+                    ? `${users.length} ${users.length === 1 ? "member" : "members"} of division ${division.name}`
+                    : `${users.length} anggota divisi ${division.name}`
+                }
               />
             ) : (
               <span className="text-xs text-fg-subtle">
@@ -282,22 +292,16 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
               </span>
             )}
 
-            <span className="shrink-0 text-xs text-fg-muted">
-              {t("{count} anggota", "{count} members", {
-                count: users.length,
-              })}
-              {canManageDivision
-                ? t(" · {count} admin", " · {count} admins", {
-                    count: adminCount,
-                  })
-                : ""}
+            <span className="shrink-0 whitespace-nowrap text-xs text-fg-muted">
+              {memberLabel}
+              {canManageDivision ? ` · ${adminLabel}` : ""}
             </span>
           </div>
         )}
 
         <div className="mt-auto pt-4">
           <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted transition-colors group-hover:text-accent">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-fg-muted transition-colors group-hover:text-accent">
               {t("Lihat workspace", "View workspace")}
               <ArrowRight
                 aria-hidden="true"
@@ -305,7 +309,7 @@ export default function DivisionCard({ division, onManageMembers }: Props) {
               />
             </span>
 
-            <span className="text-2xs text-fg-subtle">
+            <span className="whitespace-nowrap text-2xs text-fg-subtle">
               {t("Dibuat {date}", "Created {date}", {
                 date: formatDate(division.created_at),
               })}

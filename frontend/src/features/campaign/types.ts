@@ -46,6 +46,7 @@ export type GanttTask = {
 };
 
 export type GanttResponse = {
+  start_date?: string | null;
   total_days: number;
   tasks: GanttTask[];
 };

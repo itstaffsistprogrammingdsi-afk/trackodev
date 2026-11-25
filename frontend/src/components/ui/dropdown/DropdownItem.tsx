@@ -11,6 +11,7 @@ interface DropdownItemProps {
   baseClassName?: string;
   className?: string;
   icon?: React.ReactNode;
+  endSlot?: React.ReactNode;
   danger?: boolean;
   disabled?: boolean;
   type?: "button" | "submit";
@@ -28,6 +29,7 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
   baseClassName = defaultBaseClassName,
   className,
   icon,
+  endSlot,
   danger = false,
   disabled = false,
   type = "button",
@@ -44,6 +46,7 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
     <>
       {icon ? <span className="shrink-0">{icon}</span> : null}
       <span className="min-w-0 flex-1 truncate">{children}</span>
+      {endSlot ? <span className="shrink-0">{endSlot}</span> : null}
     </>
   );
 

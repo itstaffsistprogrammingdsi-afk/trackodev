@@ -32,7 +32,7 @@ export default function DownloadApp() {
 
   return (
     <section id="download-apk" className="scroll-mt-24 bg-canvas py-14 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
         <div className="rounded-panel border border-line bg-surface p-5 sm:p-8 lg:p-10">
           <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:gap-14">
             <div>

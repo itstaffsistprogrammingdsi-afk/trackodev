@@ -1,11 +1,15 @@
 import { Moon, Sun } from "lucide-react";
 
 import { useTheme } from "../../context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function ThemeTogglerTwo() {
   const { theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === "dark";
-  const label = isDark ? "Aktifkan tema terang" : "Aktifkan tema gelap";
+  const label = isDark
+    ? t("Aktifkan tema terang", "Switch to light mode")
+    : t("Aktifkan tema gelap", "Switch to dark mode");
 
   return (
     <button

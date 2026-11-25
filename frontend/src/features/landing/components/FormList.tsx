@@ -21,7 +21,7 @@ export default function FormList({
 
   return (
     <section id="formulir" className="scroll-mt-24 bg-canvas py-14 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
         <div className="mb-8 max-w-2xl">
           <h2 className="text-balance text-2xl font-semibold leading-tight tracking-heading text-fg sm:text-3xl">
             {t("Pusat permintaan layanan", "Service request center")}

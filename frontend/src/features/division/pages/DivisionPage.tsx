@@ -36,7 +36,7 @@ export default function DivisionPage() {
           <Skeleton className="h-8 w-40" />
           <Skeleton className="h-4 w-80 max-w-full" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
             <div
               key={index}
@@ -131,7 +131,7 @@ export default function DivisionPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {data.map((division, index) => (
             <div
               key={division.id}

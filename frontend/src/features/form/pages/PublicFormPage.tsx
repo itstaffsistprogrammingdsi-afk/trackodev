@@ -18,6 +18,7 @@ import {
   ChevronDown,
   FileText,
   Info,
+  Languages,
   Loader2,
   Upload,
 } from "lucide-react";
@@ -32,23 +33,73 @@ import type {
 } from "../types";
 import { getFormThemeColor, readableTextColor } from "../utils/theme";
 import { useLanguage } from "@/context/LanguageContext";
+import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
+
+function FormHeader({ form, accent }: { form: Form; accent: string }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [form.header_image]);
+
+  if (!form.header_image || failed) {
+    return (
+      <div className="overflow-hidden rounded-t-modal border border-b-0 border-[var(--tracko-line)] bg-surface shadow-e1">
+        <div className="h-6 w-full" style={{ backgroundColor: accent }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-t-modal border border-b-0 border-[var(--tracko-line)] bg-surface shadow-e1">
+      <img
+        src={resolveStorageUrl(form.header_image)}
+        alt=""
+        decoding="async"
+        onError={() => setFailed(true)}
+        className="max-h-[320px] w-full object-cover sm:max-h-[380px]"
+      />
+    </div>
+  );
+}
 
 function PublicFormTopBar() {
-  const { t } = useLanguage();
+  const { language, t, toggleLanguage } = useLanguage();
 
   return (
     <nav
       aria-label={t("Navigasi formulir publik", "Public form navigation")}
       className="sticky top-0 z-40 border-b border-line bg-surface/95 pt-[env(safe-area-inset-top)] shadow-e1 backdrop-blur"
     >
-      <div className="mx-auto flex w-full max-w-3xl px-3 sm:px-4">
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-3 sm:px-4">
         <Link
           to="/landing"
-          className="flex min-h-11 items-center gap-2 rounded-control px-2 text-sm font-medium text-fg-muted transition hover:bg-surface-muted hover:text-[var(--form-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--form-accent)] focus-visible:ring-offset-2"
+          className="flex min-h-11 min-w-0 items-center gap-2 rounded-control px-2 text-sm font-medium text-fg-muted transition hover:bg-surface-muted hover:text-[var(--form-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--form-accent)] focus-visible:ring-offset-2"
         >
           <ArrowLeft aria-hidden="true" className="h-5 w-5 shrink-0" />
-          <span>{t("Kembali ke landing page", "Back to landing page")}</span>
+          <span className="truncate">
+            {t("Kembali ke landing page", "Back to landing page")}
+          </span>
         </Link>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            aria-label={
+              language === "id"
+                ? t("Ganti ke bahasa Inggris", "Switch to English")
+                : t("Ganti ke bahasa Indonesia", "Switch to Indonesian")
+            }
+            title={t("Ganti bahasa", "Switch language")}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control border border-line bg-surface px-2.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            <Languages size={14} aria-hidden="true" />
+            {language === "id" ? "ID" : "EN"}
+          </button>
+
+          <ThemeTogglerTwo />
+        </div>
       </div>
     </nav>
   );
@@ -1071,17 +1122,7 @@ export default function PublicFormPage() {
       <PublicFormTopBar />
       <div className="mx-auto w-full max-w-3xl px-3 py-6 sm:px-4 sm:py-10">
         {/* HEADER IMAGE */}
-        <div className="overflow-hidden rounded-t-modal border border-b-0 border-[var(--tracko-line)] bg-surface shadow-e1">
-          {form.header_image ? (
-            <img
-              src={resolveStorageUrl(form.header_image)}
-              alt={form.name}
-              className="max-h-[320px] w-full object-cover sm:max-h-[380px]"
-            />
-          ) : (
-            <div className="h-24 w-full bg-[var(--form-accent)]" />
-          )}
-        </div>
+        <FormHeader form={form} accent={themeColor} />
 
         {/* FORM CARD */}
         <div className="rounded-b-modal border border-[var(--tracko-line)] bg-surface shadow-e1">

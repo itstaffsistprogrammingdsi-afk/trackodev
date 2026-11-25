@@ -11,6 +11,7 @@ class CampaignResource extends JsonResource
         return [
             'id'           => $this->id,
             'workspace_id' => $this->workspace_id,
+            'division_id' => $this->whenLoaded('workspace', fn () => (string) $this->workspace->division_id),
             'name'         => $this->name,
             'description'  => $this->description,
             'type'         => $this->type,

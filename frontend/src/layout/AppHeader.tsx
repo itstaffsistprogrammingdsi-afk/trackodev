@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight, Languages, Menu } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import NotificationBell from "../components/header/NotificationBell";
+import ThemeTogglerTwo from "../components/common/ThemeTogglerTwo";
 import { useSidebar } from "../context/SidebarContext";
 import { toast } from "@/lib/feedback";
 
@@ -248,6 +249,21 @@ const AppHeader: React.FC = () => {
     }
   }, []);
 
+  const [divisionContextRevision, setDivisionContextRevision] = useState(0);
+
+  useEffect(() => {
+    const handleDivisionContext = () => {
+      setDivisionContextRevision((value) => value + 1);
+    };
+
+    window.addEventListener("tracko:division-context", handleDivisionContext);
+    return () =>
+      window.removeEventListener(
+        "tracko:division-context",
+        handleDivisionContext,
+      );
+  }, []);
+
   const breadcrumbs = useMemo(() => {
     const raw = buildBreadcrumbs(location.pathname);
 
@@ -256,7 +272,7 @@ const AppHeader: React.FC = () => {
     if (canViewAllDivisions) return raw;
 
     return raw.filter((crumb) => crumb.href !== "/divisions");
-  }, [location.pathname, canViewAllDivisions]);
+  }, [location.pathname, canViewAllDivisions, divisionContextRevision]);
 
   const showBack = !["/", "/dashboard", "/my-work"].includes(location.pathname);
 
@@ -421,6 +437,8 @@ const AppHeader: React.FC = () => {
           <Languages size={14} aria-hidden="true" />
           <span className="uppercase">{language}</span>
         </button>
+
+        <ThemeTogglerTwo />
 
         {canViewNotifications ? (
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface transition-colors hover:bg-surface-muted">

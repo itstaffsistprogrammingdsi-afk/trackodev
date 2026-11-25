@@ -27,6 +27,7 @@ import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useDivisions } from "@/features/division/hooks/useDivisions";
+import type { Division } from "@/features/division/types";
 import CommandPalette from "@/components/layout/CommandPalette";
 import type { CommandPaletteItem } from "@/components/layout/CommandPalette";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
@@ -107,6 +108,30 @@ const DotIcon = memo(() => (
 
 DotIcon.displayName = "DotIcon";
 
+type DivisionBadgeTone = "collab" | "admin" | "member";
+
+function DivisionBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: DivisionBadgeTone;
+}) {
+  const tones: Record<DivisionBadgeTone, string> = {
+    collab: "bg-info-soft text-info",
+    admin: "bg-accent-soft text-accent",
+    member: "bg-surface-muted text-fg-muted",
+  };
+
+  return (
+    <span
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${tones[tone]}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 const menuItemBase =
   "relative flex items-center gap-3 rounded-control transition-colors duration-150";
 
@@ -148,6 +173,28 @@ function usePersistedRouteParams(
   const [campaignId, setCampaignId] = useState<string | null>(() =>
     localStorage.getItem("lastCampaignId"),
   );
+
+  // Halaman campaign detail bisa memberi tahu divisi asalnya (URL campaign
+  // tidak memuat divisionId, hanya workspaceId).
+  useEffect(() => {
+    const handleDivisionContext = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ divisionId?: string }>
+      ).detail;
+
+      if (!detail?.divisionId) return;
+
+      setDivisionId(detail.divisionId);
+      localStorage.setItem("lastDivisionId", detail.divisionId);
+    };
+
+    window.addEventListener("tracko:division-context", handleDivisionContext);
+    return () =>
+      window.removeEventListener(
+        "tracko:division-context",
+        handleDivisionContext,
+      );
+  }, []);
 
   // Simpan ID terakhir ketika user berpindah halaman
   useEffect(() => {
@@ -477,6 +524,37 @@ const AppSidebar: React.FC = () => {
   const currentDivision = switcherDivisions?.find(
     (division) => division.id === divisionId,
   );
+
+  const badgeForDivision = (division: Division) => {
+    if (!auth.user?.id) return null;
+
+    // Divisi yang bisa diakses lewat workspace/campaign tidak mengirim roster
+    // anggota (division.users tidak dimuat). Itu artinya akses kolaborator.
+    if (!Array.isArray(division.users)) {
+      return {
+        label: t("Kolaborator", "Collab"),
+        tone: "collab" as const,
+      };
+    }
+
+    const membership = division.users.find(
+      (member) => member.id === auth.user?.id,
+    );
+
+    if (membership?.division_role === "admin") {
+      return { label: t("Admin", "Admin"), tone: "admin" as const };
+    }
+
+    if (membership?.division_role === "member") {
+      return { label: t("Anggota", "Member"), tone: "member" as const };
+    }
+
+    return null;
+  };
+
+  const currentBadge = currentDivision
+    ? badgeForDivision(currentDivision)
+    : null;
 
   const slim = !isExpanded && !isHovered && !isMobileOpen;
 
@@ -827,15 +905,23 @@ const AppSidebar: React.FC = () => {
                     <span className="block text-[10px] font-medium text-fg-subtle">
                       {label("Divisi")}
                     </span>
-                    <span className="block truncate text-xs font-medium text-fg">
-                      {location.pathname === "/divisions"
-                        ? canViewAllDivisions
-                          ? label("Semua divisi")
-                          : label("Divisi saya")
-                        : currentDivision?.name ??
-                          (canViewAllDivisions
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-xs font-medium text-fg">
+                        {location.pathname === "/divisions"
+                          ? canViewAllDivisions
                             ? label("Semua divisi")
-                            : label("Divisi saya"))}
+                            : label("Divisi saya")
+                          : currentDivision?.name ??
+                            (canViewAllDivisions
+                              ? label("Semua divisi")
+                              : label("Divisi saya"))}
+                      </span>
+                      {currentBadge ? (
+                        <DivisionBadge
+                          label={currentBadge.label}
+                          tone={currentBadge.tone}
+                        />
+                      ) : null}
                     </span>
                   </span>
 
@@ -858,6 +944,7 @@ const AppSidebar: React.FC = () => {
                   <div className="max-h-60 overflow-y-auto">
                     {switcherDivisions.map((division) => {
                       const selected = division.id === divisionId;
+                      const badge = badgeForDivision(division);
 
                       return (
                         <DropdownItem
@@ -876,6 +963,14 @@ const AppSidebar: React.FC = () => {
                                 className="h-3.5 w-3.5 text-fg-subtle"
                               />
                             )
+                          }
+                          endSlot={
+                            badge ? (
+                              <DivisionBadge
+                                label={badge.label}
+                                tone={badge.tone}
+                              />
+                            ) : undefined
                           }
                           className={
                             selected

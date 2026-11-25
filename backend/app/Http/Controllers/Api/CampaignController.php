@@ -403,6 +403,7 @@ class CampaignController extends Controller
         $mirror = app(\App\Services\CrossDivisionMirrorService::class);
 
         $campaign->load([
+            'workspace',
             'creator',
             'members',
             'boards.cards' => function ($cardQuery) use ($mirror, $viewer) {
@@ -1077,6 +1078,7 @@ class CampaignController extends Controller
         });
 
         return response()->json([
+            'start_date' => $minDate->toDateString(),
             'total_days' => max(30, $maxEndDay),
             'tasks' => $tasks->values(),
         ]);

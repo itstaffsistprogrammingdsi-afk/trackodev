@@ -6,9 +6,9 @@ const STORAGE_KEY = "tracko:language";
 
 function readStoredLanguage(): Language {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "en" ? "en" : "id";
+    return localStorage.getItem(STORAGE_KEY) === "id" ? "id" : "en";
   } catch {
-    return "id";
+    return "en";
   }
 }
 

@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Languages } from "lucide-react";
 
 import { useLanguage } from "@/context/LanguageContext";
+import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
 
 export default function Navbar() {
   const { language, t, toggleLanguage } = useLanguage();
@@ -9,9 +10,9 @@ export default function Navbar() {
   return (
     <nav
       aria-label={t("Navigasi utama", "Main navigation")}
-      className="fixed inset-x-0 top-0 z-50 border-b border-line bg-canvas/90 pt-[env(safe-area-inset-top)] backdrop-blur-md"
+      className="fixed inset-x-0 top-0 z-50 border-b border-line bg-canvas pt-[env(safe-area-inset-top)]"
     >
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:h-16 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-4 px-4 sm:h-16 sm:px-6 lg:px-8">
         <Link
           to="/"
           aria-label={t("Tracko - halaman utama", "Tracko - home page")}
@@ -53,6 +54,8 @@ export default function Navbar() {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <ThemeTogglerTwo />
+
           <button
             type="button"
             onClick={toggleLanguage}

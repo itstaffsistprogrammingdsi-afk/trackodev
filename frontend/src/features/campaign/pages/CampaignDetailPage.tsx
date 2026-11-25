@@ -43,6 +43,28 @@ export default function CampaignDetailPage() {
     }
   }, [campaignId, navigate, realtimeRevision]);
 
+  useEffect(() => {
+    if (!campaign?.division_id) return;
+
+    try {
+      localStorage.setItem("lastDivisionId", campaign.division_id);
+      localStorage.setItem("lastWorkspaceId", campaign.workspace_id);
+      localStorage.setItem("lastCampaignId", campaign.id);
+    } catch {
+      // localStorage bisa diblokir; konteks tetap dikirim lewat event.
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("tracko:division-context", {
+        detail: {
+          divisionId: campaign.division_id,
+          workspaceId: campaign.workspace_id,
+          campaignId: campaign.id,
+        },
+      }),
+    );
+  }, [campaign]);
+
   if (!campaign) {
     return (
       <div className="w-full space-y-6" role="status" aria-busy="true">

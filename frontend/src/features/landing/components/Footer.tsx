@@ -5,7 +5,7 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-line bg-canvas px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-8">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-center text-2xs text-fg-subtle sm:flex-row sm:text-left">
+      <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-2 text-center text-2xs text-fg-subtle sm:flex-row sm:text-left">
         <p>
           &copy; {new Date().getFullYear()} Tracko.{" "}
           {t("Seluruh hak dilindungi.", "All rights reserved.")}
