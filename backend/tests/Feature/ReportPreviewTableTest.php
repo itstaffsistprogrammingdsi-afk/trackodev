@@ -36,6 +36,9 @@ class ReportPreviewTableTest extends TestCase
         $response->assertJsonPath('data.pdf_base64', null);
         $response->assertJsonPath('data.html', null);
         $this->assertSame(18, count($response->json('data.table.columns')));
+        $response->assertJsonPath('data.total_tasks', 1);
+        $response->assertJsonPath('data.completed_tasks', 1);
+        $response->assertJsonPath('data.completion_rate', 100);
         $this->assertSame('dokumen-preview.pdf', $response->json('data.table.rows.0.9'));
     }
 

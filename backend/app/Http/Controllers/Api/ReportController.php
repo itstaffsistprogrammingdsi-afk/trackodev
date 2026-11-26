@@ -574,7 +574,7 @@ class ReportController extends Controller
     }
 
     /**
-     * @return array{period_label: string, generated_at: string, total_cards?: int, total_attachments?: int, total_qc?: int}
+     * @return array{period_label: string, generated_at: string, total_cards?: int, total_tasks?: int, completed_tasks?: int, completion_rate?: float, total_attachments?: int, total_qc?: int}
      */
     private function reportMeta(Request $request): array
     {
@@ -621,12 +621,16 @@ class ReportController extends Controller
 
             $totalUsers = $users->count();
             $totals = $this->reportTotalsService->totalsFromUsers($users);
+            $taskSummary = $this->reportTotalsService->taskSummary($request);
             $totalCards = $totals['cards'];
             $totalAttachments = $totals['attachments'];
             $totalQc = $totals['qc'];
 
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totalCards,
+                'total_tasks' => $taskSummary['total'],
+                'completed_tasks' => $taskSummary['completed'],
+                'completion_rate' => $taskSummary['completion_rate'],
                 'total_attachments' => $totalAttachments,
                 'total_qc' => $totalQc,
             ]);
@@ -670,6 +674,9 @@ class ReportController extends Controller
                     'pdf_base64'        => $base64Pdf,
                     'users_count'       => $totalUsers,
                     'total_cards'       => $totalCards,
+                    'total_tasks'       => $taskSummary['total'],
+                    'completed_tasks'   => $taskSummary['completed'],
+                    'completion_rate'   => $taskSummary['completion_rate'],
                     'total_attachments' => $totalAttachments,
                     'total_qc'          => $totalQc,
                     'period_label'      => $meta['period_label'],
@@ -829,8 +836,12 @@ class ReportController extends Controller
             }
 
             $totals = $this->reportTotalsService->totals($request);
+            $taskSummary = $this->reportTotalsService->taskSummary($request);
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totals['cards'],
+                'total_tasks' => $taskSummary['total'],
+                'completed_tasks' => $taskSummary['completed'],
+                'completion_rate' => $taskSummary['completion_rate'],
                 'total_attachments' => $totals['attachments'],
                 'total_qc' => $totals['qc'],
             ]);
@@ -895,8 +906,12 @@ class ReportController extends Controller
             }
 
             $totals = $this->reportTotalsService->totals($request);
+            $taskSummary = $this->reportTotalsService->taskSummary($request);
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totals['cards'],
+                'total_tasks' => $taskSummary['total'],
+                'completed_tasks' => $taskSummary['completed'],
+                'completion_rate' => $taskSummary['completion_rate'],
                 'total_attachments' => $totals['attachments'],
                 'total_qc' => $totals['qc'],
             ]);

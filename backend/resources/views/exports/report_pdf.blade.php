@@ -98,6 +98,14 @@
             border-top-color: #0d47a1;
         }
 
+        .report-document .kpi-table td.kpi-completed {
+            border-top-color: #15803d;
+        }
+
+        .report-document .kpi-table td.kpi-rate {
+            border-top-color: #7c3aed;
+        }
+
         .report-document .kpi-table td.kpi-attachment {
             border-top-color: #d97706;
         }
@@ -455,6 +463,14 @@
 
         $kpiUsers = (int) ($totalUsers ?? $usersCollection->count());
         $kpiCards = (int) ($metaData['total_cards'] ?? $chunkCardsCount);
+        $kpiTasks = (int) ($metaData['total_tasks'] ?? $kpiCards);
+        $kpiCompleted = (int) ($metaData['completed_tasks'] ?? $usersCollection
+            ->flatMap(fn ($u) => collect($u->cards ?? []))
+            ->filter(fn ($c) => ! empty($c->completed_at))
+            ->count());
+        $kpiRate = (float) ($metaData['completion_rate'] ?? ($kpiTasks > 0
+            ? round(($kpiCompleted / $kpiTasks) * 100, 2)
+            : 0));
         $kpiAttachments = (int) ($metaData['total_attachments'] ?? $chunkAttachmentsCount);
         $kpiQc = (int) ($metaData['total_qc'] ?? $chunkQcTotal);
 
@@ -507,8 +523,16 @@
                 <div class="kpi-value">{{ $kpiUsers }}</div>
             </td>
             <td class="kpi-card">
-                <div class="kpi-label">Total Card</div>
-                <div class="kpi-value">{{ $kpiCards }}</div>
+                <div class="kpi-label">Total Task</div>
+                <div class="kpi-value">{{ $kpiTasks }}</div>
+            </td>
+            <td class="kpi-completed">
+                <div class="kpi-label">Completed</div>
+                <div class="kpi-value">{{ $kpiCompleted }}</div>
+            </td>
+            <td class="kpi-rate">
+                <div class="kpi-label">Completion Rate</div>
+                <div class="kpi-value">{{ number_format($kpiRate, 1) }}%</div>
             </td>
             <td class="kpi-attachment">
                 <div class="kpi-label">Total Lampiran</div>
