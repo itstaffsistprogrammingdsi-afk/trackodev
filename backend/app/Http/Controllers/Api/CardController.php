@@ -221,12 +221,12 @@ class CardController extends Controller
                 'assignees',
                 'labels',
                 'brands',
-                'tasks.subtasks',
                 'board.campaign.workspace.division',
                 'board.campaign.boards',
                 'sourceDivision:id,name',
                 'mirroredBy:id,name',
-            ]);
+            ])
+            ->withCount(['tasks', 'completedTasks']);
 
         // Copy lintas divisi milik orang lain tetap tidak boleh bocor lewat
         // jalur "belum ada pemilik".

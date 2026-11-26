@@ -104,6 +104,13 @@ export interface ReportPreviewData {
   period_label?: string;
 }
 
+export interface ReportSummary {
+  total_tasks: number;
+  completed_tasks: number;
+  completion_rate: number;
+  period_label: string;
+}
+
 export interface ReportDownloadHistoryItem {
   id: string;
   created_at: string | null;

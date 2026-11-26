@@ -46,6 +46,16 @@ class ReportTotalsService
     }
 
     /**
+     * Ringkasan task (card) untuk KPI report pada periode terpilih.
+     *
+     * @return array{total: int, completed: int, completion_rate: float}
+     */
+    public function taskSummary(Request $request): array
+    {
+        return $this->loader->taskSummary($request);
+    }
+
+    /**
      * @param  iterable<int, mixed>  $users
      * @param  array{cards: int, attachments: int, qc: int}  $totals
      */

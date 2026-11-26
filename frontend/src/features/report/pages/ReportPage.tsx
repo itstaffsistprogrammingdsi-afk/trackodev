@@ -3,6 +3,7 @@ import { useReport } from '../hooks/useReport';
 import { UserList } from '../components/UserList';
 import { CardDetail } from '../components/CardDetail';
 import { ReportPreviewModal } from '../components/ReportPreviewModal';
+import ReportSummaryCards from '../components/ReportSummaryCards';
 import { ReportDownloadHistoryModal } from '../components/ReportDownloadHistoryModal';
 import { SecureExportDialog } from '../components/SecureExportDialog';
 import { generateExportPassword } from '@/lib/exportSecurity';
@@ -104,8 +105,10 @@ export const ReportPage: React.FC = () => {
 
   return (
     <div className="w-full font-sans">
-      <div className="w-full">
+      <div className="w-full space-y-6">
         
+        <ReportSummaryCards filters={filters} />
+
         <UserList
           users={users}
           selectedUser={selectedUser}

@@ -685,6 +685,35 @@ class ReportController extends Controller
     }
 
     /**
+     * RINGKASAN TASK REPORT
+     */
+    public function summary(Request $request): JsonResponse
+    {
+        $this->validateReportFilters($request);
+        $this->authorizeDivisionFilter($request);
+
+        try {
+            $totals = $this->reportTotalsService->taskSummary($request);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_tasks' => $totals['total'],
+                    'completed_tasks' => $totals['completed'],
+                    'completion_rate' => $totals['completion_rate'],
+                    'period_label' => $this->reportMeta($request)['period_label'],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error report summary: '.$e->getMessage());
+
+            return response()->json([
+                'message' => 'Gagal memuat ringkasan report',
+            ], 500);
+        }
+    }
+
+    /**
      * RIWAYAT DOWNLOAD REPORT
      */
     public function downloadHistory(Request $request): JsonResponse

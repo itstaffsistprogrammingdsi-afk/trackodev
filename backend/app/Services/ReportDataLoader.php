@@ -26,6 +26,42 @@ class ReportDataLoader
         return (clone $this->userQuery($request))->count('users.id');
     }
 
+    /**
+     * Ringkasan task (card) untuk KPI report. Memakai query agregat, bukan
+     * hydrate seluruh card + attachment seperti totals().
+     *
+     * @return array{total: int, completed: int, completion_rate: float}
+     */
+    public function taskSummary(Request $request): array
+    {
+        $targetIds = $this->userQuery($request)
+            ->pluck('users.id')
+            ->map(fn ($id) => (string) $id)
+            ->values();
+
+        if ($targetIds->isEmpty()) {
+            return ['total' => 0, 'completed' => 0, 'completion_rate' => 0.0];
+        }
+
+        $query = $this->cardQueryForTargets($targetIds, $request);
+        $viewer = $request->user();
+
+        if ($viewer && $viewer->managesDivision() && ! $viewer->canViewAllDivisions()) {
+            $this->scope->restrictCardQueryToViewerDivisions($query, $viewer);
+        }
+
+        $total = (clone $query)->count();
+        $completed = (clone $query)->whereNotNull('cards.completed_at')->count();
+
+        return [
+            'total' => $total,
+            'completed' => $completed,
+            'completion_rate' => $total > 0
+                ? round(($completed / $total) * 100, 2)
+                : 0.0,
+        ];
+    }
+
     public function load(Request $request, int $chunkSize = 75): Collection
     {
         // Keep this eager compatibility helper explicitly backed by a normal
