@@ -4,7 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Http\Resources\UserResource;
 use App\Http\Resources\TaskResource;
 
 class CardResource extends JsonResource
@@ -114,11 +113,11 @@ class CardResource extends JsonResource
             |------------------------------------------------
             */
             'created_by' => $this->relationLoaded('creator') && $this->creator
-                ? new UserResource($this->creator)
+                ? $this->userSummary($this->creator)
                 : null,
 
             'assignees' => $this->relationLoaded('assignees')
-                ? UserResource::collection($this->assignees)
+                ? $this->assignees->map(fn ($assignee) => $this->userSummary($assignee))->values()
                 : [],
 
             /*
@@ -169,6 +168,20 @@ class CardResource extends JsonResource
                 : [],
 
             'brief_attachments' => $this->whenLoaded('briefAttachments', fn() => $this->briefAttachments),
+        ];
+    }
+
+    /**
+     * Payload user ringan untuk kartu. Permission/role lengkap hanya
+     * dibutuhkan di halaman user management, bukan di setiap assignee kartu.
+     */
+    protected function userSummary($user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => $user->avatar ? asset('storage/'.$user->avatar) : null,
         ];
     }
 

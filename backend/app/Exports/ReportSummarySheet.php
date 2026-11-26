@@ -113,6 +113,22 @@ class ReportSummarySheet implements FromGenerator, ShouldAutoSize, WithTitle, Wi
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
 
+            if (array_key_exists('total_tasks', $this->meta)) {
+                $totalTasks = (int) $this->meta['total_tasks'];
+                $completedTasks = (int) ($this->meta['completed_tasks'] ?? 0);
+                $completionRate = number_format((float) ($this->meta['completion_rate'] ?? 0), 1);
+
+                $sheet->setCellValue(
+                    'A3',
+                    "Total Task: {$totalTasks} | Completed: {$completedTasks} | Completion Rate: {$completionRate}%"
+                );
+                $sheet->mergeCells('A3:R3');
+                $sheet->getStyle('A3:R3')->applyFromArray([
+                    'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '1A237E']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                ]);
+            }
+
             $lastRow = max(4, $sheet->getHighestRow());
             $sheet->getStyle('A4:R' . $lastRow)->applyFromArray([
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],

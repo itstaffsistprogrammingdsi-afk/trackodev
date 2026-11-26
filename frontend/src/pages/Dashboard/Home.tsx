@@ -5,6 +5,7 @@ import TaskStatusOverview from "./TaskStatusOverview";
 import DashboardPeriodFilter from "./DashboardPeriodFilter";
 import ScopeToggle, { type DashboardScope } from "./ScopeToggle";
 import SystemInsights, { type SystemInsight } from "./SystemInsights";
+import SummaryCards from "@/features/my-work/components/SummaryCards";
 import {
   toDashboardParams,
   type DashboardFilter,
@@ -289,6 +290,15 @@ export default function Home() {
             {t("Coba lagi", "Try again")}
           </button>
         </div>
+      ) : null}
+
+      {scope === "me" ? (
+        <SummaryCards
+          totalCards={taskStatus.total}
+          completedCards={taskStatus.completed}
+          completionRate={taskStatus.completion_rate}
+          loading={isRefreshing || isUpdating}
+        />
       ) : null}
 
       {/* LEADERBOARD KHUSUS PEMILIK PERMISSION */}

@@ -1360,6 +1360,8 @@ Route::middleware([
             ->middleware('permission:report.view');
         Route::get('/users', [ReportController::class, 'index'])
             ->middleware('permission:report.view');
+        Route::get('/summary', [ReportController::class, 'summary'])
+            ->middleware('permission:report.view');
         Route::get('/users/{user}/cards', [ReportController::class, 'showUserCards'])
             ->middleware('permission:report.view');
         Route::post('/attachments/{attachment}/qc', [ReportController::class, 'submitAttachmentQc'])

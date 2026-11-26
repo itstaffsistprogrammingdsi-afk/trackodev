@@ -251,6 +251,15 @@ class Card extends Model
         )->orderBy('order');
     }
 
+    /**
+     * Jumlah task selesai untuk badge kartu tanpa memuat seluruh task.
+     */
+    public function completedTasks(): HasMany
+    {
+        return $this->hasMany(Task::class)
+            ->where('is_completed', true);
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(

@@ -99,9 +99,20 @@ export interface ReportPreviewData {
   pdf_base64: string | null;
   users_count: number;
   total_cards: number;
+  total_tasks?: number;
+  completed_tasks?: number;
+  completion_rate?: number;
   total_attachments?: number;
   total_qc?: number;
   period_label?: string;
+}
+
+export interface ReportSummary {
+  total_tasks: number;
+  completed_tasks: number;
+  completion_rate: number;
+  period_label: string;
+  scope_label?: string;
 }
 
 export interface ReportDownloadHistoryItem {

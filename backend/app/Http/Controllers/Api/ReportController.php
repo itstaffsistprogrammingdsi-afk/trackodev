@@ -574,7 +574,38 @@ class ReportController extends Controller
     }
 
     /**
-     * @return array{period_label: string, generated_at: string, total_cards?: int, total_attachments?: int, total_qc?: int}
+     * Ringkasan task untuk request report. Bila user_id diisi, pakai definisi
+     * My Work agar angka di Report sama dengan halaman My Work user tersebut.
+     *
+     * @return array{total: int, completed: int, completion_rate: float, scope_label: string}
+     */
+    private function taskSummaryForRequest(Request $request): array
+    {
+        if ($request->filled('user_id')) {
+            $target = User::query()->whereKey($request->input('user_id'))->first();
+
+            if (! $target) {
+                return [
+                    'total' => 0,
+                    'completed' => 0,
+                    'completion_rate' => 0.0,
+                    'scope_label' => 'User tidak ditemukan',
+                ];
+            }
+
+            $this->authorizeReportUser($request, $target);
+            $summary = $this->reportTotalsService->taskSummary($request, $target);
+
+            return array_merge($summary, ['scope_label' => $target->name]);
+        }
+
+        $summary = $this->reportTotalsService->taskSummary($request);
+
+        return array_merge($summary, ['scope_label' => 'Semua user']);
+    }
+
+    /**
+     * @return array{period_label: string, generated_at: string, total_cards?: int, total_tasks?: int, completed_tasks?: int, completion_rate?: float, total_attachments?: int, total_qc?: int}
      */
     private function reportMeta(Request $request): array
     {
@@ -621,12 +652,16 @@ class ReportController extends Controller
 
             $totalUsers = $users->count();
             $totals = $this->reportTotalsService->totalsFromUsers($users);
+            $taskSummary = $this->taskSummaryForRequest($request);
             $totalCards = $totals['cards'];
             $totalAttachments = $totals['attachments'];
             $totalQc = $totals['qc'];
 
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totalCards,
+                'total_tasks' => $taskSummary['total'],
+                'completed_tasks' => $taskSummary['completed'],
+                'completion_rate' => $taskSummary['completion_rate'],
                 'total_attachments' => $totalAttachments,
                 'total_qc' => $totalQc,
             ]);
@@ -670,6 +705,9 @@ class ReportController extends Controller
                     'pdf_base64'        => $base64Pdf,
                     'users_count'       => $totalUsers,
                     'total_cards'       => $totalCards,
+                    'total_tasks'       => $taskSummary['total'],
+                    'completed_tasks'   => $taskSummary['completed'],
+                    'completion_rate'   => $taskSummary['completion_rate'],
                     'total_attachments' => $totalAttachments,
                     'total_qc'          => $totalQc,
                     'period_label'      => $meta['period_label'],
@@ -680,6 +718,36 @@ class ReportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal membuat preview laporan. Silakan coba lagi.'
+            ], 500);
+        }
+    }
+
+    /**
+     * RINGKASAN TASK REPORT
+     */
+    public function summary(Request $request): JsonResponse
+    {
+        $this->validateReportFilters($request);
+        $this->authorizeDivisionFilter($request);
+
+        try {
+            $totals = $this->taskSummaryForRequest($request);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_tasks' => $totals['total'],
+                    'completed_tasks' => $totals['completed'],
+                    'completion_rate' => $totals['completion_rate'],
+                    'period_label' => $this->reportMeta($request)['period_label'],
+                    'scope_label' => $totals['scope_label'],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error report summary: '.$e->getMessage());
+
+            return response()->json([
+                'message' => 'Gagal memuat ringkasan report',
             ], 500);
         }
     }
@@ -800,8 +868,12 @@ class ReportController extends Controller
             }
 
             $totals = $this->reportTotalsService->totals($request);
+            $taskSummary = $this->taskSummaryForRequest($request);
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totals['cards'],
+                'total_tasks' => $taskSummary['total'],
+                'completed_tasks' => $taskSummary['completed'],
+                'completion_rate' => $taskSummary['completion_rate'],
                 'total_attachments' => $totals['attachments'],
                 'total_qc' => $totals['qc'],
             ]);
@@ -866,8 +938,12 @@ class ReportController extends Controller
             }
 
             $totals = $this->reportTotalsService->totals($request);
+            $taskSummary = $this->taskSummaryForRequest($request);
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totals['cards'],
+                'total_tasks' => $taskSummary['total'],
+                'completed_tasks' => $taskSummary['completed'],
+                'completion_rate' => $taskSummary['completion_rate'],
                 'total_attachments' => $totals['attachments'],
                 'total_qc' => $totals['qc'],
             ]);

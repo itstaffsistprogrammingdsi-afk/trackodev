@@ -7,6 +7,7 @@ import {
   MasterFilterOptions,
   ReportDownloadHistoryParams,
   ReportDownloadHistoryResponse,
+  ReportSummary,
 } from '../types';
 
 type SecureExportParams = FilterParams & { export_password?: string };
@@ -23,6 +24,15 @@ export const reportApi = {
   getUsers: async (params: FilterParams) => {
     const response = await api.get<PaginatedResponse<User>>('/reports/users', { params });
     return response.data;
+  },
+
+  // Ringkasan KPI report untuk periode/filter aktif
+  getSummary: async (params: FilterParams) => {
+    const response = await api.get<{ success: boolean; data: ReportSummary }>(
+      '/reports/summary',
+      { params },
+    );
+    return response.data.data;
   },
 
   // RIGHT PANEL: Ambil detail card & attachment milik spesifik user

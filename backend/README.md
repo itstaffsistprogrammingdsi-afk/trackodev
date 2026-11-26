@@ -113,10 +113,15 @@ saja hanya memperbarui tampilan frontend. Setelah file backend terbaru berada di
 server, jalankan dari folder `backend`:
 
 ```bash
+php artisan migrate --force
 php artisan optimize:clear
 php artisan permission:cache-reset
 php artisan queue:restart
 ```
+
+`migrate --force` wajib dijalankan setiap ada migration baru. Tanpa langkah ini,
+endpoint yang memakai kolom baru (misalnya mirror lintas divisi di `cards`)
+dapat menghasilkan HTTP 500 walau file backend sudah di-upload.
 
 Jika production memang memakai cache konfigurasi dan route, bangun kembali
 cache setelah perintah di atas:

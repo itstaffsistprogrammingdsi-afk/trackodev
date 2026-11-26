@@ -377,6 +377,8 @@ export default function MyAssignedTasks() {
     data: cards = [],
     isLoading,
     isFetching,
+    isError,
+    error: queryError,
     refetch,
   } = useQuery<Card[]>({
     queryKey: ["my-cards"],
@@ -623,6 +625,30 @@ export default function MyAssignedTasks() {
               </div>
             </div>
           ))}
+        </div>
+      ) : isError ? (
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-3 px-5 py-10 text-center sm:px-6"
+        >
+          <p className="text-sm font-semibold text-fg">
+            {t("Tugas gagal dimuat", "Failed to load tasks")}
+          </p>
+          <p className="max-w-md text-xs leading-5 text-fg-muted">
+            {(queryError as { response?: { data?: { message?: string } } })
+              ?.response?.data?.message ??
+              t(
+                "Server gagal memproses daftar tugas. Silakan coba lagi.",
+                "The server could not load your task list. Please try again.",
+              )}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="h-9 rounded-control border border-line bg-surface px-3.5 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
+          >
+            {t("Coba lagi", "Try again")}
+          </button>
         </div>
       ) : cards.length === 0 ? (
         <EmptyState

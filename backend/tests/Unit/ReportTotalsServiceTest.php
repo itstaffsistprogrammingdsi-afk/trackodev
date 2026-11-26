@@ -158,6 +158,9 @@ class ReportTotalsServiceTest extends TestCase
             'period_label' => '01 Sep 2026 – 30 Sep 2026',
             'generated_at' => '30 Sep 2026 12:00',
             'total_cards' => 1,
+            'total_tasks' => 1,
+            'completed_tasks' => 1,
+            'completion_rate' => 100.0,
             'total_attachments' => 1,
             'total_qc' => 5,
         ];
@@ -170,6 +173,10 @@ class ReportTotalsServiceTest extends TestCase
 
         $this->assertStringContainsString('Detail Kinerja &amp; Quality Control', $html);
         $this->assertStringContainsString('Lampiran &amp; Quality Control', $html);
+        $this->assertStringContainsString('Total Task', $html);
+        $this->assertStringContainsString('Completed', $html);
+        $this->assertStringContainsString('Completion Rate', $html);
+        $this->assertStringContainsString('100.0%', $html);
         $this->assertStringContainsString('Tanggal Dibuat', $html);
         $this->assertStringContainsString('attachment-meta-label">Upload', $html);
         $this->assertStringContainsString('10/09/2026', $html);
@@ -187,6 +194,10 @@ class ReportTotalsServiceTest extends TestCase
             ));
             $wb = IOFactory::load($xlsxPath);
             $this->assertSame(['Kinerja & QC'], $wb->getSheetNames());
+            $this->assertSame(
+                'Total Task: 1 | Completed: 1 | Completion Rate: 100.0%',
+                $wb->getSheetByName('Kinerja & QC')->getCell('A3')->getValue()
+            );
 
             $headers = [];
             foreach (range('A', 'R') as $col) {

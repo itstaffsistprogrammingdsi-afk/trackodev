@@ -43,14 +43,30 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   const canExportPdf = can("report.export") || can("report.export.pdf");
   const canExportExcel = can("report.export") || can("report.export.excel");
   const periodLabel = previewData?.period_label?.trim();
+  const totalTasks =
+    previewData?.total_tasks ?? previewData?.total_cards ?? 0;
   const summary = previewData
     ? [
         t("{count} user", "{count} users", {
           count: previewData.users_count,
         }),
-        t("{count} kartu", "{count} cards", {
-          count: previewData.total_cards,
+        t("{count} task", "{count} tasks", {
+          count: totalTasks,
         }),
+        ...(typeof previewData.completed_tasks === "number"
+          ? [
+              t("{count} selesai", "{count} completed", {
+                count: previewData.completed_tasks,
+              }),
+            ]
+          : []),
+        ...(typeof previewData.completion_rate === "number"
+          ? [
+              t("Completion rate {rate}%", "Completion rate {rate}%", {
+                rate: previewData.completion_rate.toFixed(1),
+              }),
+            ]
+          : []),
         ...(typeof previewData.total_attachments === "number"
           ? [
               t("{count} lampiran", "{count} attachments", {
