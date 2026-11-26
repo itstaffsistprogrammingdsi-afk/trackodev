@@ -107,7 +107,11 @@ export const ReportPage: React.FC = () => {
     <div className="w-full font-sans">
       <div className="w-full space-y-6">
         
-        <ReportSummaryCards filters={filters} />
+        <ReportSummaryCards
+          filters={filters}
+          userId={selectedUser?.id}
+          userName={selectedUser?.name}
+        />
 
         <UserList
           users={users}

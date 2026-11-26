@@ -7,6 +7,8 @@ import type { FilterParams, ReportSummary } from "../types";
 
 type Props = {
   filters: FilterParams;
+  userId?: string | number;
+  userName?: string;
 };
 
 const toSummaryParams = (filters: FilterParams): FilterParams => {
@@ -17,7 +19,7 @@ const toSummaryParams = (filters: FilterParams): FilterParams => {
   return params;
 };
 
-export default function ReportSummaryCards({ filters }: Props) {
+export default function ReportSummaryCards({ filters, userId, userName }: Props) {
   const { t } = useLanguage();
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,7 @@ export default function ReportSummaryCards({ filters }: Props) {
   const filterKey = useMemo(
     () =>
       JSON.stringify({
+        user_id: userId ?? "",
         search: filters.search ?? "",
         division_id: filters.division_id ?? "",
         start_date: filters.start_date ?? "",
@@ -38,6 +41,7 @@ export default function ReportSummaryCards({ filters }: Props) {
         search_card: filters.search_card ?? "",
       }),
     [
+      userId,
       filters.search,
       filters.division_id,
       filters.start_date,
@@ -57,7 +61,12 @@ export default function ReportSummaryCards({ filters }: Props) {
       setError(null);
 
       try {
-        const result = await reportApi.getSummary(toSummaryParams(filters));
+        const params = toSummaryParams(filters);
+        if (userId !== undefined && userId !== null && userId !== "") {
+          params.user_id = userId;
+        }
+
+        const result = await reportApi.getSummary(params);
         if (currentRequest !== requestId.current) return;
 
         setSummary(result);
@@ -89,9 +98,11 @@ export default function ReportSummaryCards({ filters }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2
           id="report-summary-title"
-          className="text-xs font-medium text-fg-muted"
+          className="truncate text-xs font-medium text-fg-muted"
         >
-          {t("Ringkasan periode", "Period summary")}
+          {userName
+            ? t("Ringkasan {name}", "Summary for {name}", { name: userName })
+            : t("Ringkasan semua user", "All-user summary")}
         </h2>
         <span className="text-2xs text-fg-subtle">
           {summary?.period_label ?? t("Semua periode", "All periods")}

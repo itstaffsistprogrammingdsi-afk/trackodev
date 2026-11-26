@@ -62,6 +62,48 @@ class ReportDataLoader
         ];
     }
 
+    /**
+     * Ringkasan task untuk user tertentu, memakai definisi yang sama dengan
+     * My Work: pekerjaan aktif selalu dihitung, pekerjaan selesai mengikuti
+     * completed_at pada periode.
+     *
+     * @return array{total: int, completed: int, completion_rate: float}
+     */
+    public function personalTaskSummary(User $user, Request $request): array
+    {
+        $personalScope = app(PersonalWorkScope::class);
+        $base = Card::query();
+        $personalScope->apply($base, $user);
+
+        $ongoing = (clone $base)->where('status', '!=', 'completed');
+        $ongoingCount = $personalScope->countDistinctFamilies($ongoing);
+
+        $completed = (clone $base)->whereNotNull('cards.completed_at');
+        $start = $request->filled('start_date')
+            ? $request->string('start_date')->toString().' 00:00:00'
+            : null;
+        $end = $request->filled('end_date')
+            ? $request->string('end_date')->toString().' 23:59:59'
+            : null;
+
+        $this->scope->applyDateBoundaries(
+            $completed,
+            'cards.completed_at',
+            $start,
+            $end,
+        );
+        $completedCount = $personalScope->countDistinctFamilies($completed);
+        $total = $ongoingCount + $completedCount;
+
+        return [
+            'total' => $total,
+            'completed' => $completedCount,
+            'completion_rate' => $total > 0
+                ? round(($completedCount / $total) * 100, 2)
+                : 0.0,
+        ];
+    }
+
     public function load(Request $request, int $chunkSize = 75): Collection
     {
         // Keep this eager compatibility helper explicitly backed by a normal

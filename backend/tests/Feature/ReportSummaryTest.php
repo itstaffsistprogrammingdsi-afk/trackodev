@@ -70,6 +70,7 @@ class ReportSummaryTest extends TestCase
             ->assertJsonPath('data.total_tasks', 2)
             ->assertJsonPath('data.completed_tasks', 1)
             ->assertJsonPath('data.completion_rate', 50)
-            ->assertJsonPath('data.period_label', 'Semua periode');
+            ->assertJsonPath('data.period_label', 'Semua periode')
+            ->assertJsonPath('data.scope_label', 'Summary Target');
     }
 }

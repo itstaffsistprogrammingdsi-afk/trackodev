@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use App\Models\User;
 
 class ReportTotalsService
 {
@@ -50,8 +51,12 @@ class ReportTotalsService
      *
      * @return array{total: int, completed: int, completion_rate: float}
      */
-    public function taskSummary(Request $request): array
+    public function taskSummary(Request $request, ?User $targetUser = null): array
     {
+        if ($targetUser) {
+            return $this->loader->personalTaskSummary($targetUser, $request);
+        }
+
         return $this->loader->taskSummary($request);
     }
 

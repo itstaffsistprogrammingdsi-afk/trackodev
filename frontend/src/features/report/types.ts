@@ -112,6 +112,7 @@ export interface ReportSummary {
   completed_tasks: number;
   completion_rate: number;
   period_label: string;
+  scope_label?: string;
 }
 
 export interface ReportDownloadHistoryItem {

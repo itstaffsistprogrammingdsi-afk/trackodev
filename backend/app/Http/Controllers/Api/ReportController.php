@@ -574,6 +574,37 @@ class ReportController extends Controller
     }
 
     /**
+     * Ringkasan task untuk request report. Bila user_id diisi, pakai definisi
+     * My Work agar angka di Report sama dengan halaman My Work user tersebut.
+     *
+     * @return array{total: int, completed: int, completion_rate: float, scope_label: string}
+     */
+    private function taskSummaryForRequest(Request $request): array
+    {
+        if ($request->filled('user_id')) {
+            $target = User::query()->whereKey($request->input('user_id'))->first();
+
+            if (! $target) {
+                return [
+                    'total' => 0,
+                    'completed' => 0,
+                    'completion_rate' => 0.0,
+                    'scope_label' => 'User tidak ditemukan',
+                ];
+            }
+
+            $this->authorizeReportUser($request, $target);
+            $summary = $this->reportTotalsService->taskSummary($request, $target);
+
+            return array_merge($summary, ['scope_label' => $target->name]);
+        }
+
+        $summary = $this->reportTotalsService->taskSummary($request);
+
+        return array_merge($summary, ['scope_label' => 'Semua user']);
+    }
+
+    /**
      * @return array{period_label: string, generated_at: string, total_cards?: int, total_tasks?: int, completed_tasks?: int, completion_rate?: float, total_attachments?: int, total_qc?: int}
      */
     private function reportMeta(Request $request): array
@@ -621,7 +652,7 @@ class ReportController extends Controller
 
             $totalUsers = $users->count();
             $totals = $this->reportTotalsService->totalsFromUsers($users);
-            $taskSummary = $this->reportTotalsService->taskSummary($request);
+            $taskSummary = $this->taskSummaryForRequest($request);
             $totalCards = $totals['cards'];
             $totalAttachments = $totals['attachments'];
             $totalQc = $totals['qc'];
@@ -700,7 +731,7 @@ class ReportController extends Controller
         $this->authorizeDivisionFilter($request);
 
         try {
-            $totals = $this->reportTotalsService->taskSummary($request);
+            $totals = $this->taskSummaryForRequest($request);
 
             return response()->json([
                 'success' => true,
@@ -709,6 +740,7 @@ class ReportController extends Controller
                     'completed_tasks' => $totals['completed'],
                     'completion_rate' => $totals['completion_rate'],
                     'period_label' => $this->reportMeta($request)['period_label'],
+                    'scope_label' => $totals['scope_label'],
                 ],
             ]);
         } catch (\Exception $e) {
@@ -836,7 +868,7 @@ class ReportController extends Controller
             }
 
             $totals = $this->reportTotalsService->totals($request);
-            $taskSummary = $this->reportTotalsService->taskSummary($request);
+            $taskSummary = $this->taskSummaryForRequest($request);
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totals['cards'],
                 'total_tasks' => $taskSummary['total'],
@@ -906,7 +938,7 @@ class ReportController extends Controller
             }
 
             $totals = $this->reportTotalsService->totals($request);
-            $taskSummary = $this->reportTotalsService->taskSummary($request);
+            $taskSummary = $this->taskSummaryForRequest($request);
             $meta = array_merge($this->reportMeta($request), [
                 'total_cards' => $totals['cards'],
                 'total_tasks' => $taskSummary['total'],
