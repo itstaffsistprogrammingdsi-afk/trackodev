@@ -5,6 +5,18 @@ dengan mode `android` agar `.env.android` dan konfigurasi OTA ikut masuk.
 
 ## Changelog
 
+### 1.1.1 (`versionCode 13`)
+
+- KPI Report menampilkan Total Task, Completed, dan Completion Rate di
+  preview, PDF, dan Excel.
+- KPI user yang dipilih di Report memakai perhitungan yang sama dengan My Work
+  (card asli + mirror dihitung satu task).
+- My Tasks lebih ringan dan menampilkan pesan error yang jelas bila gagal
+  dimuat.
+- Ringkasan Total Task, Completed, dan Completion Rate ditambahkan ke
+  My Workspace pada Dashboard.
+- Perbaikan CORS untuk port development Vite 5174.
+
 ### 1.1.0 (`versionCode 12`)
 
 - Sinkron dengan UI web terbaru: navigasi, divisi, workspace, board, calendar,
@@ -18,8 +30,8 @@ dengan mode `android` agar `.env.android` dan konfigurasi OTA ikut masuk.
 
 ## Release APK resmi
 
-Versi publik terakhir: `1.1.0` (`versionCode 12`). Rilis berikutnya: naikkan
-keduanya, misalnya `1.1.1` / `13`.
+Versi publik terakhir: `1.1.1` (`versionCode 13`). Rilis berikutnya: naikkan
+keduanya, misalnya `1.1.2` / `14`.
 
 1. Samakan `package.json.version` dengan `android/app/build.gradle` `versionName`.
 2. Naikkan `versionCode` setiap release APK.
@@ -38,10 +50,11 @@ sama dapat dijalankan di Windows maupun Linux server.
 `npm run android:apk` hanya menghasilkan file debug
 `tracko-latest-debug.apk` dan tidak boleh menggantikan APK resmi.
 
-> APK 1.1.0 di `public/downloads` ditandatangani dengan sertifikat Android
-> Debug (berbeda dari sertifikat 1.0.4). Update dari 1.0.4 ke 1.1.0 memerlukan
-> uninstall sekali. Untuk rilis berikutnya, gunakan upload keystore resmi dan
-> simpan agar update selanjutnya tidak perlu uninstall.
+> APK 1.1.1 di `public/downloads` memakai sertifikat Android Debug yang sama
+> dengan 1.1.0, jadi update 1.1.0 → 1.1.1 tidak perlu uninstall. Sertifikat
+> 1.0.4 berbeda, sehingga update dari 1.0.4 masih perlu uninstall sekali.
+> Untuk rilis publik jangka panjang, gunakan upload keystore resmi dan simpan
+> agar update berikutnya tetap mulus.
 
 ## OTA web bundle untuk APK terpasang
 
